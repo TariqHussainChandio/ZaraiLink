@@ -1,0 +1,9 @@
+PLACEHOLDER - not a real PyTorch checkpoint.
+
+Replace this file with the trained MobileNetV2 `state_dict` from Google Colab, saved via
+`torch.save(model.state_dict(), "model.pth")`, keeping this exact filename/path
+(backend/app/ml/checkpoints/model.pth). No code changes are needed after replacing it —
+`torch.load()` in backend/app/services/ai_engine.py will start succeeding automatically.
+
+Until then, `torch.load()` fails to parse this file on purpose, and
+POST /api/v1/disease/predict responds with 503 ("AI model not trained yet").

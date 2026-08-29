@@ -144,8 +144,9 @@ max_catalogs = 2
 # [storage.analytics.buckets.my-warehouse]
 
 # Store vector embeddings in S3 for large and durable datasets
+# Disabled: vector buckets require the Pro plan, and this project is on the free tier.
 [storage.vector]
-enabled = true
+enabled = false
 max_buckets = 10
 max_indexes = 5
 
@@ -223,7 +224,7 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -242,6 +243,15 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# Signup confirmation email — shows the OTP code (`{{ .Token }}`) the app's VerifyOtpScreen
+# asks for, instead of the default confirmation link. Requires custom SMTP (see
+# [auth.email.smtp] below) — free-tier projects on Supabase's shared email provider reject
+# template customization entirely (verified: `supabase config push` → 400 "Email template
+# modification is not available for free tier projects using the default email provider").
+# [auth.email.template.confirmation]
+# subject = "Your ZaraiLink verification code"
+# content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

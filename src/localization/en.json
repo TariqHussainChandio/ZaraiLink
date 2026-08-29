@@ -1,0 +1,27 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading…",
+    "search": "Search",
+    "retry": "Retry",
+    "select": "Select..."
+  },
+  "settings": {
+    "title": "Settings",
+    "notifications": "Notifications",
+    "language": "Language",
+    "changePassword": "Change Password",
+    "signOut": "Sign Out"
+  },
+  "profile": {
+    "fullName": "Full name",
+    "phone": "Phone",
+    "country": "Country",
+    "province": "Province",
+    "city": "City",
+    "village": "Village",
+    "street": "Street / address",
+    "saveChanges": "Save Changes"
+  }
+}

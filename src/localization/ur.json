@@ -1,0 +1,27 @@
+{
+  "common": {
+    "save": "محفوظ کریں",
+    "cancel": "منسوخ کریں",
+    "loading": "لوڈ ہو رہا ہے…",
+    "search": "تلاش کریں",
+    "retry": "دوبارہ کوشش کریں",
+    "select": "منتخب کریں..."
+  },
+  "settings": {
+    "title": "ترتیبات",
+    "notifications": "اطلاعات",
+    "language": "زبان",
+    "changePassword": "پاس ورڈ تبدیل کریں",
+    "signOut": "سائن آؤٹ"
+  },
+  "profile": {
+    "fullName": "پورا نام",
+    "phone": "فون نمبر",
+    "country": "ملک",
+    "province": "صوبہ",
+    "city": "شہر",
+    "village": "گاؤں",
+    "street": "گلی / پتہ",
+    "saveChanges": "تبدیلیاں محفوظ کریں"
+  }
+}
