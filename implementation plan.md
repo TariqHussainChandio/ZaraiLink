@@ -513,13 +513,16 @@ implemented alongside their owning table/screen in Modules 4/18/19.
 - [ ] Secrets management review: confirm service-role key, payment provider keys, and AI model credentials never reach the mobile bundle or git history
 
 ## Module 21 — Testing & QA
-**Folders:** `tests/unit/`, `tests/integration/`, `backend/tests/`, `__tests__/`
+**Folders:** `__tests__/` (frontend), `backend/tests/` (backend — already has real coverage,
+17 files / 106 tests). A redundant, always-empty root-level `tests/unit/`/`tests/integration/`
+pair was removed in a later cleanup pass; add frontend integration tests under `__tests__/`
+instead.
 **Goal:** move past the single default RN render test, covering the workflows in §41–§46.
 
 - [ ] Unit tests for `authStore`, `cartStore`, `marketplaceStore`, and new stores as they land (farm, dealer, reference-data)
 - [ ] Unit tests for service modules with a mocked Supabase client (marketplace, orders, payments, experts, disease, admin)
 - [ ] Component tests for `src/components/ui/*` primitives
-- [ ] Integration test: sign up → login → land on role dashboard (`tests/integration/`)
+- [ ] Integration test: sign up → login → land on role dashboard (`__tests__/`)
 - [ ] Integration test: create listing → appears in browse screen
 - [ ] Integration test: add to cart → checkout with delivery charge → payment → order appears in history with correct subtotal/delivery split (BR-09 regression guard)
 - [ ] Integration test: dealer inventory adjustment reduces stock and blocks over-selling
@@ -543,7 +546,7 @@ implemented alongside their owning table/screen in Modules 4/18/19.
 - [ ] Branch protection note in `docs/setup/DEVELOPMENT_SETUP.md` once CI is green
 
 ## Module 23 — Documentation
-**Folders:** `docs/architecture/`, `docs/database/`, `docs/api/`, `docs/ui-ux/`
+**Folders:** `docs/architecture/`, `docs/database/`
 **Goal:** keep the FYP writeup and onboarding docs current as modules land, instead of
 reconstructing them later.
 
@@ -554,8 +557,8 @@ reconstructing them later.
 - [x] `docs/architecture/notifications.md` — write-path/trigger design (Module 13 dependency)
 - [x] `docs/architecture/backend-architecture.md` — FastAPI layering, auth flow, the three Supabase client modes, Storage/Realtime strategy, frontend API client (Module 19 dependency)
 - [ ] `docs/database/schema.md` — exists; not yet re-verified current against every Module 4 migration
-- [ ] `docs/api/endpoints.md` — FastAPI endpoint reference, updated alongside Module 19
-- [ ] `docs/ui-ux/design-system.md` — token reference for Module 1 (including the role-color and module-accent tables), plus key screen flows
+- [ ] FastAPI endpoint reference — deferred to FastAPI's own auto-generated OpenAPI/Swagger docs (served at `/docs` by every `uvicorn` run) rather than a hand-maintained `docs/api/` file; the empty `docs/api/` placeholder folder was removed in a later cleanup pass as unused
+- [ ] Design-system token reference (role-color/module-accent tables, key screen flows) for Module 1 — the empty `docs/ui-ux/` placeholder folder was removed in the same cleanup pass; recreate `docs/ui-ux/` when this doc is actually written
 
 ## Module 24 — Production Readiness / Security Hardening
 **Depends on:** all functional modules substantially complete

@@ -85,6 +85,10 @@ pnpm-debug.log*
 *.pem
 *.key
 service-account*.json
+*.keystore
+!android/app/debug.keystore
+google-services.json
+GoogleService-Info.plist
 
 # ML model/cache files
 __pycache__/

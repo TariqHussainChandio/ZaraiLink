@@ -33,8 +33,7 @@ backend/app/
 │                        calls, no business rules. One file per domain.
 ├── services/   business logic — authorization checks beyond role (ownership, state machines,
 │               calculations), orchestration, cross-domain calls. No direct Supabase calls.
-├── repositories/  the only layer touching Supabase. One file per domain, thin query functions,
-│                  plus an unused base_repository.py placeholder.
+├── repositories/  the only layer touching Supabase. One file per domain, thin query functions.
 ├── schemas/    Pydantic request/response contracts. No ORM anywhere in this codebase.
 └── ml/checkpoints/   model.pth + inference (ai_engine.py, disease domain only)
 ```
