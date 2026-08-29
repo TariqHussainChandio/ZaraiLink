@@ -64,7 +64,7 @@ These percentages are estimates derived from the evidence in this document, not 
 
 - Real payment-gateway/PSP integration.
 - Push notifications (FCM/APNs) — confirmed absent on both frontend and backend; in-app-only via Supabase Realtime.
-- Automated frontend test coverage beyond one default React Native template smoke test; `tests/unit/` and `tests/integration/` are empty.
+- Automated frontend test coverage beyond one default React Native template smoke test in `__tests__/`.
 - A real trained AI model file.
 - Camera-capture (as opposed to gallery-pick) anywhere an image is uploaded — only `launchImageLibrary` is called, never `launchCamera`.
 
@@ -88,7 +88,6 @@ Cannot be fully assessed — this audit is static (source-code reading only); no
 ### Biggest technical debt
 
 - Two stale documentation files that contradict the current schema/migrations.
-- `backend/app/models/` and `backend/app/utils/` are empty, dead scaffold directories.
 - `@tanstack/react-query` is installed but used in only 2 of ~70 screens — most of the app fetches per-screen without a caching layer.
 - 3 of 6 Supabase Storage buckets are undocumented in `docs/database/schema.md`; `listing_views` table is entirely undocumented there.
 
@@ -106,11 +105,10 @@ Cannot be fully assessed — this audit is static (source-code reading only); no
 d:/FYP/ZaraiLink/
 ├── App.tsx, index.js, app.json, package.json, tsconfig.json, babel.config.js,
 │   metro.config.js, jest.config.js, .eslintrc.js, .prettierrc.js, .env / .env.example,
-│   "implementation plan.md", report.md (this file), README.md, Gemfile
+│   "implementation plan.md", report.md (this file), README.md
 ├── .github/workflows/               frontend-ci.yml, backend-ci.yml (new — minimal, unverified
 │                                     stubs added during the directory-restructure pass)
-├── __tests__/App.test.tsx           (only real frontend test file in the repo)
-│   ├── components/ screens/ store/  scaffolded, empty (.gitkeep only — new)
+├── __tests__/App.test.tsx           (only test file in the repo's frontend test root)
 ├── __mocks__/                       Jest manual mocks (async-storage, react-native-config)
 ├── src/
 │   ├── navigation/
@@ -134,7 +132,7 @@ d:/FYP/ZaraiLink/
 │   ├── store/       (4 files, flat) authStore, cartStore, marketplaceStore,
 │   │                                 referenceDataStore (Zustand)
 │   ├── types/       (15 files)       snake_case, mirrors backend Pydantic schema field names
-│   ├── utils/        currency.ts, date.ts (new — unused stubs)
+│   ├── utils/                        empty (.gitkeep only — no shared helpers needed yet)
 │   ├── constants/  config/  localization/  theme/  assets/
 ├── backend/
 │   ├── requirements.txt (fully pinned), pytest.ini, .env.example
@@ -145,25 +143,23 @@ d:/FYP/ZaraiLink/
 │       │   ├── router.py             new — aggregates all 15 endpoint routers into one
 │       │   └── endpoints/ (14 files) one APIRouter per domain (consultations lives with expert
 │       │                             in the same domain count used elsewhere in this report)
-│       ├── repositories/ (16 files)  thin Supabase-client wrappers + base_repository.py
-│       │                             (new — unused placeholder stub)
+│       ├── repositories/ (15 files)  thin Supabase-client wrappers, one per domain
 │       ├── services/  (16 files)     business logic, state machines, audit logging
 │       │                             (disease_inference.py renamed to ai_engine.py)
 │       ├── schemas/   (15 files)     Pydantic request/response models
-│       ├── ml/checkpoints/model.pth  536-byte placeholder, not a real checkpoint
-│       ├── models/                   EMPTY — dead directory (.gitkeep only)
-│       └── utils/                    EMPTY — dead directory (.gitkeep only)
+│       └── ml/checkpoints/model.pth  536-byte placeholder, not a real checkpoint
 │   └── tests/
 │       ├── conftest.py               new — added during the restructure pass, empty stub
 │       └── unit/                     (17 files, 106 test functions — all real, mock-based,
 │                                       confirmed passing via an actual `pytest` run)
 ├── android/   app/build.gradle, build.gradle, AndroidManifest.xml, debug.keystore (stock RN)
 ├── supabase/  migrations/ (28 files), config.toml, seed.sql (reference data only)
-├── docs/      architecture/ (4 files — 1 stale), database/ (1 file — incomplete), setup/ (1)
-└── tests/     unit/ (empty), integration/ (empty)
+└── docs/      architecture/ (4 files — 1 stale), database/ (1 file — incomplete), setup/ (1)
 ```
 
 `ios/` was deleted after the original version of this audit (the project isn't building for iOS right now — confirmed nothing else in the repo depended on it before removal). `.github/workflows/` now exists (see above) as minimal, unverified CI stubs — the original finding of "no CI configuration of any kind" no longer holds, though the stubs have not yet been exercised by a real PR/CI run and don't cover a Supabase migration-lint step.
+
+**Second cleanup pass** (after the directory restructure, in response to an explicit "delete unused files" request): removed `Gemfile` (orphaned CocoaPods/Ruby tooling, no longer needed without `ios/`), `backend/app/models/` and `backend/app/utils/` (empty, no ORM/shared-utils ever added), the root-level `tests/unit/`/`tests/integration/` (empty and duplicated the real test homes — `__tests__/` for frontend, `backend/tests/` for backend), `docs/api/` and `docs/ui-ux/` (empty placeholders), and — since an orphan-reference scan found they were the only two genuinely unreferenced files left in the entire tracked source tree — the `src/utils/{currency,date}.ts` stubs, `backend/app/repositories/base_repository.py`, and the empty `__tests__/{components,screens,store}/` placeholder folders that this same restructure had just added. Re-verified clean afterward (0 TypeScript errors, 106/106 backend tests passing).
 
 ---
 
@@ -174,18 +170,15 @@ d:/FYP/ZaraiLink/
 | `src/navigation/` | React Navigation trees, all 5 roles | Yes | No | No | No |
 | `src/screens/` | ~70 real, data-connected screens | Yes | No | 2 screens have non-tappable rows (§7) | `MyListingsScreen` intentionally reused by both Farmer "My Listings" and Dealer "Products" routes — deliberate reuse, not duplication |
 | `src/components/` | Shared UI primitives + domain components | Yes | No | No | No |
-| `src/services/` | 17 domain service folders, `apiFetch`-backed | Yes | No | No | No |
-| `src/store/` | 4 Zustand stores | Yes | No | `src/store/app/` referenced in `implementation plan.md` was never built; no such folder exists today | No |
+| `src/services/` | 15 domain service folders under `services/modules/`, `apiFetch`-backed | Yes | No | No | No |
+| `src/store/` | 4 Zustand stores, flat | Yes | No | No | No |
 | `backend/app/api,repositories,services,schemas/` | Full FastAPI implementation, 15 domains | Yes | No | AI inference domain only (§19) | No |
-| `backend/app/models/` | Intended for ORM models | **No — empty** | Dead scaffold | N/A | N/A |
-| `backend/app/utils/` | Intended for shared utils | **No — empty** | Dead scaffold | N/A | N/A |
 | `supabase/migrations/` | 28 chronological SQL migrations | Yes | No | No | No |
 | `docs/architecture/` | 4 markdown docs | Partially | 1 file (`authorization-model.md`) is stale | See §26 | No |
 | `docs/database/schema.md` | Schema reference doc | Partially | Incomplete relative to current schema | Missing `listing_views` table + 3/6 storage buckets | No |
-| `tests/unit/`, `tests/integration/` | Intended frontend test dirs | **No — empty** | Dead scaffold | Never populated | No |
 | `.idea/`, `.vscode/` | IDE metadata | N/A | N/A | N/A | N/A |
 
-No duplicate screens, duplicate services, duplicate API clients, duplicate navigation systems, old web implementation, or abandoned prototypes were found anywhere in the repository.
+No duplicate screens, duplicate services, duplicate API clients, duplicate navigation systems, old web implementation, or abandoned prototypes were found anywhere in the repository. (A second cleanup pass, after this table was first written, removed several genuinely dead entries this table used to list: `backend/app/models/`, `backend/app/utils/`, the root-level `tests/unit/`/`tests/integration/`, `docs/api/`, `docs/ui-ux/`, `src/utils/{currency,date}.ts`, `backend/app/repositories/base_repository.py`, and the empty `__tests__/{components,screens,store}/` folders — see the note at the top of this document.)
 
 ---
 
@@ -408,11 +401,10 @@ Applied via `Depends()` on essentially every endpoint; the only endpoints withou
 | `core/supabase_client.py` | Three client factories: service-role (RLS-bypassing, narrowly used), public/anon, and **user-scoped** (RLS-respecting, authenticated as the caller — the default path) |
 | `api/v1/router.py` | Aggregates all 15 endpoint routers into one — the only thing `main.py` imports |
 | `api/v1/endpoints/*.py` (14 files) | One `APIRouter` per domain |
-| `repositories/*.py` (16 files) | Thin Supabase-client wrappers, one per domain, plus an unused `base_repository.py` placeholder |
+| `repositories/*.py` (15 files) | Thin Supabase-client wrappers, one per domain |
 | `services/*.py` (16 files) | Business logic — ownership checks, status-transition state machines, server-authoritative pricing, audit logging (`disease_inference.py` was renamed to `ai_engine.py`) |
 | `schemas/*.py` (15 files) | Pydantic request/response models |
 | `ml/checkpoints/model.pth` | 536-byte placeholder text file (§19) |
-| `models/`, `utils/` | Empty, dead scaffold directories |
 
 **Design note (positive finding)**: `core/supabase_client.py`'s comments explicitly document that the user-scoped, RLS-respecting client is the default DB-access path, and the service-role client is "reserved for the narrow, explicitly documented cases... never the default DB-access path." This means the backend generally layers *additional* business-rule enforcement (state machines, server-derived pricing, ownership checks) on top of RLS rather than replacing it — RLS remains the authoritative row-level access boundary even for backend-mediated writes. This is a sound defense-in-depth design, not redundant/conflicting enforcement.
 
@@ -612,9 +604,10 @@ Architecture Quality:      8/10 — clean layered backend (api→service→repos
                             frontend service-layer discipline, sound RLS-as-authoritative-layer
                             design; docked for open CORS, no rate limiting, and two leftover
                             direct-Supabase reads outside the service layer.
-Maintainability:           8/10 — dense, accurate self-documentation; two dead empty directories
-                            (backend/app/models, /utils); two stale docs that could mislead a
-                            new contributor.
+Maintainability:           8/10 — dense, accurate self-documentation; two stale docs that could
+                            mislead a new contributor (the dead `backend/app/models`/`utils`
+                            directories this rating originally docked for were since removed —
+                            see the note at the top of this document).
 Type Safety:                8/10 — consistent TS types matching backend Pydantic schemas 1:1,
                             explicit adapter functions for casing conversion; a couple of
                             deliberately loose types (Notification.payload) are justified by
@@ -672,7 +665,6 @@ No build, test run, or `uvicorn` startup was actually executed as part of this a
 
 | Area | Tests exist | Scope | Quality | Missing |
 |---|---|---|---|---|
-| Frontend unit/integration | `tests/unit/`, `tests/integration/` — both empty (`.gitkeep` only) | none | n/a | everything |
 | Frontend component/screen | `__tests__/App.test.tsx` only | renders `<App/>`, asserts only that it doesn't throw | template smoke test, not a real test | all ~70 screens, all services, all stores |
 | Backend | `backend/tests/unit/` — 17 files, 106 test functions | auth, ownership, pricing integrity, status-transition state machines, role rejection, input validation | **Real** — `unittest.mock`/`AsyncMock` isolate the Supabase layer, `TestClient` + `dependency_overrides` exercise real conditional branches (e.g. `test_admin.py` iterates every admin route asserting 401 with no auth header on all of them; `test_disease_api.py` is explicitly the regression test for a prior auth-bypass finding) | no coverage-tool (%) output available; no true integration test against a live/local Supabase instance |
 | CI | `.github/workflows/frontend-ci.yml`, `backend-ci.yml` (new, added during the directory-restructure pass) | lint, typecheck, `npm test` (frontend); `pytest` (backend) | untested — never actually run against a real PR | not yet exercised by a real CI run; no Supabase migration-lint step; no branch-protection wiring |
@@ -683,7 +675,6 @@ Backend testing is a genuine strength of this codebase, deliberately focused on 
 
 ## 26. Dead Code / Duplicate / Legacy Audit
 
-- `backend/app/models/` and `backend/app/utils/` — empty, `.gitkeep`-only directories, never populated. Dead scaffolding.
 - `docs/architecture/authorization-model.md` — stale relative to current migrations (§12); contradicts both the real schema and `docs/database/schema.md` itself.
 - `docs/database/schema.md` — incomplete relative to current schema: missing `listing_views` table entirely, missing 3 of 6 storage buckets.
 - Stale inline comments in `src/constants/routes.ts` claim several routes "remain placeholders" — false as of the current codebase; every one of those routes now points to a real screen.
@@ -695,30 +686,12 @@ Backend testing is a genuine strength of this codebase, deliberately focused on 
 
 ## 27. File Cleanup Report
 
+*Updated after a second cleanup pass — see the note at the top of this document. The original version of this section flagged `backend/app/models/`, `backend/app/utils/`, the root-level `tests/unit/`/`tests/integration/`, and `docs/api/`/`docs/ui-ux/` as POSSIBLY OBSOLETE; all were subsequently removed, along with two files added by the intervening directory restructure that turned out to be unreferenced (`src/utils/{currency,date}.ts`, `backend/app/repositories/base_repository.py`) and the empty `__tests__/{components,screens,store}/` placeholder folders from that same restructure. A fresh orphan-reference scan of the entire tracked source tree (every file's basename cross-checked against every other file) found nothing else unreferenced.*
+
 ### SAFE TO DELETE
-None identified with sufficiently strong evidence (no imports/scripts/config reference removal candidates were found; the two empty scaffold directories below are borderline — see POSSIBLY OBSOLETE).
+None remaining (the items previously listed here were acted on — see above).
 
 ### POSSIBLY OBSOLETE (human confirmation required)
-
-```
-Path: backend/app/models/
-Reason: Never populated; no ORM is used anywhere (all DB access goes through the Supabase
-        client directly), so this directory may never be needed.
-Evidence: Directory contains only .gitkeep; grep for imports from `app.models` in backend/app
-        returns zero matches.
-Consumers: none
-Risk: low — but confirm with the project owner whether an ORM layer is still planned before
-        removing, since its presence in the original scaffold suggests it was intentional.
-```
-
-```
-Path: backend/app/utils/
-Reason: Never populated.
-Evidence: Directory contains only .gitkeep; grep for imports from `app.utils` returns zero
-        matches.
-Consumers: none
-Risk: low — same caveat as above.
-```
 
 ```
 Path: docs/architecture/authorization-model.md
@@ -964,7 +937,7 @@ React Native CLI → Presentation Layer → Feature Modules → Hooks/State → 
 
 **What violates or partially violates it**: two leftover direct-Supabase reads outside the service layer (`authStore.fetchProfile`, `SellerDashboard`'s count queries) — minor, read-only, low-risk, but inconsistent with the stated pattern. Role gating is UI-level only, not enforced by a frontend route guard (acceptable, since the real boundary is backend/RLS, but worth naming explicitly as a design choice rather than an oversight).
 
-**Where refactoring is and isn't needed**: the two leftover direct-Supabase reads are worth cleaning up for consistency but are not urgent (no security impact). The `backend/app/models/`/`utils/` empty directories should either be populated with their intended purpose or removed — low priority. Nothing found warrants a large-scale refactor; the architecture is fundamentally sound and consistently applied.
+**Where refactoring is and isn't needed**: the two leftover direct-Supabase reads are worth cleaning up for consistency but are not urgent (no security impact). (The `backend/app/models/`/`utils/` empty directories this assessment originally flagged for removal were since deleted in a follow-up cleanup pass — see the note at the top of this document.) Nothing found warrants a large-scale refactor; the architecture is fundamentally sound and consistently applied.
 
 ```
 Architecture Quality Score: 8/10
@@ -1032,9 +1005,10 @@ PHASE 3 — AI Model Integration
 
 PHASE 4 — Frontend Test Coverage
   Task: Build real tests for at least the highest-risk screens/services (checkout, payments,
-        auth flows) and populate tests/unit, tests/integration.
+        auth flows) under __tests__/ (the frontend's one real test root — a redundant
+        root-level tests/unit/tests/integration pair was removed in a later cleanup pass).
   Why: Zero current coverage on the frontend is the largest testing gap in the repo.
-  Files affected: tests/unit/, tests/integration/, new test files alongside src/
+  Files affected: __tests__/, new test files alongside src/
   Dependencies: none
   Priority: P1
   Estimated complexity: large
