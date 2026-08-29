@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,16 +11,28 @@ import {
   View,
 } from 'react-native';
 import { z } from 'zod';
-import { Button, Input } from '../../components/ui';
+import { Button, Input, PhoneInput, isValidE164 } from '../../components/ui';
 import { AUTH_ROUTES } from '../../constants/routes';
-import { signIn } from '../../services/modules/auth/authService';
+import { signIn, type AuthChannel } from '../../services/modules/auth/authService';
 import { lightTheme } from '../../theme';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
 
-const loginSchema = z.object({
-  email: z.string().min(1, 'Email is required').email('Enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
+const loginSchema = z
+  .object({
+    channel: z.enum(['email', 'phone']),
+    email: z.string().optional(),
+    phone: z.string().nullable().optional(),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.channel === 'email') {
+      if (!data.email || !z.string().email().safeParse(data.email).success) {
+        ctx.addIssue({ code: 'custom', path: ['email'], message: 'Enter a valid email' });
+      }
+    } else if (!data.phone || !isValidE164(data.phone)) {
+      ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Enter a valid phone number' });
+    }
+  });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
@@ -34,13 +46,16 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { channel: 'email', email: '', phone: null, password: '' },
   });
+
+  const channel = useWatch({ control, name: 'channel' }) as AuthChannel;
 
   const onSubmit = async (values: LoginFormValues) => {
     setSubmitError(null);
     try {
-      await signIn(values);
+      const identifier = values.channel === 'email' ? values.email! : values.phone!;
+      await signIn({ channel: values.channel, identifier, password: values.password });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to sign in');
     }
@@ -57,19 +72,54 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
 
         <Controller
           control={control}
-          name="email"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Input
-              label="Email"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={errors.email?.message}
-            />
+          name="channel"
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.channelRow}>
+              {(['email', 'phone'] as const).map(option => (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.channelChip, value === option && styles.channelChipSelected]}
+                  onPress={() => onChange(option)}
+                >
+                  <Text
+                    style={[
+                      styles.channelChipLabel,
+                      value === option && styles.channelChipLabelSelected,
+                    ]}
+                  >
+                    {option === 'email' ? 'Email' : 'Phone number'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
         />
+
+        {channel === 'email' ? (
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Input
+                label="Email"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={value ?? ''}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={errors.email?.message}
+              />
+            )}
+          />
+        ) : (
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field: { onChange, value } }) => (
+              <PhoneInput value={value ?? null} onChange={onChange} error={errors.phone?.message} />
+            )}
+          />
+        )}
 
         <Controller
           control={control}
@@ -130,6 +180,29 @@ const styles = StyleSheet.create({
   },
   submit: {
     marginTop: spacing.sm,
+  },
+  channelRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  channelChip: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.neutral.gray300,
+  },
+  channelChipSelected: {
+    backgroundColor: colors.brand.primary,
+    borderColor: colors.brand.primary,
+  },
+  channelChipLabel: {
+    color: colors.neutral.gray700,
+    fontWeight: typography.weights.medium as any,
+  },
+  channelChipLabelSelected: {
+    color: colors.neutral.white,
   },
   errorBanner: {
     color: colors.semantic.error,

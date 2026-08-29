@@ -1,21 +1,27 @@
 import { supabase } from '../../supabase/client';
 import type { Role } from '../../../constants/roles';
 
+/** Which identifier the user chose at sign-up/sign-in — both send a numeric OTP. */
+export type AuthChannel = 'email' | 'phone';
+
 export interface SignUpInput {
-  email: string;
+  channel: AuthChannel;
+  /** Email address or E.164 phone number, matching `channel`. */
+  identifier: string;
   password: string;
   fullName: string;
   role: Role;
 }
 
 export interface SignInInput {
-  email: string;
+  channel: AuthChannel;
+  identifier: string;
   password: string;
 }
 
-export async function signUp({ email, password, fullName, role }: SignUpInput) {
+export async function signUp({ channel, identifier, password, fullName, role }: SignUpInput) {
   const { data, error } = await supabase.auth.signUp({
-    email,
+    ...(channel === 'email' ? { email: identifier } : { phone: identifier }),
     password,
     options: {
       data: {
@@ -29,8 +35,10 @@ export async function signUp({ email, password, fullName, role }: SignUpInput) {
   return data;
 }
 
-export async function signIn({ email, password }: SignInInput) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+export async function signIn({ channel, identifier, password }: SignInInput) {
+  const { data, error } = await supabase.auth.signInWithPassword(
+    channel === 'email' ? { email: identifier, password } : { phone: identifier, password },
+  );
   if (error) throw error;
   return data;
 }
@@ -40,14 +48,20 @@ export async function signOut() {
   if (error) throw error;
 }
 
-export async function verifySignupOtp(email: string, token: string) {
-  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
+export async function verifySignupOtp(channel: AuthChannel, identifier: string, token: string) {
+  const { data, error } = await supabase.auth.verifyOtp(
+    channel === 'email'
+      ? { email: identifier, token, type: 'signup' }
+      : { phone: identifier, token, type: 'sms' },
+  );
   if (error) throw error;
   return data;
 }
 
-export async function resendSignupOtp(email: string) {
-  const { error } = await supabase.auth.resend({ type: 'signup', email });
+export async function resendSignupOtp(channel: AuthChannel, identifier: string) {
+  const { error } = await supabase.auth.resend(
+    channel === 'email' ? { type: 'signup', email: identifier } : { type: 'sms', phone: identifier },
+  );
   if (error) throw error;
 }
 

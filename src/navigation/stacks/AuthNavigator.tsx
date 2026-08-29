@@ -11,7 +11,7 @@ export type AuthStackParamList = {
   [AUTH_ROUTES.Login]: undefined;
   [AUTH_ROUTES.Register]: undefined;
   [AUTH_ROUTES.ForgotPassword]: undefined;
-  [AUTH_ROUTES.VerifyOtp]: { email: string };
+  [AUTH_ROUTES.VerifyOtp]: { channel: 'email' | 'phone'; identifier: string };
 };
 
 export type AuthScreenProps<RouteName extends keyof AuthStackParamList> =
