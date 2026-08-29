@@ -97,3 +97,6 @@ __pycache__/
 *.ckpt
 # Ruby Bundler
 .bundle/
+
+# Claude Code runtime state (session lock — not project content)
+.claude/scheduled_tasks.lock

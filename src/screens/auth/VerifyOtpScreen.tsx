@@ -17,7 +17,7 @@ const { colors, spacing, typography } = lightTheme;
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOtp'>) {
-  const { email } = route.params;
+  const { channel, identifier } = route.params;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -30,7 +30,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
     try {
       // On success this signs the user in; authStore's onAuthStateChange listener picks up
       // the new session and RootNavigator swaps to the app shell automatically.
-      await verifySignupOtp(email, code);
+      await verifySignupOtp(channel, identifier, code);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
     } finally {
@@ -42,7 +42,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
     setError(null);
     setResending(true);
     try {
-      await resendSignupOtp(email);
+      await resendSignupOtp(channel, identifier);
       setCooldown(RESEND_COOLDOWN_SECONDS);
       const interval = setInterval(() => {
         setCooldown(prev => {
@@ -66,9 +66,9 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.container}>
-        <Text style={styles.title}>Verify your email</Text>
+        <Text style={styles.title}>{channel === 'email' ? 'Verify your email' : 'Verify your phone'}</Text>
         <Text style={styles.subtitle}>
-          We sent a verification code to {email}. Enter it below to activate your account.
+          We sent a verification code to {identifier}. Enter it below to activate your account.
         </Text>
 
         <Input

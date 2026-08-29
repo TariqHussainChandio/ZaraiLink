@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,23 +11,35 @@ import {
   View,
 } from 'react-native';
 import { z } from 'zod';
-import { Button, Input } from '../../components/ui';
+import { Button, Input, PhoneInput, isValidE164 } from '../../components/ui';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS, ROLES, type Role } from '../../constants/roles';
-import { signUp } from '../../services/modules/auth/authService';
+import { signUp, type AuthChannel } from '../../services/modules/auth/authService';
 import { lightTheme } from '../../theme';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
 
 const REGISTRABLE_ROLES = ROLES.filter(role => role !== 'admin') as Exclude<Role, 'admin'>[];
 
-const registerSchema = z.object({
-  fullName: z.string().min(2, 'Enter your full name'),
-  email: z.string().min(1, 'Email is required').email('Enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(REGISTRABLE_ROLES as [Role, ...Role[]], {
-    message: 'Select a role',
-  }),
-});
+const registerSchema = z
+  .object({
+    channel: z.enum(['email', 'phone']),
+    fullName: z.string().min(2, 'Enter your full name'),
+    email: z.string().optional(),
+    phone: z.string().nullable().optional(),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    role: z.enum(REGISTRABLE_ROLES as [Role, ...Role[]], {
+      message: 'Select a role',
+    }),
+  })
+  .superRefine((data, ctx) => {
+    if (data.channel === 'email') {
+      if (!data.email || !z.string().email().safeParse(data.email).success) {
+        ctx.addIssue({ code: 'custom', path: ['email'], message: 'Enter a valid email' });
+      }
+    } else if (!data.phone || !isValidE164(data.phone)) {
+      ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Enter a valid phone number' });
+    }
+  });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
@@ -41,17 +53,26 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: '', email: '', password: '', role: 'farmer' },
+    defaultValues: { channel: 'email', fullName: '', email: '', phone: null, password: '', role: 'farmer' },
   });
+
+  const channel = useWatch({ control, name: 'channel' }) as AuthChannel;
 
   const onSubmit = async (values: RegisterFormValues) => {
     setSubmitError(null);
     try {
-      const { session } = await signUp(values);
-      // No session back means email confirmation is required before sign-in; authStore's
+      const identifier = values.channel === 'email' ? values.email! : values.phone!;
+      const { session } = await signUp({
+        channel: values.channel,
+        identifier,
+        password: values.password,
+        fullName: values.fullName,
+        role: values.role,
+      });
+      // No session back means the OTP must be confirmed before sign-in; authStore's
       // onAuthStateChange picks up the session automatically once verifyOtp succeeds.
       if (!session) {
-        navigation.navigate(AUTH_ROUTES.VerifyOtp, { email: values.email });
+        navigation.navigate(AUTH_ROUTES.VerifyOtp, { channel: values.channel, identifier });
       }
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to create account');
@@ -81,21 +102,60 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           )}
         />
 
+        <Text style={styles.label}>Verify with</Text>
         <Controller
           control={control}
-          name="email"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Input
-              label="Email"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={errors.email?.message}
-            />
+          name="channel"
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.roleRow}>
+              {(['email', 'phone'] as const).map(option => (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.roleChip, value === option && styles.roleChipSelected]}
+                  onPress={() => onChange(option)}
+                >
+                  <Text
+                    style={[styles.roleChipLabel, value === option && styles.roleChipLabelSelected]}
+                  >
+                    {option === 'email' ? 'Email' : 'Phone number'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
         />
+
+        {channel === 'email' ? (
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Input
+                label="Email"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={value ?? ''}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={errors.email?.message}
+              />
+            )}
+          />
+        ) : (
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field: { onChange, value } }) => (
+              <PhoneInput value={value ?? null} onChange={onChange} error={errors.phone?.message} />
+            )}
+          />
+        )}
+
+        <Text style={styles.hint}>
+          {channel === 'email'
+            ? "We'll email you a 6-digit code to verify your account."
+            : "We'll text you a 6-digit code to verify your account."}
+        </Text>
 
         <Controller
           control={control}
@@ -182,6 +242,12 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium as any,
     color: colors.neutral.gray700,
     marginBottom: spacing.xs,
+  },
+  hint: {
+    fontSize: typography.sizes.xs,
+    color: colors.neutral.gray500,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
   },
   roleRow: {
     flexDirection: 'row',
