@@ -1,0 +1,26 @@
+name: Migration Lint
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - ".github/workflows/migration-lint.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.115.0
+
+      # Applies the full migration history to a throwaway local Postgres — the same local
+      # validation this project already does by hand before `supabase db push`. Fails the job
+      # if any migration doesn't apply cleanly against the existing history.
+      - name: Start local Postgres and apply migrations
+        run: supabase db start
+
+      - name: Lint schema for typing errors
+        run: supabase db lint --local --fail-on error
