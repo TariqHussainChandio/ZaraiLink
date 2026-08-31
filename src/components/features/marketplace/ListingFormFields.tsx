@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Controller, type Control, type FieldErrors, type UseFormSetValue, type UseFormWatch } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { Input, LocationPicker } from '../../../components/ui';
 import { useMarketplaceStore } from '../../../store/marketplaceStore';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import { CategoryChip } from './CategoryChip';
 
 export const listingSchema = z.object({
@@ -17,14 +17,19 @@ export const listingSchema = z.object({
   brand: z.string(),
   condition: z.string(),
   cropCompatibility: z.array(z.string()),
-  countryId: z.string().nullable(),
-  provinceId: z.string().nullable(),
-  cityId: z.string().nullable(),
+  country: z.string().nullable(),
+  province: z.string().nullable(),
+  city: z.string().nullable(),
 });
 
-export type ListingFormValues = z.infer<typeof listingSchema>;
+// z.coerce.number() has a different input type (unknown, pre-coercion) than output type
+// (number, post-coercion) — react-hook-form's useForm<TFieldValues, TContext, TTransformedValues>
+// needs both: the form/Controller layer works in the input shape, handleSubmit's callback
+// receives the coerced output shape.
+export type ListingFormInput = z.input<typeof listingSchema>;
+export type ListingFormValues = z.output<typeof listingSchema>;
 
-export const listingFormDefaults: ListingFormValues = {
+export const listingFormDefaults: ListingFormInput = {
   title: '',
   description: '',
   categoryId: null,
@@ -34,24 +39,24 @@ export const listingFormDefaults: ListingFormValues = {
   brand: '',
   condition: '',
   cropCompatibility: [],
-  countryId: null,
-  provinceId: null,
-  cityId: null,
+  country: null,
+  province: null,
+  city: null,
 };
 
 export interface ListingFormFieldsProps {
-  control: Control<ListingFormValues>;
-  errors: FieldErrors<ListingFormValues>;
-  setValue: UseFormSetValue<ListingFormValues>;
-  watch: UseFormWatch<ListingFormValues>;
+  control: Control<ListingFormInput>;
+  errors: FieldErrors<ListingFormInput>;
+  setValue: UseFormSetValue<ListingFormInput>;
+  watch: UseFormWatch<ListingFormInput>;
 }
-
-const { colors, spacing, typography } = lightTheme;
 
 /** The data-entry fields shared by CreateListingScreen and EditListingScreen. Photos are
  * handled by each screen separately since their image state (single list vs. existing +
  * newly-picked) differs. */
 export function ListingFormFields({ control, errors, setValue, watch }: ListingFormFieldsProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { categories, loadCategories, crops, loadCrops } = useMarketplaceStore();
 
   useEffect(() => {
@@ -59,9 +64,9 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
     loadCrops();
   }, [loadCategories, loadCrops]);
 
-  const countryId = watch('countryId');
-  const provinceId = watch('provinceId');
-  const cityId = watch('cityId');
+  const country = watch('country');
+  const province = watch('province');
+  const city = watch('city');
   const cropCompatibility = watch('cropCompatibility');
 
   return (
@@ -199,34 +204,36 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
 
       <Text style={styles.label}>Location (optional)</Text>
       <LocationPicker
-        countryId={countryId}
-        provinceId={provinceId}
-        cityId={cityId}
-        onCountryChange={id => setValue('countryId', id)}
-        onProvinceChange={id => setValue('provinceId', id)}
-        onCityChange={id => setValue('cityId', id)}
+        country={country}
+        province={province}
+        city={city}
+        onCountryChange={value => setValue('country', value)}
+        onProvinceChange={value => setValue('province', value)}
+        onCityChange={value => setValue('city', value)}
       />
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.xs,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  rowItem: {
-    flex: 1,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginBottom: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      gap: spacing.md,
+    },
+    rowItem: {
+      flex: 1,
+    },
+  });
+}

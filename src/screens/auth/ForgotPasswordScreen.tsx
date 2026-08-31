@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Button, Input } from '../../components/ui';
 import { resetPassword } from '../../services/modules/auth/authService';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
 
 const forgotPasswordSchema = z.object({
@@ -14,9 +14,9 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPassword'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const {
@@ -83,38 +83,40 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  title: {
-    fontSize: typography.sizes['3xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  subtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray500,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
-  },
-  success: {
-    color: colors.semantic.success,
-    marginBottom: spacing.xl,
-  },
-  submit: {
-    marginTop: spacing.sm,
-  },
-  errorBanner: {
-    color: colors.semantic.error,
-    marginBottom: spacing.md,
-  },
-  link: {
-    color: colors.brand.primary,
-    fontWeight: typography.weights.semibold as any,
-    marginTop: spacing.xl,
-    textAlign: 'center',
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      padding: spacing.xl,
+    },
+    title: {
+      fontSize: typography.sizes['3xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    subtitle: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
+      marginBottom: spacing.xl,
+    },
+    success: {
+      color: colors.semantic.success,
+      marginBottom: spacing.xl,
+    },
+    submit: {
+      marginTop: spacing.sm,
+    },
+    errorBanner: {
+      color: colors.semantic.error,
+      marginBottom: spacing.md,
+    },
+    link: {
+      color: colors.brand.primary,
+      fontWeight: typography.weights.semibold as any,
+      marginTop: spacing.xl,
+      textAlign: 'center',
+    },
+  });
+}

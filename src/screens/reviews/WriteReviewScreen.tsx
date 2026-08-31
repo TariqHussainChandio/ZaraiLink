@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Input } from '../../components/ui';
 import { RatingStars } from '../../components/features/reviews/RatingStars';
 import { createReview } from '../../services/modules/reviews/reviewsService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'WriteReview'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { orderId, listingId } = route.params;
   const buyerId = useAuthStore(state => state.user?.id);
   const [rating, setRating] = useState(5);
@@ -50,24 +50,26 @@ export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'Writ
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.sm,
-  },
-  starsRow: {
-    marginBottom: spacing.lg,
-  },
-  submit: {
-    marginTop: spacing.md,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.sm,
+    },
+    starsRow: {
+      marginBottom: spacing.lg,
+    },
+    submit: {
+      marginTop: spacing.md,
+    },
+  });
+}

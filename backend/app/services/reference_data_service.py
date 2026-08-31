@@ -6,22 +6,6 @@ from ..repositories.reference_data_repository import RefDataTable
 from .audit_log_service import log_admin_action
 
 
-def fetch_countries() -> list[dict]:
-    return repo.fetch_countries()
-
-
-def fetch_provinces(country_id: str) -> list[dict]:
-    return repo.fetch_provinces(country_id)
-
-
-def fetch_cities(province_id: str) -> list[dict]:
-    return repo.fetch_cities(province_id)
-
-
-def fetch_phone_codes() -> list[dict]:
-    return repo.fetch_phone_codes()
-
-
 def fetch_currencies() -> list[dict]:
     return repo.fetch_currencies()
 

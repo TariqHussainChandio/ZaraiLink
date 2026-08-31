@@ -1,13 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, LocationPicker, SelectField, Spinner } from '../../components/ui';
+import { Button, EmptyState, Input, LocationPicker, SelectField, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
 import { deleteFarm, fetchFarmById, updateFarm } from '../../services/modules/farmer/farmService';
 import { useReferenceDataStore } from '../../store/referenceDataStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 const farmSchema = z.object({
@@ -15,18 +15,19 @@ const farmSchema = z.object({
   area: z.string(),
   landUnit: z.string().nullable(),
   notes: z.string(),
-  countryId: z.string().nullable(),
-  provinceId: z.string().nullable(),
-  cityId: z.string().nullable(),
+  country: z.string().nullable(),
+  province: z.string().nullable(),
+  city: z.string().nullable(),
 });
 
 type FarmFormValues = z.infer<typeof farmSchema>;
 
-const { spacing } = lightTheme;
-
 export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDetail'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { farmId } = route.params;
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const units = useReferenceDataStore(state => state.units);
@@ -52,13 +53,15 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
       area: '',
       landUnit: null,
       notes: '',
-      countryId: null,
-      provinceId: null,
-      cityId: null,
+      country: null,
+      province: null,
+      city: null,
     },
   });
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
     fetchFarmById(farmId)
       .then(farm => {
         reset({
@@ -66,16 +69,21 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
           area: farm.area !== null ? String(farm.area) : '',
           landUnit: farm.land_unit,
           notes: farm.notes ?? '',
-          countryId: farm.location?.country_id ?? null,
-          provinceId: farm.location?.province_id ?? null,
-          cityId: farm.location?.city_id ?? null,
+          country: farm.location?.country ?? null,
+          province: farm.location?.province ?? null,
+          city: farm.location?.city ?? null,
         });
       })
       .catch(err => {
         console.warn('[FarmDetailScreen] failed to load farm:', err);
+        setError(true);
       })
       .finally(() => setLoading(false));
   }, [farmId, reset]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const onSubmit = async (values: FarmFormValues) => {
     setSubmitting(true);
@@ -85,13 +93,13 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
         area: values.area ? Number(values.area) : null,
         landUnit: values.landUnit,
         notes: values.notes || null,
-        countryId: values.countryId,
-        provinceId: values.provinceId,
-        cityId: values.cityId,
+        country: values.country,
+        province: values.province,
+        city: values.city,
       });
       navigation.goBack();
-    } catch (error) {
-      Alert.alert('Failed to update farm', error instanceof Error ? error.message : String(error));
+    } catch (err) {
+      Alert.alert('Failed to update farm', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -112,6 +120,16 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
   };
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load this farm"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -124,12 +142,12 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
       />
 
       <LocationPicker
-        countryId={watch('countryId')}
-        provinceId={watch('provinceId')}
-        cityId={watch('cityId')}
-        onCountryChange={id => setValue('countryId', id)}
-        onProvinceChange={id => setValue('provinceId', id)}
-        onCityChange={id => setValue('cityId', id)}
+        country={watch('country')}
+        province={watch('province')}
+        city={watch('city')}
+        onCountryChange={value => setValue('country', value)}
+        onProvinceChange={value => setValue('province', value)}
+        onCityChange={value => setValue('city', value)}
       />
 
       <Controller
@@ -173,19 +191,21 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  action: {
-    marginTop: spacing.md,
-  },
-  delete: {
-    marginTop: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    action: {
+      marginTop: spacing.md,
+    },
+    delete: {
+      marginTop: spacing.md,
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

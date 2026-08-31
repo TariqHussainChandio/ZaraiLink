@@ -28,9 +28,9 @@ class ListingInput(BaseModel):
     brand: str | None = None
     condition: str | None = None
     crop_compatibility: list[str] = []
-    country_id: str | None = None
-    province_id: str | None = None
-    city_id: str | None = None
+    country: str | None = None
+    province: str | None = None
+    city: str | None = None
 
 
 class ListingUpdateInput(BaseModel):
@@ -44,9 +44,9 @@ class ListingUpdateInput(BaseModel):
     brand: str | None = None
     condition: str | None = None
     crop_compatibility: list[str] | None = None
-    country_id: str | None = None
-    province_id: str | None = None
-    city_id: str | None = None
+    country: str | None = None
+    province: str | None = None
+    city: str | None = None
 
 
 class UpdateListingStatusRequest(BaseModel):

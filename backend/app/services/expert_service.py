@@ -4,10 +4,10 @@ from ..core.auth import AuthenticatedUser
 from ..repositories import expert_repository as repo
 from .audit_log_service import log_admin_action
 
-def _to_location(country_id: str | None, province_id: str | None, city_id: str | None) -> dict | None:
-    if not country_id and not province_id and not city_id:
+def _to_location(country: str | None, province: str | None, city: str | None) -> dict | None:
+    if not country and not province and not city:
         return None
-    return {"country_id": country_id, "province_id": province_id, "city_id": city_id}
+    return {"country": country, "province": province, "city": city}
 
 
 def _to_fields(profile) -> dict:
@@ -17,7 +17,7 @@ def _to_fields(profile) -> dict:
         "experience": profile.experience or None,
         "professional_description": profile.professional_description or None,
         "contact": profile.contact or None,
-        "location": _to_location(profile.country_id, profile.province_id, profile.city_id),
+        "location": _to_location(profile.country, profile.province, profile.city),
     }
 
 

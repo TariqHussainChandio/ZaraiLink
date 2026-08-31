@@ -8,9 +8,8 @@ import { z } from 'zod';
 import { Avatar, Button, Input, LocationPicker, PhoneInput, isValidE164 } from '../../components/ui';
 import { fetchFarmerProfile, upsertFarmerProfile } from '../../services/modules/farmer/farmService';
 import { updateProfile, uploadAvatar } from '../../services/modules/profile/profileService';
-import { useReferenceDataStore } from '../../store/referenceDataStore';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
 
 const editProfileSchema = z.object({
@@ -19,9 +18,9 @@ const editProfileSchema = z.object({
     .string()
     .nullable()
     .refine(value => !value || isValidE164(value), 'Enter a valid phone number'),
-  countryId: z.string().nullable(),
-  provinceId: z.string().nullable(),
-  cityId: z.string().nullable(),
+  country: z.string(),
+  province: z.string(),
+  city: z.string(),
   village: z.string(),
   street: z.string(),
   // Farmer-only (§8.1); left blank/unused for other roles and only persisted for farmers.
@@ -31,9 +30,9 @@ const editProfileSchema = z.object({
 
 type EditProfileFormValues = z.infer<typeof editProfileSchema>;
 
-const { spacing } = lightTheme;
-
 export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfile'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { t } = useTranslation();
   const userId = useAuthStore(state => state.user?.id);
   const profile = useAuthStore(state => state.profile);
@@ -41,10 +40,6 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
   const [pickedAvatar, setPickedAvatar] = useState<{ uri: string; type?: string; fileName?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const countries = useReferenceDataStore(state => state.countries);
-  const provincesByCountry = useReferenceDataStore(state => state.provincesByCountry);
-  const citiesByProvince = useReferenceDataStore(state => state.citiesByProvince);
 
   const {
     control,
@@ -58,9 +53,9 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
     defaultValues: {
       fullName: profile?.full_name ?? '',
       phone: profile?.phone ?? null,
-      countryId: profile?.country_id ?? null,
-      provinceId: profile?.province_id ?? null,
-      cityId: profile?.city_id ?? null,
+      country: profile?.country ?? '',
+      province: profile?.province ?? '',
+      city: profile?.city ?? '',
       village: profile?.village ?? '',
       street: profile?.street ?? '',
       experience: '',
@@ -83,18 +78,9 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
     });
   }, [userId, profile?.role, reset]);
 
-  const countryId = watch('countryId');
-  const provinceId = watch('provinceId');
-  const cityId = watch('cityId');
-
-  const provinceOptions = useMemo(
-    () => (countryId ? (provincesByCountry[countryId] ?? []) : []),
-    [countryId, provincesByCountry],
-  );
-  const cityOptions = useMemo(
-    () => (provinceId ? (citiesByProvince[provinceId] ?? []) : []),
-    [provinceId, citiesByProvince],
-  );
+  const country = watch('country');
+  const province = watch('province');
+  const city = watch('city');
 
   const pickAvatar = async () => {
     const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
@@ -114,18 +100,15 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         avatarUrl = await uploadAvatar(userId, pickedAvatar);
       }
 
-      const countryName = countries.find(c => c.id === values.countryId)?.name;
-      const provinceName = provinceOptions.find(p => p.id === values.provinceId)?.name;
-      const cityName = cityOptions.find(c => c.id === values.cityId)?.name;
-      const location = [values.village, cityName, provinceName, countryName].filter(Boolean).join(', ') || null;
+      const location = [values.village, values.city, values.province, values.country].filter(Boolean).join(', ') || null;
 
       await updateProfile({
         full_name: values.fullName,
         phone: values.phone,
         location,
-        country_id: values.countryId,
-        province_id: values.provinceId,
-        city_id: values.cityId,
+        country: values.country || null,
+        province: values.province || null,
+        city: values.city || null,
         village: values.village || null,
         street: values.street || null,
         avatar_url: avatarUrl,
@@ -184,12 +167,12 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         )}
       />
       <LocationPicker
-        countryId={countryId}
-        provinceId={provinceId}
-        cityId={cityId}
-        onCountryChange={id => setValue('countryId', id)}
-        onProvinceChange={id => setValue('provinceId', id)}
-        onCityChange={id => setValue('cityId', id)}
+        country={country}
+        province={province}
+        city={city}
+        onCountryChange={value => setValue('country', value ?? '')}
+        onProvinceChange={value => setValue('province', value ?? '')}
+        onCityChange={value => setValue('city', value ?? '')}
         labels={{ country: t('profile.country'), province: t('profile.province'), city: t('profile.city') }}
       />
       <Controller
@@ -250,26 +233,28 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  avatarWrap: {
-    alignSelf: 'center',
-    marginBottom: spacing.xl,
-  },
-  avatarImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: lightTheme.colors.neutral.gray100,
-  },
-  avatarBadge: {},
-  submit: {
-    marginTop: spacing.md,
-  },
-});
+function makeStyles({ colors, spacing }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    avatarWrap: {
+      alignSelf: 'center',
+      marginBottom: spacing.xl,
+    },
+    avatarImage: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: colors.border,
+    },
+    avatarBadge: {},
+    submit: {
+      marginTop: spacing.md,
+    },
+  });
+}

@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
-import { Badge, Button, FilterChips, Spinner } from '../../components/ui';
+import { Badge, Button, EmptyState, FilterChips, Spinner } from '../../components/ui';
 import {
   dismissReport,
   fetchAllProfiles,
@@ -14,10 +14,8 @@ import { fetchListingById, updateListingStatus } from '../../services/modules/ma
 import { fetchMessageById, redactMessage } from '../../services/modules/messaging/messagingService';
 import { deleteReview, fetchReviewById } from '../../services/modules/reviews/reviewsService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ReportStatus, ReportTargetType, ReportWithReporter } from '../../types/reports';
-
-const { colors, spacing, typography } = lightTheme;
 
 type FilterValue = ReportStatus | 'all';
 
@@ -72,18 +70,28 @@ async function fetchPreview(report: ReportWithReporter): Promise<string> {
 }
 
 export function ReportsScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
   const [filter, setFilter] = useState<FilterValue>('open');
   const [reports, setReports] = useState<ReportWithReporter[]>([]);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const data = await fetchReports(filter === 'all' ? undefined : filter);
-    setReports(data);
-    setLoading(false);
+    setError(false);
+    try {
+      const data = await fetchReports(filter === 'all' ? undefined : filter);
+      setReports(data);
+    } catch (err) {
+      console.warn('[ReportsScreen] failed to load reports:', err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [filter]);
 
   useFocusEffect(
@@ -177,6 +185,16 @@ export function ReportsScreen() {
   };
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load reports"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -185,7 +203,7 @@ export function ReportsScreen() {
         contentContainerStyle={styles.list}
         data={reports}
         keyExtractor={item => item.id}
-        ListEmptyComponent={<Text style={styles.empty}>No reports in this status.</Text>}
+        ListEmptyComponent={<EmptyState title="No reports in this status" />}
         renderItem={({ item }) => {
           const action = primaryAction(item);
           return (
@@ -230,57 +248,54 @@ export function ReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-    paddingTop: spacing.md,
-  },
-  list: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-  },
-  empty: {
-    textAlign: 'center',
-    color: colors.neutral.gray500,
-    marginTop: spacing.xl,
-  },
-  card: {
-    backgroundColor: colors.neutral.white,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray200,
-    borderRadius: lightTheme.radii.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  time: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-  },
-  preview: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginTop: spacing.sm,
-  },
-  reason: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-    marginTop: spacing.xs,
-  },
-  reporter: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-    marginTop: spacing.xs / 2,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+      paddingTop: spacing.md,
+    },
+    list: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.lg,
+    },
+    card: {
+      backgroundColor: colors.background.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.lg,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    time: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    preview: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginTop: spacing.sm,
+    },
+    reason: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
+    },
+    reporter: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+      marginTop: spacing.xs / 2,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+  });
+}

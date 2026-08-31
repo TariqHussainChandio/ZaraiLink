@@ -1,15 +1,13 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, Spinner } from '../../components/ui';
 import { PaymentStatusBadge } from '../../components/features/payments/PaymentStatusBadge';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { fetchPaymentById } from '../../services/modules/payments/paymentsService';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { Payment } from '../../types/payments';
 import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
-
-const { colors, spacing, typography } = lightTheme;
 
 const TERMINAL_STATUSES: Payment['status'][] = ['successful', 'failed', 'cancelled', 'refunded'];
 
@@ -19,6 +17,8 @@ const METHOD_LABEL: Record<string, string> = {
 };
 
 export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps<'PaymentProcessing'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { paymentId } = route.params;
   const [payment, setPayment] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,32 +67,34 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-    padding: spacing.lg,
-    alignItems: 'center',
-  },
-  amount: {
-    marginTop: spacing.lg,
-    fontSize: typography.sizes['2xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  method: {
-    marginTop: spacing.xs,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-  },
-  waiting: {
-    marginTop: spacing.lg,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray500,
-    textAlign: 'center',
-  },
-  action: {
-    marginTop: spacing.md,
-    alignSelf: 'stretch',
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+      padding: spacing.lg,
+      alignItems: 'center',
+    },
+    amount: {
+      marginTop: spacing.lg,
+      fontSize: typography.sizes['2xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    method: {
+      marginTop: spacing.xs,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    waiting: {
+      marginTop: spacing.lg,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      textAlign: 'center',
+    },
+    action: {
+      marginTop: spacing.md,
+      alignSelf: 'stretch',
+    },
+  });
+}

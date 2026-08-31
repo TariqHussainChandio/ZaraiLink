@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, SelectField, Spinner } from '../../components/ui';
+import { Button, EmptyState, Input, SelectField, Spinner } from '../../components/ui';
 import {
   createSupplier,
   deleteSupplier,
@@ -11,7 +11,7 @@ import {
   updateSupplier,
 } from '../../services/modules/dealer/supplierService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 const STATUS_OPTIONS = [
@@ -29,12 +29,13 @@ const supplierSchema = z.object({
 
 type SupplierFormValues = z.infer<typeof supplierSchema>;
 
-const { spacing } = lightTheme;
-
 export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'SupplierDetail'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const supplierId = route.params?.supplierId;
   const userId = useAuthStore(state => state.user?.id);
   const [loading, setLoading] = useState(!!supplierId);
+  const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -53,8 +54,10 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
     },
   });
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!supplierId) return;
+    setLoading(true);
+    setError(false);
     fetchSupplierById(supplierId)
       .then(supplier => {
         reset({
@@ -67,9 +70,14 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
       })
       .catch(err => {
         console.warn('[SupplierDetailScreen] failed to load supplier:', err);
+        setError(true);
       })
       .finally(() => setLoading(false));
   }, [supplierId, reset]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const onSubmit = async (values: SupplierFormValues) => {
     if (!userId) return;
@@ -88,8 +96,8 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
         await createSupplier(input);
       }
       navigation.goBack();
-    } catch (error) {
-      Alert.alert('Failed to save supplier', error instanceof Error ? error.message : String(error));
+    } catch (err) {
+      Alert.alert('Failed to save supplier', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -111,6 +119,16 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
   };
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load this supplier"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -169,19 +187,21 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  action: {
-    marginTop: spacing.md,
-  },
-  delete: {
-    marginTop: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    action: {
+      marginTop: spacing.md,
+    },
+    delete: {
+      marginTop: spacing.md,
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

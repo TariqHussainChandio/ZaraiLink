@@ -4,7 +4,11 @@
 
 SET check_function_bodies = false;
 
-DROP EXTENSION pg_net;
+-- IF EXISTS: this migration is a snapshot of the linked project's schema at the time it was
+-- pulled, when pg_net had already been dropped there. A fresh database (e.g. a local Docker
+-- validation container) never had pg_net installed in the first place, so the unguarded DROP
+-- fails with "extension does not exist" before any later migration gets a chance to apply.
+DROP EXTENSION IF EXISTS pg_net;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE UPDATE ON SEQUENCES FROM anon;
 

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, Spinner } from '../../components/ui';
+import { Avatar, Button, EmptyState, Spinner } from '../../components/ui';
 import { RatingSummary } from '../../components/features/reviews/RatingSummary';
 import { ReviewCard } from '../../components/features/reviews/ReviewCard';
 import { APP_TABS, CONSULTATIONS_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
@@ -9,12 +9,10 @@ import { findOrCreateConversation } from '../../services/modules/messaging/messa
 import { fetchReviewsForExpert } from '../../services/modules/reviews/reviewsService';
 import { useAuthStore } from '../../store/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ExpertWithProfile } from '../../types/expert';
 import type { ReviewWithBuyer } from '../../types/reviews';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
-
-const { colors, spacing, typography } = lightTheme;
 
 const SPECIALIZATION_LABEL: Record<string, string> = {
   crop_management: 'Crop Management',
@@ -28,15 +26,20 @@ const SPECIALIZATION_LABEL: Record<string, string> = {
 };
 
 export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenProps<'ExpertProfile'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { expertId, prefill } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const tabNavigation = useAppTabNavigation();
   const [expert, setExpert] = useState<ExpertWithProfile | null>(null);
   const [reviews, setReviews] = useState<ReviewWithBuyer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [messaging, setMessaging] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
     Promise.all([fetchExpertById(expertId), fetchReviewsForExpert(expertId)])
       .then(([expertData, reviewsData]) => {
         setExpert(expertData);
@@ -44,11 +47,26 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
       })
       .catch(err => {
         console.warn('[ExpertProfileScreen] failed to load expert profile:', err);
+        setError(true);
       })
       .finally(() => setLoading(false));
   }, [expertId]);
 
-  if (loading || !expert) return <Spinner fullscreen />;
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (loading) return <Spinner fullscreen />;
+  if (error || !expert) {
+    return (
+      <EmptyState
+        title="Couldn't load this expert"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   const specializations = expert.expert_specializations.map(
     s => SPECIALIZATION_LABEL[s.specialization] ?? s.specialization,
@@ -128,44 +146,46 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  name: {
-    marginTop: spacing.sm,
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  degree: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray600,
-    marginBottom: spacing.xs,
-  },
-  sectionText: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray900,
-    lineHeight: typography.lineHeights.base,
-  },
-  action: {
-    marginBottom: spacing.md,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: spacing.lg,
+    },
+    name: {
+      marginTop: spacing.sm,
+      fontSize: typography.sizes.xl,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    degree: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    section: {
+      marginBottom: spacing.lg,
+    },
+    sectionTitle: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    sectionText: {
+      fontSize: typography.sizes.base,
+      color: colors.text.primary,
+      lineHeight: typography.lineHeights.base,
+    },
+    action: {
+      marginBottom: spacing.md,
+    },
+  });
+}

@@ -11,6 +11,10 @@
     "title": "Settings",
     "notifications": "Notifications",
     "language": "Language",
+    "appearance": "Appearance",
+    "appearanceLight": "Light",
+    "appearanceDark": "Dark",
+    "appearanceSystem": "System",
     "changePassword": "Change Password",
     "signOut": "Sign Out"
   },

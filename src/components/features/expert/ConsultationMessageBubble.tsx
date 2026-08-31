@@ -1,7 +1,7 @@
 import { ShoppingBag } from 'lucide-react-native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { ConsultationMessageWithListing } from '../../../types/expert';
 
 export interface ConsultationMessageBubbleProps {
@@ -12,14 +12,15 @@ export interface ConsultationMessageBubbleProps {
   onPressRecommendation?: (listingId: string) => void;
 }
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function ConsultationMessageBubble({
   message,
   isOwn,
   attachmentUrls,
   onPressRecommendation,
 }: ConsultationMessageBubbleProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
       <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
@@ -27,7 +28,12 @@ export function ConsultationMessageBubble({
           <View style={styles.imagesRow}>
             {message.attachments.map(path =>
               attachmentUrls[path] ? (
-                <Image key={path} source={{ uri: attachmentUrls[path] }} style={styles.attachmentImage} />
+                <Image
+                  key={path}
+                  testID={`attachment-image-${path}`}
+                  source={{ uri: attachmentUrls[path] }}
+                  style={styles.attachmentImage}
+                />
               ) : (
                 <View key={path} style={[styles.attachmentImage, styles.attachmentPlaceholder]} />
               ),
@@ -40,8 +46,10 @@ export function ConsultationMessageBubble({
             style={styles.recommendation}
             onPress={() => onPressRecommendation?.(message.recommended_listing!.id)}
             disabled={!onPressRecommendation}
+            accessibilityRole="button"
+            accessibilityLabel={`Recommended listing: ${message.recommended_listing.title}, Rs. ${message.recommended_listing.price.toFixed(0)} per ${message.recommended_listing.unit}`}
           >
-            <ShoppingBag size={16} color={colors.brand.primary} />
+            <ShoppingBag size={16} color={theme.colors.brand.primary} />
             <View style={styles.recommendationText}>
               <Text style={styles.recommendationTitle} numberOfLines={1}>
                 {message.recommended_listing.title}
@@ -60,77 +68,79 @@ export function ConsultationMessageBubble({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    marginVertical: spacing.xs / 2,
-    paddingHorizontal: spacing.lg,
-  },
-  rowOwn: {
-    justifyContent: 'flex-end',
-  },
-  bubble: {
-    maxWidth: '78%',
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  bubbleOther: {
-    backgroundColor: colors.neutral.gray100,
-    borderBottomLeftRadius: radii.sm,
-  },
-  bubbleOwn: {
-    backgroundColor: colors.brand.primary,
-    borderBottomRightRadius: radii.sm,
-  },
-  imagesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  attachmentImage: {
-    width: 120,
-    height: 120,
-    borderRadius: radii.md,
-    backgroundColor: colors.neutral.gray200,
-  },
-  attachmentPlaceholder: {},
-  body: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray900,
-  },
-  bodyOwn: {
-    color: colors.neutral.white,
-  },
-  recommendation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.neutral.white,
-    borderRadius: radii.md,
-    padding: spacing.sm,
-    marginTop: spacing.xs,
-    gap: spacing.sm,
-  },
-  recommendationText: {
-    flex: 1,
-  },
-  recommendationTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  recommendationPrice: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray600,
-  },
-  time: {
-    marginTop: spacing.xs / 2,
-    fontSize: 10,
-    color: colors.neutral.gray500,
-    alignSelf: 'flex-end',
-  },
-  timeOwn: {
-    color: 'rgba(255,255,255,0.75)',
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      marginVertical: spacing.xs / 2,
+      paddingHorizontal: spacing.lg,
+    },
+    rowOwn: {
+      justifyContent: 'flex-end',
+    },
+    bubble: {
+      maxWidth: '78%',
+      borderRadius: radii.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    bubbleOther: {
+      backgroundColor: colors.border,
+      borderBottomLeftRadius: radii.sm,
+    },
+    bubbleOwn: {
+      backgroundColor: colors.brand.primary,
+      borderBottomRightRadius: radii.sm,
+    },
+    imagesRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    attachmentImage: {
+      width: 120,
+      height: 120,
+      borderRadius: radii.md,
+      backgroundColor: colors.background.default,
+    },
+    attachmentPlaceholder: {},
+    body: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.primary,
+    },
+    bodyOwn: {
+      color: colors.neutral.white,
+    },
+    recommendation: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.background.surface,
+      borderRadius: radii.md,
+      padding: spacing.sm,
+      marginTop: spacing.xs,
+      gap: spacing.sm,
+    },
+    recommendationText: {
+      flex: 1,
+    },
+    recommendationTitle: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    recommendationPrice: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    time: {
+      marginTop: spacing.xs / 2,
+      fontSize: 10,
+      color: colors.text.secondary,
+      alignSelf: 'flex-end',
+    },
+    timeOwn: {
+      color: 'rgba(255,255,255,0.75)',
+    },
+  });
+}

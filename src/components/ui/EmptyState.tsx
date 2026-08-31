@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import { Button } from './Button';
 
 export interface EmptyStateProps {
@@ -10,9 +10,10 @@ export interface EmptyStateProps {
   onAction?: () => void;
 }
 
-const { colors, spacing, typography } = lightTheme;
-
 export function EmptyState({ title, description, actionLabel, onAction }: EmptyStateProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
@@ -26,25 +27,27 @@ export function EmptyState({ title, description, actionLabel, onAction }: EmptyS
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing['2xl'],
-  },
-  title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray800,
-    textAlign: 'center',
-  },
-  description: {
-    marginTop: spacing.xs,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray500,
-    textAlign: 'center',
-  },
-  action: {
-    marginTop: spacing.lg,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing['2xl'],
+    },
+    title: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      textAlign: 'center',
+    },
+    description: {
+      marginTop: spacing.xs,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      textAlign: 'center',
+    },
+    action: {
+      marginTop: spacing.lg,
+    },
+  });
+}

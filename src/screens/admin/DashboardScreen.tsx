@@ -1,53 +1,69 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '../../components/ui';
+import { EmptyState, Spinner } from '../../components/ui';
 import { QuickActions } from '../../components/features/dashboards/QuickActions';
 import { StatCard } from '../../components/features/dashboards/StatCard';
 import { ADMIN_HOME_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS, ROLES } from '../../constants/roles';
 import { fetchPlatformStats, type PlatformStats } from '../../services/modules/admin/adminService';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashboard'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      fetchPlatformStats().then(data => {
-        if (!cancelled) {
-          setStats(data);
-          setLoading(false);
-        }
-      }).catch(err => {
-        console.warn('[AdminDashboardScreen] failed to load platform stats:', err);
-        if (!cancelled) setLoading(false);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, []),
-  );
+  const load = useCallback(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    fetchPlatformStats().then(data => {
+      if (!cancelled) {
+        setStats(data);
+        setLoading(false);
+      }
+    }).catch(err => {
+      console.warn('[AdminDashboardScreen] failed to load platform stats:', err);
+      if (!cancelled) {
+        setError(true);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  if (loading || !stats) return <Spinner fullscreen />;
+  useFocusEffect(useCallback(() => load(), [load]));
+
+  if (loading) return <Spinner fullscreen />;
+  if (error || !stats) {
+    return (
+      <EmptyState
+        title="Couldn't load the dashboard"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Total Users" value={stats.totalUsers} />
-        <StatCard label="Listings" value={stats.totalListings} />
-        <StatCard label="Orders" value={stats.totalOrders} />
+        <StatCard label="Total Users" value={stats.totalUsers} accent={theme.moduleAccents.admin} />
+        <StatCard label="Listings" value={stats.totalListings} accent={theme.moduleAccents.marketplace} />
+        <StatCard label="Orders" value={stats.totalOrders} accent={theme.moduleAccents.orders} />
       </View>
 
       <Text style={styles.sectionTitle}>Users by Role</Text>
       <View style={styles.statsRow}>
         {ROLES.filter(role => role !== 'admin').map(role => (
-          <StatCard key={role} label={ROLE_LABELS[role]} value={stats.usersByRole[role] ?? 0} />
+          <StatCard key={role} label={ROLE_LABELS[role]} value={stats.usersByRole[role] ?? 0} accent={theme.roleColors[role]} />
         ))}
       </View>
 
@@ -94,24 +110,26 @@ export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashb
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.md,
+      marginBottom: spacing.xl,
+    },
+    sectionTitle: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.sm,
+    },
+  });
+}

@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/ui';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
-
-const { colors, spacing, typography } = lightTheme;
+import { useTheme, type Theme } from '../../theme';
 
 export function SuspendedScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const signOut = useAuthStore(state => state.signOut);
 
   return (
@@ -21,26 +21,28 @@ export function SuspendedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.neutral.white,
-    padding: spacing.xl,
-  },
-  title: {
-    fontSize: typography.sizes['2xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.semantic.error,
-    marginBottom: spacing.sm,
-  },
-  description: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray600,
-    textAlign: 'center',
-  },
-  action: {
-    marginTop: spacing.xl,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background.surface,
+      padding: spacing.xl,
+    },
+    title: {
+      fontSize: typography.sizes['2xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.semantic.error,
+      marginBottom: spacing.sm,
+    },
+    description: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+      textAlign: 'center',
+    },
+    action: {
+      marginTop: spacing.xl,
+    },
+  });
+}

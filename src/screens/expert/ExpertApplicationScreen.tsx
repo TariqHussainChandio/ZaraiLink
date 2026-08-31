@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { launchImageLibrary, type Asset } from 'react-native-image-picker';
+import type { Asset } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, LocationPicker, Spinner } from '../../components/ui';
+import { Button, EmptyState, Input, LocationPicker, Spinner } from '../../components/ui';
 import {
   fetchExpertProfile,
   submitExpertApplication,
@@ -12,10 +12,9 @@ import {
   uploadExpertDocument,
 } from '../../services/modules/expert/expertService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ExpertSpecialization } from '../../types/expert';
-
-const { colors, spacing, radii, typography } = lightTheme;
+import { pickPhotos } from '../../utils/photoPicker';
 
 const SPECIALIZATION_OPTIONS: { id: ExpertSpecialization; label: string }[] = [
   { id: 'crop_management', label: 'Crop Management' },
@@ -34,16 +33,19 @@ const applicationSchema = z.object({
   experience: z.string(),
   professionalDescription: z.string(),
   contact: z.string(),
-  countryId: z.string().nullable(),
-  provinceId: z.string().nullable(),
-  cityId: z.string().nullable(),
+  country: z.string().nullable(),
+  province: z.string().nullable(),
+  city: z.string().nullable(),
 });
 
 type ApplicationFormValues = z.infer<typeof applicationSchema>;
 
 export function ExpertApplicationScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [specializations, setSpecializations] = useState<ExpertSpecialization[]>([]);
@@ -64,14 +66,16 @@ export function ExpertApplicationScreen() {
       experience: '',
       professionalDescription: '',
       contact: '',
-      countryId: null,
-      provinceId: null,
-      cityId: null,
+      country: null,
+      province: null,
+      city: null,
     },
   });
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!userId) return;
+    setLoading(true);
+    setError(false);
     fetchExpertProfile()
       .then(profile => {
         if (profile) {
@@ -83,17 +87,22 @@ export function ExpertApplicationScreen() {
             experience: profile.experience ?? '',
             professionalDescription: profile.professional_description ?? '',
             contact: profile.contact ?? '',
-            countryId: profile.location?.country_id ?? null,
-            provinceId: profile.location?.province_id ?? null,
-            cityId: profile.location?.city_id ?? null,
+            country: profile.location?.country ?? null,
+            province: profile.location?.province ?? null,
+            city: profile.location?.city ?? null,
           });
         }
       })
       .catch(err => {
         console.warn('[ExpertApplicationScreen] failed to load expert profile:', err);
+        setError(true);
       })
       .finally(() => setLoading(false));
   }, [userId, reset]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const toggleSpecialization = (specialization: ExpertSpecialization) => {
     setSpecializations(current =>
@@ -102,11 +111,12 @@ export function ExpertApplicationScreen() {
   };
 
   const pickDocument = async () => {
-    // No document-picker dependency exists in this project — a photo of the certificate
-    // (the same `launchImageLibrary` pattern used everywhere else in this app) is the
+    // No document-picker dependency exists in this project — a photo of the certificate is the
     // deliberate, buildable choice here rather than adding a new native dependency.
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
-    if (result.assets?.[0]) setDocument(result.assets[0]);
+    // `pickPhotos` offers camera-or-gallery, so an applicant can photograph a physical
+    // certificate directly instead of needing an existing gallery photo of it.
+    const assets = await pickPhotos({ selectionLimit: 1 });
+    if (assets[0]) setDocument(assets[0]);
   };
 
   const onSubmit = async (values: ApplicationFormValues) => {
@@ -126,14 +136,24 @@ export function ExpertApplicationScreen() {
         setIsEditing(true);
       }
       Alert.alert(isEditing ? 'Profile updated' : 'Application submitted', 'An admin will review your application.');
-    } catch (error) {
-      Alert.alert('Could not save', error instanceof Error ? error.message : String(error));
+    } catch (err) {
+      Alert.alert('Could not save', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load your application"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -188,12 +208,12 @@ export function ExpertApplicationScreen() {
       />
 
       <LocationPicker
-        countryId={watch('countryId')}
-        provinceId={watch('provinceId')}
-        cityId={watch('cityId')}
-        onCountryChange={id => setValue('countryId', id)}
-        onProvinceChange={id => setValue('provinceId', id)}
-        onCityChange={id => setValue('cityId', id)}
+        country={watch('country')}
+        province={watch('province')}
+        city={watch('city')}
+        onCountryChange={value => setValue('country', value)}
+        onProvinceChange={value => setValue('province', value)}
+        onCityChange={value => setValue('city', value)}
       />
 
       <Text style={styles.label}>Specializations</Text>
@@ -235,68 +255,70 @@ export function ExpertApplicationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.sm,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-  },
-  chipSelected: {
-    backgroundColor: colors.brand.primaryTint,
-    borderColor: colors.brand.primary,
-  },
-  chipLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray700,
-  },
-  chipLabelSelected: {
-    color: colors.brand.primary,
-    fontWeight: typography.weights.semibold as any,
-  },
-  documentPreview: {
-    width: 120,
-    height: 120,
-    borderRadius: radii.md,
-    marginBottom: spacing.md,
-    backgroundColor: colors.neutral.gray100,
-  },
-  documentPicker: {
-    height: 80,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  documentPickerLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray500,
-  },
-  submit: {
-    marginTop: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.sm,
+    },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    chip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radii.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipSelected: {
+      backgroundColor: colors.brand.primaryTint,
+      borderColor: colors.brand.primary,
+    },
+    chipLabel: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    chipLabelSelected: {
+      color: colors.brand.primary,
+      fontWeight: typography.weights.semibold as any,
+    },
+    documentPreview: {
+      width: 120,
+      height: 120,
+      borderRadius: radii.md,
+      marginBottom: spacing.md,
+      backgroundColor: colors.border,
+    },
+    documentPicker: {
+      height: 80,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+    },
+    documentPickerLabel: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    submit: {
+      marginTop: spacing.md,
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

@@ -1,16 +1,16 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Badge, Button, Sheet, Spinner } from '../../components/ui';
+import { Badge, Button, EmptyState, Sheet, Spinner } from '../../components/ui';
 import { ROLES, ROLE_LABELS } from '../../constants/roles';
 import { fetchAllProfiles, setProfileSuspended, updateUserRole } from '../../services/modules/admin/adminService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { Profile } from '../../types/profile';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function UserManagementScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const currentUserId = useAuthStore(state => state.user?.id);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +92,7 @@ export function UserManagementScreen() {
             ) : null}
           </View>
         )}
+        ListEmptyComponent={<EmptyState title="No users found" />}
       />
 
       <Sheet visible={!!roleSheetFor} onClose={() => setRoleSheetFor(null)}>
@@ -110,53 +111,55 @@ export function UserManagementScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  list: {
-    padding: spacing.lg,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  info: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  name: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.xs,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  sheetTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.lg,
-  },
-  roleOption: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  roleOptionLabel: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray900,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      padding: spacing.lg,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    info: {
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    name: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+    },
+    badgeRow: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    sheetTitle: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.lg,
+    },
+    roleOption: {
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    roleOptionLabel: {
+      fontSize: typography.sizes.base,
+      color: colors.text.primary,
+    },
+  });
+}

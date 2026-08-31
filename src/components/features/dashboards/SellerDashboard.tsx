@@ -1,6 +1,6 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '../../../components/ui';
 import { APP_TABS, HOME_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../../constants/routes';
@@ -14,13 +14,11 @@ import { supabase } from '../../../services/supabase/client';
 import { useAuthStore } from '../../../store/authStore';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import type { HomeStackParamList } from '../../../navigation/stacks/HomeNavigator';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { OrderWithItems } from '../../../types/orders';
 import { ActivityFeed } from './ActivityFeed';
 import { QuickActions } from './QuickActions';
 import { StatCard } from './StatCard';
-
-const { colors, spacing, typography } = lightTheme;
 
 interface FarmerExtra {
   farmCount: number;
@@ -36,6 +34,8 @@ interface DealerExtra {
 }
 
 export function SellerDashboard() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const role = useAuthStore(state => state.role);
   const tabNavigation = useAppTabNavigation();
@@ -119,19 +119,19 @@ export function SellerDashboard() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Active Listings" value={activeListings} />
-        <StatCard label="Pending Orders" value={pendingOrders} />
+        <StatCard label="Active Listings" value={activeListings} accent={theme.moduleAccents.marketplace} />
+        <StatCard label="Pending Orders" value={pendingOrders} accent={theme.moduleAccents.orders} />
       </View>
 
       {role === 'farmer' && farmerExtra ? (
         <>
           <View style={styles.statsRow}>
-            <StatCard label="Farms" value={farmerExtra.farmCount} />
-            <StatCard label="Crops" value={farmerExtra.cropCount} />
+            <StatCard label="Farms" value={farmerExtra.farmCount} accent={theme.moduleAccents.farmer} />
+            <StatCard label="Crops" value={farmerExtra.cropCount} accent={theme.moduleAccents.farmer} />
           </View>
           <View style={styles.statsRow}>
-            <StatCard label="Open Consultations" value={farmerExtra.openConsultations} />
-            <StatCard label="Resolved" value={farmerExtra.resolvedConsultations} />
+            <StatCard label="Open Consultations" value={farmerExtra.openConsultations} accent={theme.moduleAccents.consultation} />
+            <StatCard label="Resolved" value={farmerExtra.resolvedConsultations} accent={theme.moduleAccents.consultation} />
           </View>
         </>
       ) : null}
@@ -139,11 +139,11 @@ export function SellerDashboard() {
       {role === 'dealer' && dealerExtra ? (
         <>
           <View style={styles.statsRow}>
-            <StatCard label="Low Stock" value={dealerExtra.lowStockCount} />
-            <StatCard label="Stores" value={dealerExtra.storeCount} />
+            <StatCard label="Low Stock" value={dealerExtra.lowStockCount} accent={theme.moduleAccents.inventory} />
+            <StatCard label="Stores" value={dealerExtra.storeCount} accent={theme.moduleAccents.dealer} />
           </View>
           <View style={styles.statsRow}>
-            <StatCard label="Suppliers" value={dealerExtra.supplierCount} />
+            <StatCard label="Suppliers" value={dealerExtra.supplierCount} accent={theme.moduleAccents.dealer} />
           </View>
         </>
       ) : null}
@@ -212,23 +212,25 @@ export function SellerDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      marginBottom: spacing.xl,
+    },
+    sectionTitle: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.sm,
+    },
+  });
+}

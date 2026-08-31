@@ -1,13 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { launchImageLibrary, type Asset } from 'react-native-image-picker';
+import type { Asset } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, Spinner } from '../../components/ui';
+import { Button, EmptyState, Spinner } from '../../components/ui';
 import {
   ListingFormFields,
   listingFormDefaults,
   listingSchema,
+  type ListingFormInput,
   type ListingFormValues,
 } from '../../components/features/marketplace/ListingFormFields';
 import {
@@ -17,15 +18,17 @@ import {
   uploadListingImages,
 } from '../../services/modules/marketplace/listingsService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
+import { pickPhotos } from '../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<'EditListing'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<Asset[]>([]);
@@ -37,12 +40,14 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
     setValue,
     watch,
     formState: { errors },
-  } = useForm<ListingFormValues>({
+  } = useForm<ListingFormInput, any, ListingFormValues>({
     resolver: zodResolver(listingSchema),
     defaultValues: listingFormDefaults,
   });
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
     fetchListingById(listingId)
       .then(listing => {
         reset({
@@ -55,21 +60,26 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
           brand: listing.brand ?? '',
           condition: listing.condition ?? '',
           cropCompatibility: listing.crop_compatibility,
-          countryId: listing.location?.country_id ?? null,
-          provinceId: listing.location?.province_id ?? null,
-          cityId: listing.location?.city_id ?? null,
+          country: listing.location?.country ?? null,
+          province: listing.location?.province ?? null,
+          city: listing.location?.city ?? null,
         });
         setExistingImages(listing.images);
       })
       .catch(err => {
         console.warn('[EditListingScreen] failed to load listing:', err);
+        setError(true);
       })
       .finally(() => setLoading(false));
   }, [listingId, reset]);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
   const pickImages = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 5 });
-    if (result.assets) setNewImages(result.assets);
+    const assets = await pickPhotos({ selectionLimit: 5 });
+    if (assets.length > 0) setNewImages(assets);
   };
 
   const onSubmit = async (values: ListingFormValues) => {
@@ -85,8 +95,8 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
         images: [...existingImages, ...uploaded],
       });
       navigation.goBack();
-    } catch (error) {
-      Alert.alert('Failed to update listing', error instanceof Error ? error.message : String(error));
+    } catch (err) {
+      Alert.alert('Failed to update listing', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -107,6 +117,16 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
   };
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load this listing"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -131,51 +151,53 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.xs,
-  },
-  imageRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  thumbnail: {
-    width: 72,
-    height: 72,
-    borderRadius: radii.md,
-    backgroundColor: colors.neutral.gray100,
-  },
-  addImage: {
-    width: 72,
-    height: 72,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addImageLabel: {
-    color: colors.neutral.gray500,
-    fontSize: typography.sizes.xs,
-  },
-  submit: {
-    marginTop: spacing.sm,
-  },
-  delete: {
-    marginTop: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    imageRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginBottom: spacing.xl,
+    },
+    thumbnail: {
+      width: 72,
+      height: 72,
+      borderRadius: radii.md,
+      backgroundColor: colors.border,
+    },
+    addImage: {
+      width: 72,
+      height: 72,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addImageLabel: {
+      color: colors.text.secondary,
+      fontSize: typography.sizes.xs,
+    },
+    submit: {
+      marginTop: spacing.sm,
+    },
+    delete: {
+      marginTop: spacing.md,
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

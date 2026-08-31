@@ -1,23 +1,25 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { launchImageLibrary, type Asset } from 'react-native-image-picker';
+import type { Asset } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/ui';
 import {
   ListingFormFields,
   listingFormDefaults,
   listingSchema,
+  type ListingFormInput,
   type ListingFormValues,
 } from '../../components/features/marketplace/ListingFormFields';
 import { createListing, uploadListingImages } from '../../services/modules/marketplace/listingsService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
+import { pickPhotos } from '../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'CreateListing'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [images, setImages] = useState<Asset[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -28,14 +30,14 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
     setValue,
     watch,
     formState: { errors },
-  } = useForm<ListingFormValues>({
+  } = useForm<ListingFormInput, any, ListingFormValues>({
     resolver: zodResolver(listingSchema),
     defaultValues: listingFormDefaults,
   });
 
   const pickImages = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 5 });
-    if (result.assets) setImages(result.assets);
+    const assets = await pickPhotos({ selectionLimit: 5 });
+    if (assets.length > 0) setImages(assets);
   };
 
   const onSubmit = async (values: ListingFormValues) => {
@@ -82,47 +84,49 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.xs,
-  },
-  imageRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  thumbnail: {
-    width: 72,
-    height: 72,
-    borderRadius: radii.md,
-    backgroundColor: colors.neutral.gray100,
-  },
-  addImage: {
-    width: 72,
-    height: 72,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addImageLabel: {
-    color: colors.neutral.gray500,
-    fontSize: typography.sizes.xs,
-  },
-  submit: {
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    imageRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginBottom: spacing.xl,
+    },
+    thumbnail: {
+      width: 72,
+      height: 72,
+      borderRadius: radii.md,
+      backgroundColor: colors.border,
+    },
+    addImage: {
+      width: 72,
+      height: 72,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addImageLabel: {
+      color: colors.text.secondary,
+      fontSize: typography.sizes.xs,
+    },
+    submit: {
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

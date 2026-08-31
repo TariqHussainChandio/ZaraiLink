@@ -1,18 +1,19 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
-import { launchImageLibrary, type Asset } from 'react-native-image-picker';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { Asset } from 'react-native-image-picker';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Button, SelectField } from '../../components/ui';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
-
-const { colors, spacing, radii, typography } = lightTheme;
+import { pickPhotos } from '../../utils/photoPicker';
 
 // Registered in the shared `HomeNavigator` (Buyer/Farmer/Dealer's Home stack), but farmer-only
 // in practice — only `SellerDashboard.tsx`'s farmer branch has a Quick Action leading here,
 // the same pattern that already makes Farms/Crops farmer-only and Inventory dealer-only within
 // this same shared stack. Untyped navigation, matching that stack's own conventions.
 export function DiseaseUploadScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation<any>();
   const crops = useMarketplaceStore(state => state.crops);
   const loadCrops = useMarketplaceStore(state => state.loadCrops);
@@ -24,8 +25,8 @@ export function DiseaseUploadScreen() {
   }, [loadCrops]);
 
   const pickImage = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
-    if (result.assets?.[0]) setImage(result.assets[0]);
+    const assets = await pickPhotos({ selectionLimit: 1 });
+    if (assets[0]) setImage(assets[0]);
   };
 
   const onAnalyze = () => {
@@ -69,55 +70,57 @@ export function DiseaseUploadScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-    lineHeight: typography.lineHeights.sm,
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.sm,
-  },
-  preview: {
-    width: '100%',
-    height: 220,
-    borderRadius: radii.md,
-    backgroundColor: colors.neutral.gray100,
-    marginBottom: spacing.md,
-  },
-  addImage: {
-    height: 160,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  addImageLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray500,
-  },
-  submit: {
-    marginTop: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    title: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+    },
+    subtitle: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      lineHeight: typography.lineHeights.sm,
+      marginBottom: spacing.lg,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.sm,
+    },
+    preview: {
+      width: '100%',
+      height: 220,
+      borderRadius: radii.md,
+      backgroundColor: colors.border,
+      marginBottom: spacing.md,
+    },
+    addImage: {
+      height: 160,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+    },
+    addImageLabel: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    submit: {
+      marginTop: spacing.md,
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

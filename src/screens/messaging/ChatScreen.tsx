@@ -1,8 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { Asset } from 'react-native-image-picker';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
-import { Spinner } from '../../components/ui';
+import { EmptyState, Spinner } from '../../components/ui';
 import { ChatInput } from '../../components/features/messaging/ChatInput';
 import { MessageBubble } from '../../components/features/messaging/MessageBubble';
 import { useRealtimeMessages } from '../../hooks/realtime/useRealtimeMessages';
@@ -14,16 +14,19 @@ import {
   uploadMessageAttachments,
 } from '../../services/modules/messaging/messagingService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { Message } from '../../types/messaging';
 import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavigator';
 
 export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { conversationId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [sending, setSending] = useState(false);
 
   // Re-resolving an already-signed path is harmless (just an extra cheap call) — doing that
@@ -37,24 +40,29 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
     setAttachmentUrls(current => ({ ...current, ...resolved }));
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      fetchMessages(conversationId).then(data => {
-        if (cancelled) return;
-        setMessages(data);
+  const load = useCallback(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    fetchMessages(conversationId).then(data => {
+      if (cancelled) return;
+      setMessages(data);
+      setLoading(false);
+      resolveNewAttachments(data);
+    }).catch(err => {
+      console.warn('[ChatScreen] failed to load messages:', err);
+      if (!cancelled) {
+        setError(true);
         setLoading(false);
-        resolveNewAttachments(data);
-      }).catch(err => {
-        console.warn('[ChatScreen] failed to load messages:', err);
-        if (!cancelled) setLoading(false);
-      });
-      if (userId) markConversationRead(conversationId);
-      return () => {
-        cancelled = true;
-      };
-    }, [conversationId, userId, resolveNewAttachments]),
-  );
+      }
+    });
+    if (userId) markConversationRead(conversationId);
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, userId, resolveNewAttachments]);
+
+  useFocusEffect(useCallback(() => load(), [load]));
 
   useRealtimeMessages(conversationId, incoming => {
     setMessages(prev => (prev.some(m => m.id === incoming.id) ? prev : [...prev, incoming]));
@@ -75,6 +83,16 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   };
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load messages"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -98,12 +116,14 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.neutral.white,
-  },
-  list: {
-    paddingVertical: lightTheme.spacing.md,
-  },
-});
+function makeStyles({ colors, spacing }: Theme) {
+  return StyleSheet.create({
+    flex: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      paddingVertical: spacing.md,
+    },
+  });
+}

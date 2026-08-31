@@ -16,8 +16,9 @@ import { ReportsScreen } from '../../screens/admin/ReportsScreen';
 import { UserManagementScreen } from '../../screens/admin/UserManagementScreen';
 import { NotificationListScreen } from '../../screens/notifications/NotificationListScreen';
 import { NotificationBellButton } from '../../components/features/notifications/NotificationBellButton';
+import { OrderDetailScreen } from '../../screens/orders/OrderDetailScreen';
 import { PlatformOrdersScreen } from '../../screens/admin/PlatformOrdersScreen';
-import { lightTheme } from '../../theme';
+import { useTheme } from '../../theme';
 import { ProfileNavigator, type ProfileStackParamList } from './ProfileNavigator';
 
 export type AdminHomeStackParamList = {
@@ -27,6 +28,7 @@ export type AdminHomeStackParamList = {
   [ADMIN_HOME_ROUTES.ListingModeration]: undefined;
   [ADMIN_HOME_ROUTES.ExpertVerification]: undefined;
   [ADMIN_HOME_ROUTES.Orders]: undefined;
+  [ADMIN_HOME_ROUTES.OrderDetail]: { orderId: string };
   [ADMIN_HOME_ROUTES.Reports]: undefined;
   [ADMIN_HOME_ROUTES.Categories]: undefined;
   [ADMIN_HOME_ROUTES.ReferenceData]: undefined;
@@ -86,6 +88,11 @@ function AdminHomeNavigator() {
         options={{ title: 'Orders' }}
       />
       <HomeStack.Screen
+        name={ADMIN_HOME_ROUTES.OrderDetail}
+        component={OrderDetailScreen}
+        options={{ title: 'Order' }}
+      />
+      <HomeStack.Screen
         name={ADMIN_HOME_ROUTES.Reports}
         component={ReportsScreen}
         options={{ title: 'Reports' }}
@@ -119,12 +126,13 @@ const Tab = createBottomTabNavigator<AdminTabParamList>();
 // Dedicated tab shell for the Admin role (SRDS v4.0 §34): Dashboard (with every admin
 // destination nested underneath) and Profile (which already hosts Settings).
 export function AdminNavigator() {
+  const theme = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: lightTheme.roleColors.admin,
-        tabBarInactiveTintColor: lightTheme.colors.neutral.gray400,
+        tabBarActiveTintColor: theme.roleColors.admin,
+        tabBarInactiveTintColor: theme.colors.text.secondary,
       }}
     >
       <Tab.Screen

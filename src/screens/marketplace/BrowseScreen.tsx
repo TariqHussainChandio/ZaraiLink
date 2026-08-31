@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { ShoppingCart } from 'lucide-react-native';
-import { EmptyState, Spinner } from '../../components/ui';
+import { EmptyState, SkeletonCard, StaggeredItem } from '../../components/ui';
 import { FilterBar } from '../../components/features/marketplace/FilterBar';
 import { ListingCard } from '../../components/features/marketplace/ListingCard';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
@@ -17,28 +17,37 @@ import { fetchListings } from '../../services/modules/marketplace/listingsServic
 import { cartItemCount, useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ListingWithRelations } from '../../types/marketplace';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
 
-const { colors, spacing } = lightTheme;
-
 function CartHeaderButton({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const count = useCartStore(state => cartItemCount(state.items));
 
   return (
-    <TouchableOpacity onPress={onPress} style={styles.cartButton}>
-      <ShoppingCart color={colors.neutral.gray800} size={22} />
-      {count > 0 ? (
-        <View style={styles.cartBadge}>
-          <Text style={styles.cartBadgeLabel}>{count}</Text>
-        </View>
-      ) : null}
+    <TouchableOpacity
+      onPress={onPress}
+      style={styles.cartButton}
+      accessibilityRole="button"
+      accessibilityLabel={count > 0 ? `Cart, ${count} item${count === 1 ? '' : 's'}` : 'Cart'}
+    >
+      <View style={styles.cartIconWrap}>
+        <ShoppingCart color={theme.colors.text.primary} size={22} />
+        {count > 0 ? (
+          <View style={styles.cartBadge}>
+            <Text style={styles.cartBadgeLabel}>{count}</Text>
+          </View>
+        ) : null}
+      </View>
     </TouchableOpacity>
   );
 }
 
 export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const role = useAuthStore(state => state.role);
   const canSell = role === 'farmer' || role === 'dealer';
   const { filters, setFilters, categories, loadCategories } = useMarketplaceStore();
@@ -67,7 +76,7 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
         search: filters.search || undefined,
         minPrice: filters.minPrice ?? undefined,
         maxPrice: filters.maxPrice ?? undefined,
-        cityId: filters.cityId ?? undefined,
+        city: filters.city ?? undefined,
         cropName: filters.cropName ?? undefined,
         page: targetPage,
       });
@@ -117,12 +126,18 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
         onSelectCategory={categoryId => setFilters({ categoryId })}
         minPrice={filters.minPrice}
         maxPrice={filters.maxPrice}
-        cityId={filters.cityId}
+        city={filters.city}
         cropName={filters.cropName}
         onApplyMoreFilters={setFilters}
       />
       {loading ? (
-        <Spinner fullscreen />
+        <View style={[styles.list, styles.skeletonGrid]}>
+          {Array.from({ length: 6 }, (_, i) => (
+            <View key={i} style={styles.skeletonGridCell}>
+              <SkeletonCard />
+            </View>
+          ))}
+        </View>
       ) : (
         <FlatList
           data={listings}
@@ -132,13 +147,15 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           onEndReachedThreshold={0.4}
           onEndReached={onEndReached}
-          renderItem={({ item }) => (
-            <ListingCard
-              listing={item}
-              onPress={() =>
-                navigation.navigate(MARKETPLACE_ROUTES.ListingDetail, { listingId: item.id })
-              }
-            />
+          renderItem={({ item, index }) => (
+            <StaggeredItem index={index} style={styles.staggeredCard}>
+              <ListingCard
+                listing={item}
+                onPress={() =>
+                  navigation.navigate(MARKETPLACE_ROUTES.ListingDetail, { listingId: item.id })
+                }
+              />
+            </StaggeredItem>
           )}
           ListEmptyComponent={
             <EmptyState
@@ -160,46 +177,67 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  list: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing['3xl'],
-  },
-  cartButton: {
-    marginRight: spacing.md,
-  },
-  cartBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -8,
-    backgroundColor: colors.semantic.error,
-    borderRadius: 999,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cartBadgeLabel: {
-    color: colors.neutral.white,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: lightTheme.radii.full,
-  },
-  fabLabel: {
-    color: colors.neutral.white,
-    fontWeight: '700',
-  },
-});
+function makeStyles({ colors, spacing, radii, shadows }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      paddingHorizontal: spacing.sm,
+      paddingBottom: spacing['3xl'],
+    },
+    skeletonGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    skeletonGridCell: {
+      width: '50%',
+    },
+    staggeredCard: {
+      flex: 1,
+    },
+    cartButton: {
+      marginRight: spacing.md,
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cartIconWrap: {
+      width: 22,
+      height: 22,
+    },
+    cartBadge: {
+      position: 'absolute',
+      top: -6,
+      right: -8,
+      backgroundColor: colors.semantic.error,
+      borderRadius: 999,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cartBadgeLabel: {
+      color: colors.neutral.white,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    fab: {
+      position: 'absolute',
+      right: spacing.lg,
+      bottom: spacing.lg,
+      backgroundColor: colors.brand.primary,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderRadius: radii.full,
+      ...shadows.md,
+    },
+    fabLabel: {
+      color: colors.neutral.white,
+      fontWeight: '700',
+    },
+  });
+}

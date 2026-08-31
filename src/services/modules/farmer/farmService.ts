@@ -6,9 +6,9 @@ export interface FarmInput {
   area: number | null;
   landUnit: string | null;
   notes: string | null;
-  countryId: string | null;
-  provinceId: string | null;
-  cityId: string | null;
+  country: string | null;
+  province: string | null;
+  city: string | null;
 }
 
 function toApiFarm(input: Partial<FarmInput>) {
@@ -17,9 +17,9 @@ function toApiFarm(input: Partial<FarmInput>) {
     ...(input.area !== undefined && { area: input.area }),
     ...(input.landUnit !== undefined && { land_unit: input.landUnit }),
     ...(input.notes !== undefined && { notes: input.notes }),
-    ...(input.countryId !== undefined && { country_id: input.countryId }),
-    ...(input.provinceId !== undefined && { province_id: input.provinceId }),
-    ...(input.cityId !== undefined && { city_id: input.cityId }),
+    ...(input.country !== undefined && { country: input.country }),
+    ...(input.province !== undefined && { province: input.province }),
+    ...(input.city !== undefined && { city: input.city }),
   };
 }
 

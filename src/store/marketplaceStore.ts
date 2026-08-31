@@ -7,7 +7,7 @@ export interface MarketplaceFilters {
   search: string;
   minPrice: number | null;
   maxPrice: number | null;
-  cityId: string | null;
+  city: string | null;
   cropName: string | null;
 }
 
@@ -28,7 +28,7 @@ const defaultFilters: MarketplaceFilters = {
   search: '',
   minPrice: null,
   maxPrice: null,
-  cityId: null,
+  city: null,
   cropName: null,
 };
 

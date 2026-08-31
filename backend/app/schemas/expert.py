@@ -21,9 +21,9 @@ class ExpertProfileInput(BaseModel):
     experience: str
     professional_description: str
     contact: str
-    country_id: str | None = None
-    province_id: str | None = None
-    city_id: str | None = None
+    country: str | None = None
+    province: str | None = None
+    city: str | None = None
     specializations: list[Specialization]
 
 

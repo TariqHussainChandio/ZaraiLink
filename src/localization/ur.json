@@ -11,6 +11,10 @@
     "title": "ترتیبات",
     "notifications": "اطلاعات",
     "language": "زبان",
+    "appearance": "ظاہری شکل",
+    "appearanceLight": "روشن",
+    "appearanceDark": "تاریک",
+    "appearanceSystem": "سسٹم",
     "changePassword": "پاس ورڈ تبدیل کریں",
     "signOut": "سائن آؤٹ"
   },

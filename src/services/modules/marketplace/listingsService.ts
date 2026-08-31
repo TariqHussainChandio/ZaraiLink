@@ -16,7 +16,7 @@ export interface FetchListingsParams {
   minPrice?: number;
   maxPrice?: number;
   sellerRole?: Role;
-  cityId?: string;
+  city?: string;
   cropName?: string;
   page?: number;
   ownerId?: string;
@@ -28,7 +28,7 @@ export async function fetchListings({
   minPrice,
   maxPrice,
   sellerRole,
-  cityId,
+  city,
   cropName,
   page,
   ownerId,
@@ -40,7 +40,7 @@ export async function fetchListings({
       min_price: minPrice,
       max_price: maxPrice,
       seller_role: sellerRole,
-      city_id: cityId,
+      city,
       crop_name: cropName,
       page,
       owner_id: ownerId,
@@ -91,9 +91,9 @@ export interface ListingInput {
   brand: string | null;
   condition: string | null;
   cropCompatibility: string[];
-  countryId: string | null;
-  provinceId: string | null;
-  cityId: string | null;
+  country: string | null;
+  province: string | null;
+  city: string | null;
 }
 
 function toApiListing(input: Partial<ListingInput>) {
@@ -108,9 +108,9 @@ function toApiListing(input: Partial<ListingInput>) {
     ...(input.brand !== undefined && { brand: input.brand }),
     ...(input.condition !== undefined && { condition: input.condition }),
     ...(input.cropCompatibility !== undefined && { crop_compatibility: input.cropCompatibility }),
-    ...(input.countryId !== undefined && { country_id: input.countryId }),
-    ...(input.provinceId !== undefined && { province_id: input.provinceId }),
-    ...(input.cityId !== undefined && { city_id: input.cityId }),
+    ...(input.country !== undefined && { country: input.country }),
+    ...(input.province !== undefined && { province: input.province }),
+    ...(input.city !== undefined && { city: input.city }),
   };
 }
 

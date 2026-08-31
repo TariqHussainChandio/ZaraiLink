@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Avatar, Card } from '../../ui';
 import { RatingStars } from './RatingStars';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { ReviewWithBuyer } from '../../../types/reviews';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <Card style={styles.card}>
       <View style={styles.header}>
@@ -23,31 +24,33 @@ export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    marginBottom: spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  headerText: {
-    flex: 1,
-  },
-  name: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  date: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-  },
-  comment: {
-    marginTop: spacing.sm,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray700,
-    lineHeight: typography.lineHeights.sm,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    card: {
+      marginBottom: spacing.md,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    headerText: {
+      flex: 1,
+    },
+    name: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    date: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    comment: {
+      marginTop: spacing.sm,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      lineHeight: typography.lineHeights.sm,
+    },
+  });
+}

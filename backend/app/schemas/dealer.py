@@ -35,9 +35,9 @@ class StoreInput(BaseModel):
     contact: str | None = None
     opening_info: str | None = None
     status: DealerEntityStatus = "active"
-    country_id: str | None = None
-    province_id: str | None = None
-    city_id: str | None = None
+    country: str | None = None
+    province: str | None = None
+    city: str | None = None
 
 
 class StoreUpdateInput(BaseModel):
@@ -46,9 +46,9 @@ class StoreUpdateInput(BaseModel):
     contact: str | None = None
     opening_info: str | None = None
     status: DealerEntityStatus | None = None
-    country_id: str | None = None
-    province_id: str | None = None
-    city_id: str | None = None
+    country: str | None = None
+    province: str | None = None
+    city: str | None = None
 
 
 class SupplierInput(BaseModel):

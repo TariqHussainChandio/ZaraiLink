@@ -2,41 +2,7 @@ from typing import Any, Literal
 
 from ..core.supabase_client import get_public_client, get_user_scoped_client
 
-RefDataTable = Literal["countries", "provinces", "cities", "phone_codes", "currencies", "units"]
-
-
-def fetch_countries() -> list[dict]:
-    return get_public_client().table("countries").select("*").order("name").execute().data or []
-
-
-def fetch_provinces(country_id: str) -> list[dict]:
-    return (
-        get_public_client()
-        .table("provinces")
-        .select("*")
-        .eq("country_id", country_id)
-        .order("name")
-        .execute()
-        .data
-        or []
-    )
-
-
-def fetch_cities(province_id: str) -> list[dict]:
-    return (
-        get_public_client()
-        .table("cities")
-        .select("*")
-        .eq("province_id", province_id)
-        .order("name")
-        .execute()
-        .data
-        or []
-    )
-
-
-def fetch_phone_codes() -> list[dict]:
-    return get_public_client().table("phone_codes").select("*").execute().data or []
+RefDataTable = Literal["currencies", "units"]
 
 
 def fetch_currencies() -> list[dict]:

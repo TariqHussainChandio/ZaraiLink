@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     # core/supabase_client.py:get_service_role_client. Never the default DB-access path.
     supabase_service_role_key: str = ""
 
+    # Comma-separated (not JSON — this is a plain .env file) list of origins allowed to make
+    # cross-origin browser requests, e.g. the Swagger UI or a future admin web surface. React
+    # Native's fetch doesn't send an Origin header the way a browser does, so this has no effect
+    # on the mobile app itself; it only matters for browser-based consumers. Defaults cover local
+    # dev (Metro, a local web preview) — production deployments must override this explicitly.
+    allowed_origins: str = "http://localhost:3000,http://localhost:8081,http://127.0.0.1:3000,http://127.0.0.1:8081"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
     model_path: Path = APP_DIR / "ml" / "checkpoints" / "model.pth"
     # Recorded on every disease_predictions row so a prediction is traceable to the weights that
     # produced it. Update this alongside dropping in a real model.pth — "placeholder" is accurate

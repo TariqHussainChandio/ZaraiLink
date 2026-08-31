@@ -112,6 +112,7 @@ export const ADMIN_HOME_ROUTES = {
   ListingModeration: 'ListingModeration',
   ExpertVerification: 'ExpertVerification',
   Orders: 'Orders',
+  OrderDetail: 'OrderDetail',
   Reports: 'Reports',
   Categories: 'Categories',
   ReferenceData: 'ReferenceData',

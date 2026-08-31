@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { HOME_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../store/authStore';
+import { EmptyState } from '../../components/ui';
 import { HomeDashboardScreen } from '../../screens/HomeDashboardScreen';
 import { AddCropScreen } from '../../screens/farmer/AddCropScreen';
 import { FarmerAnalyticsScreen } from '../../screens/farmer/AnalyticsScreen';
@@ -53,10 +54,15 @@ export type HomeScreenProps<RouteName extends keyof HomeStackParamList> = Native
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
-/** Farmer and dealer share this stack, so the Analytics route branches by role at render time. */
+/** Farmer and dealer share this stack, so the Analytics route branches by role at render time.
+ * No in-app path reaches this for buyer/expert/admin today (each has its own dashboard/nav
+ * tree), but the branch is exhaustive rather than defaulting silently to Farmer, so a future
+ * caller can't land here and see the wrong role's analytics without at least a visible signal. */
 function RoleAwareAnalyticsScreen() {
   const role = useAuthStore(state => state.role);
-  return role === 'dealer' ? <DealerAnalyticsScreen /> : <FarmerAnalyticsScreen />;
+  if (role === 'dealer') return <DealerAnalyticsScreen />;
+  if (role === 'farmer') return <FarmerAnalyticsScreen />;
+  return <EmptyState title="Analytics unavailable" description="Analytics isn't available for this role." />;
 }
 
 export function HomeNavigator() {

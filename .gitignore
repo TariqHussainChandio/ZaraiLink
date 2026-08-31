@@ -12,6 +12,7 @@ dist/
 build/
 .expo/
 .expo-shared/
+coverage/
 
 # React Native
 android/.gradle/

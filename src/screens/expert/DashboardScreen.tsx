@@ -1,5 +1,5 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ConsultationCard } from '../../components/features/expert/ConsultationCard';
@@ -9,42 +9,58 @@ import { CONSULTATIONS_ROUTES, EXPERT_HOME_ROUTES, EXPERT_TABS } from '../../con
 import { fetchExpertProfile } from '../../services/modules/expert/expertService';
 import { fetchConsultationsForExpert } from '../../services/modules/expert/consultationService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ConsultationWithRelations, ExpertWithProfile } from '../../types/expert';
-
-const { colors, spacing, radii, typography } = lightTheme;
 
 const OPEN_STATUSES = ['requested', 'accepted', 'in_progress'];
 
 export function ExpertDashboardScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const navigation = useNavigation<any>();
   const [profile, setProfile] = useState<ExpertWithProfile | null>(null);
   const [consultations, setConsultations] = useState<ConsultationWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!userId) return;
-      let cancelled = false;
-      Promise.all([fetchExpertProfile(), fetchConsultationsForExpert()]).then(
-        ([profileData, consultationsData]) => {
-          if (cancelled) return;
-          setProfile(profileData);
-          setConsultations(consultationsData);
-          setLoading(false);
-        },
-      ).catch(err => {
-        console.warn('[ExpertDashboardScreen] failed to load dashboard data:', err);
-        if (!cancelled) setLoading(false);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, [userId]),
-  );
+  const load = useCallback(() => {
+    if (!userId) return () => {};
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    Promise.all([fetchExpertProfile(), fetchConsultationsForExpert()]).then(
+      ([profileData, consultationsData]) => {
+        if (cancelled) return;
+        setProfile(profileData);
+        setConsultations(consultationsData);
+        setLoading(false);
+      },
+    ).catch(err => {
+      console.warn('[ExpertDashboardScreen] failed to load dashboard data:', err);
+      if (!cancelled) {
+        setError(true);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useFocusEffect(useCallback(() => load(), [load]));
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load the dashboard"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   const openCount = consultations.filter(c => OPEN_STATUSES.includes(c.status)).length;
   const resolvedCount = consultations.filter(c => c.status === 'resolved' || c.status === 'closed').length;
@@ -69,8 +85,8 @@ export function ExpertDashboardScreen() {
       ) : null}
 
       <View style={styles.statsRow}>
-        <StatCard label="Open Requests" value={openCount} />
-        <StatCard label="Resolved" value={resolvedCount} />
+        <StatCard label="Open Requests" value={openCount} accent={theme.moduleAccents.consultation} />
+        <StatCard label="Resolved" value={resolvedCount} accent={theme.moduleAccents.consultation} />
       </View>
 
       <QuickActions
@@ -100,45 +116,47 @@ export function ExpertDashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  banner: {
-    backgroundColor: colors.brand.primaryTint,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  bannerPending: {
-    backgroundColor: colors.neutral.gray100,
-  },
-  bannerRejected: {
-    backgroundColor: '#FADBD8',
-  },
-  bannerTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  bannerText: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray600,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    banner: {
+      backgroundColor: colors.brand.primaryTint,
+      borderRadius: radii.md,
+      padding: spacing.md,
+      marginBottom: spacing.lg,
+    },
+    bannerPending: {
+      backgroundColor: colors.background.default,
+    },
+    bannerRejected: {
+      backgroundColor: `${colors.semantic.error}1A`,
+    },
+    bannerTitle: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    bannerText: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      marginBottom: spacing.xl,
+    },
+    sectionTitle: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.sm,
+    },
+  });
+}

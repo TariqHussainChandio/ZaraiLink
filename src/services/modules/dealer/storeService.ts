@@ -7,9 +7,9 @@ export interface StoreInput {
   contact: string | null;
   openingInfo: string | null;
   status: DealerEntityStatus;
-  countryId: string | null;
-  provinceId: string | null;
-  cityId: string | null;
+  country: string | null;
+  province: string | null;
+  city: string | null;
 }
 
 function toApiStore(input: Partial<StoreInput>) {
@@ -19,9 +19,9 @@ function toApiStore(input: Partial<StoreInput>) {
     ...(input.contact !== undefined && { contact: input.contact }),
     ...(input.openingInfo !== undefined && { opening_info: input.openingInfo }),
     ...(input.status !== undefined && { status: input.status }),
-    ...(input.countryId !== undefined && { country_id: input.countryId }),
-    ...(input.provinceId !== undefined && { province_id: input.provinceId }),
-    ...(input.cityId !== undefined && { city_id: input.cityId }),
+    ...(input.country !== undefined && { country: input.country }),
+    ...(input.province !== undefined && { province: input.province }),
+    ...(input.city !== undefined && { city: input.city }),
   };
 }
 

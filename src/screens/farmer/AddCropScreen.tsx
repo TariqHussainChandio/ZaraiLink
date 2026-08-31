@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, SelectField, Spinner } from '../../components/ui';
+import { Button, EmptyState, Input, SelectField, Spinner } from '../../components/ui';
 import {
   createFarmCrop,
   deleteFarmCrop,
@@ -11,7 +11,7 @@ import {
   updateFarmCrop,
 } from '../../services/modules/farmer/farmService';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 const DATE_MESSAGE = 'Use YYYY-MM-DD format';
@@ -29,12 +29,13 @@ const farmCropSchema = z.object({
 
 type FarmCropFormValues = z.infer<typeof farmCropSchema>;
 
-const { spacing } = lightTheme;
-
 export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { farmId, cropId } = route.params;
   const isEditing = Boolean(cropId);
   const [loading, setLoading] = useState(isEditing);
+  const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const crops = useMarketplaceStore(state => state.crops);
@@ -62,8 +63,10 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
     },
   });
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!cropId) return;
+    setLoading(true);
+    setError(false);
     fetchFarmCropById(cropId)
       .then(crop => {
         reset({
@@ -78,9 +81,14 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
       })
       .catch(err => {
         console.warn('[AddCropScreen] failed to load crop:', err);
+        setError(true);
       })
       .finally(() => setLoading(false));
   }, [cropId, reset]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const onSubmit = async (values: FarmCropFormValues) => {
     setSubmitting(true);
@@ -100,8 +108,8 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         await createFarmCrop(farmId, input);
       }
       navigation.goBack();
-    } catch (error) {
-      Alert.alert('Failed to save crop', error instanceof Error ? error.message : String(error));
+    } catch (err) {
+      Alert.alert('Failed to save crop', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -123,6 +131,16 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
   };
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load this crop"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -214,19 +232,21 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  action: {
-    marginTop: spacing.md,
-  },
-  delete: {
-    marginTop: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    action: {
+      marginTop: spacing.md,
+    },
+    delete: {
+      marginTop: spacing.md,
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

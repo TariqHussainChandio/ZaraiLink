@@ -4,7 +4,7 @@ import { Home, MessageCircle, Package, ShoppingBag, Stethoscope, User } from 'lu
 import React from 'react';
 import { APP_TABS } from '../../constants/routes';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme } from '../../theme';
 import { ConsultationsNavigator, type ConsultationsStackParamList } from './ConsultationsNavigator';
 import { HomeNavigator, type HomeStackParamList } from './HomeNavigator';
 import { MarketplaceNavigator, type MarketplaceStackParamList } from './MarketplaceNavigator';
@@ -28,6 +28,7 @@ const Tab = createBottomTabNavigator<AppTabParamList>();
 // enough (no marketplace/orders for Expert; a long admin-only destination list) that
 // squeezing them into this shared tab bar would misrepresent their role's actual nav tree.
 export function AppNavigator() {
+  const theme = useTheme();
   const role = useAuthStore(state => state.role);
   // Dealer's SRDS nav tree omits Consultations; Buyer and Farmer include it.
   const showConsultations = role === 'buyer' || role === 'farmer';
@@ -36,8 +37,8 @@ export function AppNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: lightTheme.colors.brand.primary,
-        tabBarInactiveTintColor: lightTheme.colors.neutral.gray400,
+        tabBarActiveTintColor: theme.colors.brand.primary,
+        tabBarInactiveTintColor: theme.colors.text.secondary,
       }}
     >
       <Tab.Screen

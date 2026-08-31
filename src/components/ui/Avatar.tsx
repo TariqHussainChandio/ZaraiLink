@@ -1,14 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 
 export interface AvatarProps {
   uri?: string | null;
   name?: string;
   size?: number;
 }
-
-const { colors, typography } = lightTheme;
 
 function getInitials(name?: string) {
   if (!name) return '?';
@@ -18,6 +16,8 @@ function getInitials(name?: string) {
 }
 
 export function Avatar({ uri, name, size = 40 }: AvatarProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
 
   if (uri) {
@@ -31,17 +31,19 @@ export function Avatar({ uri, name, size = 40 }: AvatarProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  image: {
-    backgroundColor: colors.neutral.gray200,
-  },
-  fallback: {
-    backgroundColor: colors.brand.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initials: {
-    color: colors.neutral.white,
-    fontWeight: typography.weights.semibold as any,
-  },
-});
+function makeStyles({ colors, typography }: Theme) {
+  return StyleSheet.create({
+    image: {
+      backgroundColor: colors.border,
+    },
+    fallback: {
+      backgroundColor: colors.brand.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    initials: {
+      color: colors.neutral.white,
+      fontWeight: typography.weights.semibold as any,
+    },
+  });
+}

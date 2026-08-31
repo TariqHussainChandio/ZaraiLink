@@ -9,12 +9,13 @@ export interface Profile {
   avatar_url: string | null;
   /** Legacy free-text display string, composed by the app from the structured fields below. */
   location: string | null;
-  country_id: string | null;
-  province_id: string | null;
-  city_id: string | null;
+  country: string | null;
+  province: string | null;
+  city: string | null;
   village: string | null;
   street: string | null;
   is_suspended: boolean;
+  notifications_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

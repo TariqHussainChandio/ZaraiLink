@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Avatar, Badge, Button } from '../../components/ui';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS } from '../../constants/roles';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfile'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const profile = useAuthStore(state => state.profile);
   const email = useAuthStore(state => state.user?.email);
 
@@ -24,9 +24,9 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
       </View>
 
       <View style={styles.section}>
-        <Row label="Email" value={email ?? '—'} />
-        <Row label="Phone" value={profile.phone ?? '—'} />
-        <Row label="Location" value={profile.location ?? '—'} />
+        <Row styles={styles} label="Email" value={email ?? '—'} />
+        <Row styles={styles} label="Phone" value={profile.phone ?? '—'} />
+        <Row styles={styles} label="Location" value={profile.location ?? '—'} />
       </View>
 
       <Button
@@ -44,7 +44,7 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, styles }: { label: string; value: string; styles: ReturnType<typeof makeStyles> }) {
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -53,40 +53,42 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-    padding: spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    gap: spacing.sm,
-  },
-  name: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  rowLabel: {
-    color: colors.neutral.gray500,
-  },
-  rowValue: {
-    color: colors.neutral.gray900,
-    fontWeight: typography.weights.medium as any,
-  },
-  action: {
-    marginBottom: spacing.md,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+      padding: spacing.lg,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: spacing.xl,
+      gap: spacing.sm,
+    },
+    name: {
+      fontSize: typography.sizes.xl,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    section: {
+      marginBottom: spacing.xl,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    rowLabel: {
+      color: colors.text.secondary,
+    },
+    rowValue: {
+      color: colors.text.primary,
+      fontWeight: typography.weights.medium as any,
+    },
+    action: {
+      marginBottom: spacing.md,
+    },
+  });
+}

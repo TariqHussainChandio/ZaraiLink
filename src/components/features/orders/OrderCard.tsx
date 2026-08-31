@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from '../../../components/ui';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { OrderWithItems } from '../../../types/orders';
 import { StatusBadge } from './StatusBadge';
 
@@ -11,11 +11,17 @@ export interface OrderCardProps {
   onPress: () => void;
 }
 
-const { colors, spacing, typography } = lightTheme;
-
 export function OrderCard({ order, counterpartyName, onPress }: OrderCardProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={`Order with ${counterpartyName}, Rs. ${order.total.toFixed(0)}, ${order.status}`}
+    >
       <Card style={styles.card}>
         <View style={styles.row}>
           <Text style={styles.counterparty}>{counterpartyName}</Text>
@@ -31,28 +37,30 @@ export function OrderCard({ order, counterpartyName, onPress }: OrderCardProps) 
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    marginBottom: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  counterparty: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  meta: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-  },
-  date: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray400,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    card: {
+      marginBottom: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.xs,
+    },
+    counterparty: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    meta: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    date: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+  });
+}
