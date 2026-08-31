@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { Button, Input } from '../../components/ui';
 import { updatePassword } from '../../services/modules/profile/profileService';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
 
 const changePasswordSchema = z
@@ -20,9 +20,9 @@ const changePasswordSchema = z
 
 type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangePassword'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     control,
@@ -84,22 +84,24 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-    padding: spacing.lg,
-  },
-  subtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray500,
-    marginBottom: spacing.xl,
-  },
-  errorBanner: {
-    color: colors.semantic.error,
-    marginBottom: spacing.md,
-  },
-  submit: {
-    marginTop: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+      padding: spacing.lg,
+    },
+    subtitle: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+      marginBottom: spacing.xl,
+    },
+    errorBanner: {
+      color: colors.semantic.error,
+      marginBottom: spacing.md,
+    },
+    submit: {
+      marginTop: spacing.sm,
+    },
+  });
+}

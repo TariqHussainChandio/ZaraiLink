@@ -32,16 +32,8 @@ insert into public.crops (name, category) values
   ('Banana', 'fruit')
 on conflict (name) do nothing;
 
--- Reference data (§22): minimal Pakistan-focused baseline so the country/province/city
--- pickers and unit/currency dropdowns Module 5 builds have real rows to show.
-
-insert into public.countries (name, iso_code) values
-  ('Pakistan', 'PK')
-on conflict (iso_code) do nothing;
-
-insert into public.phone_codes (country_id, calling_code)
-select id, '+92' from public.countries where iso_code = 'PK'
-on conflict (country_id) do nothing;
+-- Reference data (§22): unit/currency dropdowns. Country/province/city and phone calling
+-- codes are free text now (Phase 0.5b) and need no seed rows.
 
 insert into public.currencies (code, symbol, name) values
   ('PKR', 'Rs.', 'Pakistani Rupee')
@@ -59,32 +51,3 @@ insert into public.units (code, label, applies_to) values
   ('kanal', 'Kanal', 'area'),
   ('marla', 'Marla', 'area')
 on conflict (code) do nothing;
-
-insert into public.provinces (country_id, name)
-select id, province
-from public.countries, unnest(array[
-  'Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Gilgit-Baltistan',
-  'Azad Jammu & Kashmir', 'Islamabad Capital Territory'
-]) as province
-where iso_code = 'PK'
-on conflict (country_id, name) do nothing;
-
-insert into public.cities (province_id, name)
-select p.id, c.name
-from public.provinces p
-join (values
-  ('Punjab', 'Lahore'),
-  ('Punjab', 'Faisalabad'),
-  ('Punjab', 'Multan'),
-  ('Punjab', 'Rawalpindi'),
-  ('Sindh', 'Karachi'),
-  ('Sindh', 'Hyderabad'),
-  ('Sindh', 'Sukkur'),
-  ('Khyber Pakhtunkhwa', 'Peshawar'),
-  ('Khyber Pakhtunkhwa', 'Abbottabad'),
-  ('Balochistan', 'Quetta'),
-  ('Gilgit-Baltistan', 'Gilgit'),
-  ('Azad Jammu & Kashmir', 'Muzaffarabad'),
-  ('Islamabad Capital Territory', 'Islamabad')
-) as c(province_name, name) on c.province_name = p.name
-on conflict (province_id, name) do nothing;

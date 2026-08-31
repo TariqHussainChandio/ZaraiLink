@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { EmptyState } from '../../../components/ui';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 
 export interface BarChartDatum {
   label: string;
@@ -17,8 +17,6 @@ export interface BarChartProps {
   emptyMessage?: string;
 }
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function BarChart({
   data,
   color,
@@ -26,6 +24,9 @@ export function BarChart({
   formatValue,
   emptyMessage = 'No data yet',
 }: BarChartProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   if (data.length === 0) {
     return <EmptyState title={emptyMessage} />;
   }
@@ -41,6 +42,7 @@ export function BarChart({
           </Text>
           <View style={styles.barTrack}>
             <View
+              testID={`bar-${d.label}`}
               style={[
                 styles.bar,
                 {
@@ -59,34 +61,36 @@ export function BarChart({
   );
 }
 
-const styles = StyleSheet.create({
-  barsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-  },
-  barColumn: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  barTrack: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'flex-end',
-  },
-  bar: {
-    width: '100%',
-    borderRadius: radii.sm,
-  },
-  barValue: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.xs,
-  },
-  barLabel: {
-    marginTop: spacing.xs,
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    barsRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: spacing.sm,
+    },
+    barColumn: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    barTrack: {
+      flex: 1,
+      width: '100%',
+      justifyContent: 'flex-end',
+    },
+    bar: {
+      width: '100%',
+      borderRadius: radii.sm,
+    },
+    barValue: {
+      fontSize: typography.sizes.xs,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    barLabel: {
+      marginTop: spacing.xs,
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+  });
+}

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button, Input, SelectField, Sheet } from '../../ui';
 import { adjustStock } from '../../../services/modules/dealer/inventoryService';
 import { useAuthStore } from '../../../store/authStore';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { InventoryTransactionType } from '../../../types/dealer';
 
 export interface StockAdjustModalProps {
@@ -23,9 +23,9 @@ const TYPE_OPTIONS: { id: InventoryTransactionType; label: string }[] = [
   { id: 'correction', label: 'Correction (set exact quantity)' },
 ];
 
-const { colors, spacing, typography } = lightTheme;
-
 export function StockAdjustModal({ visible, onClose, inventoryId, unit, onAdjusted }: StockAdjustModalProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
   const [type, setType] = useState<InventoryTransactionType>('addition');
   const [quantity, setQuantity] = useState('');
@@ -63,12 +63,20 @@ export function StockAdjustModal({ visible, onClose, inventoryId, unit, onAdjust
       <Text style={styles.title}>Adjust Stock</Text>
       <SelectField label="Type" value={type} options={TYPE_OPTIONS} onSelect={id => setType(id as InventoryTransactionType)} searchable={false} />
       <Input
+        testID="stock-adjust-quantity"
         label={`Quantity (${unit})`}
         keyboardType="numeric"
         value={quantity}
         onChangeText={setQuantity}
       />
-      <Input label="Notes" value={notes} onChangeText={setNotes} multiline numberOfLines={2} />
+      <Input
+        testID="stock-adjust-notes"
+        label="Notes"
+        value={notes}
+        onChangeText={setNotes}
+        multiline
+        numberOfLines={2}
+      />
       <View style={styles.actions}>
         <Button label="Cancel" variant="secondary" onPress={onClose} style={styles.button} />
         <Button label="Save" loading={submitting} onPress={onSubmit} style={styles.button} />
@@ -77,19 +85,21 @@ export function StockAdjustModal({ visible, onClose, inventoryId, unit, onAdjust
   );
 }
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.md,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  button: {
-    flex: 1,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    title: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      marginTop: spacing.sm,
+    },
+    button: {
+      flex: 1,
+    },
+  });
+}

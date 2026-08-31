@@ -13,9 +13,9 @@ class Profile(BaseModel):
     phone: str | None
     avatar_url: str | None
     location: str | None
-    country_id: str | None
-    province_id: str | None
-    city_id: str | None
+    country: str | None
+    province: str | None
+    city: str | None
     village: str | None
     street: str | None
     is_suspended: bool

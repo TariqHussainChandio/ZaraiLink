@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Avatar } from '../../../components/ui';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { ConversationWithPreview } from '../../../types/messaging';
 
 export interface ConversationListItemProps {
@@ -9,9 +9,9 @@ export interface ConversationListItemProps {
   onPress: () => void;
 }
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ConversationListItem({ conversation, onPress }: ConversationListItemProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const name = conversation.otherParticipant?.full_name ?? 'Unknown';
 
   return (
@@ -34,32 +34,34 @@ export function ConversationListItem({ conversation, onPress }: ConversationList
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  body: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  name: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  preview: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray500,
-  },
-  time: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray400,
-    marginLeft: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    body: {
+      flex: 1,
+      marginLeft: spacing.md,
+    },
+    name: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    preview: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    time: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+      marginLeft: spacing.sm,
+    },
+  });
+}

@@ -1,19 +1,19 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { NotificationRow } from '../../components/features/notifications/NotificationRow';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
 import { fetchNotifications, markAllRead, markRead } from '../../services/modules/notifications/notificationsService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { Notification } from '../../types/notifications';
-
-const { colors, spacing, typography } = lightTheme;
 
 const ORDER_TYPES = new Set(['order_new', 'order_status_changed', 'payment_status_changed']);
 
 export function NotificationListScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   // Untyped: this screen is mounted inside three different tab navigators (buyer/farmer/dealer,
   // expert, admin) with different param lists — deep-linking below is best-effort per type and
@@ -21,14 +21,18 @@ export function NotificationListScreen() {
   const navigation = useNavigation<any>();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = useCallback(() => {
     if (!userId) return;
+    setLoading(true);
+    setError(false);
     fetchNotifications().then(data => {
       setNotifications(data);
       setLoading(false);
     }).catch(err => {
       console.warn('[NotificationListScreen] failed to load notifications:', err);
+      setError(true);
       setLoading(false);
     });
   }, [userId]);
@@ -74,6 +78,16 @@ export function NotificationListScreen() {
   };
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load notifications"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   const hasUnread = notifications.some(n => !n.read);
 
@@ -98,18 +112,20 @@ export function NotificationListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  markAllRow: {
-    padding: spacing.md,
-    alignItems: 'flex-end',
-  },
-  markAllLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.brand.primary,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    markAllRow: {
+      padding: spacing.md,
+      alignItems: 'flex-end',
+    },
+    markAllLabel: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.brand.primary,
+    },
+  });
+}

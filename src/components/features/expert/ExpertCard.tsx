@@ -1,10 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Avatar, Card } from '../../ui';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { ExpertWithProfile } from '../../../types/expert';
-
-const { colors, spacing, typography } = lightTheme;
 
 const SPECIALIZATION_LABEL: Record<string, string> = {
   crop_management: 'Crop Management',
@@ -18,6 +16,8 @@ const SPECIALIZATION_LABEL: Record<string, string> = {
 };
 
 export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onPress: () => void }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const specializations = expert.expert_specializations.map(s => SPECIALIZATION_LABEL[s.specialization] ?? s.specialization);
 
   return (
@@ -40,31 +40,33 @@ export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onP
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    marginBottom: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  textWrap: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  name: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  degree: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-  },
-  specializations: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.xs,
-    color: colors.brand.primary,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    card: {
+      marginBottom: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    textWrap: {
+      flex: 1,
+      marginLeft: spacing.md,
+    },
+    name: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    degree: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    specializations: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.xs,
+      color: colors.brand.primary,
+    },
+  });
+}

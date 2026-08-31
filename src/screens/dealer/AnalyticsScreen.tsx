@@ -1,54 +1,70 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '../../components/ui';
+import { EmptyState, Spinner } from '../../components/ui';
 import { ActivityFeed } from '../../components/features/dashboards/ActivityFeed';
 import { BarChart } from '../../components/features/dashboards/BarChart';
 import { StatCard } from '../../components/features/dashboards/StatCard';
 import { fetchDealerAnalytics } from '../../services/modules/analytics/analyticsService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { DealerAnalytics } from '../../types/analytics';
 
-const { colors, spacing, typography, roleColors } = lightTheme;
-
 export function DealerAnalyticsScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [analytics, setAnalytics] = useState<DealerAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!userId) return;
-      let cancelled = false;
-      fetchDealerAnalytics().then(data => {
-        if (cancelled) return;
-        setAnalytics(data);
+  const load = useCallback(() => {
+    if (!userId) return () => {};
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    fetchDealerAnalytics().then(data => {
+      if (cancelled) return;
+      setAnalytics(data);
+      setLoading(false);
+    }).catch(err => {
+      console.warn('[DealerAnalyticsScreen] failed to load analytics:', err);
+      if (!cancelled) {
+        setError(true);
         setLoading(false);
-      }).catch(err => {
-        console.warn('[DealerAnalyticsScreen] failed to load analytics:', err);
-        if (!cancelled) setLoading(false);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, [userId]),
-  );
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
-  if (loading || !analytics) return <Spinner fullscreen />;
+  useFocusEffect(useCallback(() => load(), [load]));
+
+  if (loading) return <Spinner fullscreen />;
+  if (error || !analytics) {
+    return (
+      <EmptyState
+        title="Couldn't load analytics"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Total Sales" value={`Rs. ${analytics.totalSales.toFixed(0)}`} />
-        <StatCard label="Total Orders" value={analytics.totalOrders} />
-        <StatCard label="Low Stock" value={analytics.lowStockCount} />
+        <StatCard label="Total Sales" value={`Rs. ${analytics.totalSales.toFixed(0)}`} accent={theme.moduleAccents.payments} />
+        <StatCard label="Total Orders" value={analytics.totalOrders} accent={theme.moduleAccents.orders} />
+        <StatCard label="Low Stock" value={analytics.lowStockCount} accent={theme.moduleAccents.inventory} />
       </View>
 
       <Text style={styles.sectionTitle}>Inventory Movement</Text>
       <BarChart
         data={analytics.inventoryMovement.map(m => ({ label: m.month.slice(5), value: m.value }))}
-        color={roleColors.dealer}
+        color={theme.roleColors.dealer}
         emptyMessage="No recorded stock movement yet"
       />
 
@@ -66,24 +82,26 @@ export function DealerAnalyticsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.md,
+      marginBottom: spacing.xl,
+    },
+    sectionTitle: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.sm,
+    },
+  });
+}

@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Linking, StyleSheet, Text, View } from 'react-native';
-import { Badge, Button, FilterChips, Input, Spinner } from '../../components/ui';
+import { Badge, Button, EmptyState, FilterChips, Input, Spinner } from '../../components/ui';
 import {
   fetchExpertsForAdmin,
   resolveExpertDocumentUrl,
@@ -9,10 +9,8 @@ import {
   type ExpertWithVerifications,
 } from '../../services/modules/expert/expertService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { VerificationStatus } from '../../types/expert';
-
-const { colors, spacing, typography } = lightTheme;
 
 type FilterValue = VerificationStatus | 'all';
 
@@ -32,6 +30,8 @@ const STATUS_TONE: Record<VerificationStatus, 'warning' | 'success' | 'error' | 
 };
 
 export function ExpertVerificationScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
   const [filter, setFilter] = useState<FilterValue>('pending');
   const [experts, setExperts] = useState<ExpertWithVerifications[]>([]);
@@ -79,7 +79,7 @@ export function ExpertVerificationScreen() {
         contentContainerStyle={styles.list}
         data={experts}
         keyExtractor={item => item.id}
-        ListEmptyComponent={<Text style={styles.empty}>No experts in this status.</Text>}
+        ListEmptyComponent={<EmptyState title="No experts in this status" />}
         renderItem={({ item }) => {
           const latestVerification = item.expert_verifications[0];
           return (
@@ -156,58 +156,55 @@ export function ExpertVerificationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-    paddingTop: spacing.md,
-  },
-  list: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-  },
-  empty: {
-    textAlign: 'center',
-    color: colors.neutral.gray500,
-    marginTop: spacing.xl,
-  },
-  card: {
-    backgroundColor: colors.neutral.white,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray200,
-    borderRadius: lightTheme.radii.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  name: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  detail: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-    marginTop: spacing.xs / 2,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  docButton: {
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+      paddingTop: spacing.md,
+    },
+    list: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.lg,
+    },
+    card: {
+      backgroundColor: colors.background.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.lg,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+    },
+    name: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    detail: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      marginTop: spacing.xs / 2,
+    },
+    badgeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+    },
+    docButton: {
+      marginTop: spacing.sm,
+      alignSelf: 'flex-start',
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+  });
+}

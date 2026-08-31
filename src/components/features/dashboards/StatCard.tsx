@@ -1,37 +1,55 @@
-import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { Card } from '../../../components/ui';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 
 export interface StatCardProps {
   label: string;
   value: string | number;
+  /** Ties the card to a module (e.g. `theme.moduleAccents.orders`) via a left accent bar.
+   * Defaults to the brand color for stats that don't belong to one specific module. */
+  accent?: string;
 }
 
-const { colors, spacing, typography } = lightTheme;
+export function StatCard({ label, value, accent }: StatCardProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
-export function StatCard({ label, value }: StatCardProps) {
   return (
     <Card style={styles.card}>
+      <View testID="stat-card-accent" style={[styles.accentBar, { backgroundColor: accent ?? theme.colors.brand.primary }]} />
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.label}>{label}</Text>
     </Card>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  value: {
-    fontSize: typography.sizes['2xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  label: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    card: {
+      flex: 1,
+      alignItems: 'flex-start',
+      overflow: 'hidden',
+      paddingLeft: spacing.lg + spacing.xs,
+    },
+    accentBar: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 4,
+      borderTopLeftRadius: radii.lg,
+      borderBottomLeftRadius: radii.lg,
+    },
+    value: {
+      fontSize: typography.sizes['2xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    label: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+  });
+}

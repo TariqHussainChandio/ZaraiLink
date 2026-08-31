@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, Spinner } from '../../components/ui';
+import { Avatar, Button, EmptyState, Spinner } from '../../components/ui';
 import { RatingSummary } from '../../components/features/reviews/RatingSummary';
 import { ReviewCard } from '../../components/features/reviews/ReviewCard';
 import { APP_TABS, MARKETPLACE_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
@@ -10,14 +10,15 @@ import { fetchReviewsForListing } from '../../services/modules/reviews/reviewsSe
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
+import { hapticTap } from '../../utils/haptics';
 import type { ListingWithRelations } from '../../types/marketplace';
 import type { ReviewWithBuyer } from '../../types/reviews';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProps<'ListingDetail'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const addItem = useCartStore(state => state.addItem);
@@ -27,7 +28,8 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
   const [loading, setLoading] = useState(true);
   const [messaging, setMessaging] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
     Promise.all([fetchListingById(listingId), fetchReviewsForListing(listingId)])
       .then(([listingData, reviewsData]) => {
         setListing(listingData);
@@ -44,12 +46,19 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId]);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
   if (loading) return <Spinner fullscreen />;
   if (!listing) {
     return (
-      <View style={styles.container}>
-        <Text>Listing not found.</Text>
-      </View>
+      <EmptyState
+        title="Listing not found"
+        description="It may have been removed, or there was a connection problem."
+        actionLabel="Retry"
+        onAction={load}
+      />
     );
   }
 
@@ -99,6 +108,7 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
                 unit: listing.unit,
                 image: listing.images[0] ?? null,
               });
+              hapticTap();
               Alert.alert('Added to cart', `${listing.title} was added to your cart.`);
             }}
             style={styles.action}
@@ -136,68 +146,70 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  image: {
-    width: '100%',
-    height: 220,
-    borderRadius: lightTheme.radii.lg,
-    backgroundColor: colors.neutral.gray100,
-  },
-  imagePlaceholder: {},
-  title: {
-    marginTop: spacing.lg,
-    fontSize: typography.sizes['2xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  price: {
-    marginTop: spacing.xs,
-    fontSize: typography.sizes.base,
-    color: colors.brand.primary,
-    fontWeight: typography.weights.semibold as any,
-  },
-  category: {
-    marginTop: spacing.xs,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray500,
-  },
-  description: {
-    marginTop: spacing.md,
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray700,
-    lineHeight: typography.lineHeights.base,
-  },
-  sellerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.lg,
-    gap: spacing.sm,
-  },
-  sellerName: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray800,
-  },
-  action: {
-    marginTop: spacing.xl,
-  },
-  secondaryAction: {
-    marginTop: spacing.md,
-  },
-  reviewsSection: {
-    marginTop: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    image: {
+      width: '100%',
+      height: 220,
+      borderRadius: radii.lg,
+      backgroundColor: colors.border,
+    },
+    imagePlaceholder: {},
+    title: {
+      marginTop: spacing.lg,
+      fontSize: typography.sizes['2xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    price: {
+      marginTop: spacing.xs,
+      fontSize: typography.sizes.base,
+      color: colors.brand.primary,
+      fontWeight: typography.weights.semibold as any,
+    },
+    category: {
+      marginTop: spacing.xs,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    description: {
+      marginTop: spacing.md,
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+      lineHeight: typography.lineHeights.base,
+    },
+    sellerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: spacing.lg,
+      gap: spacing.sm,
+    },
+    sellerName: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.primary,
+    },
+    action: {
+      marginTop: spacing.xl,
+    },
+    secondaryAction: {
+      marginTop: spacing.md,
+    },
+    reviewsSection: {
+      marginTop: spacing.xl,
+    },
+    sectionTitle: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.sm,
+    },
+  });
+}

@@ -15,9 +15,9 @@ export interface ExpertProfileInput {
   experience: string;
   professionalDescription: string;
   contact: string;
-  countryId: string | null;
-  provinceId: string | null;
-  cityId: string | null;
+  country: string | null;
+  province: string | null;
+  city: string | null;
   specializations: ExpertSpecialization[];
 }
 
@@ -28,9 +28,9 @@ function toApiProfile(input: ExpertProfileInput) {
     experience: input.experience,
     professional_description: input.professionalDescription,
     contact: input.contact,
-    country_id: input.countryId,
-    province_id: input.provinceId,
-    city_id: input.cityId,
+    country: input.country,
+    province: input.province,
+    city: input.city,
     specializations: input.specializations,
   };
 }

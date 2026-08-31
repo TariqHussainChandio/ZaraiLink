@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { launchImageLibrary, type Asset } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -13,12 +13,10 @@ import {
 } from '../../services/modules/expert/consultationService';
 import { useAuthStore } from '../../store/authStore';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ConsultationPriority } from '../../types/expert';
 import type { Farm } from '../../types/farmer';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
-
-const { colors, spacing, radii, typography } = lightTheme;
 
 const PRIORITY_OPTIONS: { id: ConsultationPriority; label: string }[] = [
   { id: 'low', label: 'Low' },
@@ -37,6 +35,8 @@ const requestSchema = z.object({
 type RequestFormValues = z.infer<typeof requestSchema>;
 
 export function RequestConsultationScreen({ route, navigation }: ConsultationsScreenProps<'RequestConsultation'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { expertId, prefill } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const crops = useMarketplaceStore(state => state.crops);
@@ -180,48 +180,50 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.sm,
-  },
-  imageRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  thumb: {
-    width: 64,
-    height: 64,
-    borderRadius: radii.md,
-    backgroundColor: colors.neutral.gray100,
-  },
-  addImage: {
-    width: 64,
-    height: 64,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addImageLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-  },
-  submit: {
-    marginTop: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.sm,
+    },
+    imageRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    thumb: {
+      width: 64,
+      height: 64,
+      borderRadius: radii.md,
+      backgroundColor: colors.border,
+    },
+    addImage: {
+      width: 64,
+      height: 64,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addImageLabel: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    submit: {
+      marginTop: spacing.md,
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

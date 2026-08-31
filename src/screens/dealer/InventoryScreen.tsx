@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, EmptyState, Input, SelectField, Sheet, Spinner } from '../../components/ui';
+import { Button, EmptyState, Input, SelectField, Sheet, SkeletonList } from '../../components/ui';
 import { InventoryRow } from '../../components/features/dealer/InventoryRow';
 import { StockAdjustModal } from '../../components/features/dealer/StockAdjustModal';
 import { HOME_ROUTES } from '../../constants/routes';
@@ -13,11 +13,9 @@ import {
   updateInventoryItem,
 } from '../../services/modules/dealer/inventoryService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { InventoryItemWithListing } from '../../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
-
-const { colors, spacing, radii, typography } = lightTheme;
 
 interface ItemFormState {
   listingId: string | null;
@@ -38,10 +36,13 @@ const EMPTY_FORM: ItemFormState = {
 };
 
 export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [items, setItems] = useState<InventoryItemWithListing[]>([]);
   const [listings, setListings] = useState<{ id: string; title: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const [formVisible, setFormVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItemWithListing | null>(null);
@@ -53,12 +54,14 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
   const load = useCallback(() => {
     if (!userId) return;
     setLoading(true);
+    setError(false);
     Promise.all([fetchInventory(), fetchDealerListings()]).then(([inv, listingOptions]) => {
       setItems(inv);
       setListings(listingOptions);
       setLoading(false);
     }).catch(err => {
       console.warn('[InventoryScreen] failed to load inventory:', err);
+      setError(true);
       setLoading(false);
     });
   }, [userId]);
@@ -118,8 +121,8 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
       }
       closeForm();
       load();
-    } catch (error) {
-      Alert.alert('Failed to save stock item', error instanceof Error ? error.message : String(error));
+    } catch (err) {
+      Alert.alert('Failed to save stock item', err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -140,7 +143,24 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
     ]);
   };
 
-  if (loading) return <Spinner fullscreen />;
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <SkeletonList />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load inventory"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -219,35 +239,38 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  list: {
-    padding: spacing.lg,
-    paddingBottom: spacing['3xl'],
-  },
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radii.full,
-  },
-  fabLabel: {
-    color: colors.neutral.white,
-    fontWeight: '700',
-  },
-  sheetTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.md,
-  },
-  formAction: {
-    marginTop: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      padding: spacing.lg,
+      paddingBottom: spacing['3xl'],
+    },
+    fab: {
+      position: 'absolute',
+      right: spacing.lg,
+      bottom: spacing.lg,
+      backgroundColor: colors.brand.primary,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderRadius: radii.full,
+      ...shadows.md,
+    },
+    fabLabel: {
+      color: colors.neutral.white,
+      fontWeight: '700',
+    },
+    sheetTitle: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+    },
+    formAction: {
+      marginTop: spacing.sm,
+    },
+  });
+}

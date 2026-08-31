@@ -1,15 +1,15 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { Badge, Button, Spinner } from '../../components/ui';
+import { Badge, Button, EmptyState, Spinner } from '../../components/ui';
 import { fetchAllListingsForModeration, updateListingStatus } from '../../services/modules/marketplace/listingsService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ListingWithRelations } from '../../types/marketplace';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ListingModerationScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
   const [listings, setListings] = useState<ListingWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,38 +71,41 @@ export function ListingModerationScreen() {
           ) : null}
         </View>
       )}
+      ListEmptyComponent={<EmptyState title="No listings yet" description="Listings will show up here once sellers start publishing." />}
     />
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  list: {
-    padding: spacing.lg,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  info: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  title: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  owner: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-    marginVertical: spacing.xs,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      padding: spacing.lg,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    info: {
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    title: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    owner: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+      marginVertical: spacing.xs,
+    },
+  });
+}

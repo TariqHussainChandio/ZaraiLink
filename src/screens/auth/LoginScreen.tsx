@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import {
   KeyboardAvoidingView,
@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { Button, Input, PhoneInput, isValidE164 } from '../../components/ui';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { signIn, type AuthChannel } from '../../services/modules/auth/authService';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
 
 const loginSchema = z
@@ -36,9 +36,9 @@ const loginSchema = z
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-const { colors, spacing, typography } = lightTheme;
-
 export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     control,
@@ -160,65 +160,67 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  title: {
-    fontSize: typography.sizes['3xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  subtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray500,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
-  },
-  submit: {
-    marginTop: spacing.sm,
-  },
-  channelRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  channelChip: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-  },
-  channelChipSelected: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  channelChipLabel: {
-    color: colors.neutral.gray700,
-    fontWeight: typography.weights.medium as any,
-  },
-  channelChipLabelSelected: {
-    color: colors.neutral.white,
-  },
-  errorBanner: {
-    color: colors.semantic.error,
-    marginBottom: spacing.md,
-  },
-  link: {
-    color: colors.brand.primary,
-    fontWeight: typography.weights.semibold as any,
-    marginTop: spacing.lg,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: spacing.xl,
-  },
-  footerText: {
-    color: colors.neutral.gray500,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    flex: { flex: 1 },
+    container: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: spacing.xl,
+    },
+    title: {
+      fontSize: typography.sizes['3xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    subtitle: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
+      marginBottom: spacing.xl,
+    },
+    submit: {
+      marginTop: spacing.sm,
+    },
+    channelRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    channelChip: {
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.md,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    channelChipSelected: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
+    },
+    channelChipLabel: {
+      color: colors.text.secondary,
+      fontWeight: typography.weights.medium as any,
+    },
+    channelChipLabelSelected: {
+      color: colors.neutral.white,
+    },
+    errorBanner: {
+      color: colors.semantic.error,
+      marginBottom: spacing.md,
+    },
+    link: {
+      color: colors.brand.primary,
+      fontWeight: typography.weights.semibold as any,
+      marginTop: spacing.lg,
+    },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: spacing.xl,
+    },
+    footerText: {
+      color: colors.text.secondary,
+    },
+  });
+}

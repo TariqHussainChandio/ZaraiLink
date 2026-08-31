@@ -7,11 +7,12 @@ export interface ProfileUpdateInput {
   phone?: string | null;
   location?: string | null;
   avatar_url?: string | null;
-  country_id?: string | null;
-  province_id?: string | null;
-  city_id?: string | null;
+  country?: string | null;
+  province?: string | null;
+  city?: string | null;
   village?: string | null;
   street?: string | null;
+  notifications_enabled?: boolean;
 }
 
 // No userId param — always the caller's own profile, derived from the verified session token.

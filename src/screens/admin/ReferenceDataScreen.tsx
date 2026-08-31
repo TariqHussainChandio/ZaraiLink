@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
-import { Button, FilterChips, Input, SelectField, Sheet, Spinner } from '../../components/ui';
+import { Button, EmptyState, FilterChips, Input, Sheet, Spinner } from '../../components/ui';
 import {
   createRefDataRow,
   deleteRefDataRow,
@@ -11,17 +11,13 @@ import {
 } from '../../services/modules/reference-data/referenceDataService';
 import { useReferenceDataStore } from '../../store/referenceDataStore';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
-
-const { colors, spacing, typography } = lightTheme;
+import { useTheme, type Theme } from '../../theme';
 
 type Row = Record<string, unknown> & { id: string };
 
 interface FieldConfig {
   key: string;
   label: string;
-  kind: 'text' | 'parentSelect';
-  parentTable?: RefDataTable;
 }
 
 interface TableConfig {
@@ -32,54 +28,21 @@ interface TableConfig {
 }
 
 const TABLE_CONFIG: Record<RefDataTable, TableConfig> = {
-  countries: {
-    title: 'Countries',
-    fields: [
-      { key: 'name', label: 'Name', kind: 'text' },
-      { key: 'iso_code', label: 'ISO Code', kind: 'text' },
-    ],
-    renderLabel: r => String(r.name),
-    renderSubtitle: r => String(r.iso_code),
-  },
-  provinces: {
-    title: 'Provinces',
-    fields: [
-      { key: 'name', label: 'Name', kind: 'text' },
-      { key: 'country_id', label: 'Country', kind: 'parentSelect', parentTable: 'countries' },
-    ],
-    renderLabel: r => String(r.name),
-  },
-  cities: {
-    title: 'Cities',
-    fields: [
-      { key: 'name', label: 'Name', kind: 'text' },
-      { key: 'province_id', label: 'Province', kind: 'parentSelect', parentTable: 'provinces' },
-    ],
-    renderLabel: r => String(r.name),
-  },
-  phone_codes: {
-    title: 'Phone Codes',
-    fields: [
-      { key: 'country_id', label: 'Country', kind: 'parentSelect', parentTable: 'countries' },
-      { key: 'calling_code', label: 'Calling Code', kind: 'text' },
-    ],
-    renderLabel: r => String(r.calling_code),
-  },
   currencies: {
     title: 'Currencies',
     fields: [
-      { key: 'code', label: 'Code', kind: 'text' },
-      { key: 'symbol', label: 'Symbol', kind: 'text' },
-      { key: 'name', label: 'Name', kind: 'text' },
+      { key: 'code', label: 'Code' },
+      { key: 'symbol', label: 'Symbol' },
+      { key: 'name', label: 'Name' },
     ],
     renderLabel: r => `${String(r.code)} — ${String(r.name)}`,
   },
   units: {
     title: 'Units',
     fields: [
-      { key: 'code', label: 'Code', kind: 'text' },
-      { key: 'label', label: 'Label', kind: 'text' },
-      { key: 'applies_to', label: 'Applies To', kind: 'text' },
+      { key: 'code', label: 'Code' },
+      { key: 'label', label: 'Label' },
+      { key: 'applies_to', label: 'Applies To' },
     ],
     renderLabel: r => String(r.label),
     renderSubtitle: r => String(r.applies_to ?? ''),
@@ -87,21 +50,18 @@ const TABLE_CONFIG: Record<RefDataTable, TableConfig> = {
 };
 
 const TABLE_OPTIONS: { value: RefDataTable; label: string }[] = [
-  { value: 'countries', label: 'Countries' },
-  { value: 'provinces', label: 'Provinces' },
-  { value: 'cities', label: 'Cities' },
-  { value: 'phone_codes', label: 'Phone Codes' },
   { value: 'currencies', label: 'Currencies' },
   { value: 'units', label: 'Units' },
 ];
 
 export function ReferenceDataScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
   const invalidateAll = useReferenceDataStore(state => state.invalidateAll);
 
-  const [table, setTable] = useState<RefDataTable>('countries');
+  const [table, setTable] = useState<RefDataTable>('currencies');
   const [rows, setRows] = useState<Row[]>([]);
-  const [parentRows, setParentRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -109,20 +69,12 @@ export function ReferenceDataScreen() {
   const [form, setForm] = useState<Record<string, string>>({});
 
   const config = TABLE_CONFIG[table];
-  const parentField = config.fields.find(f => f.kind === 'parentSelect');
 
   const load = useCallback(async () => {
     setLoading(true);
     const data = await fetchRefDataRows(table);
     setRows(data as Row[]);
-    if (parentField?.parentTable) {
-      setParentRows((await fetchRefDataRows(parentField.parentTable)) as Row[]);
-    } else {
-      setParentRows([]);
-    }
     setLoading(false);
-    // parentField is derived from `table` every render, safe to omit from deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table]);
 
   useFocusEffect(
@@ -134,14 +86,6 @@ export function ReferenceDataScreen() {
   useEffect(() => {
     setForm({});
   }, [table]);
-
-  const parentLabel = (id: unknown) => {
-    const parent = parentRows.find(p => p.id === id);
-    if (!parent) return null;
-    return parentField?.parentTable === 'countries'
-      ? `${parent.name} (${parent.iso_code ?? ''})`
-      : String(parent.name);
-  };
 
   const openCreate = () => {
     setEditing(null);
@@ -231,6 +175,7 @@ export function ReferenceDataScreen() {
               </View>
             </View>
           )}
+          ListEmptyComponent={<EmptyState title={`No ${config.title.toLowerCase()} yet`} description="Add the first one below." />}
           ListFooterComponent={
             <Button label={`+ Add ${config.title.slice(0, -1)}`} variant="secondary" onPress={openCreate} style={styles.addButton} />
           }
@@ -239,69 +184,61 @@ export function ReferenceDataScreen() {
 
       <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)}>
         <Text style={styles.sheetTitle}>{editing ? `Edit ${config.title.slice(0, -1)}` : `New ${config.title.slice(0, -1)}`}</Text>
-        {config.fields.map(field =>
-          field.kind === 'parentSelect' ? (
-            <SelectField
-              key={field.key}
-              label={field.label}
-              value={form[field.key] || null}
-              options={parentRows.map(p => ({ id: p.id, label: parentLabel(p.id) ?? String(p.id) }))}
-              onSelect={id => setForm(prev => ({ ...prev, [field.key]: id }))}
-            />
-          ) : (
-            <Input
-              key={field.key}
-              label={field.label}
-              value={form[field.key] ?? ''}
-              onChangeText={text => setForm(prev => ({ ...prev, [field.key]: text }))}
-            />
-          ),
-        )}
+        {config.fields.map(field => (
+          <Input
+            key={field.key}
+            label={field.label}
+            value={form[field.key] ?? ''}
+            onChangeText={text => setForm(prev => ({ ...prev, [field.key]: text }))}
+          />
+        ))}
         <Button label={editing ? 'Save Changes' : 'Create'} loading={savingId === (editing?.id ?? 'new')} onPress={save} />
       </Sheet>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-    paddingTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  list: {
-    paddingBottom: spacing.lg,
-  },
-  row: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  info: {
-    marginBottom: spacing.sm,
-  },
-  name: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  subtitle: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-    marginTop: spacing.xs / 2,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  addButton: {
-    marginTop: spacing.lg,
-  },
-  sheetTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.lg,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+      paddingTop: spacing.md,
+      paddingHorizontal: spacing.lg,
+    },
+    list: {
+      paddingBottom: spacing.lg,
+    },
+    row: {
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    info: {
+      marginBottom: spacing.sm,
+    },
+    name: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    subtitle: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+      marginTop: spacing.xs / 2,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    addButton: {
+      marginTop: spacing.lg,
+    },
+    sheetTitle: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.lg,
+    },
+  });
+}

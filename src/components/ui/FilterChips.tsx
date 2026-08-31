@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 
 export interface FilterChipOption<T extends string> {
   value: T;
@@ -13,9 +13,10 @@ export interface FilterChipsProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function FilterChips<T extends string>({ options, value, onChange }: FilterChipsProps<T>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <ScrollView
       horizontal
@@ -30,6 +31,9 @@ export function FilterChips<T extends string>({ options, value, onChange }: Filt
             key={option.value}
             style={[styles.chip, active && styles.chipActive]}
             onPress={() => onChange(option.value)}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
           >
             <Text style={[styles.label, active && styles.labelActive]}>{option.label}</Text>
           </TouchableOpacity>
@@ -39,32 +43,37 @@ export function FilterChips<T extends string>({ options, value, onChange }: Filt
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexGrow: 0,
-    marginBottom: spacing.md,
-  },
-  content: {
-    gap: spacing.xs,
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radii.full,
-    backgroundColor: colors.neutral.white,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray200,
-  },
-  chipActive: {
-    backgroundColor: colors.neutral.gray900,
-    borderColor: colors.neutral.gray900,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray700,
-  },
-  labelActive: {
-    color: colors.neutral.white,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    row: {
+      flexGrow: 0,
+      marginBottom: spacing.md,
+    },
+    content: {
+      gap: spacing.xs,
+    },
+    chip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radii.full,
+      backgroundColor: colors.background.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    // Selected state is deliberately inverted relative to the page (dark chip on a light page,
+    // light chip on a dark page) rather than using a fixed color, so it always reads as the
+    // highest-contrast, "this one's active" state regardless of theme.
+    chipActive: {
+      backgroundColor: colors.text.primary,
+      borderColor: colors.text.primary,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.secondary,
+    },
+    labelActive: {
+      color: colors.background.surface,
+    },
+  });
+}

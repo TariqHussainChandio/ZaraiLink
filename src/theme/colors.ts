@@ -42,4 +42,41 @@ export const colors = {
   },
 } as const;
 
-export type Colors = typeof colors;
+// Dark-mode counterpart. `neutral` is left UNCHANGED from `colors` — it's literal color names
+// (e.g. `neutral.white` really does mean white), and most of its ~200 call sites use it for
+// things that must stay the same regardless of theme (white text on a green Button). The four
+// genuinely structural, theme-dependent tokens — `background.default/surface`,
+// `text.primary/secondary`, `border` — get real dark values; these are what screens/components
+// migrated to `useTheme()` read for chrome (page/card backgrounds, primary/secondary text,
+// hairline borders).
+//
+// `brand.primary` and `semantic.*` DO get brightened here, unlike `neutral` — 15+ existing call
+// sites use `colors.brand.primary` directly as TEXT/icon color (not just as a filled button
+// background), and the original #2E7D32 is dark-on-dark against a near-black page background
+// (fails contrast). Brightening it in the palette fixes every one of those call sites without
+// touching their code — they already read `theme.colors.brand.primary`, they just get a
+// different value now. Filled backgrounds (a green Button, a selected chip) are unaffected
+// either way since white text on `#66BB6A` still contrasts fine.
+export const darkColors = {
+  ...colors,
+  brand: {
+    ...colors.brand,
+    primary: '#66BB6A',
+    primaryDark: '#43A047',
+  },
+  semantic: {
+    success: '#66BB6A',
+    warning: '#FFA726',
+    error: '#EF5350',
+    info: '#42A5F5',
+  },
+  background: {
+    default: '#10140F', // near-black with a faint green cast, not pure black — matches the brand's warm/organic tone rather than a generic dark UI
+    surface: '#1B211A', // one step up — cards/sheets sit visibly above the page
+  },
+  text: {
+    primary: '#EDF1E9', // off-white, not pure white — softer on a dark surface
+    secondary: '#98A398',
+  },
+  border: '#2C332B',
+} as const;

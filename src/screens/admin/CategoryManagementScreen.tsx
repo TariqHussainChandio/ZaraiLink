@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
-import { Button, Input, Sheet, Spinner } from '../../components/ui';
+import { Button, EmptyState, Input, Sheet, Spinner } from '../../components/ui';
 import {
   createCategory,
   deleteCategory,
@@ -9,12 +9,12 @@ import {
   updateCategory,
 } from '../../services/modules/marketplace/listingsService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { Category } from '../../types/marketplace';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function CategoryManagementScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +122,9 @@ export function CategoryManagementScreen() {
             </View>
           </View>
         )}
+        ListEmptyComponent={
+          <EmptyState title="No categories yet" description="Add the first product category below." />
+        }
         ListFooterComponent={
           <Button label="+ Add Category" variant="secondary" onPress={openCreate} style={styles.addButton} />
         }
@@ -142,43 +145,45 @@ export function CategoryManagementScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  list: {
-    padding: spacing.lg,
-  },
-  row: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  info: {
-    marginBottom: spacing.sm,
-  },
-  name: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  slug: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-    marginTop: spacing.xs / 2,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  addButton: {
-    marginTop: spacing.lg,
-  },
-  sheetTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.lg,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      padding: spacing.lg,
+    },
+    row: {
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    info: {
+      marginBottom: spacing.sm,
+    },
+    name: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    slug: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+      marginTop: spacing.xs / 2,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    addButton: {
+      marginTop: spacing.lg,
+    },
+    sheetTitle: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.lg,
+    },
+  });
+}

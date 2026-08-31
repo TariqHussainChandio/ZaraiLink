@@ -1,6 +1,6 @@
-// Full SRDS v4.0 §12.2 lifecycle. See ALLOWED_TRANSITIONS in ordersService.ts for which moves
-// are reachable from the UI; `payment_failed` stays unreachable until Module 10 (Payments)
-// adds a real payment step for checkout to fail against.
+// Full SRDS v4.0 §12.2 lifecycle. See ALLOWED_TRANSITIONS in backend/app/services/orders_service.py
+// for which moves are reachable and by whom. `expired` is system-only — a `pending` order the
+// seller never acts on gets flipped to it lazily (no user-facing action ever requests it).
 export type OrderStatus =
   | 'pending'
   | 'confirmed'
@@ -11,7 +11,8 @@ export type OrderStatus =
   | 'rejected'
   | 'payment_failed'
   | 'disputed'
-  | 'refunded';
+  | 'refunded'
+  | 'expired';
 
 export interface Order {
   id: string;

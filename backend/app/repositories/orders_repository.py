@@ -52,7 +52,7 @@ def insert_order_items(access_token: str, order_id: str, items: list[dict[str, A
 
 
 def insert_order_status_history(
-    access_token: str, order_id: str, from_status: str | None, to_status: str, changed_by: str
+    access_token: str, order_id: str, from_status: str | None, to_status: str, changed_by: str | None
 ) -> None:
     get_user_scoped_client(access_token).table("order_status_history").insert(
         {"order_id": order_id, "from_status": from_status, "to_status": to_status, "changed_by": changed_by}
@@ -110,13 +110,25 @@ def update_order_status(access_token: str, order_id: str, status: str) -> None:
     get_user_scoped_client(access_token).table("orders").update({"status": status}).eq("id", order_id).execute()
 
 
-def fetch_order_items_for_inventory(access_token: str, order_id: str) -> list[dict]:
-    return (
+def reduce_stock_for_order(access_token: str, order_id: str, actor_id: str) -> None:
+    """
+    `public.reduce_stock_for_order` (supabase/migrations/20260901130000_...) locks and validates
+    every linked inventory row before reducing any of them, all inside the one transaction this
+    single RPC call runs in — atomic for the whole order, not just per item.
+    """
+    get_user_scoped_client(access_token).rpc(
+        "reduce_stock_for_order", {"p_order_id": order_id, "p_actor": actor_id}
+    ).execute()
+
+
+def fetch_stale_pending_order_ids(access_token: str, user_id: str, cutoff_iso: str) -> list[str]:
+    response = (
         get_user_scoped_client(access_token)
-        .table("order_items")
-        .select("listing_id,quantity")
-        .eq("order_id", order_id)
+        .table("orders")
+        .select("id")
+        .eq("status", "pending")
+        .lt("created_at", cutoff_iso)
+        .or_(f"buyer_id.eq.{user_id},seller_id.eq.{user_id}")
         .execute()
-        .data
-        or []
     )
+    return [row["id"] for row in (response.data or [])]

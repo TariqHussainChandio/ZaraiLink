@@ -1,14 +1,14 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { Badge, FilterChips, Spinner } from '../../components/ui';
+import { Badge, EmptyState, FilterChips, Spinner } from '../../components/ui';
 import { fetchAuditLogs } from '../../services/modules/admin/adminService';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { AuditLogEntryWithActor } from '../../types/audit';
 
-const { colors, spacing, typography } = lightTheme;
-
 export function AuditLogScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [entries, setEntries] = useState<AuditLogEntryWithActor[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -41,7 +41,12 @@ export function AuditLogScreen() {
         contentContainerStyle={styles.list}
         data={filtered}
         keyExtractor={item => item.id}
-        ListEmptyComponent={<Text style={styles.empty}>No audit log entries yet.</Text>}
+        ListEmptyComponent={
+          <EmptyState
+            title="No audit log entries yet"
+            description={filter === 'all' ? undefined : 'Try a different entity filter.'}
+          />
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.headerRow}>
@@ -67,56 +72,53 @@ export function AuditLogScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-    paddingTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  list: {
-    paddingBottom: spacing.lg,
-  },
-  empty: {
-    textAlign: 'center',
-    color: colors.neutral.gray500,
-    marginTop: spacing.xl,
-  },
-  card: {
-    backgroundColor: colors.neutral.white,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray200,
-    borderRadius: lightTheme.radii.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  time: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-  },
-  summary: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray700,
-    marginTop: spacing.sm,
-  },
-  bold: {
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  stateBlock: {
-    marginTop: spacing.sm,
-    backgroundColor: colors.neutral.gray50,
-    borderRadius: lightTheme.radii.sm,
-    padding: spacing.sm,
-  },
-  mono: {
-    fontFamily: 'monospace',
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray700,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+      paddingTop: spacing.md,
+      paddingHorizontal: spacing.lg,
+    },
+    list: {
+      paddingBottom: spacing.lg,
+    },
+    card: {
+      backgroundColor: colors.background.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.lg,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    time: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    summary: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      marginTop: spacing.sm,
+    },
+    bold: {
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    stateBlock: {
+      marginTop: spacing.sm,
+      backgroundColor: colors.background.default,
+      borderRadius: radii.sm,
+      padding: spacing.sm,
+    },
+    mono: {
+      fontFamily: 'monospace',
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+  });
+}

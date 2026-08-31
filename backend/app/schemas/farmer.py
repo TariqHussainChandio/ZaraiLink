@@ -6,9 +6,9 @@ class FarmInput(BaseModel):
     area: float | None = None
     land_unit: str | None = None
     notes: str | None = None
-    country_id: str | None = None
-    province_id: str | None = None
-    city_id: str | None = None
+    country: str | None = None
+    province: str | None = None
+    city: str | None = None
 
 
 class FarmUpdateInput(BaseModel):
@@ -16,9 +16,9 @@ class FarmUpdateInput(BaseModel):
     area: float | None = None
     land_unit: str | None = None
     notes: str | None = None
-    country_id: str | None = None
-    province_id: str | None = None
-    city_id: str | None = None
+    country: str | None = None
+    province: str | None = None
+    city: str | None = None
 
 
 class FarmCropInput(BaseModel):

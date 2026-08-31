@@ -7,7 +7,7 @@ import { Button, Input, LocationPicker, SelectField } from '../../components/ui'
 import { createFarm } from '../../services/modules/farmer/farmService';
 import { useAuthStore } from '../../store/authStore';
 import { useReferenceDataStore } from '../../store/referenceDataStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 const farmSchema = z.object({
@@ -15,16 +15,16 @@ const farmSchema = z.object({
   area: z.string(),
   landUnit: z.string().nullable(),
   notes: z.string(),
-  countryId: z.string().nullable(),
-  provinceId: z.string().nullable(),
-  cityId: z.string().nullable(),
+  country: z.string().nullable(),
+  province: z.string().nullable(),
+  city: z.string().nullable(),
 });
 
 type FarmFormValues = z.infer<typeof farmSchema>;
 
-const { spacing } = lightTheme;
-
 export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const units = useReferenceDataStore(state => state.units);
   const loadUnits = useReferenceDataStore(state => state.loadUnits);
@@ -48,9 +48,9 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
       area: '',
       landUnit: null,
       notes: '',
-      countryId: null,
-      provinceId: null,
-      cityId: null,
+      country: null,
+      province: null,
+      city: null,
     },
   });
 
@@ -62,9 +62,9 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         area: values.area ? Number(values.area) : null,
         landUnit: values.landUnit,
         notes: values.notes || null,
-        countryId: values.countryId,
-        provinceId: values.provinceId,
-        cityId: values.cityId,
+        country: values.country,
+        province: values.province,
+        city: values.city,
       });
       navigation.goBack();
     } catch (error) {
@@ -83,12 +83,12 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
       />
 
       <LocationPicker
-        countryId={watch('countryId')}
-        provinceId={watch('provinceId')}
-        cityId={watch('cityId')}
-        onCountryChange={id => setValue('countryId', id)}
-        onProvinceChange={id => setValue('provinceId', id)}
-        onCityChange={id => setValue('cityId', id)}
+        country={watch('country')}
+        province={watch('province')}
+        city={watch('city')}
+        onCountryChange={value => setValue('country', value)}
+        onProvinceChange={value => setValue('province', value)}
+        onCityChange={value => setValue('city', value)}
       />
 
       <Controller
@@ -125,16 +125,18 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  submit: {
-    marginTop: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-});
+function makeStyles({ colors, spacing }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    submit: {
+      marginTop: spacing.md,
+      marginBottom: spacing['2xl'],
+    },
+  });
+}

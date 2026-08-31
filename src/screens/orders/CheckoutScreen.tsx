@@ -4,10 +4,8 @@ import { Button, Card, Input } from '../../components/ui';
 import { checkout } from '../../services/modules/orders/ordersService';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore, type CartItem } from '../../store/cartStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
-
-const { colors, spacing, typography } = lightTheme;
 
 function groupBySeller(items: CartItem[]): Map<string, CartItem[]> {
   const groups = new Map<string, CartItem[]>();
@@ -20,6 +18,8 @@ function groupBySeller(items: CartItem[]): Map<string, CartItem[]> {
 }
 
 export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const { items, clear } = useCartStore();
   const [submitting, setSubmitting] = useState(false);
@@ -115,60 +115,62 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  sellerCard: {
-    marginBottom: spacing.md,
-  },
-  sellerTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray600,
-    marginBottom: spacing.sm,
-  },
-  sellerSummary: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral.gray100,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  itemLabel: {
-    flex: 1,
-    marginRight: spacing.sm,
-    color: colors.neutral.gray900,
-  },
-  itemPrice: {
-    color: colors.neutral.gray700,
-    fontWeight: typography.weights.medium as any,
-  },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral.gray200,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  totalLabel: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray600,
-  },
-  totalValue: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    sellerCard: {
+      marginBottom: spacing.md,
+    },
+    sellerTitle: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.sm,
+    },
+    sellerSummary: {
+      marginTop: spacing.sm,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    itemRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+    },
+    itemLabel: {
+      flex: 1,
+      marginRight: spacing.sm,
+      color: colors.text.primary,
+    },
+    itemPrice: {
+      color: colors.text.secondary,
+      fontWeight: typography.weights.medium as any,
+    },
+    footer: {
+      padding: spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.md,
+    },
+    totalLabel: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+    },
+    totalValue: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+  });
+}

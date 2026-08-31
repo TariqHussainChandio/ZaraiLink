@@ -15,4 +15,22 @@ export const statusColors = {
   suspended: '#D32F2F',
 } as const;
 
+// Dark-ground contrast pass: each value brightened one step (WCAG contrast against a ~#10140F
+// page background is noticeably worse for these mid-saturation tones than against white —
+// `cancelled`'s #757575 in particular reads as barely-there on dark). Hue kept the same so a
+// status still reads as "the same color" switching themes, just lighter.
+export const statusColorsDark = {
+  success: '#66BB6A',
+  completed: '#66BB6A',
+  pending: '#FFA726',
+  processing: '#42A5F5',
+  warning: '#FFA726',
+  rejected: '#EF5350',
+  cancelled: '#9E9E9E',
+  failed: '#E57373',
+  verified: '#66BB6A',
+  underReview: '#FFD54F',
+  suspended: '#EF5350',
+} as const;
+
 export type StatusColorKey = keyof typeof statusColors;

@@ -12,7 +12,7 @@ def fetch_listings(
     min_price: float | None,
     max_price: float | None,
     seller_role: str | None,
-    city_id: str | None,
+    city: str | None,
     crop_name: str | None,
     page: int,
     owner_id: str | None = None,
@@ -31,8 +31,8 @@ def fetch_listings(
         query = query.lte("price", max_price)
     if seller_role:
         query = query.eq("seller_role", seller_role)
-    if city_id:
-        query = query.eq("location->>city_id", city_id)
+    if city:
+        query = query.ilike("location->>city", f"%{city}%")
     if crop_name:
         query = query.contains("crop_compatibility", [crop_name])
 

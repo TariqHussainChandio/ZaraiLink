@@ -23,9 +23,9 @@ def test_update_farm_only_touches_location_when_a_location_field_was_provided():
 
 def test_update_farm_rebuilds_location_when_any_location_field_provided():
     with patch("app.services.farmer_service.repo.update_farm", return_value={"id": "farm-1"}) as mock_update:
-        service.update_farm(FARMER, "farm-1", FarmUpdateInput(city_id="city-9"))
+        service.update_farm(FARMER, "farm-1", FarmUpdateInput(city="City Nine"))
     fields = mock_update.call_args[0][2]
-    assert fields["location"] == {"country_id": None, "province_id": None, "city_id": "city-9"}
+    assert fields["location"] == {"country": None, "province": None, "city": "City Nine"}
 
 
 def test_list_farms_without_authorization_header_is_rejected():

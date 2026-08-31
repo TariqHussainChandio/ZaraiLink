@@ -1,26 +1,76 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/ui';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES, setLanguage, type LanguageCode } from '../../localization';
+import { updateProfile } from '../../services/modules/profile/profileService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useThemeStore, type ThemeMode } from '../../store/themeStore';
+import { useTheme, type Theme } from '../../theme';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
 
-const { colors, spacing, radii, typography } = lightTheme;
+const THEME_MODES: ThemeMode[] = ['light', 'dark', 'system'];
 
 export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
   const signOut = useAuthStore(state => state.signOut);
+  const profile = useAuthStore(state => state.profile);
+  const refreshProfile = useAuthStore(state => state.refreshProfile);
   const { t, i18n } = useTranslation();
-  // Local-only stub — there's no notification-preferences table yet.
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const themeMode = useThemeStore(state => state.mode);
+  const setThemeMode = useThemeStore(state => state.setMode);
+  const [savingNotifications, setSavingNotifications] = useState(false);
+
+  const onToggleNotifications = async (value: boolean) => {
+    setSavingNotifications(true);
+    try {
+      await updateProfile({ notifications_enabled: value });
+      await refreshProfile();
+    } catch (error) {
+      Alert.alert(
+        'Could not update notification setting',
+        error instanceof Error ? error.message : String(error),
+      );
+    } finally {
+      setSavingNotifications(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.row}>
         <Text style={styles.rowLabel}>{t('settings.notifications')}</Text>
-        <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
+        <Switch
+          value={profile?.notifications_enabled ?? true}
+          onValueChange={onToggleNotifications}
+          disabled={savingNotifications}
+          trackColor={{ true: theme.colors.brand.primary }}
+        />
+      </View>
+      <View style={styles.row}>
+        <Text style={styles.rowLabel}>{t('settings.appearance')}</Text>
+        <View style={styles.languageRow}>
+          {THEME_MODES.map(value => (
+            <TouchableOpacity
+              key={value}
+              style={[styles.languageChip, themeMode === value && styles.languageChipSelected]}
+              onPress={() => setThemeMode(value)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: themeMode === value }}
+            >
+              <Text
+                style={[
+                  styles.languageChipLabel,
+                  themeMode === value && styles.languageChipLabelSelected,
+                ]}
+              >
+                {t(`settings.appearance${value[0].toUpperCase()}${value.slice(1)}`)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
       <View style={styles.row}>
         <Text style={styles.rowLabel}>{t('settings.language')}</Text>
@@ -30,6 +80,8 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
               key={code}
               style={[styles.languageChip, i18n.language === code && styles.languageChipSelected]}
               onPress={() => setLanguage(code as LanguageCode)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: i18n.language === code }}
             >
               <Text
                 style={[
@@ -55,48 +107,50 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-    padding: spacing.lg,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  rowLabel: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray900,
-  },
-  languageRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  languageChip: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-  },
-  languageChipSelected: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  languageChipLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray700,
-    fontWeight: typography.weights.medium as any,
-  },
-  languageChipLabelSelected: {
-    color: colors.neutral.white,
-  },
-  action: {
-    marginTop: spacing.xl,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+      padding: spacing.lg,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    rowLabel: {
+      fontSize: typography.sizes.base,
+      color: colors.text.primary,
+    },
+    languageRow: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+    },
+    languageChip: {
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    languageChipSelected: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
+    },
+    languageChipLabel: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      fontWeight: typography.weights.medium as any,
+    },
+    languageChipLabelSelected: {
+      color: colors.neutral.white,
+    },
+    action: {
+      marginTop: spacing.xl,
+    },
+  });
+}

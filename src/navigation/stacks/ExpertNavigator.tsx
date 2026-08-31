@@ -11,7 +11,7 @@ import { ExpertApplicationScreen } from '../../screens/expert/ExpertApplicationS
 import { ExpertDashboardScreen } from '../../screens/expert/DashboardScreen';
 import { NotificationListScreen } from '../../screens/notifications/NotificationListScreen';
 import { useUnreadNotificationsCount } from '../../hooks/api/useUnreadNotificationsCount';
-import { lightTheme } from '../../theme';
+import { useTheme } from '../../theme';
 import { MessagingNavigator, type MessagingStackParamList } from './MessagingNavigator';
 import { ProfileNavigator, type ProfileStackParamList } from './ProfileNavigator';
 
@@ -99,14 +99,15 @@ const Tab = createBottomTabNavigator<ExpertTabParamList>();
 // Dedicated tab shell for the Expert role (SRDS v4.0 §34): Dashboard, Consultations,
 // Messages, Notifications, Profile — deliberately no Marketplace/Orders tabs.
 export function ExpertNavigator() {
+  const theme = useTheme();
   const { count: unreadCount } = useUnreadNotificationsCount();
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: lightTheme.roleColors.expert,
-        tabBarInactiveTintColor: lightTheme.colors.neutral.gray400,
+        tabBarActiveTintColor: theme.roleColors.expert,
+        tabBarInactiveTintColor: theme.colors.text.secondary,
       }}
     >
       <Tab.Screen

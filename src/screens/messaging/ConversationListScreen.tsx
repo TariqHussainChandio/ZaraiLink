@@ -1,16 +1,18 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ConversationListItem } from '../../components/features/messaging/ConversationListItem';
 import { MESSAGING_ROUTES } from '../../constants/routes';
 import { fetchConversations } from '../../services/modules/messaging/messagingService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ConversationWithPreview } from '../../types/messaging';
 import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavigator';
 
 export function ConversationListScreen({ navigation }: MessagingScreenProps<'ConversationList'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [conversations, setConversations] = useState<ConversationWithPreview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,9 +62,11 @@ export function ConversationListScreen({ navigation }: MessagingScreenProps<'Con
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.neutral.white,
-  },
-});
+function makeStyles({ colors }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+  });
+}

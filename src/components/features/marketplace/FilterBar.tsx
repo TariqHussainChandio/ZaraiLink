@@ -1,9 +1,9 @@
 import { SlidersHorizontal } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Input, LocationPicker, Sheet } from '../../../components/ui';
 import { useMarketplaceStore } from '../../../store/marketplaceStore';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { Category } from '../../../types/marketplace';
 import { CategoryChip } from './CategoryChip';
 
@@ -15,12 +15,10 @@ export interface FilterBarProps {
   onSelectCategory: (categoryId: string | null) => void;
   minPrice: number | null;
   maxPrice: number | null;
-  cityId: string | null;
+  city: string | null;
   cropName: string | null;
-  onApplyMoreFilters: (filters: { minPrice: number | null; maxPrice: number | null; cityId: string | null; cropName: string | null }) => void;
+  onApplyMoreFilters: (filters: { minPrice: number | null; maxPrice: number | null; city: string | null; cropName: string | null }) => void;
 }
-
-const { colors, spacing, radii, typography } = lightTheme;
 
 export function FilterBar({
   search,
@@ -30,16 +28,18 @@ export function FilterBar({
   onSelectCategory,
   minPrice,
   maxPrice,
-  cityId,
+  city,
   cropName,
   onApplyMoreFilters,
 }: FilterBarProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draftMinPrice, setDraftMinPrice] = useState(minPrice ? String(minPrice) : '');
   const [draftMaxPrice, setDraftMaxPrice] = useState(maxPrice ? String(maxPrice) : '');
-  const [draftCountryId, setDraftCountryId] = useState<string | null>(null);
-  const [draftProvinceId, setDraftProvinceId] = useState<string | null>(null);
-  const [draftCityId, setDraftCityId] = useState<string | null>(cityId);
+  const [draftCountry, setDraftCountry] = useState<string | null>(null);
+  const [draftProvince, setDraftProvince] = useState<string | null>(null);
+  const [draftCity, setDraftCity] = useState<string | null>(city);
   const [draftCropName, setDraftCropName] = useState<string | null>(cropName);
 
   const crops = useMarketplaceStore(state => state.crops);
@@ -49,12 +49,12 @@ export function FilterBar({
     loadCrops();
   }, [loadCrops]);
 
-  const activeMoreFiltersCount = [minPrice, maxPrice, cityId, cropName].filter(v => v !== null).length;
+  const activeMoreFiltersCount = [minPrice, maxPrice, city, cropName].filter(v => v !== null).length;
 
   const openSheet = () => {
     setDraftMinPrice(minPrice ? String(minPrice) : '');
     setDraftMaxPrice(maxPrice ? String(maxPrice) : '');
-    setDraftCityId(cityId);
+    setDraftCity(city);
     setDraftCropName(cropName);
     setSheetOpen(true);
   };
@@ -63,7 +63,7 @@ export function FilterBar({
     onApplyMoreFilters({
       minPrice: draftMinPrice ? Number(draftMinPrice) : null,
       maxPrice: draftMaxPrice ? Number(draftMaxPrice) : null,
-      cityId: draftCityId,
+      city: draftCity,
       cropName: draftCropName,
     });
     setSheetOpen(false);
@@ -72,11 +72,11 @@ export function FilterBar({
   const clear = () => {
     setDraftMinPrice('');
     setDraftMaxPrice('');
-    setDraftCountryId(null);
-    setDraftProvinceId(null);
-    setDraftCityId(null);
+    setDraftCountry(null);
+    setDraftProvince(null);
+    setDraftCity(null);
     setDraftCropName(null);
-    onApplyMoreFilters({ minPrice: null, maxPrice: null, cityId: null, cropName: null });
+    onApplyMoreFilters({ minPrice: null, maxPrice: null, city: null, cropName: null });
     setSheetOpen(false);
   };
 
@@ -90,8 +90,15 @@ export function FilterBar({
             onChangeText={onSearchChange}
           />
         </View>
-        <TouchableOpacity style={styles.filterButton} onPress={openSheet}>
-          <SlidersHorizontal color={colors.brand.primary} size={20} />
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={openSheet}
+          accessibilityRole="button"
+          accessibilityLabel={
+            activeMoreFiltersCount > 0 ? `Filters, ${activeMoreFiltersCount} active` : 'Filters'
+          }
+        >
+          <SlidersHorizontal color={theme.colors.brand.primary} size={20} />
           {activeMoreFiltersCount > 0 ? (
             <View style={styles.filterBadge}>
               <Text style={styles.filterBadgeLabel}>{activeMoreFiltersCount}</Text>
@@ -126,6 +133,7 @@ export function FilterBar({
           <View style={styles.priceRow}>
             <View style={styles.priceField}>
               <Input
+                testID="filter-min-price"
                 label="Min price"
                 keyboardType="numeric"
                 value={draftMinPrice}
@@ -134,6 +142,7 @@ export function FilterBar({
             </View>
             <View style={styles.priceField}>
               <Input
+                testID="filter-max-price"
                 label="Max price"
                 keyboardType="numeric"
                 value={draftMaxPrice}
@@ -143,12 +152,12 @@ export function FilterBar({
           </View>
 
           <LocationPicker
-            countryId={draftCountryId}
-            provinceId={draftProvinceId}
-            cityId={draftCityId}
-            onCountryChange={setDraftCountryId}
-            onProvinceChange={setDraftProvinceId}
-            onCityChange={setDraftCityId}
+            country={draftCountry}
+            province={draftProvince}
+            city={draftCity}
+            onCountryChange={setDraftCountry}
+            onProvinceChange={setDraftProvince}
+            onCityChange={setDraftCity}
           />
 
           {crops.length > 0 ? (
@@ -175,69 +184,71 @@ export function FilterBar({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  searchField: {
-    flex: 1,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: colors.brand.primary,
-    borderRadius: radii.full,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterBadgeLabel: {
-    color: colors.neutral.white,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  chipRow: {
-    paddingBottom: spacing.md,
-  },
-  sheetTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.md,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  priceField: {
-    flex: 1,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.xs,
-  },
-  applyButton: {
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+    },
+    searchField: {
+      flex: 1,
+    },
+    filterButton: {
+      width: 44,
+      height: 44,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filterBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      backgroundColor: colors.brand.primary,
+      borderRadius: radii.full,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 3,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filterBadgeLabel: {
+      color: colors.neutral.white,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    chipRow: {
+      paddingBottom: spacing.md,
+    },
+    sheetTitle: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+    },
+    priceRow: {
+      flexDirection: 'row',
+      gap: spacing.md,
+    },
+    priceField: {
+      flex: 1,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    applyButton: {
+      marginTop: spacing.md,
+      marginBottom: spacing.sm,
+    },
+  });
+}

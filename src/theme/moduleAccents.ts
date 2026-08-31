@@ -16,4 +16,22 @@ export const moduleAccents = {
   admin: '#374151',
 } as const;
 
+// Dark-ground contrast pass, same reasoning and adjustments as roleColors/statusColors —
+// `admin` is the one that actually needed lightening rather than just one brightness step.
+export const moduleAccentsDark = {
+  marketplace: '#66BB6A',
+  farmer: '#66BB6A',
+  dealer: '#FFA726',
+  inventory: '#FFA726',
+  buyer: '#42A5F5',
+  orders: '#42A5F5',
+  expert: '#AB47BC',
+  consultation: '#AB47BC',
+  diseaseAdvisory: '#26A69A',
+  payments: '#66BB6A',
+  messages: '#42A5F5',
+  notifications: '#FFD54F',
+  admin: '#9CA3AF',
+} as const;
+
 export type ModuleAccentKey = keyof typeof moduleAccents;

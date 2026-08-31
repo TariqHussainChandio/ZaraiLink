@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import { EmptyState } from './EmptyState';
 import { Sheet } from './Sheet';
 import { Spinner } from './Spinner';
@@ -22,8 +22,6 @@ export interface SelectFieldProps {
   searchable?: boolean;
 }
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function SelectField({
   label,
   placeholder = 'Select...',
@@ -35,6 +33,8 @@ export function SelectField({
   loading,
   searchable = true,
 }: SelectFieldProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -70,7 +70,7 @@ export function SelectField({
           <TextInput
             style={styles.search}
             placeholder="Search"
-            placeholderTextColor={colors.neutral.gray400}
+            placeholderTextColor={theme.colors.text.secondary}
             value={query}
             onChangeText={setQuery}
             autoFocus
@@ -105,68 +105,70 @@ export function SelectField({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.xs,
-  },
-  field: {
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    backgroundColor: colors.neutral.white,
-  },
-  fieldError: {
-    borderColor: colors.semantic.error,
-  },
-  fieldDisabled: {
-    backgroundColor: colors.neutral.gray100,
-  },
-  value: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray900,
-  },
-  placeholder: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray400,
-  },
-  error: {
-    marginTop: spacing.xs,
-    fontSize: typography.sizes.xs,
-    color: colors.semantic.error,
-  },
-  search: {
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.md,
-  },
-  list: {
-    maxHeight: 320,
-  },
-  option: {
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  optionLabel: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray900,
-  },
-  optionLabelSelected: {
-    fontSize: typography.sizes.base,
-    color: colors.brand.primary,
-    fontWeight: typography.weights.semibold as any,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      marginBottom: spacing.md,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    field: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      backgroundColor: colors.background.surface,
+    },
+    fieldError: {
+      borderColor: colors.semantic.error,
+    },
+    fieldDisabled: {
+      backgroundColor: colors.background.default,
+    },
+    value: {
+      fontSize: typography.sizes.base,
+      color: colors.text.primary,
+    },
+    placeholder: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+    },
+    error: {
+      marginTop: spacing.xs,
+      fontSize: typography.sizes.xs,
+      color: colors.semantic.error,
+    },
+    search: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      fontSize: typography.sizes.base,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+    },
+    list: {
+      maxHeight: 320,
+    },
+    option: {
+      paddingVertical: spacing.sm + 2,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    optionLabel: {
+      fontSize: typography.sizes.base,
+      color: colors.text.primary,
+    },
+    optionLabelSelected: {
+      fontSize: typography.sizes.base,
+      color: colors.brand.primary,
+      fontWeight: typography.weights.semibold as any,
+    },
+  });
+}

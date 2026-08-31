@@ -1,5 +1,5 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { Asset } from 'react-native-image-picker';
 import {
   Alert,
@@ -29,13 +29,13 @@ import { fetchListings } from '../../services/modules/marketplace/listingsServic
 import { createConsultationReview, fetchReviewByConsultationId } from '../../services/modules/reviews/reviewsService';
 import { useAuthStore } from '../../store/authStore';
 import { useRealtimeConsultationMessages } from '../../hooks/realtime/useRealtimeConsultationMessages';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { ConsultationMessageWithListing, ConsultationStatus, ConsultationWithRelations } from '../../types/expert';
 import type { ReviewWithBuyer } from '../../types/reviews';
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function ConsultationDetailScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { consultationId } = useRoute().params as { consultationId: string };
   const navigation = useNavigation<any>();
   const userId = useAuthStore(state => state.user?.id);
@@ -265,79 +265,81 @@ export function ConsultationDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  list: {
-    paddingVertical: spacing.md,
-  },
-  details: {
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  subject: {
-    flex: 1,
-    marginRight: spacing.sm,
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  meta: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-    marginBottom: spacing.xs / 2,
-  },
-  descriptionCard: {
-    marginTop: spacing.sm,
-  },
-  description: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray900,
-    lineHeight: typography.lineHeights.sm,
-  },
-  imageRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  image: {
-    width: 80,
-    height: 80,
-    borderRadius: radii.md,
-    backgroundColor: colors.neutral.gray100,
-  },
-  reviewCard: {
-    marginTop: spacing.md,
-  },
-  reviewTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray600,
-    marginBottom: spacing.xs,
-  },
-  actions: {
-    marginTop: spacing.md,
-  },
-  action: {
-    marginTop: spacing.sm,
-  },
-  sheetTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.md,
-  },
-  starsRow: {
-    marginBottom: spacing.md,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    flex: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      paddingVertical: spacing.md,
+    },
+    details: {
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.xs,
+    },
+    subject: {
+      flex: 1,
+      marginRight: spacing.sm,
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    meta: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs / 2,
+    },
+    descriptionCard: {
+      marginTop: spacing.sm,
+    },
+    description: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.primary,
+      lineHeight: typography.lineHeights.sm,
+    },
+    imageRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    image: {
+      width: 80,
+      height: 80,
+      borderRadius: radii.md,
+      backgroundColor: colors.border,
+    },
+    reviewCard: {
+      marginTop: spacing.md,
+    },
+    reviewTitle: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    actions: {
+      marginTop: spacing.md,
+    },
+    action: {
+      marginTop: spacing.sm,
+    },
+    sheetTitle: {
+      fontSize: typography.sizes.lg,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+    },
+    starsRow: {
+      marginBottom: spacing.md,
+    },
+  });
+}

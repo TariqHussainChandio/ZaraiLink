@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from ....core.auth import AuthenticatedUser, require_authenticated_user
+from ....core.rate_limit import limiter
 from ....schemas.disease import (
     CreateCaseRequest,
     DiseaseCaseResponse,
@@ -32,9 +33,11 @@ async def get_case(
 
 
 @router.post("/predict", response_model=PredictResponse)
+@limiter.limit("10/minute")
 async def predict_disease(
-    request: PredictRequest,
+    request: Request,
+    body: PredictRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> PredictResponse:
-    prediction = await disease_service.predict(user, request.disease_case_id)
+    prediction = await disease_service.predict(user, body.disease_case_id)
     return PredictResponse(**prediction)

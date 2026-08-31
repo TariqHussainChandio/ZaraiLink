@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,14 +9,14 @@ import {
 } from 'react-native';
 import { Button, Input } from '../../components/ui';
 import { resendSignupOtp, verifySignupOtp } from '../../services/modules/auth/authService';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
-
-const { colors, spacing, typography } = lightTheme;
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOtp'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { channel, identifier } = route.params;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -102,39 +102,41 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  title: {
-    fontSize: typography.sizes['3xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  subtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray500,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
-  },
-  submit: {
-    marginTop: spacing.sm,
-  },
-  link: {
-    color: colors.brand.primary,
-    fontWeight: typography.weights.semibold as any,
-    marginTop: spacing.xl,
-    textAlign: 'center',
-  },
-  linkDisabled: {
-    color: colors.neutral.gray400,
-  },
-  back: {
-    color: colors.neutral.gray500,
-    marginTop: spacing.lg,
-    textAlign: 'center',
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    flex: { flex: 1 },
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      padding: spacing.xl,
+    },
+    title: {
+      fontSize: typography.sizes['3xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    subtitle: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
+      marginBottom: spacing.xl,
+    },
+    submit: {
+      marginTop: spacing.sm,
+    },
+    link: {
+      color: colors.brand.primary,
+      fontWeight: typography.weights.semibold as any,
+      marginTop: spacing.xl,
+      textAlign: 'center',
+    },
+    linkDisabled: {
+      color: colors.text.secondary,
+    },
+    back: {
+      color: colors.text.secondary,
+      marginTop: spacing.lg,
+      textAlign: 'center',
+    },
+  });
+}

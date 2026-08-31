@@ -1,16 +1,19 @@
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { OrderCard } from '../../components/features/orders/OrderCard';
+import { ADMIN_HOME_ROUTES } from '../../constants/routes';
 import { fetchAllOrders } from '../../services/modules/admin/adminService';
-import { lightTheme } from '../../theme';
+import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
+import { useTheme, type Theme } from '../../theme';
 import type { OrderWithItems } from '../../types/orders';
-
-const { colors, spacing } = lightTheme;
 
 /** Platform-wide order overview — every order, not scoped to a buyer/seller segment. */
 export function PlatformOrdersScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const navigation = useNavigation<AdminHomeScreenProps<'Orders'>['navigation']>();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,7 +44,7 @@ export function PlatformOrdersScreen() {
           <OrderCard
             order={item}
             counterpartyName={`${item.buyer?.full_name ?? 'Unknown buyer'} → ${item.seller?.full_name ?? 'Unknown seller'}`}
-            onPress={() => {}}
+            onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.OrderDetail, { orderId: item.id })}
           />
         )}
         ListEmptyComponent={
@@ -52,13 +55,15 @@ export function PlatformOrdersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  list: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-});
+function makeStyles({ colors, spacing }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+    },
+  });
+}

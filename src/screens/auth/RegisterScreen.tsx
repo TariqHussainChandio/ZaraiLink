@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import {
   KeyboardAvoidingView,
@@ -15,7 +15,7 @@ import { Button, Input, PhoneInput, isValidE164 } from '../../components/ui';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS, ROLES, type Role } from '../../constants/roles';
 import { signUp, type AuthChannel } from '../../services/modules/auth/authService';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
 
 const REGISTRABLE_ROLES = ROLES.filter(role => role !== 'admin') as Exclude<Role, 'admin'>[];
@@ -43,9 +43,9 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     control,
@@ -219,82 +219,84 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  title: {
-    fontSize: typography.sizes['3xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  subtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray500,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
-  },
-  label: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray700,
-    marginBottom: spacing.xs,
-  },
-  hint: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-    marginTop: -spacing.sm,
-    marginBottom: spacing.md,
-  },
-  roleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  roleChip: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-  },
-  roleChipSelected: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  roleChipLabel: {
-    color: colors.neutral.gray700,
-    fontWeight: typography.weights.medium as any,
-  },
-  roleChipLabelSelected: {
-    color: colors.neutral.white,
-  },
-  errorText: {
-    color: colors.semantic.error,
-    fontSize: typography.sizes.xs,
-    marginBottom: spacing.md,
-  },
-  submit: {
-    marginTop: spacing.sm,
-  },
-  errorBanner: {
-    color: colors.semantic.error,
-    marginBottom: spacing.md,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: spacing.xl,
-  },
-  footerText: {
-    color: colors.neutral.gray500,
-  },
-  link: {
-    color: colors.brand.primary,
-    fontWeight: typography.weights.semibold as any,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    flex: { flex: 1 },
+    container: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: spacing.xl,
+    },
+    title: {
+      fontSize: typography.sizes['3xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    subtitle: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
+      marginBottom: spacing.xl,
+    },
+    label: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    hint: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+      marginTop: -spacing.sm,
+      marginBottom: spacing.md,
+    },
+    roleRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    roleChip: {
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    roleChipSelected: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
+    },
+    roleChipLabel: {
+      color: colors.text.secondary,
+      fontWeight: typography.weights.medium as any,
+    },
+    roleChipLabelSelected: {
+      color: colors.neutral.white,
+    },
+    errorText: {
+      color: colors.semantic.error,
+      fontSize: typography.sizes.xs,
+      marginBottom: spacing.md,
+    },
+    submit: {
+      marginTop: spacing.sm,
+    },
+    errorBanner: {
+      color: colors.semantic.error,
+      marginBottom: spacing.md,
+    },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: spacing.xl,
+    },
+    footerText: {
+      color: colors.text.secondary,
+    },
+    link: {
+      color: colors.brand.primary,
+      fontWeight: typography.weights.semibold as any,
+    },
+  });
+}

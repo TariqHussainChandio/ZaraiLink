@@ -1,42 +1,57 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
 import { fetchFarms } from '../../services/modules/farmer/farmService';
 import { useAuthStore } from '../../store/authStore';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { Farm } from '../../types/farmer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!userId) return;
-      let cancelled = false;
-      setLoading(true);
-      fetchFarms().then(data => {
-        if (!cancelled) {
-          setFarms(data);
-          setLoading(false);
-        }
-      }).catch(err => {
-        console.warn('[FarmListScreen] failed to load farms:', err);
-        if (!cancelled) setLoading(false);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, [userId]),
-  );
+  const load = useCallback(() => {
+    if (!userId) return () => {};
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    fetchFarms().then(data => {
+      if (!cancelled) {
+        setFarms(data);
+        setLoading(false);
+      }
+    }).catch(err => {
+      console.warn('[FarmListScreen] failed to load farms:', err);
+      if (!cancelled) {
+        setError(true);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useFocusEffect(useCallback(() => load(), [load]));
 
   if (loading) return <Spinner fullscreen />;
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load farms"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={load}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -70,39 +85,42 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  list: {
-    padding: spacing.lg,
-    paddingBottom: spacing['3xl'],
-  },
-  card: {
-    marginBottom: spacing.md,
-  },
-  name: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  meta: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray500,
-  },
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radii.full,
-  },
-  fabLabel: {
-    color: colors.neutral.white,
-    fontWeight: '700',
-  },
-});
+function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    list: {
+      padding: spacing.lg,
+      paddingBottom: spacing['3xl'],
+    },
+    card: {
+      marginBottom: spacing.md,
+    },
+    name: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    meta: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    fab: {
+      position: 'absolute',
+      right: spacing.lg,
+      bottom: spacing.lg,
+      backgroundColor: colors.brand.primary,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderRadius: radii.full,
+      ...shadows.md,
+    },
+    fabLabel: {
+      color: colors.neutral.white,
+      fontWeight: '700',
+    },
+  });
+}

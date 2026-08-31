@@ -1,5 +1,6 @@
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Spinner } from '../../components/ui';
 import { StatusBadge } from '../../components/features/orders/StatusBadge';
@@ -20,14 +21,19 @@ import {
 import { fetchReviewByOrderId } from '../../services/modules/reviews/reviewsService';
 import { useAuthStore } from '../../store/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
-import { lightTheme } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { OrderStatus } from '../../types/orders';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
-
-const { colors, spacing, typography } = lightTheme;
+import { hapticSuccess } from '../../utils/haptics';
 
 const TIMELINE: OrderStatus[] = ['pending', 'confirmed', 'processing', 'ready', 'completed'];
-const TERMINAL_SIDE_STATES: OrderStatus[] = ['cancelled', 'rejected', 'payment_failed', 'disputed', 'refunded'];
+const TERMINAL_SIDE_STATES: OrderStatus[] = [
+  'cancelled',
+  'rejected',
+  'payment_failed',
+  'disputed',
+  'refunded',
+  'expired',
+];
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   pending: 'Pending',
@@ -40,9 +46,20 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   payment_failed: 'Payment Failed',
   disputed: 'Disputed',
   refunded: 'Refunded',
+  expired: 'Expired',
 };
 
-export function OrderDetailScreen({ route, navigation }: OrdersScreenProps<'OrderDetail'>) {
+// Untyped navigation/route: this screen is mounted inside two different stacks (the buyer/
+// farmer/dealer Orders tab, and Admin's Home stack for platform-wide order oversight) with
+// different param lists — same pattern as NotificationListScreen. The two navigation.navigate
+// calls below (PaymentMethod, WriteReview) are only reachable when `canPay`/`canReview`, both
+// of which require `isBuyer`, so they're unreachable — and therefore harmless — for an admin
+// viewer, who is never the order's buyer.
+export function OrderDetailScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { orderId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const tabNavigation = useAppTabNavigation();
@@ -71,7 +88,12 @@ export function OrderDetailScreen({ route, navigation }: OrdersScreenProps<'Orde
     onSuccess: invalidate,
     onError: error => Alert.alert('Could not update order', error instanceof Error ? error.message : String(error)),
   });
-  const advance = (to: OrderStatus) => statusMutation.mutate(to);
+  const advance = (to: OrderStatus) => {
+    // The seller accepting an order is the one transition worth a stronger "something
+    // completed" pulse — cancelling/rejecting isn't a moment to celebrate.
+    const options = to === 'confirmed' ? { onSuccess: hapticSuccess } : undefined;
+    statusMutation.mutate(to, options);
+  };
   const updating = statusMutation.isPending;
 
   const paymentMutation = useMutation({
@@ -185,27 +207,29 @@ export function OrderDetailScreen({ route, navigation }: OrdersScreenProps<'Orde
         <Text style={styles.partyName}>{order.seller?.full_name ?? 'Unknown'}</Text>
       </Card>
 
-      <Button
-        label={isBuyer ? 'Message Seller' : 'Message Buyer'}
-        variant="secondary"
-        loading={messaging}
-        onPress={async () => {
-          if (!userId) return;
-          const otherPartyId = isBuyer ? order.seller_id : order.buyer_id;
-          const otherPartyName = (isBuyer ? order.seller?.full_name : order.buyer?.full_name) ?? 'Unknown';
-          setMessaging(true);
-          try {
-            const conversation = await findOrCreateConversation(otherPartyId);
-            tabNavigation?.navigate(APP_TABS.Messages, {
-              screen: MESSAGING_ROUTES.Chat,
-              params: { conversationId: conversation.id, otherUserName: otherPartyName },
-            });
-          } finally {
-            setMessaging(false);
-          }
-        }}
-        style={styles.action}
-      />
+      {isBuyer || isSeller ? (
+        <Button
+          label={isBuyer ? 'Message Seller' : 'Message Buyer'}
+          variant="secondary"
+          loading={messaging}
+          onPress={async () => {
+            if (!userId) return;
+            const otherPartyId = isBuyer ? order.seller_id : order.buyer_id;
+            const otherPartyName = (isBuyer ? order.seller?.full_name : order.buyer?.full_name) ?? 'Unknown';
+            setMessaging(true);
+            try {
+              const conversation = await findOrCreateConversation(otherPartyId);
+              tabNavigation?.navigate(APP_TABS.Messages, {
+                screen: MESSAGING_ROUTES.Chat,
+                params: { conversationId: conversation.id, otherUserName: otherPartyName },
+              });
+            } finally {
+              setMessaging(false);
+            }
+          }}
+          style={styles.action}
+        />
+      ) : null}
 
       {canConfirm ? (
         <Button label="Confirm Order" loading={updating} onPress={() => advance('confirmed')} style={styles.action} />
@@ -280,126 +304,128 @@ export function OrderDetailScreen({ route, navigation }: OrdersScreenProps<'Orde
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.white,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  total: {
-    fontSize: typography.sizes['2xl'],
-    fontWeight: typography.weights.bold as any,
-    color: colors.neutral.gray900,
-  },
-  timeline: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xl,
-  },
-  timelineStep: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.neutral.gray300,
-    marginBottom: spacing.xs,
-  },
-  timelineDotActive: {
-    backgroundColor: colors.brand.primary,
-  },
-  timelineLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray400,
-  },
-  timelineLabelActive: {
-    color: colors.brand.primary,
-    fontWeight: typography.weights.semibold as any,
-  },
-  paymentCard: {
-    marginBottom: spacing.md,
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  paymentActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  paymentButton: {
-    flex: 1,
-  },
-  summaryDivider: {
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral.gray100,
-    marginVertical: spacing.xs,
-  },
-  historyCard: {
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
-  },
-  historyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  historyLabel: {
-    flex: 1,
-    marginRight: spacing.sm,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray900,
-  },
-  historyDate: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-  },
-  itemsCard: {
-    marginBottom: spacing.md,
-  },
-  partiesCard: {
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray600,
-    marginBottom: spacing.xs,
-  },
-  sellerLabel: {
-    marginTop: spacing.md,
-  },
-  partyName: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray900,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  itemLabel: {
-    flex: 1,
-    marginRight: spacing.sm,
-    color: colors.neutral.gray900,
-  },
-  itemPrice: {
-    color: colors.neutral.gray700,
-    fontWeight: typography.weights.medium as any,
-  },
-  action: {
-    marginTop: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background.surface,
+    },
+    content: {
+      padding: spacing.lg,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.lg,
+    },
+    total: {
+      fontSize: typography.sizes['2xl'],
+      fontWeight: typography.weights.bold as any,
+      color: colors.text.primary,
+    },
+    timeline: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xl,
+    },
+    timelineStep: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    timelineDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: colors.border,
+      marginBottom: spacing.xs,
+    },
+    timelineDotActive: {
+      backgroundColor: colors.brand.primary,
+    },
+    timelineLabel: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    timelineLabelActive: {
+      color: colors.brand.primary,
+      fontWeight: typography.weights.semibold as any,
+    },
+    paymentCard: {
+      marginBottom: spacing.md,
+    },
+    paymentRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    paymentActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    paymentButton: {
+      flex: 1,
+    },
+    summaryDivider: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      marginVertical: spacing.xs,
+    },
+    historyCard: {
+      marginTop: spacing.md,
+      marginBottom: spacing.md,
+    },
+    historyRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+    },
+    historyLabel: {
+      flex: 1,
+      marginRight: spacing.sm,
+      fontSize: typography.sizes.sm,
+      color: colors.text.primary,
+    },
+    historyDate: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+    itemsCard: {
+      marginBottom: spacing.md,
+    },
+    partiesCard: {
+      marginBottom: spacing.md,
+    },
+    sectionTitle: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    sellerLabel: {
+      marginTop: spacing.md,
+    },
+    partyName: {
+      fontSize: typography.sizes.base,
+      color: colors.text.primary,
+    },
+    itemRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+    },
+    itemLabel: {
+      flex: 1,
+      marginRight: spacing.sm,
+      color: colors.text.primary,
+    },
+    itemPrice: {
+      color: colors.text.secondary,
+      fontWeight: typography.weights.medium as any,
+    },
+    action: {
+      marginTop: spacing.sm,
+    },
+  });
+}

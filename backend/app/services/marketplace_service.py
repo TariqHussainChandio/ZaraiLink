@@ -5,10 +5,10 @@ from ..repositories import marketplace_repository as repo
 from .audit_log_service import log_admin_action
 
 
-def _location(country_id: str | None, province_id: str | None, city_id: str | None) -> dict | None:
-    if not country_id and not province_id and not city_id:
+def _location(country: str | None, province: str | None, city: str | None) -> dict | None:
+    if not country and not province and not city:
         return None
-    return {"country_id": country_id, "province_id": province_id, "city_id": city_id}
+    return {"country": country, "province": province, "city": city}
 
 
 def fetch_listings(
@@ -17,13 +17,13 @@ def fetch_listings(
     min_price: float | None = None,
     max_price: float | None = None,
     seller_role: str | None = None,
-    city_id: str | None = None,
+    city: str | None = None,
     crop_name: str | None = None,
     page: int = 0,
     owner_id: str | None = None,
 ) -> list[dict]:
     return repo.fetch_listings(
-        category_id, search, min_price, max_price, seller_role, city_id, crop_name, page, owner_id
+        category_id, search, min_price, max_price, seller_role, city, crop_name, page, owner_id
     )
 
 
@@ -71,18 +71,18 @@ def create_listing(user: AuthenticatedUser, input) -> dict:
         "brand": input.brand,
         "condition": input.condition,
         "crop_compatibility": input.crop_compatibility,
-        "location": _location(input.country_id, input.province_id, input.city_id),
+        "location": _location(input.country, input.province, input.city),
     }
     return repo.create_listing(user.access_token, user.id, fields)
 
 
 def update_listing(user: AuthenticatedUser, listing_id: str, input) -> dict:
     provided = input.model_dump(exclude_unset=True)
-    location_touched = any(k in provided for k in ("country_id", "province_id", "city_id"))
-    fields = {k: v for k, v in provided.items() if k not in ("country_id", "province_id", "city_id")}
+    location_touched = any(k in provided for k in ("country", "province", "city"))
+    fields = {k: v for k, v in provided.items() if k not in ("country", "province", "city")}
     if location_touched:
         fields["location"] = _location(
-            provided.get("country_id"), provided.get("province_id"), provided.get("city_id")
+            provided.get("country"), provided.get("province"), provided.get("city")
         )
     return repo.update_listing(user.access_token, listing_id, fields)
 

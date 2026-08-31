@@ -1,13 +1,20 @@
+from datetime import datetime, timedelta, timezone
+
+from postgrest.exceptions import APIError
+
 from fastapi import HTTPException
 
 from ..core.auth import AuthenticatedUser
-from ..repositories import dealer_repository, orders_repository as repo
-from . import dealer_service
+from ..repositories import orders_repository as repo
 
 # Full SRDS v4.0 §12.2 lifecycle. `payment_failed` is reachable from `pending`/`confirmed` —
 # Payments' manual flow moves an order there when the seller records non-payment before
 # fulfillment starts. `disputed`->`refunded`/`completed` are schema-valid for admin resolution
 # tooling even though no buyer/seller screen exposes them. Moved verbatim from the frontend.
+# `expired` is deliberately NOT reachable from here as a `to` target — it's a system-only
+# transition applied directly by `_expire_stale_pending_orders`, never something a participant
+# can request through `update_order_status` (a buyer who wants out of a pending order already
+# has `cancelled` for that).
 ALLOWED_TRANSITIONS: dict[str, list[str]] = {
     "pending": ["confirmed", "rejected", "cancelled", "payment_failed"],
     "confirmed": ["processing", "cancelled", "payment_failed"],
@@ -19,7 +26,34 @@ ALLOWED_TRANSITIONS: dict[str, list[str]] = {
     "payment_failed": [],
     "disputed": ["refunded", "completed"],
     "refunded": [],
+    "expired": [],
 }
+
+# How long a seller has to act on a new order before it silently expires. No scheduler exists
+# in this stack, so this is enforced lazily (see `_expire_stale_pending_orders`) rather than by
+# a background job. 48 hours, not e.g. 24 — SRDS doesn't specify a value, and a seller who checks
+# in once a day or two is normal usage this shouldn't punish; long enough to be forgiving, short
+# enough that a buyer isn't left hanging indefinitely.
+PENDING_ORDER_EXPIRY_HOURS = 48
+
+
+def _expire_stale_pending_orders(user: AuthenticatedUser) -> None:
+    """
+    Runs on every order list/detail read rather than on a schedule — nothing in this stack runs
+    one. Scoped to the caller's own token, so RLS (`orders_update_participants`) naturally limits
+    this to orders the caller is buyer or seller on, never a blanket sweep across every order.
+    `changed_by=None` in the history row (rather than attributing it to whichever user happened
+    to trigger the sweep) because this is a system transition, not that user's action —
+    `order_status_history.changed_by` is nullable for exactly this. The existing
+    `notify_order_status_changed` DB trigger fires on the status UPDATE same as any other
+    transition, so the OTHER party gets notified without any extra code here — same skip-the-
+    acting-session's-own-auth.uid() convention every other status change already gets from
+    `create_notification`'s `p_skip_self`.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=PENDING_ORDER_EXPIRY_HOURS)).isoformat()
+    for order_id in repo.fetch_stale_pending_order_ids(user.access_token, user.id, cutoff):
+        repo.update_order_status(user.access_token, order_id, "expired")
+        repo.insert_order_status_history(user.access_token, order_id, "pending", "expired", None)
 
 
 def _assert_available(access_token: str, cart_items: list[dict]) -> dict[str, dict]:
@@ -90,10 +124,12 @@ def checkout(user: AuthenticatedUser, cart_items: list[dict], delivery_charge_by
 
 
 def fetch_orders_for_user(user: AuthenticatedUser, as_: str) -> list[dict]:
+    _expire_stale_pending_orders(user)
     return repo.fetch_orders_for_user(user.access_token, user.id, as_)
 
 
 def fetch_order_by_id(user: AuthenticatedUser, order_id: str) -> dict:
+    _expire_stale_pending_orders(user)
     order = repo.fetch_order_by_id(user.access_token, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -106,45 +142,46 @@ def fetch_order_status_history(user: AuthenticatedUser, order_id: str) -> list[d
 
 def _reduce_dealer_inventory_for_order(user: AuthenticatedUser, order_id: str) -> None:
     """
-    The seller accepting an order (pending->confirmed) is what commits their stock. Checks
-    availability for every linked item first, before any reduction runs, so one under-stocked
-    item fails the whole confirm rather than leaving some items silently deducted and others
-    not. Calls `dealer_service.adjust_stock` directly (an in-process Python call, not an HTTP
-    round-trip — rule: stay one FastAPI monolith) using the confirming seller's own token; a
-    non-dealer seller simply has no matching inventory row and this is a no-op for them.
+    The seller accepting an order (pending->confirmed) is what commits their stock.
+    `public.reduce_stock_for_order` (supabase/migrations/20260901130000_...) does the whole
+    order's worth of "check every linked item, then reduce every linked item" atomically inside
+    one Postgres transaction, row-locked for its duration — not here in Python across many
+    separate calls, which is what let two near-simultaneous confirmations race each other and
+    both succeed against the same stock. Runs using the confirming seller's own token; a
+    non-dealer seller (or an item with no linked inventory row) is a no-op, same as before.
     """
-    items = repo.fetch_order_items_for_inventory(user.access_token, order_id)
-    to_reduce: list[tuple[str, int]] = []
-
-    for item in items:
-        if not item["listing_id"]:
-            continue
-        inventory = dealer_repository.fetch_inventory_by_listing_id(user.access_token, item["listing_id"])
-        if inventory is None:
-            continue
-        if item["quantity"] > inventory["stock_quantity"]:
-            raise HTTPException(
-                status_code=422,
-                detail=f'Not enough stock to confirm this order — needs {item["quantity"]} but only '
-                f'{inventory["stock_quantity"]} in stock.',
-            )
-        to_reduce.append((inventory["id"], item["quantity"]))
-
-    for inventory_id, quantity in to_reduce:
-        dealer_service.adjust_stock(user.access_token, inventory_id, "sale", quantity, user.id, f"Order {order_id}")
+    try:
+        repo.reduce_stock_for_order(user.access_token, order_id, user.id)
+    except APIError as exc:
+        if exc.code == "P0001":
+            raise HTTPException(status_code=422, detail=exc.message or "Not enough stock to confirm this order.")
+        raise
 
 
 def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -> None:
     """
     Never trusts a client-supplied "current status" — the order (and therefore its real current
     status) is always re-read from the database first. Ownership: only the order's buyer or
-    seller (or admin) may act on it, matching `orders_select/update_participants_or_admin` RLS.
+    seller may act on it freely, matching `orders_update_participants` RLS. A non-participant
+    admin is allowed ONLY when the order is currently `disputed` — i.e. admin dispute resolution
+    (`disputed -> refunded` / `disputed -> completed`, see ALLOWED_TRANSITIONS below) — never on
+    any other transition, and in particular never on `pending -> confirmed`. That transition runs
+    `_reduce_dealer_inventory_for_order` using the ACTING USER's own access token (never a
+    service-role key, see `get_user_scoped_client` docs), so a flat "any admin may act on any
+    order" check would let an admin silently write another dealer's stock via RLS — closing that
+    gap is the entire point of this narrower check; see the matching RLS narrowing of
+    `orders_update_participants` in
+    supabase/migrations/20260901090000_admin_write_scope_hardening.sql, which enforces this same
+    rule again at the database layer as defense in depth.
     """
+    _expire_stale_pending_orders(user)
     order = repo.fetch_order_by_id(user.access_token, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if order["buyer_id"] != user.id and order["seller_id"] != user.id and user.role != "admin":
+    is_participant = order["buyer_id"] == user.id or order["seller_id"] == user.id
+    is_admin_resolving_dispute = user.role == "admin" and order["status"] == "disputed"
+    if not is_participant and not is_admin_resolving_dispute:
         raise HTTPException(status_code=403, detail="Not a participant in this order")
 
     from_status = order["status"]

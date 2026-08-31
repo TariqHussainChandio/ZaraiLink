@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { EmptyState } from '../../../components/ui';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 
 export interface ActivityItem {
   id: string;
@@ -18,9 +18,10 @@ export interface ActivityFeedProps {
   emptyMessage: string;
 }
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
@@ -30,6 +31,7 @@ export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) 
         items.map(item => (
           <TouchableOpacity
             key={item.id}
+            testID={`activity-row-${item.id}`}
             style={styles.row}
             onPress={item.onPress}
             disabled={!item.onPress}
@@ -54,42 +56,44 @@ export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) 
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginTop: spacing.xl,
-  },
-  title: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginBottom: spacing.sm,
-  },
-  row: {
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray100,
-  },
-  itemHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  itemTitle: {
-    flex: 1,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-    color: colors.neutral.gray900,
-  },
-  itemValue: {
-    flex: 0,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  itemSubtitle: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    container: {
+      marginTop: spacing.xl,
+    },
+    title: {
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginBottom: spacing.sm,
+    },
+    row: {
+      paddingVertical: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    itemHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    itemTitle: {
+      flex: 1,
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.primary,
+    },
+    itemValue: {
+      flex: 0,
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    itemSubtitle: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+  });
+}

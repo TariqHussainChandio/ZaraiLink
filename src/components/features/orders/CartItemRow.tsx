@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { CartItem } from '../../../store/cartStore';
 
 export interface CartItemRowProps {
@@ -10,9 +10,10 @@ export interface CartItemRowProps {
   onRemove: () => void;
 }
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function CartItemRow({ item, onIncrement, onDecrement, onRemove }: CartItemRowProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <View style={styles.row}>
       {item.image ? (
@@ -44,61 +45,64 @@ export function CartItemRow({ item, onIncrement, onDecrement, onRemove }: CartIt
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral.gray200,
-  },
-  image: {
-    width: 56,
-    height: 56,
-    borderRadius: radii.md,
-    backgroundColor: colors.neutral.gray100,
-  },
-  imagePlaceholder: {},
-  body: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  title: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  price: {
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray500,
-    marginTop: spacing.xs / 2,
-  },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
-  stepperButton: {
-    width: 28,
-    height: 28,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperLabel: {
-    fontSize: typography.sizes.base,
-    color: colors.neutral.gray700,
-  },
-  quantity: {
-    marginHorizontal: spacing.sm,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium as any,
-  },
-  remove: {
-    color: colors.semantic.error,
-    fontSize: typography.sizes.xs,
-    marginLeft: spacing.sm,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    image: {
+      width: 56,
+      height: 56,
+      borderRadius: radii.md,
+      backgroundColor: colors.border,
+    },
+    imagePlaceholder: {},
+    body: {
+      flex: 1,
+      marginLeft: spacing.md,
+    },
+    title: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    price: {
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+      marginTop: spacing.xs / 2,
+    },
+    stepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: spacing.xs,
+    },
+    stepperButton: {
+      width: 28,
+      height: 28,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepperLabel: {
+      fontSize: typography.sizes.base,
+      color: colors.text.secondary,
+    },
+    quantity: {
+      marginHorizontal: spacing.sm,
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.medium as any,
+      color: colors.text.primary,
+    },
+    remove: {
+      color: colors.semantic.error,
+      fontSize: typography.sizes.xs,
+      marginLeft: spacing.sm,
+    },
+  });
+}

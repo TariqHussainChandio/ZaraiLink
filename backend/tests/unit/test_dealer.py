@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from postgrest.exceptions import APIError
 import pytest
 
 from app.core.auth import AuthenticatedUser, get_current_user
@@ -16,53 +17,31 @@ FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access
 ITEM = {"id": "inv-1", "dealer_id": DEALER.id, "stock_quantity": 10}
 
 
-def test_adjust_stock_addition_increases_by_quantity():
-    with patch("app.services.dealer_service.repo.fetch_inventory_by_id", return_value=ITEM):
-        with patch("app.services.dealer_service.repo.insert_inventory_transaction") as mock_tx:
-            with patch(
-                "app.services.dealer_service.repo.set_stock_quantity", return_value={"stock_quantity": 15}
-            ) as mock_set:
-                service.adjust_stock(DEALER.access_token, "inv-1", "addition", 5, DEALER.id, None)
+def test_adjust_stock_delegates_to_the_atomic_rpc():
+    # The read-check-write itself happens inside `public.adjust_stock` (a Postgres function,
+    # validated separately against a real local database — not provable via a mock); this only
+    # checks the service passes the call through with the right arguments and returns its result.
+    with patch("app.services.dealer_service.repo.adjust_stock", return_value={"stock_quantity": 15}) as mock_rpc:
+        result = service.adjust_stock(DEALER.access_token, "inv-1", "addition", 5, DEALER.id, None)
 
-    mock_set.assert_called_once_with(DEALER.access_token, "inv-1", 15)
-    tx_args = mock_tx.call_args[0]
-    assert tx_args[2] == "addition"
-    assert tx_args[3] == 5  # delta, matches quantity for an increase type
-
-
-def test_adjust_stock_sale_decreases_by_quantity():
-    with patch("app.services.dealer_service.repo.fetch_inventory_by_id", return_value=ITEM):
-        with patch("app.services.dealer_service.repo.insert_inventory_transaction") as mock_tx:
-            with patch(
-                "app.services.dealer_service.repo.set_stock_quantity", return_value={"stock_quantity": 6}
-            ) as mock_set:
-                service.adjust_stock(DEALER.access_token, "inv-1", "sale", 4, DEALER.id, None)
-
-    mock_set.assert_called_once_with(DEALER.access_token, "inv-1", 6)
-    assert mock_tx.call_args[0][3] == -4  # negative delta for a decrease type
-
-
-def test_adjust_stock_correction_sets_absolute_value():
-    with patch("app.services.dealer_service.repo.fetch_inventory_by_id", return_value=ITEM):
-        with patch("app.services.dealer_service.repo.insert_inventory_transaction") as mock_tx:
-            with patch(
-                "app.services.dealer_service.repo.set_stock_quantity", return_value={"stock_quantity": 3}
-            ) as mock_set:
-                service.adjust_stock(DEALER.access_token, "inv-1", "correction", 3, DEALER.id, None)
-
-    mock_set.assert_called_once_with(DEALER.access_token, "inv-1", 3)
-    assert mock_tx.call_args[0][3] == 3 - 10  # delta relative to the current stock of 10
+    mock_rpc.assert_called_once_with(DEALER.access_token, "inv-1", "addition", 5, DEALER.id, None)
+    assert result == {"stock_quantity": 15}
 
 
 def test_adjust_stock_rejects_going_negative():
-    with patch("app.services.dealer_service.repo.fetch_inventory_by_id", return_value=ITEM):
+    # `public.adjust_stock` raises with SQLSTATE P0001 when the requested change would take
+    # stock below zero — the service must translate that into a 422, not an unhandled 500.
+    negative_stock_error = APIError({"message": "Stock quantity cannot go below zero", "code": "P0001"})
+    with patch("app.services.dealer_service.repo.adjust_stock", side_effect=negative_stock_error):
         with pytest.raises(HTTPException) as exc_info:
             service.adjust_stock(DEALER.access_token, "inv-1", "sale", 999, DEALER.id, None)
     assert exc_info.value.status_code == 422
 
 
 def test_adjust_stock_rejects_missing_inventory_item():
-    with patch("app.services.dealer_service.repo.fetch_inventory_by_id", return_value=None):
+    # `public.adjust_stock` raises with SQLSTATE P0002 when no such inventory row exists.
+    not_found_error = APIError({"message": "Inventory item not found", "code": "P0002"})
+    with patch("app.services.dealer_service.repo.adjust_stock", side_effect=not_found_error):
         with pytest.raises(HTTPException) as exc_info:
             service.adjust_stock(DEALER.access_token, "missing", "sale", 1, DEALER.id, None)
     assert exc_info.value.status_code == 404

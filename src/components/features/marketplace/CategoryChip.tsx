@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 
 export interface CategoryChipProps {
   label: string;
@@ -8,9 +8,10 @@ export interface CategoryChipProps {
   onPress: () => void;
 }
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function CategoryChip({ label, selected = false, onPress }: CategoryChipProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <TouchableOpacity
       style={[styles.chip, selected && styles.chipSelected]}
@@ -23,25 +24,29 @@ export function CategoryChip({ label, selected = false, onPress }: CategoryChipP
   );
 }
 
-const styles = StyleSheet.create({
-  chip: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.neutral.gray300,
-    marginRight: spacing.sm,
-  },
-  chipSelected: {
-    backgroundColor: colors.brand.primary,
-    borderColor: colors.brand.primary,
-  },
-  label: {
-    color: colors.neutral.gray700,
-    fontWeight: typography.weights.medium as any,
-    fontSize: typography.sizes.sm,
-  },
-  labelSelected: {
-    color: colors.neutral.white,
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    chip: {
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginRight: spacing.sm,
+    },
+    chipSelected: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
+    },
+    label: {
+      color: colors.text.secondary,
+      fontWeight: typography.weights.medium as any,
+      fontSize: typography.sizes.sm,
+    },
+    labelSelected: {
+      // Deliberately literal white, not a semantic token — this is text sitting on the
+      // brand-primary fill, which stays legible white in both themes.
+      color: colors.neutral.white,
+    },
+  });
+}

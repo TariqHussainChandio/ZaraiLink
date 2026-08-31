@@ -24,13 +24,13 @@ async def list_listings(
     min_price: float | None = None,
     max_price: float | None = None,
     seller_role: str | None = None,
-    city_id: str | None = None,
+    city: str | None = None,
     crop_name: str | None = None,
     page: int = 0,
     owner_id: str | None = None,
 ) -> list[dict]:
     return service.fetch_listings(
-        category_id, search, min_price, max_price, seller_role, city_id, crop_name, page, owner_id
+        category_id, search, min_price, max_price, seller_role, city, crop_name, page, owner_id
     )
 
 

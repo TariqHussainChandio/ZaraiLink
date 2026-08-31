@@ -1,16 +1,17 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { RatingStars } from './RatingStars';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { Review } from '../../../types/reviews';
 
 export interface RatingSummaryProps {
   reviews: Review[];
 }
 
-const { colors, spacing, typography } = lightTheme;
-
 export function RatingSummary({ reviews }: RatingSummaryProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   const { average, count } = useMemo(() => {
     if (reviews.length === 0) return { average: 0, count: 0 };
     const total = reviews.reduce((sum, review) => sum + review.rating, 0);
@@ -31,18 +32,20 @@ export function RatingSummary({ reviews }: RatingSummaryProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  text: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-  },
-  empty: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray400,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    text: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    empty: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+  });
+}

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { Message } from '../../../types/messaging';
 
 export interface MessageBubbleProps {
@@ -10,9 +10,10 @@ export interface MessageBubbleProps {
   attachmentUrls: Record<string, string>;
 }
 
-const { colors, spacing, radii, typography } = lightTheme;
-
 export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
       <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
@@ -20,7 +21,12 @@ export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleP
           <View style={styles.imagesRow}>
             {message.attachments.map(path =>
               attachmentUrls[path] ? (
-                <Image key={path} source={{ uri: attachmentUrls[path] }} style={styles.image} />
+                <Image
+                  key={path}
+                  testID={`attachment-image-${path}`}
+                  source={{ uri: attachmentUrls[path] }}
+                  style={styles.image}
+                />
               ) : (
                 <View key={path} style={[styles.image, styles.imagePlaceholder]} />
               ),
@@ -36,56 +42,58 @@ export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleP
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    marginVertical: spacing.xs / 2,
-    paddingHorizontal: spacing.lg,
-  },
-  rowOwn: {
-    justifyContent: 'flex-end',
-  },
-  bubble: {
-    maxWidth: '78%',
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  bubbleOther: {
-    backgroundColor: colors.neutral.gray100,
-    borderBottomLeftRadius: radii.sm,
-  },
-  bubbleOwn: {
-    backgroundColor: colors.brand.primary,
-    borderBottomRightRadius: radii.sm,
-  },
-  imagesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  image: {
-    width: 140,
-    height: 140,
-    borderRadius: radii.md,
-    backgroundColor: colors.neutral.gray200,
-  },
-  imagePlaceholder: {},
-  body: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray900,
-  },
-  bodyOwn: {
-    color: colors.neutral.white,
-  },
-  time: {
-    marginTop: spacing.xs / 2,
-    fontSize: 10,
-    color: colors.neutral.gray500,
-    alignSelf: 'flex-end',
-  },
-  timeOwn: {
-    color: 'rgba(255,255,255,0.75)',
-  },
-});
+function makeStyles({ colors, spacing, radii, typography }: Theme) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      marginVertical: spacing.xs / 2,
+      paddingHorizontal: spacing.lg,
+    },
+    rowOwn: {
+      justifyContent: 'flex-end',
+    },
+    bubble: {
+      maxWidth: '78%',
+      borderRadius: radii.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    bubbleOther: {
+      backgroundColor: colors.border,
+      borderBottomLeftRadius: radii.sm,
+    },
+    bubbleOwn: {
+      backgroundColor: colors.brand.primary,
+      borderBottomRightRadius: radii.sm,
+    },
+    imagesRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    image: {
+      width: 140,
+      height: 140,
+      borderRadius: radii.md,
+      backgroundColor: colors.background.default,
+    },
+    imagePlaceholder: {},
+    body: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.primary,
+    },
+    bodyOwn: {
+      color: colors.neutral.white,
+    },
+    time: {
+      marginTop: spacing.xs / 2,
+      fontSize: 10,
+      color: colors.text.secondary,
+      alignSelf: 'flex-end',
+    },
+    timeOwn: {
+      color: 'rgba(255,255,255,0.75)',
+    },
+  });
+}

@@ -13,6 +13,7 @@ const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   payment_failed: 'error',
   disputed: 'warning',
   refunded: 'neutral',
+  expired: 'neutral',
 };
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -26,6 +27,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   payment_failed: 'Payment Failed',
   disputed: 'Disputed',
   refunded: 'Refunded',
+  expired: 'Expired',
 };
 
 export function StatusBadge({ status }: { status: OrderStatus }) {

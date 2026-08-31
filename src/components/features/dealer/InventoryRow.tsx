@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Card } from '../../ui';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { InventoryItemWithListing } from '../../../types/dealer';
 
 export interface InventoryRowProps {
@@ -11,9 +11,9 @@ export interface InventoryRowProps {
   onHistory: () => void;
 }
 
-const { colors, spacing, typography } = lightTheme;
-
 export function InventoryRow({ item, onPress, onAdjust, onHistory }: InventoryRowProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const lowStock = item.stock_quantity <= item.min_stock_threshold;
 
   return (
@@ -44,38 +44,40 @@ export function InventoryRow({ item, onPress, onAdjust, onHistory }: InventoryRo
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    marginBottom: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    flex: 1,
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-    marginRight: spacing.sm,
-  },
-  meta: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray500,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-    marginTop: spacing.sm,
-  },
-  actionButton: {
-    paddingVertical: spacing.xs,
-  },
-  actionLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.brand.primary,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    card: {
+      marginBottom: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    title: {
+      flex: 1,
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+      marginRight: spacing.sm,
+    },
+    meta: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.lg,
+      marginTop: spacing.sm,
+    },
+    actionButton: {
+      paddingVertical: spacing.xs,
+    },
+    actionLabel: {
+      fontSize: typography.sizes.sm,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.brand.primary,
+    },
+  });
+}

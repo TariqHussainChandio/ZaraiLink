@@ -34,14 +34,6 @@ def fetch_inventory_by_id(access_token: str, inventory_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
-def fetch_inventory_by_listing_id(access_token: str, listing_id: str) -> dict | None:
-    response = (
-        get_user_scoped_client(access_token).table("inventory").select("*").eq("listing_id", listing_id).limit(1).execute()
-    )
-    rows = response.data or []
-    return rows[0] if rows else None
-
-
 def fetch_dealer_listings(access_token: str, dealer_id: str) -> list[dict]:
     return (
         get_user_scoped_client(access_token)
@@ -97,20 +89,27 @@ def fetch_inventory_transactions(access_token: str, inventory_id: str) -> list[d
     )
 
 
-def insert_inventory_transaction(access_token: str, inventory_id: str, type_: str, quantity: int, actor: str, notes: str | None) -> None:
-    get_user_scoped_client(access_token).table("inventory_transactions").insert(
-        {"inventory_id": inventory_id, "type": type_, "quantity": quantity, "actor": actor, "notes": notes}
-    ).execute()
-
-
-def set_stock_quantity(access_token: str, inventory_id: str, new_stock: int) -> dict:
+def adjust_stock(
+    access_token: str, inventory_id: str, type_: str, quantity: int, actor_id: str, notes: str | None
+) -> dict:
+    """
+    Single round-trip: `public.adjust_stock` (supabase/migrations/20260901130000_...) does the
+    read-check-write atomically in one Postgres transaction, row-locked via `select ... for
+    update`, instead of the old fetch-then-compute-then-write across two separate calls that let
+    two concurrent adjustments race each other.
+    """
     response = (
         get_user_scoped_client(access_token)
-        .table("inventory")
-        .update({"stock_quantity": new_stock})
-        .eq("id", inventory_id)
-        .select()
-        .single()
+        .rpc(
+            "adjust_stock",
+            {
+                "p_inventory_id": inventory_id,
+                "p_type": type_,
+                "p_quantity": quantity,
+                "p_actor": actor_id,
+                "p_notes": notes,
+            },
+        )
         .execute()
     )
     return response.data

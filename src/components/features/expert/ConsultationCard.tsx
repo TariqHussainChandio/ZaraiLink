@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from '../../ui';
 import { ConsultationStatusBadge } from './ConsultationStatusBadge';
-import { lightTheme } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { ConsultationWithRelations } from '../../../types/expert';
 
 export interface ConsultationCardProps {
@@ -11,9 +11,10 @@ export interface ConsultationCardProps {
   onPress: () => void;
 }
 
-const { colors, spacing, typography } = lightTheme;
-
 export function ConsultationCard({ consultation, counterpartyName, onPress }: ConsultationCardProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
       <Card style={styles.card}>
@@ -33,30 +34,32 @@ export function ConsultationCard({ consultation, counterpartyName, onPress }: Co
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    marginBottom: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  subject: {
-    flex: 1,
-    marginRight: spacing.sm,
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold as any,
-    color: colors.neutral.gray900,
-  },
-  meta: {
-    fontSize: typography.sizes.sm,
-    color: colors.neutral.gray600,
-  },
-  date: {
-    marginTop: spacing.xs / 2,
-    fontSize: typography.sizes.xs,
-    color: colors.neutral.gray400,
-  },
-});
+function makeStyles({ colors, spacing, typography }: Theme) {
+  return StyleSheet.create({
+    card: {
+      marginBottom: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.xs,
+    },
+    subject: {
+      flex: 1,
+      marginRight: spacing.sm,
+      fontSize: typography.sizes.base,
+      fontWeight: typography.weights.semibold as any,
+      color: colors.text.primary,
+    },
+    meta: {
+      fontSize: typography.sizes.sm,
+      color: colors.text.secondary,
+    },
+    date: {
+      marginTop: spacing.xs / 2,
+      fontSize: typography.sizes.xs,
+      color: colors.text.secondary,
+    },
+  });
+}
