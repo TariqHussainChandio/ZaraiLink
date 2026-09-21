@@ -32,7 +32,6 @@ export function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
     );
     pulse.start();
     return () => pulse.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opacity, theme.motion]);
 
   return <Animated.View style={[styles.block, { opacity }, style]} />;

@@ -1,6 +1,8 @@
 module.exports = {
-  preset: '@react-native/jest-preset',
-  setupFiles: ['react-native-gesture-handler/jestSetup'],
+  // Android is the only platform this app ships, so tests run with Platform.OS === 'android'.
+  // jest-expo also mocks Expo's native modules, which do not exist under Jest.
+  preset: 'jest-expo/android',
+  setupFiles: ['react-native-gesture-handler/jestSetup', '<rootDir>/jest.env.js'],
   // GitHub Actions' runners are markedly slower than local dev machines (the full suite takes
   // ~85s there vs ~20s locally) — the 5s Jest default occasionally times out a heavy screen
   // test's cold start there even though it's not actually hung. 15s gives real headroom without
@@ -16,15 +18,14 @@ module.exports = {
     '!src/testUtils/**',
     '!src/**/__mocks__/**',
   ],
-  // lucide-react-native ships .mjs; the RN preset's transform only matches js/ts/tsx, so it's
-  // added here (the asset transformer entry is copied over since this replaces, not merges,
-  // the preset's transform map).
+  // lucide-react-native ships .mjs; jest-expo's transform only matches js/ts/tsx, so it is added
+  // here. Jest merges this with the preset's transform map rather than replacing it.
   transform: {
-    '^.+\\.(bmp|gif|jpg|jpeg|mp4|png|psd|svg|webp)$':
-      '<rootDir>/node_modules/@react-native/jest-preset/jest/assetFileTransformer.js',
-    '^.+\\.(js|jsx|mjs|ts|tsx)$': 'babel-jest',
+    '\\.mjs$': 'babel-jest',
   },
+  // Packages that ship untranspiled source (Flow, TypeScript, or ES modules) must go through Babel.
+  // This is jest-expo's own list plus the libraries this app adds.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-.*|@supabase/.*|isows|lucide-react-native)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|expo-.*|@expo(nent)?/.*|@react-navigation|react-native-.*|@supabase/.*|isows|lucide-react-native)/)',
   ],
 };

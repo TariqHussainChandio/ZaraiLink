@@ -32,7 +32,7 @@ export function DiseaseProcessingScreen() {
     if (!userId) return;
     setError(null);
     try {
-      const imageUrl = uploadedImageUrl ?? (await uploadDiseaseImage(userId, { uri: imageUri, fileName: imageFileName ?? undefined, type: imageType ?? undefined }));
+      const imageUrl = uploadedImageUrl ?? (await uploadDiseaseImage(userId, { uri: imageUri, fileName: imageFileName ?? undefined, mimeType: imageType ?? undefined }));
       setUploadedImageUrl(imageUrl);
 
       const diseaseCase = await createDiseaseCase(cropId, imageUrl);

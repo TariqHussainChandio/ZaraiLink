@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import type { Asset } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/ui';
 import {
@@ -15,7 +14,7 @@ import {
 import { createListing, uploadListingImages } from '../../services/modules/marketplace/listingsService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
-import { pickPhotos } from '../../utils/photoPicker';
+import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
 
 export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'CreateListing'>) {
@@ -23,7 +22,7 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const [images, setImages] = useState<Asset[]>([]);
+  const [images, setImages] = useState<PickedPhoto[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const {

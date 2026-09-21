@@ -22,10 +22,6 @@ pre-commit:
       glob: "*.{ts,tsx,js,jsx}"
       # Only errors block a commit. Existing warnings are held by the ratchet in CI (check_reality.py
       # --tools eslint), so touching an old file is not blocked by debt that was already there.
-      # ESLint 8 (legacy config) also warns when a dotfile is passed explicitly, so those are skipped.
-      exclude:
-        - ".eslintrc.js"
-        - ".prettierrc.js"
       run: npx --no-install eslint {staged_files}
 
     # Secrets never belong in a commit. gitleaks is a single Go binary; without it the hook says so

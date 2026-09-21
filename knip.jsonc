@@ -3,10 +3,6 @@
   // Dead-code detection: unused files, exports, types, and dependencies. Findings are a ratchet in
   // scripts/check_reality.py: what exists today is recorded, anything new fails CI, and each
   // cleanup lowers the recorded count.
-  "ignoreDependencies": [
-    // Imported implicitly by Babel-transformed React Native code (async helpers and the like).
-    "@babel/runtime"
-  ],
-  // jest.config.js names babel-jest as a transform string; the React Native jest preset provides it.
+  // jest.config.js names babel-jest as a transform string; jest-expo provides it.
   "ignoreUnresolved": ["babel-jest"]
 }

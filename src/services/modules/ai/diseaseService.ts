@@ -1,9 +1,9 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { supabase } from '../../supabase/client';
 import { apiFetch } from '../../api/client';
 import type { DiseaseCase, DiseaseCaseWithPrediction, DiseasePrediction } from '../../../types/disease';
 
-export async function uploadDiseaseImage(userId: string, image: Asset): Promise<string> {
+export async function uploadDiseaseImage(userId: string, image: PickedPhoto): Promise<string> {
   if (!image.uri) throw new Error('No image selected');
 
   const extension = image.fileName?.split('.').pop() ?? 'jpg';
@@ -14,7 +14,7 @@ export async function uploadDiseaseImage(userId: string, image: Asset): Promise<
 
   const { error } = await supabase.storage
     .from('disease-images')
-    .upload(path, arrayBuffer, { contentType: image.type ?? 'image/jpeg' });
+    .upload(path, arrayBuffer, { contentType: image.mimeType ?? 'image/jpeg' });
   if (error) throw error;
 
   const { data } = supabase.storage.from('disease-images').getPublicUrl(path);

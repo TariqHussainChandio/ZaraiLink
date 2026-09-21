@@ -50,7 +50,7 @@ describe('DiseaseUploadScreen', () => {
   });
 
   it('picks a photo and enables Analyze', async () => {
-    mockPickPhotos.mockResolvedValue([{ uri: 'file://leaf.jpg', fileName: 'leaf.jpg', type: 'image/jpeg' }]);
+    mockPickPhotos.mockResolvedValue([{ uri: 'file://leaf.jpg', fileName: 'leaf.jpg', mimeType: 'image/jpeg' }]);
     await render(<DiseaseUploadScreen />);
     await fireEvent.press(screen.getByText('+ Add Photo'));
     expect(await screen.findByText('Analyze')).toBeTruthy();

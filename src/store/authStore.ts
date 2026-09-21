@@ -104,7 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
 
     // Password-reset emails link to zarailink://reset-password?code=... (authService.ts's
-    // resetPassword, registered natively in AndroidManifest.xml). PKCE's `code` isn't a session
+    // resetPassword, registered natively from `scheme` in app.config.ts). PKCE's `code` isn't a session
     // by itself — exchanging it is what actually triggers the PASSWORD_RECOVERY event above.
     const handleDeepLink = (url: string | null) => {
       if (!url) return;

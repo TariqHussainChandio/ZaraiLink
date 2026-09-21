@@ -42,7 +42,12 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
     <View style={styles.container}>
       <View style={styles.row}>
         <Text style={styles.rowLabel}>{t('settings.notifications')}</Text>
+        {/* `accessible` and the label are explicit: TalkBack needs a name for the switch, and
+            Testing Library only recognizes iOS's RCTSwitch as accessible by default, not the
+            AndroidSwitch this app renders. */}
         <Switch
+          accessible
+          accessibilityLabel={t('settings.notifications')}
           value={profile?.notifications_enabled ?? true}
           onValueChange={onToggleNotifications}
           disabled={savingNotifications}

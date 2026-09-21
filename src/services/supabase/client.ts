@@ -3,14 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { ENV } from '../../config/env';
 
-if (!ENV.supabaseUrl) {
-  throw new Error('SUPABASE_URL is missing from .env');
-}
-
-if (!ENV.supabaseAnonKey) {
-  throw new Error('SUPABASE_ANON_KEY is missing from .env');
-}
-
+// ENV is validated at import time (src/config/env.ts), so a missing URL or key never reaches here.
 export const supabase = createClient(ENV.supabaseUrl, ENV.supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,

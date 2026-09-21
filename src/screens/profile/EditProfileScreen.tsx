@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { launchImageLibrary } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Avatar, Button, Input, LocationPicker, PhoneInput, isValidE164 } from '../../components/ui';
@@ -10,6 +9,7 @@ import { fetchFarmerProfile, upsertFarmerProfile } from '../../services/modules/
 import { updateProfile, uploadAvatar } from '../../services/modules/profile/profileService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { pickFromLibrary, type PickedPhoto } from '../../utils/photoPicker';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
 import type { TFunction } from 'i18next';
 
@@ -44,7 +44,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   const profile = useAuthStore(state => state.profile);
   const refreshProfile = useAuthStore(state => state.refreshProfile);
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
-  const [pickedAvatar, setPickedAvatar] = useState<{ uri: string; type?: string; fileName?: string } | null>(null);
+  const [pickedAvatar, setPickedAvatar] = useState<PickedPhoto | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -89,11 +89,10 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   const city = watch('city');
 
   const pickAvatar = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
-    const asset = result.assets?.[0];
-    if (asset?.uri) {
-      setAvatarUri(asset.uri);
-      setPickedAvatar({ uri: asset.uri, type: asset.type, fileName: asset.fileName });
+    const [photo] = await pickFromLibrary({ selectionLimit: 1 });
+    if (photo) {
+      setAvatarUri(photo.uri);
+      setPickedAvatar(photo);
     }
   };
 

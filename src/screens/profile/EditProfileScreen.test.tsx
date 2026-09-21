@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchImageLibraryAsync } from 'expo-image-picker';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 // EditProfileScreen calls useTranslation() but never imports '../../localization' itself —
 // in the real app, App.tsx's own import of it runs the i18next init once at startup. A test
@@ -13,8 +13,8 @@ import { useAuthStore } from '../../store/authStore';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
 import type { Profile } from '../../types/profile';
 
-jest.mock('react-native-image-picker', () => ({
-  launchImageLibrary: jest.fn(),
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(),
 }));
 
 jest.mock('../../services/modules/farmer/farmService', () => ({
@@ -27,7 +27,7 @@ jest.mock('../../services/modules/profile/profileService', () => ({
   uploadAvatar: jest.fn(),
 }));
 
-const mockLaunchImageLibrary = launchImageLibrary as jest.Mock;
+const mockLaunchImageLibrary = launchImageLibraryAsync as jest.Mock;
 const mockFetchFarmerProfile = fetchFarmerProfile as jest.Mock;
 const mockUpsertFarmerProfile = upsertFarmerProfile as jest.Mock;
 const mockUpdateProfile = updateProfile as jest.Mock;
@@ -139,7 +139,8 @@ describe('EditProfileScreen', () => {
 
   it('picks and uploads a new avatar before saving', async () => {
     mockLaunchImageLibrary.mockResolvedValue({
-      assets: [{ uri: 'file://avatar.jpg', type: 'image/jpeg', fileName: 'avatar.jpg' }],
+      canceled: false,
+      assets: [{ uri: 'file://avatar.jpg', mimeType: 'image/jpeg', fileName: 'avatar.jpg' }],
     });
     mockUploadAvatar.mockResolvedValue('https://example.com/avatar.jpg');
     useAuthStore.setState({
@@ -155,7 +156,7 @@ describe('EditProfileScreen', () => {
     await waitFor(() =>
       expect(mockUploadAvatar).toHaveBeenCalledWith('user-1', {
         uri: 'file://avatar.jpg',
-        type: 'image/jpeg',
+        mimeType: 'image/jpeg',
         fileName: 'avatar.jpg',
       }),
     );

@@ -3,7 +3,6 @@ import type { TFunction } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { launchImageLibrary, type Asset } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Button, Input, SelectField } from '../../components/ui';
@@ -18,6 +17,7 @@ import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useTheme, type Theme } from '../../theme';
 import type { ConsultationPriority } from '../../types/expert';
 import type { Farm } from '../../types/farmer';
+import { pickFromLibrary, type PickedPhoto } from '../../utils/photoPicker';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
 
 const PRIORITY_IDS: ConsultationPriority[] = ['low', 'medium', 'high'];
@@ -53,8 +53,8 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   // A disease-advisory handoff seeds this with the case's already-uploaded remote image —
   // `uploadConsultationAttachments` just does `fetch(image.uri)`, which works the same for a
   // remote `https://` URL as for a local picker `file://` URI, so no service changes needed.
-  const [images, setImages] = useState<Asset[]>(
-    prefill?.imageUrl ? [{ uri: prefill.imageUrl, fileName: 'disease-photo.jpg', type: 'image/jpeg' }] : [],
+  const [images, setImages] = useState<PickedPhoto[]>(
+    prefill?.imageUrl ? [{ uri: prefill.imageUrl, fileName: 'disease-photo.jpg', mimeType: 'image/jpeg' }] : [],
   );
   const [submitting, setSubmitting] = useState(false);
 
@@ -87,8 +87,9 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   });
 
   const pickImages = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 4 });
-    if (result.assets) setImages(result.assets);
+    const photos = await pickFromLibrary({ selectionLimit: 4 });
+    // Backing out of the picker returns nothing; keep whatever was already chosen.
+    if (photos.length > 0) setImages(photos);
   };
 
   const onSubmit = async (values: RequestFormValues) => {

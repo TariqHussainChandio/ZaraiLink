@@ -3,7 +3,6 @@ import type { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import type { Asset } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Button, EmptyState, Input, LocationPicker, Spinner } from '../../components/ui';
@@ -16,7 +15,7 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { ExpertSpecialization } from '../../types/expert';
-import { pickPhotos } from '../../utils/photoPicker';
+import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 
 const SPECIALIZATION_IDS: ExpertSpecialization[] = [
   'crop_management',
@@ -67,7 +66,7 @@ export function ExpertApplicationScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [specializations, setSpecializations] = useState<ExpertSpecialization[]>([]);
-  const [document, setDocument] = useState<Asset | null>(null);
+  const [document, setDocument] = useState<PickedPhoto | null>(null);
 
   const applicationSchema = useMemo(() => buildApplicationSchema(t), [t]);
   const specializationOptions = useMemo(
