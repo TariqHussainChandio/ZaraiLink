@@ -35,6 +35,7 @@ jobs:
       contents: read
     outputs:
       frontend: ${{ steps.areas.outputs.frontend }}
+      android: ${{ steps.areas.outputs.android }}
       backend: ${{ steps.areas.outputs.backend }}
       database: ${{ steps.areas.outputs.database }}
     steps:
@@ -49,13 +50,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$EVENT" != "pull_request" ]; then
-            printf 'frontend=true\nbackend=true\ndatabase=true\n' >> "$GITHUB_OUTPUT"
+            printf 'frontend=true\nandroid=true\nbackend=true\ndatabase=true\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
           changed="$(git diff --name-only "$BASE_SHA" HEAD)"
           match() { if printf '%s\n' "$changed" | grep -Eq "$1"; then echo true; else echo false; fi; }
           {
-            echo "frontend=$(match '^(src/|__tests__/|__mocks__/|android/|App\.tsx$|index\.js$|app\.json$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|jest\.config\.js$|\.eslintrc\.js$|\.prettierrc\.js$|knip\.jsonc$|scripts/|\.github/)')"
+            echo "frontend=$(match '^(src/|__tests__/|__mocks__/|App\.tsx$|index\.js$|app\.config\.ts$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|jest\.config\.js$|jest\.env\.js$|eslint\.config\.js$|\.prettierrc\.js$|knip\.jsonc$|scripts/|\.github/)')"
+            echo "android=$(match '^(src/|App\.tsx$|index\.js$|app\.config\.ts$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|\.github/)')"
             echo "backend=$(match '^(backend/|scripts/|osv-scanner\.toml$|\.github/)')"
             echo "database=$(match '^(supabase/|backend/|\.github/)')"
           } >> "$GITHUB_OUTPUT"
@@ -115,6 +117,53 @@ jobs:
           name: frontend-coverage
           path: coverage/
           retention-days: 14
+
+  android:
+    name: Android build
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+      # Caches Gradle's dependencies and build cache. Pull requests only read it; the main branch writes it.
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - run: npm ci
+      # Expo's own project checks: every package at the version the SDK was tested with, and a valid app config.
+      - name: Expo doctor
+        run: npm run doctor
+      # android/ is generated output and never checked in. Build it from app.config.ts exactly as a developer does.
+      - name: Generate the native project
+        run: npx expo prebuild --platform android --clean --no-install
+      # One ABI (the emulator's) proves the whole build and keeps CI minutes down. The release build is
+      # here on purpose: R8 minification breaks apps in ways a debug build never shows.
+      - name: Build debug and release APKs
+        working-directory: android
+        run: ./gradlew assembleDebug assembleRelease -PreactNativeArchitectures=x86_64 --console=plain
+      - name: APK sizes
+        run: |
+          {
+            echo "### Android APK sizes (x86_64 only)"
+            echo
+            echo "| Build | Size |"
+            echo "|---|---|"
+            for variant in debug release; do
+              apk="android/app/build/outputs/apk/$variant/app-$variant.apk"
+              echo "| $variant | $(du -h "$apk" | cut -f1) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 
   backend:
     name: Backend
@@ -295,7 +344,7 @@ jobs:
   ci-required:
     name: ci-required
     if: always()
-    needs: [changes, reality, frontend, backend, database, security, sast, workflow-lint, pr-hygiene]
+    needs: [changes, reality, frontend, android, backend, database, security, sast, workflow-lint, pr-hygiene]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions: {}
