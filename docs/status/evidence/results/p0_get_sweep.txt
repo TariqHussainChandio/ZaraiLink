@@ -1,0 +1,6 @@
+GET routes exercised: 30; non-2xx: 4
+   ('/api/v1/analytics/expert', 'expert', 500, 'Internal Server Error')
+   ('/api/v1/analytics/farmer', 'farmer', 500, 'Internal Server Error')
+   ('/api/v1/consultations/assigned', 'expert', 500, 'Internal Server Error')
+   ('/api/v1/consultations/mine', 'buyer', 500, 'Internal Server Error')
+2xx: 26

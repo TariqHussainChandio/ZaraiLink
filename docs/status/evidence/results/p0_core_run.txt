@@ -1,0 +1,39 @@
+[  PASS   ] B0 role users created (admin API + trigger): farmer, buyer x2, dealer signed in with real JWTs
+[  PASS   ] B1 reference data readable: categories=200/8 units=200
+[  FAIL   ] B2 farmer creates listing: HTTP 500 Internal Server Error
+    (seeded listing via SQL to keep observing downstream flows)
+[  PASS   ] B3 buyer sees listing in browse: HTTP 200 [{"id":"4dbedb50-d4f5-43a5-9fcb-42eabfec4d63","owner_id":"20adc0bf-ccc7-4acf-9cac-cee9c8989aad","category_id":"
+[  FAIL   ] B4 buyer checkout with delivery charge: HTTP 500 Internal Server Error
+[  FAIL   ] B8 dealer creates store: HTTP 500 Internal Server Error
+[  FAIL   ] B8b dealer creates listing: HTTP 500 Internal Server Error
+    (seeded dealer listing via SQL)
+[  FAIL   ] B8c dealer inventory row: HTTP 500 Internal Server Error
+    (seeded inventory row via SQL)
+[  CHECK  ] B8d oversell blocked, stock atomic: 1st confirm=- 2nd confirm=- final stock=10.00
+[  PASS   ] B10a upload leaf photo to storage as buyer: HTTP 200 {"Key":"disease-images/3ee0947c-2f0e-415a-8242-e84864a2bd96/ff93bf.jpg","Id":"d7ccb575-9d7a-4200-b09d-e5d41ef99b05"}
+[ FINDING ] B10b disease case on a FRESH db (migrations only): HTTP 500 Internal Server Error (service_role has no table privileges after the migrations)
+[  PASS   ] B10c disease case with service_role privileges granted (local emulation of hosted): HTTP 200 {"id":"ac7ba954-c472-4c4a-8d5e-9b57c6eb42b7","user_id":"3ee0947c-2f0e-415a-8242-e84864a2bd96","crop_id":null,"image_url":"http://127.0.0.1:54321/stora
+[  PASS   ] B10d predict on real leaf photo: HTTP 200 in 1.01s {"id":"8fbe2ae9-1c6a-497b-8155-b796a927556f","disease_case_id":"ac7ba954-c472-4c4a-8d5e-9b57c6eb42b7","predicted_disease":"Tomato — Septoria leaf spot","confidence_score":0.9006,"description":"The lea
+[CONFIRMED] B10e C2 SSRF: server-side fetch of client URLs: {"internal API (gateway)": "422 Uploaded file is not a valid image.", "internal backend itself": "422 Uploaded file is not a valid image.", "closed local port": "422 Could not fetch the case image.", "cloud metadata address": "422 Could not fetch the case image.", "file scheme": "422 Could not fetch the case image."} ; distinct responses=2 (reachability oracle if >1)
+[  PASS   ] B11 authorization spot checks: {"no token -> 401": true, "buyer -> dealer inventory 403": true, "farmer -> admin stats 403": true, "buyer -> admin users 403": true}
+[  PASS   ] B12 suspended user blocked at API: HTTP 403 {"detail":"Account suspended"}
+[ FINDING ] B13 C4 concurrency: single request median 1575 ms; 40 concurrent took 60989 ms (fully serialized would be ~62993 ms; ratio 0.97; 1.00 = serialized, ~0.03 = truly concurrent)
+
+--- summary ---
+PASS       B0 role users created (admin API + trigger)
+PASS       B1 reference data readable
+FAIL       B2 farmer creates listing
+PASS       B3 buyer sees listing in browse
+FAIL       B4 buyer checkout with delivery charge
+FAIL       B8 dealer creates store
+FAIL       B8b dealer creates listing
+FAIL       B8c dealer inventory row
+CHECK      B8d oversell blocked, stock atomic
+PASS       B10a upload leaf photo to storage as buyer
+FINDING    B10b disease case on a FRESH db (migrations only)
+PASS       B10c disease case with service_role privileges granted (local emulation of hosted)
+PASS       B10d predict on real leaf photo
+CONFIRMED  B10e C2 SSRF: server-side fetch of client URLs
+PASS       B11 authorization spot checks
+PASS       B12 suspended user blocked at API
+FINDING    B13 C4 concurrency
