@@ -1,0 +1,112 @@
+[project]
+name = "zarailink-backend"
+version = "0.1.0"
+description = "ZaraiLink FastAPI backend: role-aware marketplace, advisory and governance API over Supabase."
+requires-python = ">=3.12"
+
+# Runtime dependencies. Versions are the ones the code was written and tested against; they are
+# pinned exactly and upgraded deliberately (phases P3 and P5a), never by drift. `uv.lock` records the
+# full resolved tree with hashes, and CI installs from it with `uv sync --frozen`.
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+  "pydantic==2.10.4",
+  "pydantic-settings==2.7.1",
+  "python-dotenv==1.0.1",
+  "supabase==2.11.0",
+  "httpx==0.28.1",
+  "slowapi==0.1.9",
+  "torch==2.5.1",
+  "torchvision==0.20.1",
+  "pillow==11.0.0",
+]
+
+# Development-only tools. Kept out of the production image, unlike the old single requirements file.
+[dependency-groups]
+dev = [
+  "pytest==8.3.4",
+  "pytest-asyncio==0.25.2",
+  "pytest-cov>=6.0",
+  "ruff>=0.8",
+  "mypy>=1.13",
+  "vulture>=2.13",
+]
+
+# PyPI's Linux torch wheel drags in multi-gigabyte CUDA libraries. The API runs inference on CPU,
+# so both torch packages come from PyTorch's CPU index (the same build the local .venv already has).
+# uv resolves universally, so one lock serves Linux CI and Windows dev machines.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+# ------------------------------------------------------------------ pytest / coverage
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+# `app/` has no __init__.py, so it is imported from the backend root. Without this, the bare `pytest`
+# command (unlike `python -m pytest`) cannot find the `app` package.
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+# ------------------------------------------------------------------ ruff
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+  "E", "W",   # pycodestyle
+  "F",        # pyflakes (unused imports and names)
+  "I",        # import order
+  "B",        # bugbear (likely bugs)
+  "UP",       # modern syntax
+  "S",        # bandit (security)
+  "ASYNC",    # blocking calls inside async code, the defect class found in P0
+  "T20",      # no print()
+  "ARG",      # unused arguments
+  "ERA",      # commented-out code
+  "SIM", "C4", "RUF", "PT",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection markers are meant to be called in defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query", "fastapi.Body", "fastapi.Path"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "ARG001", "ARG002", "ARG005"]
+
+# ------------------------------------------------------------------ mypy
+# Lenient today, on purpose: the existing code is untyped in places. The count of errors is a
+# ratchet (scripts/check_reality.py) that may only go down; strictness rises as it does.
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+# `app/` has no __init__.py files, so modules are found relative to the backend root.
+mypy_path = "."
+explicit_package_bases = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+pretty = false
+show_error_codes = true
+
+# ------------------------------------------------------------------ vulture (dead code)
+[tool.vulture]
+paths = ["app"]
+min_confidence = 80
+# FastAPI wires these by decoration or name, so static analysis cannot see the callers.
+ignore_decorators = ["@router.*", "@app.*", "@limiter.*"]
