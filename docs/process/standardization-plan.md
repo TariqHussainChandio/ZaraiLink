@@ -4,9 +4,10 @@
 
 # ZaraiLink Standardization Program — Plan v2
 
-> **Status (2026-09-21): P0, P1, and P2 executed** (P1 and P2 proven locally; GitHub-side proof needs your
-> push, see `docs/status/p1-gates-2026-09.md` and `docs/status/p2-expo-2026-09.md`. P2 stops at gate G13:
-> the EAS brief waits for you and blocks nothing before P12).
+> **Status (2026-09-22): P0, P1, and P2 executed and open as pull request 3, with all 11 CI checks green on
+> GitHub.** The one proof left there is that each gate goes red when it should
+> (`scripts/ci/plant-violations.sh`). See `docs/status/p1-gates-2026-09.md` and `docs/status/p2-expo-2026-09.md`.
+> P2 stops at gate G13: the EAS brief waits for you and blocks nothing before P12.
 >
 > **P0 executed.** Runtime results are in §1.6 and in
 > `docs/status/baseline-2026-09.md`. They confirmed the source-level findings, re-rated one, and
