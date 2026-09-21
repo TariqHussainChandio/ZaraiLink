@@ -1,0 +1,4 @@
+# Generated output and native build folders are never linted.
+coverage/
+android/
+ios/
