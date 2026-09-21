@@ -5,17 +5,45 @@
 - **Architecture**: MobileNetV2 (`torchvision.models.mobilenet_v2`), chosen for its small size
   and low inference cost — this needs to run affordably on a small hosted FastAPI instance, and
   stay cheap to retrain/iterate on.
-- **Training**: done externally in Google Colab, not in this repo. The trained weights (a
-  `state_dict`, not a full model pickle) are dropped in at `backend/app/ml/checkpoints/model.pth`.
-- **Current status**: `model.pth` in this repo is a **placeholder**, not a real checkpoint —
-  `backend/app/services/ai_engine.py` fails to load it on purpose and the `/api/v1/
-  disease/predict` endpoint responds with `503` ("AI model not trained yet") until the real
-  file replaces it at the same path. No code changes are needed when that happens.
-- **Classes**: `backend/app/core/config.py`'s `model_classes` list is a provisional placeholder
-  (a handful of representative crop diseases). Replace it with the real label list — in the
-  same order as the trained classifier's output layer — once training data is finalized.
-- **Accuracy**: unknown/pending — no claims are made anywhere in the UI copy about expected
-  accuracy until real evaluation numbers exist.
+- **Training**: fine-tuned externally on the PlantVillage dataset (two-stage: a frozen-backbone
+  warmup, then a full unfreeze — see `training_history_stage1_best_val_acc`/`stage2_best_val_acc`
+  in the metadata below), not in this repo. The trained weights (a `state_dict`, not a full model
+  pickle) live at `backend/app/ml/checkpoints/model.pth`, loaded with `weights_only=True` (safe
+  against arbitrary pickle code execution, since a plain state_dict never needs anything else).
+- **Current status**: real, live, and loading successfully — `classifier.available` is `True`.
+  `POST /api/v1/disease/predict` returns real 38-class predictions, not the earlier placeholder's
+  designed-to-fail `503`.
+- **Classes**: 38 real PlantVillage classes (14 crops × disease/healthy variants), loaded at
+  startup from `backend/app/ml/checkpoints/model_metadata.json`'s `class_names` list — not
+  hardcoded in `core/config.py` anymore. This makes the checkpoint's own metadata file the single
+  source of truth for the class list (and, see below, the version string): a future retrain only
+  needs new `model.pth`/`class_names.json`/`model_metadata.json` files dropped in at the same
+  path, no code change. If `model_metadata.json` is missing/corrupt, `core/config.py` falls back
+  to the original 5-class placeholder list, which degrades the same way a missing/corrupt
+  `model.pth` already does (`classifier.available` → `False`), not a crash.
+- **Model version**: `settings.model_version` is likewise derived from `model_metadata.json`
+  (`model_name` + `last_trained_on` + `final_test_accuracy`), e.g.
+  `"MobileNetV2_PlantDisease_Classifier (trained 2026-09-19 18:07:03, val_acc=99.81%)"` — recorded
+  on every `disease_predictions` row, so a prediction is traceable to exactly the weights that
+  produced it without a manual version bump per retrain.
+- **Display labels**: the model's raw output classes are taxonomy strings like
+  `"Tomato___Late_blight"` — not shown to users as-is. `disease_service._humanize_class_name()`
+  converts these to farmer-facing labels (e.g. `"Tomato — Late blight"`) at the point the API
+  response/DB row is composed, so both frontend consumers (the result screen and the
+  expert-consultation handoff subject line) get a clean label with no frontend changes needed.
+  The `DESCRIPTIONS` lookup happens against the **raw** label first, before humanizing — the two
+  must not be reordered, or every lookup would miss.
+- **Per-class copy**: `disease_service.py`'s `DESCRIPTIONS` dict has a real, non-empty
+  description/recommended-actions entry for all 38 raw classes (a
+  `test_descriptions_covers_every_configured_model_class` regression test enforces this stays
+  true as `model_classes` changes). Any class not yet in `DESCRIPTIONS` — e.g. after a future
+  retrain adds a new class before this dict is updated — falls back to a real, non-empty
+  `DEFAULT_DESCRIPTION` ("consult an expert"), never the old silent `(None, [])`.
+- **Accuracy**: 99.81% final test accuracy per `model_metadata.json` on the PlantVillage
+  validation split — not independently re-verified against real farmer-submitted photos in this
+  repo, which typically differ from PlantVillage's clean, single-leaf lab photos (lighting,
+  background clutter, multiple leaves, disease co-occurrence). No accuracy claim is surfaced in
+  the app's own UI copy.
 
 ## Advisory-only framing (§17.2, BR-13)
 
@@ -33,12 +61,35 @@ presented as a specific cure for the predicted disease.
 
 ## Data flow
 
-1. Mobile uploads the photo to the public `disease-images` Storage bucket
-   (`supabase/migrations/20260901080000_disease_images_bucket.sql`) and inserts a `disease_cases`
-   row directly (RLS: `disease_cases_insert_owner`).
-2. Mobile calls `POST /api/v1/disease/predict` with `{ disease_case_id }`.
-3. The backend (service-role, bypasses RLS) fetches the case, downloads the image by its public
-   URL, runs inference, and inserts the `disease_predictions` row — the mobile client never
-   inserts predictions directly (`disease_predictions` only grants `select` to `authenticated`,
-   per the original Module 4 migration's own comment).
-4. Mobile reads the joined case+prediction back via `fetchDiseaseCaseWithPrediction`.
+1. Mobile uploads the photo directly to the public `disease-images` Storage bucket
+   (`supabase/migrations/20260901080000_disease_images_bucket.sql`), then calls
+   `POST /api/v1/disease/cases` (`diseaseService.createDiseaseCase`) with the resulting public URL.
+   The row itself is written backend-side via `disease_repository.create_case`, which uses the
+   service-role client — the original Module 4 migration's `disease_cases_insert_owner` RLS
+   policy still exists and would allow a direct client insert, but the app doesn't take that path;
+   the backend is the sole writer today (see the "Model integration" section of
+   [backend-architecture.md](backend-architecture.md) for why this domain is the one place
+   service-role is used).
+2. Mobile calls `POST /api/v1/disease/predict` with `{ disease_case_id }` (rate-limited to
+   10/minute per IP — tighter than every other endpoint's 200/minute default, since this is the
+   one call that actually runs model inference; see backend-architecture.md's
+   "Request-level middleware" section).
+3. The backend (service-role) fetches the case, downloads the image by its public URL, runs
+   inference, and inserts the `disease_predictions` row — the mobile client never inserts
+   predictions directly (`disease_predictions` only grants `select` to `authenticated`, per the
+   original Module 4 migration's own comment).
+4. Mobile reads the joined case+prediction back via `GET /api/v1/disease/cases/{id}`
+   (`diseaseService.fetchDiseaseCaseWithPrediction`) — backend-mediated like the other two calls,
+   not a direct Supabase read.
+
+## Testing
+
+`backend/tests/unit/test_disease_service.py` mocks `ai_engine.classifier` entirely — it verifies
+ownership/authorization/error-handling logic and is intentionally insensitive to whether a real
+model is loaded, plus table-driven coverage of `_humanize_class_name` and the `DESCRIPTIONS`
+fallback behavior. The one suite that exercises the **real** checkpoint through **real**
+torch/torchvision is `backend/tests/integration/test_ai_engine_real_checkpoint.py` — it confirms
+`classifier.available is True` and that `model_classes` was actually loaded from
+`model_metadata.json` (not the old placeholder), which the mocked unit tests can't prove. A third
+test in that file — running an actual leaf photo through the model — is skipped until a real,
+license-clean sample image is added at `backend/tests/fixtures/sample_leaf.jpg`.

@@ -39,7 +39,10 @@ class DiseaseClassifier:
         model = models.mobilenet_v2(weights=None)
         model.classifier[1] = nn.Linear(model.last_channel, len(settings.model_classes))
         try:
-            state_dict = torch.load(settings.model_path, map_location="cpu")
+            # weights_only=True restricts unpickling to plain tensors/primitives — appropriate
+            # here since model.pth is expected to be exactly a state_dict, never a full pickled
+            # model object, and avoids torch's arbitrary-code-execution risk on untrusted files.
+            state_dict = torch.load(settings.model_path, map_location="cpu", weights_only=True)
             model.load_state_dict(state_dict)
             model.eval()
             self._model = model
@@ -78,7 +81,9 @@ class DiseaseClassifier:
         return settings.model_classes[int(index.item())], float(confidence.item())
 
 
-# Lazy singleton, loaded once per process. The placeholder `model.pth` fails to load by design,
-# so `classifier.available` is False until real Colab-trained weights replace it at the same path
-# — no code changes needed then, just a process restart.
+# Lazy singleton, loaded once per process — a real fine-tuned MobileNetV2 (PlantVillage, 38
+# classes, ~99.8% validation accuracy) now lives at model.pth; class_names/model_version are
+# read from model_metadata.json via core/config.py, not hardcoded here. Retraining the model
+# only requires dropping in new checkpoint/metadata files and restarting the process — no code
+# change needed, same as before.
 classifier = DiseaseClassifier()
