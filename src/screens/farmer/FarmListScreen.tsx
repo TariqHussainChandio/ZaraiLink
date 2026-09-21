@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
@@ -10,6 +11,7 @@ import type { Farm } from '../../types/farmer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -45,9 +47,9 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load farms"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('farmer.farmList.loadErrorTitle', "Couldn't load farms")}
+        description={t('farmer.farmList.loadErrorDescription', 'Check your connection and try again.')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -66,20 +68,25 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
             <Card style={styles.card}>
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.meta}>
-                {item.area ? `${item.area} ${item.land_unit ?? ''}`.trim() : 'Area not set'}
+                {item.area
+                  ? `${item.area} ${item.land_unit ?? ''}`.trim()
+                  : t('farmer.farmList.areaNotSet', 'Area not set')}
               </Text>
             </Card>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <EmptyState title="No farms yet" description="Add your first farm to get started." />
+          <EmptyState
+            title={t('farmer.farmList.emptyFarmsTitle', 'No farms yet')}
+            description={t('farmer.farmList.emptyFarmsDescription', 'Add your first farm to get started.')}
+          />
         }
       />
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.CreateFarm)}
       >
-        <Text style={styles.fabLabel}>+ New Farm</Text>
+        <Text style={styles.fabLabel}>{t('farmer.farmList.newFarmFab', '+ New Farm')}</Text>
       </TouchableOpacity>
     </View>
   );

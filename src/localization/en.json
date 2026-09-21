@@ -5,7 +5,16 @@
     "loading": "Loading…",
     "search": "Search",
     "retry": "Retry",
-    "select": "Select..."
+    "select": "Select...",
+    "checkConnectionRetry": "Check your connection and try again.",
+    "splash": {
+      "appName": "ZaraiLink"
+    },
+    "suspended": {
+      "title": "Account Suspended",
+      "description": "Your account has been suspended by an administrator. Contact support if you believe this is a mistake.",
+      "signOutButton": "Sign Out"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -26,6 +35,793 @@
     "city": "City",
     "village": "Village",
     "street": "Street / address",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "passwordMinLengthError": "Password must be at least 6 characters",
+    "passwordsMismatchError": "Passwords don't match",
+    "passwordUpdatedTitle": "Password updated",
+    "passwordUpdatedMessage": "Your password has been changed.",
+    "updatePasswordError": "Failed to update password",
+    "changePasswordSubtitle": "Choose a new password for your account.",
+    "newPasswordLabel": "New password",
+    "confirmPasswordLabel": "Confirm new password",
+    "updatePasswordButton": "Update Password",
+    "fullNameRequiredError": "Enter your full name",
+    "invalidPhoneError": "Enter a valid phone number",
+    "editProfileFailedTitle": "Failed to update profile",
+    "experienceLabel": "Experience",
+    "experiencePlaceholder": "e.g. 8 years growing wheat and cotton",
+    "agriculturalInfoLabel": "Agricultural information",
+    "agriculturalInfoPlaceholder": "Practices, specialties, certifications, etc.",
+    "emailLabel": "Email",
+    "locationLabel": "Location",
+    "editProfileButton": "Edit Profile",
+    "settingsButton": "Settings"
+  },
+  "auth": {
+    "login": {
+      "passwordMinLengthError": "Password must be at least 6 characters",
+      "invalidEmailError": "Enter a valid email",
+      "invalidPhoneError": "Enter a valid phone number",
+      "defaultError": "Failed to sign in",
+      "title": "Welcome back",
+      "subtitle": "Sign in to your ZaraiLink account",
+      "emailChannel": "Email",
+      "phoneChannel": "Phone number",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submitButton": "Sign In",
+      "forgotPasswordLink": "Forgot your password?",
+      "noAccountText": "Don't have an account?",
+      "signUpLink": " Sign up"
+    },
+    "register": {
+      "fullNameError": "Enter your full name",
+      "passwordMinLengthError": "Password must be at least 6 characters",
+      "roleError": "Select a role",
+      "invalidEmailError": "Enter a valid email",
+      "invalidPhoneError": "Enter a valid phone number",
+      "defaultError": "Failed to create account",
+      "title": "Create your account",
+      "subtitle": "Join ZaraiLink as a farmer, buyer, dealer, or expert",
+      "fullNameLabel": "Full name",
+      "verifyWithLabel": "Verify with",
+      "emailChannel": "Email",
+      "phoneChannel": "Phone number",
+      "emailLabel": "Email",
+      "emailHint": "We'll email you a 6-digit code to verify your account.",
+      "phoneHint": "We'll text you a 6-digit code to verify your account.",
+      "passwordLabel": "Password",
+      "roleLabel": "I am a...",
+      "submitButton": "Create account",
+      "haveAccountText": "Already have an account?",
+      "signInLink": " Sign in"
+    },
+    "forgotPassword": {
+      "emailRequiredError": "Email is required",
+      "invalidEmailError": "Enter a valid email",
+      "defaultError": "Failed to send reset email",
+      "title": "Reset your password",
+      "subtitle": "Enter your account email and we'll send you a reset link.",
+      "successMessage": "Check your email for a password reset link.",
+      "emailLabel": "Email",
+      "submitButton": "Send reset link",
+      "backLink": "Back to sign in"
+    },
+    "verifyOtp": {
+      "defaultVerifyError": "Invalid or expired code",
+      "resendDefaultError": "Failed to resend code",
+      "titleEmail": "Verify your email",
+      "titlePhone": "Verify your phone",
+      "subtitle": "We sent a verification code to {{identifier}}. Enter it below to activate your account.",
+      "codeLabel": "Verification code",
+      "verifyButton": "Verify",
+      "resendCooldown": "Resend code in {{seconds}}s",
+      "resendButton": "Resend code",
+      "backLink": "Back to sign up"
+    },
+    "resetPassword": {
+      "title": "Set a new password",
+      "subtitle": "Choose a new password for your ZaraiLink account.",
+      "newPasswordLabel": "New password",
+      "confirmPasswordLabel": "Confirm password",
+      "passwordMinLengthError": "Password must be at least 6 characters",
+      "passwordsMismatchError": "Passwords don't match",
+      "submitButton": "Update password",
+      "defaultError": "Failed to update password"
+    }
+  },
+  "messaging": {
+    "chat": {
+      "loadErrorTitle": "Couldn't load messages"
+    },
+    "conversationList": {
+      "unknownParticipant": "Unknown",
+      "emptyTitle": "No conversations yet",
+      "emptyDescription": "Message a seller from a listing or an order to start chatting."
+    }
+  },
+  "reviews": {
+    "writeReview": {
+      "errorTitle": "Could not submit review",
+      "ratingLabel": "Your rating",
+      "commentLabel": "Comment (optional)",
+      "commentPlaceholder": "How was your experience?",
+      "submitButton": "Submit Review"
+    }
+  },
+  "buyer": {
+    "dashboard": {
+      "loadErrorTitle": "Couldn't load your dashboard",
+      "totalPurchases": "Total Purchases",
+      "inProgress": "In Progress",
+      "quickActionsTitle": "Quick Actions",
+      "browseMarketplace": "Browse Marketplace",
+      "consultExpert": "Consult an Expert",
+      "recentPurchasesTitle": "Recent Purchases",
+      "noPurchasesYet": "No purchases yet",
+      "unknownSeller": "Unknown seller",
+      "purchaseSubtitle": "Rs. {{amount}} · {{status}}"
+    }
+  },
+  "disease": {
+    "processing": {
+      "analyzingStatus": "Analyzing your photo...",
+      "errorTitle": "AI analysis isn't available right now",
+      "talkToExpertButton": "Talk to an Expert"
+    },
+    "result": {
+      "loadErrorTitle": "Couldn't load this result",
+      "disclaimerText": "This is an AI advisory only and not a replacement for professional consultation.",
+      "recommendedActionsTitle": "Recommended Actions",
+      "noPredictionFallback": "No prediction is available for this case.",
+      "consultExpertButton": "Consult an Expert",
+      "relatedProductsTitle": "Related Products",
+      "relatedProductsCaption": "These may help — not a guarantee.",
+      "priceFormat": "Rs. {{price}}/{{unit}}"
+    },
+    "upload": {
+      "title": "Identify a Crop Disease",
+      "subtitle": "Upload a clear photo of the affected leaf or plant. This is an AI advisory only — not a replacement for professional consultation.",
+      "cropLabel": "Crop (optional)",
+      "photoLabel": "Photo",
+      "addPhotoButton": "+ Add Photo",
+      "analyzeButton": "Analyze"
+    }
+  },
+  "admin": {
+    "analytics": {
+      "loadErrorTitle": "Couldn't load analytics",
+      "loadErrorDescription": "Check your connection and try again.",
+      "totalUsers": "Total Users",
+      "totalListings": "Total Listings",
+      "activeListings": "Active Listings",
+      "userGrowth": "User Growth",
+      "noSignups": "No signups yet",
+      "totalOrders": "Total Orders",
+      "paymentsTotal": "Payments Total",
+      "currencyPrefix": "Rs. ",
+      "pendingVerifications": "Pending Verifications",
+      "orderVolume": "Order Volume",
+      "noOrders": "No orders yet",
+      "paymentsByStatus": "Payments by Status",
+      "reportsByStatus": "Reports by Status",
+      "footnote": "Consultation resolution rate: {{rate}}% · Approved experts: {{experts}}"
+    },
+    "auditLog": {
+      "all": "All",
+      "emptyTitle": "No audit log entries yet",
+      "emptyFilteredDescription": "Try a different entity filter.",
+      "systemActor": "System",
+      "previousState": "previous: {{state}}",
+      "newState": "new: {{state}}"
+    },
+    "categoryManagement": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "emptyTitle": "No categories yet",
+      "emptyDescription": "Add the first product category below.",
+      "addCategory": "+ Add Category",
+      "editCategoryTitle": "Edit Category",
+      "newCategoryTitle": "New Category",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Seeds",
+      "slugLabel": "Slug",
+      "slugPlaceholder": "e.g. seeds",
+      "iconLabel": "Icon (optional)",
+      "iconPlaceholder": "e.g. sprout",
+      "saveChangesButton": "Save Changes",
+      "createCategoryButton": "Create Category",
+      "deleteConfirmTitle": "Delete category",
+      "deleteConfirmMessage": "Delete \"{{name}}\"? This cannot be undone."
+    },
+    "dashboard": {
+      "loadErrorTitle": "Couldn't load the dashboard",
+      "loadErrorDescription": "Check your connection and try again.",
+      "totalUsers": "Total Users",
+      "listings": "Listings",
+      "orders": "Orders",
+      "usersByRole": "Users by Role",
+      "manage": "Manage",
+      "analytics": "Analytics",
+      "manageUsers": "Manage Users",
+      "moderateListings": "Moderate Listings",
+      "expertVerification": "Expert Verification",
+      "reports": "Reports",
+      "categories": "Categories",
+      "referenceData": "Reference Data",
+      "auditLogs": "Audit Logs",
+      "notifications": "Notifications"
+    },
+    "expertVerification": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "suspended": "Suspended",
+      "all": "All",
+      "emptyTitle": "No experts in this status",
+      "unknownName": "Unknown",
+      "noDegreeListed": "No degree listed",
+      "noExperienceListed": "No experience listed",
+      "viewDocument": "View Document",
+      "decisionNotePlaceholder": "Decision note (optional)",
+      "approve": "Approve",
+      "reject": "Reject",
+      "suspend": "Suspend",
+      "reactivate": "Reactivate"
+    },
+    "listingModeration": {
+      "ownerPriceLine": "{{owner}} · Rs. {{price}}/{{unit}}",
+      "unknownOwner": "Unknown",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "emptyTitle": "No listings yet",
+      "emptyDescription": "Listings will show up here once sellers start publishing."
+    },
+    "platformOrders": {
+      "counterpartyLine": "{{buyer}} → {{seller}}",
+      "unknownBuyer": "Unknown buyer",
+      "unknownSeller": "Unknown seller",
+      "emptyTitle": "No orders yet",
+      "emptyDescription": "Platform orders will show up here once placed."
+    },
+    "referenceData": {
+      "currenciesTitle": "Currencies",
+      "unitsTitle": "Units",
+      "codeLabel": "Code",
+      "symbolLabel": "Symbol",
+      "nameLabel": "Name",
+      "labelLabel": "Label",
+      "appliesToLabel": "Applies To",
+      "edit": "Edit",
+      "delete": "Delete",
+      "emptyTitle": "No {{table}} yet",
+      "emptyDescription": "Add the first one below.",
+      "addButton": "+ Add {{singular}}",
+      "editRowTitle": "Edit {{singular}}",
+      "newRowTitle": "New {{singular}}",
+      "saveChangesButton": "Save Changes",
+      "createButton": "Create",
+      "deleteConfirmTitle": "Delete row",
+      "deleteConfirmMessage": "Delete \"{{label}}\"? This cannot be undone."
+    },
+    "reports": {
+      "open": "Open",
+      "investigating": "Investigating",
+      "resolved": "Resolved",
+      "dismissed": "Dismissed",
+      "all": "All",
+      "targetListing": "LISTING",
+      "targetUser": "USER",
+      "targetReview": "REVIEW",
+      "targetMessage": "MESSAGE",
+      "targetExpert": "EXPERT",
+      "noComment": "(no comment)",
+      "unknownExpert": "Unknown expert",
+      "unknownUser": "Unknown user",
+      "contentUnavailable": "(content unavailable — may have been removed)",
+      "removeListing": "Remove Listing",
+      "suspendUser": "Suspend User",
+      "deleteReview": "Delete Review",
+      "suspendExpert": "Suspend Expert",
+      "suspendedViaReportNote": "Suspended via report resolution",
+      "redactMessage": "Redact Message",
+      "confirmActionMessage": "This will {{action}} and mark the report resolved.",
+      "loadErrorTitle": "Couldn't load reports",
+      "loadErrorDescription": "Check your connection and try again.",
+      "emptyTitle": "No reports in this status",
+      "reasonLine": "Reason: {{reason}}",
+      "reportedByLine": "Reported by {{reporter}}",
+      "unknownReporter": "Unknown",
+      "dismiss": "Dismiss"
+    },
+    "userManagement": {
+      "suspended": "Suspended",
+      "changeRole": "Change Role",
+      "unsuspend": "Unsuspend",
+      "suspend": "Suspend",
+      "emptyTitle": "No users found",
+      "changeRoleForTitle": "Change role for {{name}}"
+    }
+  },
+  "dealer": {
+    "shared": {
+      "checkConnectionDescription": "Check your connection and try again.",
+      "cannotBeUndone": "This cannot be undone.",
+      "deleteAction": "Delete",
+      "statusActive": "Active",
+      "statusInactive": "Inactive"
+    },
+    "analytics": {
+      "couldntLoadTitle": "Couldn't load analytics",
+      "totalSalesLabel": "Total Sales",
+      "totalSalesValue": "Rs. {{amount}}",
+      "totalOrdersLabel": "Total Orders",
+      "lowStockLabel": "Low Stock",
+      "inventoryMovementTitle": "Inventory Movement",
+      "noStockMovement": "No recorded stock movement yet",
+      "bestSellersTitle": "Best Sellers",
+      "noCompletedSales": "No completed sales yet",
+      "revenueSubtitle": "Rs. {{amount}} revenue",
+      "unitsSoldValue": "{{count}} units"
+    },
+    "inventory": {
+      "couldntLoadTitle": "Couldn't load inventory",
+      "emptyTitle": "No stock items yet",
+      "emptyDescription": "Add your first stock item to start tracking inventory.",
+      "addItemFab": "+ Add Item",
+      "editItemTitle": "Edit Stock Item",
+      "newItemTitle": "New Stock Item",
+      "linkedListingLabel": "Linked listing (optional)",
+      "linkedListingPlaceholder": "No linked listing",
+      "unitLabel": "Unit",
+      "initialStockLabel": "Initial stock quantity",
+      "purchaseCostLabel": "Purchase cost",
+      "sellingPriceLabel": "Selling price",
+      "lowStockThresholdLabel": "Low-stock threshold",
+      "removeItemButton": "Remove Item",
+      "enterUnitAlert": "Enter a unit (e.g. bag, kg)",
+      "saveFailedTitle": "Failed to save stock item",
+      "removeConfirmTitle": "Remove stock item"
+    },
+    "inventoryTransaction": {
+      "couldntLoadTitle": "Couldn't load stock history",
+      "unlinkedStockItem": "Unlinked stock item",
+      "currentlyInStock": "{{quantity}} {{unit}} currently in stock",
+      "recordStockMovement": "Record Stock Movement",
+      "emptyTitle": "No stock movements yet",
+      "types": {
+        "addition": "Addition",
+        "restock": "Restock",
+        "reduction": "Reduction",
+        "sale": "Sale",
+        "adjustment": "Adjustment",
+        "correction": "Correction"
+      }
+    },
+    "storeDetail": {
+      "nameRequired": "Enter a store name",
+      "couldntLoadTitle": "Couldn't load this store",
+      "storeNameLabel": "Store name",
+      "addressLabel": "Address",
+      "contactLabel": "Contact",
+      "openingInfoLabel": "Opening hours / info",
+      "statusLabel": "Status",
+      "saveButton": "Save Store",
+      "deleteButton": "Delete Store",
+      "saveFailedTitle": "Failed to save store",
+      "deleteConfirmTitle": "Delete store"
+    },
+    "storeList": {
+      "couldntLoadTitle": "Couldn't load stores",
+      "emptyTitle": "No stores yet",
+      "emptyDescription": "Add your first store location to get started.",
+      "noAddressSet": "No address set",
+      "newStoreFab": "+ New Store"
+    },
+    "supplierDetail": {
+      "nameRequired": "Enter a supplier name",
+      "couldntLoadTitle": "Couldn't load this supplier",
+      "supplierNameLabel": "Supplier name",
+      "contactLabel": "Contact",
+      "productsSuppliedLabel": "Products supplied",
+      "notesLabel": "Notes",
+      "statusLabel": "Status",
+      "saveButton": "Save Supplier",
+      "deleteButton": "Delete Supplier",
+      "saveFailedTitle": "Failed to save supplier",
+      "deleteConfirmTitle": "Delete supplier"
+    },
+    "supplierList": {
+      "couldntLoadTitle": "Couldn't load suppliers",
+      "emptyTitle": "No suppliers yet",
+      "emptyDescription": "Add your first supplier to get started.",
+      "noProductsListed": "No products listed",
+      "newSupplierFab": "+ New Supplier"
+    }
+  },
+  "expert": {
+    "analytics": {
+      "errorTitle": "Couldn't load analytics",
+      "errorDescription": "Check your connection and try again.",
+      "totalConsultations": "Total Consultations",
+      "completed": "Completed",
+      "avgRating": "Avg Rating ({{count}})",
+      "consultationsByMonth": "Consultations by Month",
+      "noDataMessage": "No consultations yet"
+    },
+    "consultationDetail": {
+      "withCounterparty": "With {{name}}",
+      "cropLabel": "Crop: {{name}}",
+      "priorityLabel": "Priority: {{priority}}",
+      "yourReview": "Your Review",
+      "accept": "Accept",
+      "reject": "Reject",
+      "startWorking": "Start Working",
+      "markResolved": "Mark Resolved",
+      "cancelRequest": "Cancel Request",
+      "closeConsultation": "Close Consultation",
+      "writeReview": "Write a Review",
+      "recommendProduct": "Recommend a Product",
+      "listingLabel": "Listing",
+      "sendRecommendation": "Send Recommendation",
+      "rateConsultation": "Rate this Consultation",
+      "commentOptional": "Comment (optional)",
+      "submitReview": "Submit Review",
+      "updateStatusError": "Could not update consultation",
+      "submitReviewError": "Could not submit review",
+      "recommendedMessage": "Recommended: {{title}}",
+      "thisProduct": "this product",
+      "unknownCounterparty": "Unknown"
+    },
+    "consultationList": {
+      "errorTitle": "Couldn't load consultations",
+      "errorDescription": "Check your connection and try again.",
+      "unknownCounterparty": "Unknown",
+      "emptyTitleExpert": "No consultation requests yet",
+      "emptyTitleRequester": "No consultations yet",
+      "emptyDescriptionExpert": "Requests from farmers and buyers will show up here.",
+      "emptyDescriptionRequester": "Browse verified experts to request a consultation."
+    },
+    "dashboard": {
+      "errorTitle": "Couldn't load the dashboard",
+      "errorDescription": "Check your connection and try again.",
+      "completeProfileTitle": "Complete your expert profile",
+      "completeProfileDescription": "Submit your qualifications so buyers and farmers can find you.",
+      "pendingReviewTitle": "Application pending review",
+      "pendingReviewDescription": "An admin will verify your profile before it's visible to buyers/farmers.",
+      "rejectedTitle": "Application not approved",
+      "rejectedDescription": "Update your profile and it will be reviewed again.",
+      "openRequests": "Open Requests",
+      "resolved": "Resolved",
+      "analytics": "Analytics",
+      "recentRequestsTitle": "Recent Consultation Requests",
+      "emptyTitle": "No requests yet",
+      "emptyDescription": "Consultation requests from buyers and farmers will show up here.",
+      "unknownCounterparty": "Unknown"
+    },
+    "expertApplication": {
+      "loadErrorTitle": "Couldn't load your application",
+      "loadErrorDescription": "Check your connection and try again.",
+      "qualificationsLabel": "Qualifications",
+      "qualificationsPlaceholder": "e.g. PhD Agronomy, 10 years extension work",
+      "qualificationsRequiredError": "Enter your qualifications",
+      "degreeLabel": "Degree / Certification",
+      "experienceLabel": "Experience",
+      "aboutYouLabel": "About you",
+      "contactLabel": "Contact",
+      "specializationsLabel": "Specializations",
+      "documentLabel": "Qualification Document (optional)",
+      "addDocumentPhoto": "+ Add a photo of your certificate",
+      "saveChanges": "Save Changes",
+      "submitApplication": "Submit Application",
+      "selectSpecializationError": "Select at least one specialization",
+      "profileUpdatedTitle": "Profile updated",
+      "applicationSubmittedTitle": "Application submitted",
+      "reviewMessage": "An admin will review your application.",
+      "saveErrorTitle": "Could not save"
+    },
+    "expertList": {
+      "errorTitle": "Couldn't load experts",
+      "errorDescription": "Check your connection and try again.",
+      "emptyTitle": "No verified experts yet",
+      "emptyDescription": "Check back soon for available experts."
+    },
+    "expertProfile": {
+      "errorTitle": "Couldn't load this expert",
+      "errorDescription": "Check your connection and try again.",
+      "defaultName": "Expert",
+      "specializationsTitle": "Specializations",
+      "qualificationsTitle": "Qualifications",
+      "experienceTitle": "Experience",
+      "aboutTitle": "About",
+      "requestConsultation": "Request Consultation",
+      "messageExpert": "Message Expert",
+      "reviewsTitle": "Reviews"
+    },
+    "requestConsultation": {
+      "subjectLabel": "Subject",
+      "subjectRequiredError": "Enter a subject",
+      "cropLabel": "Crop (optional)",
+      "farmLabel": "Farm (optional)",
+      "problemDescriptionLabel": "Describe the problem",
+      "priorityLabel": "Priority",
+      "priorityLow": "Low",
+      "priorityMedium": "Medium",
+      "priorityHigh": "High",
+      "photosLabel": "Photos (optional)",
+      "addPhoto": "+ Add",
+      "sendRequest": "Send Request",
+      "sendRequestError": "Could not send request"
+    },
+    "specializations": {
+      "cropManagement": "Crop Management",
+      "plantDiseases": "Plant Diseases",
+      "pestManagement": "Pest Management",
+      "fertilizerManagement": "Fertilizer Management",
+      "irrigation": "Irrigation",
+      "soilManagement": "Soil Management",
+      "cropNutrition": "Crop Nutrition",
+      "generalAgriculture": "General Agriculture"
+    }
+  },
+  "farmer": {
+    "addCrop": {
+      "dateFormatError": "Use YYYY-MM-DD format",
+      "saveFailedTitle": "Failed to save crop",
+      "removeCropAlertTitle": "Remove crop",
+      "removeCropAlertMessage": "This cannot be undone.",
+      "removeButton": "Remove",
+      "loadErrorTitle": "Couldn't load this crop",
+      "loadErrorDescription": "Check your connection and try again.",
+      "cropLabel": "Crop",
+      "varietyLabel": "Variety",
+      "plantingDateLabel": "Planting date",
+      "datePlaceholder": "YYYY-MM-DD",
+      "areaLabel": "Area",
+      "expectedHarvestDateLabel": "Expected harvest date",
+      "growthStageLabel": "Growth stage",
+      "notesLabel": "Notes",
+      "saveChangesButton": "Save Changes",
+      "addCropButton": "Add Crop",
+      "removeCropButton": "Remove Crop"
+    },
+    "analytics": {
+      "loadErrorTitle": "Couldn't load analytics",
+      "loadErrorDescription": "Check your connection and try again.",
+      "listingViewsLabel": "Listing Views",
+      "ordersLabel": "Orders",
+      "salesLabel": "Sales",
+      "popularProductsTitle": "Popular Products",
+      "noSalesMessage": "No completed sales yet",
+      "topProductsByRevenueTitle": "Top Products by Revenue",
+      "unitsSoldSuffix": "{{count}} units sold"
+    },
+    "createFarm": {
+      "nameRequiredError": "Enter a farm name",
+      "createFailedTitle": "Failed to create farm",
+      "farmNameLabel": "Farm name",
+      "areaLabel": "Area",
+      "landUnitLabel": "Land unit",
+      "notesLabel": "Notes",
+      "createFarmButton": "Create Farm"
+    },
+    "cropList": {
+      "loadErrorTitle": "Couldn't load crops",
+      "loadErrorDescription": "Check your connection and try again.",
+      "unspecifiedCrop": "Unspecified crop",
+      "noDetailsYet": "No details yet",
+      "plantedLabel": "Planted {{date}}",
+      "emptyCropsTitle": "No crops recorded",
+      "emptyCropsDescription": "Add the crops growing on this farm.",
+      "addCropFab": "+ Add Crop"
+    },
+    "farmDetail": {
+      "nameRequiredError": "Enter a farm name",
+      "updateFailedTitle": "Failed to update farm",
+      "deleteFarmAlertTitle": "Delete farm",
+      "deleteFarmAlertMessage": "This will also remove its recorded crops. This cannot be undone.",
+      "deleteButton": "Delete",
+      "loadErrorTitle": "Couldn't load this farm",
+      "loadErrorDescription": "Check your connection and try again.",
+      "farmNameLabel": "Farm name",
+      "areaLabel": "Area",
+      "landUnitLabel": "Land unit",
+      "notesLabel": "Notes",
+      "cropsOnThisFarmButton": "Crops on this Farm",
+      "saveChangesButton": "Save Changes",
+      "deleteFarmButton": "Delete Farm"
+    },
+    "farmList": {
+      "loadErrorTitle": "Couldn't load farms",
+      "loadErrorDescription": "Check your connection and try again.",
+      "areaNotSet": "Area not set",
+      "emptyFarmsTitle": "No farms yet",
+      "emptyFarmsDescription": "Add your first farm to get started.",
+      "newFarmFab": "+ New Farm"
+    }
+  },
+  "marketplace": {
+    "browse": {
+      "cartLabel": "Cart",
+      "cartLabelWithCount_one": "Cart, {{count}} item",
+      "cartLabelWithCount_other": "Cart, {{count}} items",
+      "emptyTitle": "No listings yet",
+      "emptyDescription": "Check back soon, or be the first to list produce here.",
+      "listFab": "+ List"
+    },
+    "createListing": {
+      "addPhotoTitle": "Add a photo",
+      "addPhotoMessage": "Please add at least one image of your produce.",
+      "failedTitle": "Failed to create listing",
+      "photosLabel": "Photos",
+      "addImageLabel": "+ Add",
+      "publishLabel": "Publish Listing"
+    },
+    "editListing": {
+      "failedTitle": "Failed to update listing",
+      "deleteConfirmTitle": "Delete listing",
+      "deleteConfirmMessage": "This cannot be undone.",
+      "deleteConfirmButton": "Delete",
+      "loadErrorTitle": "Couldn't load this listing",
+      "loadErrorDescription": "Check your connection and try again.",
+      "photosLabel": "Photos",
+      "addImageLabel": "+ Add",
+      "saveChangesLabel": "Save Changes",
+      "deleteListingLabel": "Delete Listing"
+    },
+    "listingDetail": {
+      "notFoundTitle": "Listing not found",
+      "notFoundDescription": "It may have been removed, or there was a connection problem.",
+      "priceLine": "Rs. {{price}} / {{unit}} · {{quantity}} {{unit}} available",
+      "editListingLabel": "Edit Listing",
+      "addToCartLabel": "Add to Cart",
+      "addedToCartTitle": "Added to cart",
+      "addedToCartMessage": "{{title}} was added to your cart.",
+      "messageSellerLabel": "Message Seller",
+      "reviewsTitle": "Reviews"
+    },
+    "myListings": {
+      "itemAccessibilityLabel": "{{title}}, Rs. {{price}} per {{unit}}, {{status}}",
+      "priceQtyLine": "Rs. {{price}}/{{unit}} · Qty {{quantity}}",
+      "emptyTitle": "No listings yet",
+      "emptyDescription": "Listings you create will show up here."
+    },
+    "listingForm": {
+      "titleLabel": "Title",
+      "descriptionLabel": "Description",
+      "categoryLabel": "Category",
+      "priceLabel": "Price",
+      "unitLabel": "Unit",
+      "quantityLabel": "Quantity available",
+      "brandLabel": "Brand (optional)",
+      "conditionLabel": "Condition (optional)",
+      "cropCompatibilityLabel": "Crop compatibility",
+      "locationLabel": "Location (optional)"
+    }
+  },
+  "orders": {
+    "cart": {
+      "emptyTitle": "Your cart is empty",
+      "emptyDescription": "Browse the marketplace to add produce.",
+      "totalLabel": "Total",
+      "totalValue": "Rs. {{amount}}",
+      "checkoutLabel": "Checkout"
+    },
+    "checkout": {
+      "orderPlacedTitle": "Order placed",
+      "orderPlacedMessage_one": "{{count}} order created. Track them from the Orders tab.",
+      "orderPlacedMessage_other": "{{count}} orders created. Track them from the Orders tab.",
+      "failedTitle": "Checkout failed",
+      "sellerOrderTitle_one": "Order {{count}} item",
+      "sellerOrderTitle_other": "Order {{count}} items",
+      "itemLine": "{{quantity}} × {{title}}",
+      "itemPrice": "Rs. {{amount}}",
+      "deliveryChargeLabel": "Delivery charge (optional)",
+      "deliveryChargePlaceholder": "0",
+      "subtotalLabel": "Subtotal",
+      "deliveryLabel": "Delivery",
+      "totalLabel": "Total",
+      "placeOrderLabel": "Place Order"
+    },
+    "orderDetail": {
+      "couldNotUpdateOrderTitle": "Could not update order",
+      "couldNotUpdatePaymentTitle": "Could not update payment",
+      "amountLine": "Rs. {{amount}}",
+      "paymentSectionTitle": "Payment",
+      "markPaymentReceivedLabel": "Mark Payment Received",
+      "markPaymentFailedLabel": "Mark Payment Failed",
+      "payNowLabel": "Pay Now",
+      "statusLabels": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "processing": "Processing",
+        "ready": "Ready",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "rejected": "Rejected",
+        "payment_failed": "Payment Failed",
+        "disputed": "Disputed",
+        "refunded": "Refunded",
+        "expired": "Expired"
+      },
+      "itemsSectionTitle": "Items",
+      "itemLine": "{{quantity}} {{unit}} × {{title}}",
+      "listingRemovedFallback": "Listing removed",
+      "subtotalLabel": "Subtotal",
+      "deliveryLabel": "Delivery",
+      "buyerLabel": "Buyer",
+      "sellerLabel": "Seller",
+      "unknownPartyFallback": "Unknown",
+      "messageSellerLabel": "Message Seller",
+      "messageBuyerLabel": "Message Buyer",
+      "confirmOrderLabel": "Confirm Order",
+      "startProcessingLabel": "Start Processing",
+      "markReadyLabel": "Mark Ready",
+      "markCompletedLabel": "Mark Completed",
+      "rejectOrderLabel": "Reject Order",
+      "cancelOrderLabel": "Cancel Order",
+      "disputeOrderLabel": "Dispute Order",
+      "writeReviewLabel": "Write a Review",
+      "statusHistoryTitle": "Status History"
+    },
+    "orderHistory": {
+      "purchasesLabel": "Purchases",
+      "salesLabel": "Sales",
+      "unknownCounterpartyFallback": "Unknown",
+      "emptyPurchasesTitle": "No purchases yet",
+      "emptySalesTitle": "No sales yet",
+      "emptyDescription": "Orders will show up here once they're placed."
+    }
+  },
+  "payments": {
+    "paymentMethod": {
+      "couldNotStartPaymentTitle": "Could not start payment",
+      "amountLine": "Rs. {{amount}}",
+      "subtitle": "Choose how you'll pay for this order",
+      "methods": {
+        "cod": {
+          "label": "Cash on Delivery",
+          "description": "Pay in cash when your order arrives."
+        },
+        "bank_transfer": {
+          "label": "Bank Transfer",
+          "description": "Transfer the amount and the seller will confirm receipt."
+        }
+      },
+      "continueLabel": "Continue"
+    },
+    "paymentProcessing": {
+      "amountLine": "Rs. {{amount}}",
+      "methodLabels": {
+        "cod": "Cash on Delivery",
+        "bank_transfer": "Bank Transfer"
+      },
+      "waitingMessage": "Waiting for the seller to confirm payment receipt. You'll be able to track this from your order at any time.",
+      "checkStatusLabel": "Check Status",
+      "backToOrderLabel": "Back to Order"
+    },
+    "paymentResult": {
+      "loadErrorTitle": "Couldn't load payment result",
+      "loadErrorDescription": "Check your connection and try again.",
+      "resultCopy": {
+        "successful": { "title": "Payment Confirmed", "description": "The seller has confirmed they received your payment." },
+        "failed": { "title": "Payment Failed", "description": "This payment could not be completed." },
+        "cancelled": { "title": "Payment Cancelled", "description": "This payment was cancelled." },
+        "refunded": { "title": "Payment Refunded", "description": "This payment has been refunded." },
+        "pending": { "title": "Payment Pending", "description": "Still waiting for confirmation." },
+        "processing": { "title": "Payment Processing", "description": "Still waiting for confirmation." }
+      },
+      "amountLine": "Rs. {{amount}}",
+      "backToOrderLabel": "Back to Order"
+    }
+  },
+  "notifications": {
+    "notificationList": {
+      "loadErrorTitle": "Couldn't load notifications",
+      "loadErrorDescription": "Check your connection and try again.",
+      "markAllReadLabel": "Mark all as read",
+      "emptyTitle": "No notifications yet",
+      "emptyDescription": "Updates about your activity will show up here."
+    }
   }
 }

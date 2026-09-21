@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { CreateFarmScreen } from './CreateFarmScreen';
 import { createFarm } from '../../services/modules/farmer/farmService';
 import { useAuthStore } from '../../store/authStore';

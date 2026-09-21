@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Input } from '../../components/ui';
 import { checkout } from '../../services/modules/orders/ordersService';
@@ -19,6 +20,7 @@ function groupBySeller(items: CartItem[]): Map<string, CartItem[]> {
 
 export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const { items, clear } = useCartStore();
@@ -51,12 +53,12 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
       const orders = await checkout(items, deliveryChargeBySeller);
       clear();
       Alert.alert(
-        'Order placed',
-        `${orders.length} order${orders.length === 1 ? '' : 's'} created. Track them from the Orders tab.`,
+        t('orders.checkout.orderPlacedTitle'),
+        t('orders.checkout.orderPlacedMessage', { count: orders.length }),
       );
       navigation.popToTop();
     } catch (error) {
-      Alert.alert('Checkout failed', error instanceof Error ? error.message : String(error));
+      Alert.alert(t('orders.checkout.failedTitle'), error instanceof Error ? error.message : String(error));
     } finally {
       setSubmitting(false);
     }
@@ -71,20 +73,22 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
           return (
             <Card key={sellerId} style={styles.sellerCard}>
               <Text style={styles.sellerTitle}>
-                Order {sellerItems.length} item{sellerItems.length === 1 ? '' : 's'}
+                {t('orders.checkout.sellerOrderTitle', { count: sellerItems.length })}
               </Text>
               {sellerItems.map(item => (
                 <View key={item.listingId} style={styles.itemRow}>
                   <Text style={styles.itemLabel} numberOfLines={1}>
-                    {item.quantity} × {item.title}
+                    {t('orders.checkout.itemLine', { quantity: item.quantity, title: item.title })}
                   </Text>
-                  <Text style={styles.itemPrice}>Rs. {(item.price * item.quantity).toFixed(0)}</Text>
+                  <Text style={styles.itemPrice}>
+                    {t('orders.checkout.itemPrice', { amount: (item.price * item.quantity).toFixed(0) })}
+                  </Text>
                 </View>
               ))}
               <Input
-                label="Delivery charge (optional)"
+                label={t('orders.checkout.deliveryChargeLabel')}
                 keyboardType="numeric"
-                placeholder="0"
+                placeholder={t('orders.checkout.deliveryChargePlaceholder')}
                 value={deliveryCharges[sellerId] ?? ''}
                 onChangeText={text =>
                   setDeliveryCharges(current => ({ ...current, [sellerId]: text }))
@@ -92,12 +96,16 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
               />
               <View style={styles.sellerSummary}>
                 <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Subtotal</Text>
-                  <Text style={styles.itemPrice}>Rs. {subtotal.toFixed(0)}</Text>
+                  <Text style={styles.itemLabel}>{t('orders.checkout.subtotalLabel')}</Text>
+                  <Text style={styles.itemPrice}>
+                    {t('orders.checkout.itemPrice', { amount: subtotal.toFixed(0) })}
+                  </Text>
                 </View>
                 <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Delivery</Text>
-                  <Text style={styles.itemPrice}>Rs. {delivery.toFixed(0)}</Text>
+                  <Text style={styles.itemLabel}>{t('orders.checkout.deliveryLabel')}</Text>
+                  <Text style={styles.itemPrice}>
+                    {t('orders.checkout.itemPrice', { amount: delivery.toFixed(0) })}
+                  </Text>
                 </View>
               </View>
             </Card>
@@ -106,10 +114,12 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
       </ScrollView>
       <View style={styles.footer}>
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>Rs. {grandTotal.toFixed(0)}</Text>
+          <Text style={styles.totalLabel}>{t('orders.checkout.totalLabel')}</Text>
+          <Text style={styles.totalValue}>
+            {t('orders.checkout.itemPrice', { amount: grandTotal.toFixed(0) })}
+          </Text>
         </View>
-        <Button label="Place Order" loading={submitting} onPress={onConfirm} />
+        <Button label={t('orders.checkout.placeOrderLabel')} loading={submitting} onPress={onConfirm} />
       </View>
     </View>
   );

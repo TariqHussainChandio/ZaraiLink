@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ConsultationListScreen } from './ConsultationListScreen';
 import { fetchConsultationsForExpert, fetchConsultationsForUser } from '../../services/modules/expert/consultationService';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';

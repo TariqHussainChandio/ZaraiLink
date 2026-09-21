@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, EmptyState, Input, SelectField, Sheet, SkeletonList } from '../../components/ui';
 import { InventoryRow } from '../../components/features/dealer/InventoryRow';
@@ -36,6 +37,7 @@ const EMPTY_FORM: ItemFormState = {
 };
 
 export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -99,7 +101,7 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
   const onSubmitForm = async () => {
     if (!userId) return;
     if (!form.unit.trim()) {
-      Alert.alert('Enter a unit (e.g. bag, kg)');
+      Alert.alert(t('dealer.inventory.enterUnitAlert'));
       return;
     }
     setSubmitting(true);
@@ -122,17 +124,17 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
       closeForm();
       load();
     } catch (err) {
-      Alert.alert('Failed to save stock item', err instanceof Error ? err.message : String(err));
+      Alert.alert(t('dealer.inventory.saveFailedTitle'), err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
   };
 
   const onDelete = (item: InventoryItemWithListing) => {
-    Alert.alert('Remove stock item', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('dealer.inventory.removeConfirmTitle'), t('dealer.shared.cannotBeUndone'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('dealer.shared.deleteAction'),
         style: 'destructive',
         onPress: async () => {
           await deleteInventoryItem(item.id);
@@ -154,9 +156,9 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load inventory"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('dealer.inventory.couldntLoadTitle')}
+        description={t('dealer.shared.checkConnectionDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -177,52 +179,66 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
           />
         )}
         ListEmptyComponent={
-          <EmptyState title="No stock items yet" description="Add your first stock item to start tracking inventory." />
+          <EmptyState
+            title={t('dealer.inventory.emptyTitle')}
+            description={t('dealer.inventory.emptyDescription')}
+          />
         }
       />
       <TouchableOpacity style={styles.fab} onPress={openCreate}>
-        <Text style={styles.fabLabel}>+ Add Item</Text>
+        <Text style={styles.fabLabel}>{t('dealer.inventory.addItemFab')}</Text>
       </TouchableOpacity>
 
       <Sheet visible={formVisible} onClose={closeForm}>
-        <Text style={styles.sheetTitle}>{editingItem ? 'Edit Stock Item' : 'New Stock Item'}</Text>
+        <Text style={styles.sheetTitle}>
+          {editingItem ? t('dealer.inventory.editItemTitle') : t('dealer.inventory.newItemTitle')}
+        </Text>
         <SelectField
-          label="Linked listing (optional)"
-          placeholder="No linked listing"
+          label={t('dealer.inventory.linkedListingLabel')}
+          placeholder={t('dealer.inventory.linkedListingPlaceholder')}
           value={form.listingId}
           options={listings.map(l => ({ id: l.id, label: l.title }))}
           onSelect={id => setForm(current => ({ ...current, listingId: id }))}
         />
-        <Input label="Unit" value={form.unit} onChangeText={text => setForm(current => ({ ...current, unit: text }))} />
+        <Input
+          label={t('dealer.inventory.unitLabel')}
+          value={form.unit}
+          onChangeText={text => setForm(current => ({ ...current, unit: text }))}
+        />
         {!editingItem ? (
           <Input
-            label="Initial stock quantity"
+            label={t('dealer.inventory.initialStockLabel')}
             keyboardType="numeric"
             value={form.stockQuantity}
             onChangeText={text => setForm(current => ({ ...current, stockQuantity: text }))}
           />
         ) : null}
         <Input
-          label="Purchase cost"
+          label={t('dealer.inventory.purchaseCostLabel')}
           keyboardType="numeric"
           value={form.purchaseCost}
           onChangeText={text => setForm(current => ({ ...current, purchaseCost: text }))}
         />
         <Input
-          label="Selling price"
+          label={t('dealer.inventory.sellingPriceLabel')}
           keyboardType="numeric"
           value={form.sellingPrice}
           onChangeText={text => setForm(current => ({ ...current, sellingPrice: text }))}
         />
         <Input
-          label="Low-stock threshold"
+          label={t('dealer.inventory.lowStockThresholdLabel')}
           keyboardType="numeric"
           value={form.minStockThreshold}
           onChangeText={text => setForm(current => ({ ...current, minStockThreshold: text }))}
         />
-        <Button label="Save" loading={submitting} onPress={onSubmitForm} style={styles.formAction} />
+        <Button label={t('common.save')} loading={submitting} onPress={onSubmitForm} style={styles.formAction} />
         {editingItem ? (
-          <Button label="Remove Item" variant="destructive" onPress={() => onDelete(editingItem)} style={styles.formAction} />
+          <Button
+            label={t('dealer.inventory.removeItemButton')}
+            variant="destructive"
+            onPress={() => onDelete(editingItem)}
+            style={styles.formAction}
+          />
         ) : null}
       </Sheet>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { NotificationListScreen } from './NotificationListScreen';
 import { fetchNotifications, markAllRead, markRead } from '../../services/modules/notifications/notificationsService';
 import { useAuthStore } from '../../store/authStore';

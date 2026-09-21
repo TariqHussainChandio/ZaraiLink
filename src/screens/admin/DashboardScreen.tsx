@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { QuickActions } from '../../components/features/dashboards/QuickActions';
@@ -11,6 +12,7 @@ import { useTheme, type Theme } from '../../theme';
 import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
 
 export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashboard'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [stats, setStats] = useState<PlatformStats | null>(null);
@@ -44,9 +46,9 @@ export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashb
   if (error || !stats) {
     return (
       <EmptyState
-        title="Couldn't load the dashboard"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('admin.dashboard.loadErrorTitle')}
+        description={t('admin.dashboard.loadErrorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -55,53 +57,53 @@ export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashb
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Total Users" value={stats.totalUsers} accent={theme.moduleAccents.admin} />
-        <StatCard label="Listings" value={stats.totalListings} accent={theme.moduleAccents.marketplace} />
-        <StatCard label="Orders" value={stats.totalOrders} accent={theme.moduleAccents.orders} />
+        <StatCard label={t('admin.dashboard.totalUsers')} value={stats.totalUsers} accent={theme.moduleAccents.admin} />
+        <StatCard label={t('admin.dashboard.listings')} value={stats.totalListings} accent={theme.moduleAccents.marketplace} />
+        <StatCard label={t('admin.dashboard.orders')} value={stats.totalOrders} accent={theme.moduleAccents.orders} />
       </View>
 
-      <Text style={styles.sectionTitle}>Users by Role</Text>
+      <Text style={styles.sectionTitle}>{t('admin.dashboard.usersByRole')}</Text>
       <View style={styles.statsRow}>
         {ROLES.filter(role => role !== 'admin').map(role => (
           <StatCard key={role} label={ROLE_LABELS[role]} value={stats.usersByRole[role] ?? 0} accent={theme.roleColors[role]} />
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Manage</Text>
+      <Text style={styles.sectionTitle}>{t('admin.dashboard.manage')}</Text>
       <QuickActions
         actions={[
           {
-            label: 'Analytics',
+            label: t('admin.dashboard.analytics'),
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Analytics),
           },
           {
-            label: 'Manage Users',
+            label: t('admin.dashboard.manageUsers'),
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.UserManagement),
           },
           {
-            label: 'Moderate Listings',
+            label: t('admin.dashboard.moderateListings'),
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ListingModeration),
           },
           {
-            label: 'Expert Verification',
+            label: t('admin.dashboard.expertVerification'),
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ExpertVerification),
           },
-          { label: 'Orders', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Orders) },
-          { label: 'Reports', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Reports) },
+          { label: t('admin.dashboard.orders'), onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Orders) },
+          { label: t('admin.dashboard.reports'), onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Reports) },
           {
-            label: 'Categories',
+            label: t('admin.dashboard.categories'),
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Categories),
           },
           {
-            label: 'Reference Data',
+            label: t('admin.dashboard.referenceData'),
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ReferenceData),
           },
           {
-            label: 'Audit Logs',
+            label: t('admin.dashboard.auditLogs'),
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.AuditLogs),
           },
           {
-            label: 'Notifications',
+            label: t('admin.dashboard.notifications'),
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Notifications),
           },
         ]}

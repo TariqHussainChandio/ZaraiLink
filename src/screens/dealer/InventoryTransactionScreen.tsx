@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
 import { StockAdjustModal } from '../../components/features/dealer/StockAdjustModal';
@@ -11,16 +12,17 @@ import { useTheme, type Theme } from '../../theme';
 import type { InventoryItemWithListing, InventoryTransaction } from '../../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
-const TYPE_LABELS: Record<InventoryTransaction['type'], string> = {
-  addition: 'Addition',
-  restock: 'Restock',
-  reduction: 'Reduction',
-  sale: 'Sale',
-  adjustment: 'Adjustment',
-  correction: 'Correction',
+const TYPE_LABEL_KEYS: Record<InventoryTransaction['type'], string> = {
+  addition: 'dealer.inventoryTransaction.types.addition',
+  restock: 'dealer.inventoryTransaction.types.restock',
+  reduction: 'dealer.inventoryTransaction.types.reduction',
+  sale: 'dealer.inventoryTransaction.types.sale',
+  adjustment: 'dealer.inventoryTransaction.types.adjustment',
+  correction: 'dealer.inventoryTransaction.types.correction',
 };
 
 export function InventoryTransactionScreen({ route }: HomeScreenProps<'InventoryTransactions'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { inventoryId } = route.params;
@@ -56,9 +58,9 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
   if (error || !item) {
     return (
       <EmptyState
-        title="Couldn't load stock history"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('dealer.inventoryTransaction.couldntLoadTitle')}
+        description={t('dealer.shared.checkConnectionDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -67,12 +69,17 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
   return (
     <View style={styles.container}>
       <Card style={styles.summary}>
-        <Text style={styles.title}>{item.listing?.title ?? 'Unlinked stock item'}</Text>
+        <Text style={styles.title}>
+          {item.listing?.title ?? t('dealer.inventoryTransaction.unlinkedStockItem')}
+        </Text>
         <Text style={styles.stock}>
-          {item.stock_quantity} {item.unit} currently in stock
+          {t('dealer.inventoryTransaction.currentlyInStock', {
+            quantity: item.stock_quantity,
+            unit: item.unit,
+          })}
         </Text>
         <TouchableOpacity style={styles.adjustButton} onPress={() => setAdjustVisible(true)}>
-          <Text style={styles.adjustLabel}>Record Stock Movement</Text>
+          <Text style={styles.adjustLabel}>{t('dealer.inventoryTransaction.recordStockMovement')}</Text>
         </TouchableOpacity>
       </Card>
 
@@ -83,7 +90,7 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
         renderItem={({ item: tx }) => (
           <Card style={styles.txCard}>
             <View style={styles.txRow}>
-              <Badge label={TYPE_LABELS[tx.type]} tone={tx.quantity >= 0 ? 'success' : 'error'} />
+              <Badge label={t(TYPE_LABEL_KEYS[tx.type])} tone={tx.quantity >= 0 ? 'success' : 'error'} />
               <Text style={styles.txQuantity}>
                 {tx.quantity >= 0 ? '+' : ''}
                 {tx.quantity} {item.unit}
@@ -93,7 +100,7 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
             {tx.notes ? <Text style={styles.txNotes}>{tx.notes}</Text> : null}
           </Card>
         )}
-        ListEmptyComponent={<EmptyState title="No stock movements yet" />}
+        ListEmptyComponent={<EmptyState title={t('dealer.inventoryTransaction.emptyTitle')} />}
       />
 
       <StockAdjustModal

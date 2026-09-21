@@ -5,7 +5,16 @@
     "loading": "لوڈ ہو رہا ہے…",
     "search": "تلاش کریں",
     "retry": "دوبارہ کوشش کریں",
-    "select": "منتخب کریں..."
+    "select": "منتخب کریں...",
+    "checkConnectionRetry": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+    "splash": {
+      "appName": "زرعی لنک"
+    },
+    "suspended": {
+      "title": "اکاؤنٹ معطل کر دیا گیا",
+      "description": "آپ کا اکاؤنٹ ایک ایڈمن نے معطل کر دیا ہے۔ اگر آپ کو لگتا ہے کہ یہ غلطی ہے تو سپورٹ سے رابطہ کریں۔",
+      "signOutButton": "سائن آؤٹ"
+    }
   },
   "settings": {
     "title": "ترتیبات",
@@ -26,6 +35,787 @@
     "city": "شہر",
     "village": "گاؤں",
     "street": "گلی / پتہ",
-    "saveChanges": "تبدیلیاں محفوظ کریں"
+    "saveChanges": "تبدیلیاں محفوظ کریں",
+    "passwordMinLengthError": "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے",
+    "passwordsMismatchError": "پاس ورڈز مماثل نہیں ہیں",
+    "passwordUpdatedTitle": "پاس ورڈ اپ ڈیٹ ہو گیا",
+    "passwordUpdatedMessage": "آپ کا پاس ورڈ تبدیل کر دیا گیا ہے۔",
+    "updatePasswordError": "پاس ورڈ اپ ڈیٹ کرنے میں ناکامی",
+    "changePasswordSubtitle": "اپنے اکاؤنٹ کے لیے نیا پاس ورڈ منتخب کریں۔",
+    "newPasswordLabel": "نیا پاس ورڈ",
+    "confirmPasswordLabel": "نئے پاس ورڈ کی تصدیق کریں",
+    "updatePasswordButton": "پاس ورڈ اپ ڈیٹ کریں",
+    "fullNameRequiredError": "اپنا پورا نام درج کریں",
+    "invalidPhoneError": "ایک درست فون نمبر درج کریں",
+    "editProfileFailedTitle": "پروفائل اپ ڈیٹ کرنے میں ناکامی",
+    "experienceLabel": "تجربہ",
+    "experiencePlaceholder": "مثلاً گندم اور کپاس اگانے کا 8 سالہ تجربہ",
+    "agriculturalInfoLabel": "زرعی معلومات",
+    "agriculturalInfoPlaceholder": "طریقہ کار، مہارتیں، سرٹیفیکیشنز، وغیرہ۔",
+    "emailLabel": "ای میل",
+    "locationLabel": "مقام",
+    "editProfileButton": "پروفائل میں ترمیم کریں",
+    "settingsButton": "ترتیبات"
+  },
+  "auth": {
+    "login": {
+      "passwordMinLengthError": "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے",
+      "invalidEmailError": "ایک درست ای میل درج کریں",
+      "invalidPhoneError": "ایک درست فون نمبر درج کریں",
+      "defaultError": "سائن ان ناکام ہو گیا",
+      "title": "خوش آمدید",
+      "subtitle": "اپنے زرعی لنک اکاؤنٹ میں سائن ان کریں",
+      "emailChannel": "ای میل",
+      "phoneChannel": "فون نمبر",
+      "emailLabel": "ای میل",
+      "passwordLabel": "پاس ورڈ",
+      "submitButton": "سائن ان کریں",
+      "forgotPasswordLink": "اپنا پاس ورڈ بھول گئے؟",
+      "noAccountText": "اکاؤنٹ نہیں ہے؟",
+      "signUpLink": " سائن اپ کریں"
+    },
+    "register": {
+      "fullNameError": "اپنا پورا نام درج کریں",
+      "passwordMinLengthError": "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے",
+      "roleError": "ایک کردار منتخب کریں",
+      "invalidEmailError": "ایک درست ای میل درج کریں",
+      "invalidPhoneError": "ایک درست فون نمبر درج کریں",
+      "defaultError": "اکاؤنٹ بنانے میں ناکامی",
+      "title": "اپنا اکاؤنٹ بنائیں",
+      "subtitle": "کسان، خریدار، ڈیلر، یا ماہر کے طور پر زرعی لنک میں شامل ہوں",
+      "fullNameLabel": "پورا نام",
+      "verifyWithLabel": "تصدیق کا ذریعہ",
+      "emailChannel": "ای میل",
+      "phoneChannel": "فون نمبر",
+      "emailLabel": "ای میل",
+      "emailHint": "ہم آپ کے اکاؤنٹ کی تصدیق کے لیے 6 ہندسوں کا کوڈ ای میل کریں گے۔",
+      "phoneHint": "ہم آپ کے اکاؤنٹ کی تصدیق کے لیے 6 ہندسوں کا کوڈ ایس ایم ایس کریں گے۔",
+      "passwordLabel": "پاس ورڈ",
+      "roleLabel": "میں ہوں...",
+      "submitButton": "اکاؤنٹ بنائیں",
+      "haveAccountText": "پہلے سے اکاؤنٹ ہے؟",
+      "signInLink": " سائن ان کریں"
+    },
+    "forgotPassword": {
+      "emailRequiredError": "ای میل درکار ہے",
+      "invalidEmailError": "ایک درست ای میل درج کریں",
+      "defaultError": "ری سیٹ ای میل بھیجنے میں ناکامی",
+      "title": "اپنا پاس ورڈ ری سیٹ کریں",
+      "subtitle": "اپنے اکاؤنٹ کی ای میل درج کریں اور ہم آپ کو ری سیٹ لنک بھیجیں گے۔",
+      "successMessage": "پاس ورڈ ری سیٹ لنک کے لیے اپنی ای میل چیک کریں۔",
+      "emailLabel": "ای میل",
+      "submitButton": "ری سیٹ لنک بھیجیں",
+      "backLink": "سائن ان پر واپس جائیں"
+    },
+    "verifyOtp": {
+      "defaultVerifyError": "کوڈ غلط ہے یا میعاد ختم ہو چکی ہے",
+      "resendDefaultError": "کوڈ دوبارہ بھیجنے میں ناکامی",
+      "titleEmail": "اپنی ای میل کی تصدیق کریں",
+      "titlePhone": "اپنے فون نمبر کی تصدیق کریں",
+      "subtitle": "ہم نے {{identifier}} پر تصدیقی کوڈ بھیجا ہے۔ اپنا اکاؤنٹ فعال کرنے کے لیے نیچے درج کریں۔",
+      "codeLabel": "تصدیقی کوڈ",
+      "verifyButton": "تصدیق کریں",
+      "resendCooldown": "{{seconds}} سیکنڈ میں کوڈ دوبارہ بھیجیں",
+      "resendButton": "کوڈ دوبارہ بھیجیں",
+      "backLink": "سائن اپ پر واپس جائیں"
+    },
+    "resetPassword": {
+      "title": "نیا پاس ورڈ سیٹ کریں",
+      "subtitle": "اپنے ZaraiLink اکاؤنٹ کے لیے نیا پاس ورڈ منتخب کریں۔",
+      "newPasswordLabel": "نیا پاس ورڈ",
+      "confirmPasswordLabel": "پاس ورڈ کی تصدیق کریں",
+      "passwordMinLengthError": "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے",
+      "passwordsMismatchError": "پاس ورڈز مماثل نہیں ہیں",
+      "submitButton": "پاس ورڈ اپ ڈیٹ کریں",
+      "defaultError": "پاس ورڈ اپ ڈیٹ کرنے میں ناکامی"
+    }
+  },
+  "messaging": {
+    "chat": {
+      "loadErrorTitle": "پیغامات لوڈ نہیں ہو سکے"
+    },
+    "conversationList": {
+      "unknownParticipant": "نامعلوم",
+      "emptyTitle": "ابھی تک کوئی گفتگو نہیں",
+      "emptyDescription": "بات چیت شروع کرنے کے لیے کسی لسٹنگ یا آرڈر سے بیچنے والے کو پیغام بھیجیں۔"
+    }
+  },
+  "reviews": {
+    "writeReview": {
+      "errorTitle": "جائزہ جمع نہیں ہو سکا",
+      "ratingLabel": "آپ کی درجہ بندی",
+      "commentLabel": "تبصرہ (اختیاری)",
+      "commentPlaceholder": "آپ کا تجربہ کیسا رہا؟",
+      "submitButton": "جائزہ جمع کریں"
+    }
+  },
+  "buyer": {
+    "dashboard": {
+      "loadErrorTitle": "آپ کا ڈیش بورڈ لوڈ نہیں ہو سکا",
+      "totalPurchases": "کل خریداریاں",
+      "inProgress": "زیر عمل",
+      "quickActionsTitle": "فوری اقدامات",
+      "browseMarketplace": "مارکیٹ پلیس دیکھیں",
+      "consultExpert": "ماہر سے مشورہ کریں",
+      "recentPurchasesTitle": "حالیہ خریداریاں",
+      "noPurchasesYet": "ابھی تک کوئی خریداری نہیں",
+      "unknownSeller": "نامعلوم بیچنے والا",
+      "purchaseSubtitle": "روپے {{amount}} · {{status}}"
+    }
+  },
+  "disease": {
+    "processing": {
+      "analyzingStatus": "آپ کی تصویر کا تجزیہ کیا جا رہا ہے...",
+      "errorTitle": "اے آئی تجزیہ فی الحال دستیاب نہیں ہے",
+      "talkToExpertButton": "ماہر سے بات کریں"
+    },
+    "result": {
+      "loadErrorTitle": "یہ نتیجہ لوڈ نہیں ہو سکا",
+      "disclaimerText": "یہ صرف ایک اے آئی مشورہ ہے اور پیشہ ورانہ مشاورت کا متبادل نہیں۔",
+      "recommendedActionsTitle": "تجویز کردہ اقدامات",
+      "noPredictionFallback": "اس کیس کے لیے کوئی پیشگوئی دستیاب نہیں ہے۔",
+      "consultExpertButton": "ماہر سے مشورہ کریں",
+      "relatedProductsTitle": "متعلقہ مصنوعات",
+      "relatedProductsCaption": "یہ مددگار ہو سکتی ہیں — کوئی ضمانت نہیں۔",
+      "priceFormat": "روپے {{price}}/{{unit}}"
+    },
+    "upload": {
+      "title": "فصل کی بیماری کی شناخت کریں",
+      "subtitle": "متاثرہ پتے یا پودے کی واضح تصویر اپ لوڈ کریں۔ یہ صرف ایک اے آئی مشورہ ہے — پیشہ ورانہ مشاورت کا متبادل نہیں۔",
+      "cropLabel": "فصل (اختیاری)",
+      "photoLabel": "تصویر",
+      "addPhotoButton": "+ تصویر شامل کریں",
+      "analyzeButton": "تجزیہ کریں"
+    }
+  },
+  "admin": {
+    "analytics": {
+      "loadErrorTitle": "تجزیات لوڈ نہیں ہو سکے",
+      "loadErrorDescription": "اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "totalUsers": "کل صارفین",
+      "totalListings": "کل اشتہارات",
+      "activeListings": "فعال اشتہارات",
+      "userGrowth": "صارفین میں اضافہ",
+      "noSignups": "ابھی تک کوئی سائن اپ نہیں",
+      "totalOrders": "کل آرڈرز",
+      "paymentsTotal": "کل ادائیگیاں",
+      "currencyPrefix": "روپے ",
+      "pendingVerifications": "زیر التواء توثیقات",
+      "orderVolume": "آرڈرز کا حجم",
+      "noOrders": "ابھی تک کوئی آرڈر نہیں",
+      "paymentsByStatus": "حیثیت کے مطابق ادائیگیاں",
+      "reportsByStatus": "حیثیت کے مطابق رپورٹس",
+      "footnote": "مشاورت کے حل کی شرح: {{rate}}% · منظور شدہ ماہرین: {{experts}}"
+    },
+    "auditLog": {
+      "all": "تمام",
+      "emptyTitle": "ابھی تک آڈٹ لاگ کا کوئی اندراج نہیں",
+      "emptyFilteredDescription": "کوئی مختلف قسم کا فلٹر آزمائیں۔",
+      "systemActor": "سسٹم",
+      "previousState": "پہلے: {{state}}",
+      "newState": "نیا: {{state}}"
+    },
+    "categoryManagement": {
+      "edit": "ترمیم کریں",
+      "delete": "حذف کریں",
+      "emptyTitle": "ابھی تک کوئی زمرہ نہیں",
+      "emptyDescription": "نیچے پہلا پروڈکٹ زمرہ شامل کریں۔",
+      "addCategory": "+ زمرہ شامل کریں",
+      "editCategoryTitle": "زمرہ میں ترمیم کریں",
+      "newCategoryTitle": "نیا زمرہ",
+      "nameLabel": "نام",
+      "namePlaceholder": "مثلاً بیج",
+      "slugLabel": "سلگ",
+      "slugPlaceholder": "مثلاً seeds",
+      "iconLabel": "آئیکن (اختیاری)",
+      "iconPlaceholder": "مثلاً sprout",
+      "saveChangesButton": "تبدیلیاں محفوظ کریں",
+      "createCategoryButton": "زمرہ بنائیں",
+      "deleteConfirmTitle": "زمرہ حذف کریں",
+      "deleteConfirmMessage": "\"{{name}}\" حذف کریں؟ اسے واپس نہیں لایا جا سکتا۔"
+    },
+    "dashboard": {
+      "loadErrorTitle": "ڈیش بورڈ لوڈ نہیں ہو سکا",
+      "loadErrorDescription": "اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "totalUsers": "کل صارفین",
+      "listings": "اشتہارات",
+      "orders": "آرڈرز",
+      "usersByRole": "کردار کے مطابق صارفین",
+      "manage": "انتظام کریں",
+      "analytics": "تجزیات",
+      "manageUsers": "صارفین کا انتظام کریں",
+      "moderateListings": "اشتہارات کی نگرانی کریں",
+      "expertVerification": "ماہر کی توثیق",
+      "reports": "رپورٹس",
+      "categories": "زمرہ جات",
+      "referenceData": "حوالہ ڈیٹا",
+      "auditLogs": "آڈٹ لاگز",
+      "notifications": "اطلاعات"
+    },
+    "expertVerification": {
+      "pending": "زیر التواء",
+      "approved": "منظور شدہ",
+      "rejected": "مسترد شدہ",
+      "suspended": "معطل",
+      "all": "تمام",
+      "emptyTitle": "اس حیثیت میں کوئی ماہر نہیں",
+      "unknownName": "نامعلوم",
+      "noDegreeListed": "کوئی ڈگری درج نہیں",
+      "noExperienceListed": "کوئی تجربہ درج نہیں",
+      "viewDocument": "دستاویز دیکھیں",
+      "decisionNotePlaceholder": "فیصلے کا نوٹ (اختیاری)",
+      "approve": "منظور کریں",
+      "reject": "مسترد کریں",
+      "suspend": "معطل کریں",
+      "reactivate": "دوبارہ فعال کریں"
+    },
+    "listingModeration": {
+      "ownerPriceLine": "{{owner}} · روپے {{price}}/{{unit}}",
+      "unknownOwner": "نامعلوم",
+      "deactivate": "غیر فعال کریں",
+      "activate": "فعال کریں",
+      "emptyTitle": "ابھی تک کوئی اشتہار نہیں",
+      "emptyDescription": "بیچنے والوں کے شائع کرنا شروع کرنے پر اشتہارات یہاں نظر آئیں گے۔"
+    },
+    "platformOrders": {
+      "counterpartyLine": "{{buyer}} → {{seller}}",
+      "unknownBuyer": "نامعلوم خریدار",
+      "unknownSeller": "نامعلوم بیچنے والا",
+      "emptyTitle": "ابھی تک کوئی آرڈر نہیں",
+      "emptyDescription": "پلیٹ فارم آرڈرز دیے جانے کے بعد یہاں نظر آئیں گے۔"
+    },
+    "referenceData": {
+      "currenciesTitle": "کرنسیاں",
+      "unitsTitle": "اکائیاں",
+      "codeLabel": "کوڈ",
+      "symbolLabel": "علامت",
+      "nameLabel": "نام",
+      "labelLabel": "لیبل",
+      "appliesToLabel": "اطلاق",
+      "edit": "ترمیم کریں",
+      "delete": "حذف کریں",
+      "emptyTitle": "ابھی تک کوئی {{table}} نہیں",
+      "emptyDescription": "نیچے پہلا اندراج شامل کریں۔",
+      "addButton": "+ {{singular}} شامل کریں",
+      "editRowTitle": "{{singular}} میں ترمیم کریں",
+      "newRowTitle": "نیا {{singular}}",
+      "saveChangesButton": "تبدیلیاں محفوظ کریں",
+      "createButton": "بنائیں",
+      "deleteConfirmTitle": "قطار حذف کریں",
+      "deleteConfirmMessage": "\"{{label}}\" حذف کریں؟ اسے واپس نہیں لایا جا سکتا۔"
+    },
+    "reports": {
+      "open": "کھلا",
+      "investigating": "تحقیقات جاری",
+      "resolved": "حل شدہ",
+      "dismissed": "مسترد",
+      "all": "تمام",
+      "targetListing": "اشتہار",
+      "targetUser": "صارف",
+      "targetReview": "جائزہ",
+      "targetMessage": "پیغام",
+      "targetExpert": "ماہر",
+      "noComment": "(کوئی تبصرہ نہیں)",
+      "unknownExpert": "نامعلوم ماہر",
+      "unknownUser": "نامعلوم صارف",
+      "contentUnavailable": "(مواد دستیاب نہیں — ہو سکتا ہے ہٹا دیا گیا ہو)",
+      "removeListing": "اشتہار ہٹائیں",
+      "suspendUser": "صارف کو معطل کریں",
+      "deleteReview": "جائزہ حذف کریں",
+      "suspendExpert": "ماہر کو معطل کریں",
+      "suspendedViaReportNote": "رپورٹ کے حل کے ذریعے معطل کیا گیا",
+      "redactMessage": "پیغام مخفی کریں",
+      "confirmActionMessage": "یہ {{action}} کرے گا اور رپورٹ کو حل شدہ نشان زد کرے گا۔",
+      "loadErrorTitle": "رپورٹس لوڈ نہیں ہو سکیں",
+      "loadErrorDescription": "اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "emptyTitle": "اس حیثیت میں کوئی رپورٹ نہیں",
+      "reasonLine": "وجہ: {{reason}}",
+      "reportedByLine": "رپورٹ کنندہ: {{reporter}}",
+      "unknownReporter": "نامعلوم",
+      "dismiss": "مسترد کریں"
+    },
+    "userManagement": {
+      "suspended": "معطل",
+      "changeRole": "کردار تبدیل کریں",
+      "unsuspend": "معطلی ختم کریں",
+      "suspend": "معطل کریں",
+      "emptyTitle": "کوئی صارف نہیں ملا",
+      "changeRoleForTitle": "{{name}} کا کردار تبدیل کریں"
+    }
+  },
+  "dealer": {
+    "shared": {
+      "checkConnectionDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "cannotBeUndone": "اسے واپس نہیں لیا جا سکتا۔",
+      "deleteAction": "حذف کریں",
+      "statusActive": "فعال",
+      "statusInactive": "غیر فعال"
+    },
+    "analytics": {
+      "couldntLoadTitle": "تجزیات لوڈ نہیں ہو سکے",
+      "totalSalesLabel": "کل فروخت",
+      "totalSalesValue": "روپے {{amount}}",
+      "totalOrdersLabel": "کل آرڈرز",
+      "lowStockLabel": "کم اسٹاک",
+      "inventoryMovementTitle": "انوینٹری کی نقل و حرکت",
+      "noStockMovement": "ابھی تک کوئی اسٹاک نقل و حرکت درج نہیں ہوئی",
+      "bestSellersTitle": "بہترین فروخت ہونے والی مصنوعات",
+      "noCompletedSales": "ابھی تک کوئی مکمل فروخت نہیں ہوئی",
+      "revenueSubtitle": "روپے {{amount}} آمدنی",
+      "unitsSoldValue": "{{count}} یونٹس"
+    },
+    "inventory": {
+      "couldntLoadTitle": "انوینٹری لوڈ نہیں ہو سکی",
+      "emptyTitle": "ابھی تک کوئی اسٹاک آئٹم نہیں",
+      "emptyDescription": "انوینٹری ٹریک کرنے کے لیے اپنا پہلا اسٹاک آئٹم شامل کریں۔",
+      "addItemFab": "+ آئٹم شامل کریں",
+      "editItemTitle": "اسٹاک آئٹم میں ترمیم کریں",
+      "newItemTitle": "نیا اسٹاک آئٹم",
+      "linkedListingLabel": "منسلک لسٹنگ (اختیاری)",
+      "linkedListingPlaceholder": "کوئی منسلک لسٹنگ نہیں",
+      "unitLabel": "یونٹ",
+      "initialStockLabel": "ابتدائی اسٹاک مقدار",
+      "purchaseCostLabel": "خریداری کی قیمت",
+      "sellingPriceLabel": "فروخت کی قیمت",
+      "lowStockThresholdLabel": "کم اسٹاک کی حد",
+      "removeItemButton": "آئٹم ہٹائیں",
+      "enterUnitAlert": "ایک یونٹ درج کریں (مثلاً بوری، کلو گرام)",
+      "saveFailedTitle": "اسٹاک آئٹم محفوظ کرنے میں ناکامی",
+      "removeConfirmTitle": "اسٹاک آئٹم ہٹائیں"
+    },
+    "inventoryTransaction": {
+      "couldntLoadTitle": "اسٹاک کی تاریخ لوڈ نہیں ہو سکی",
+      "unlinkedStockItem": "غیر منسلک اسٹاک آئٹم",
+      "currentlyInStock": "{{quantity}} {{unit}} فی الحال اسٹاک میں موجود ہے",
+      "recordStockMovement": "اسٹاک کی نقل و حرکت درج کریں",
+      "emptyTitle": "ابھی تک کوئی اسٹاک نقل و حرکت نہیں",
+      "types": {
+        "addition": "اضافہ",
+        "restock": "دوبارہ اسٹاک",
+        "reduction": "کمی",
+        "sale": "فروخت",
+        "adjustment": "ایڈجسٹمنٹ",
+        "correction": "تصحیح"
+      }
+    },
+    "storeDetail": {
+      "nameRequired": "اسٹور کا نام درج کریں",
+      "couldntLoadTitle": "یہ اسٹور لوڈ نہیں ہو سکا",
+      "storeNameLabel": "اسٹور کا نام",
+      "addressLabel": "پتہ",
+      "contactLabel": "رابطہ",
+      "openingInfoLabel": "کھلنے کے اوقات / معلومات",
+      "statusLabel": "حیثیت",
+      "saveButton": "اسٹور محفوظ کریں",
+      "deleteButton": "اسٹور حذف کریں",
+      "saveFailedTitle": "اسٹور محفوظ کرنے میں ناکامی",
+      "deleteConfirmTitle": "اسٹور حذف کریں"
+    },
+    "storeList": {
+      "couldntLoadTitle": "اسٹورز لوڈ نہیں ہو سکے",
+      "emptyTitle": "ابھی تک کوئی اسٹور نہیں",
+      "emptyDescription": "شروع کرنے کے لیے اپنا پہلا اسٹور مقام شامل کریں۔",
+      "noAddressSet": "کوئی پتہ درج نہیں",
+      "newStoreFab": "+ نیا اسٹور"
+    },
+    "supplierDetail": {
+      "nameRequired": "سپلائر کا نام درج کریں",
+      "couldntLoadTitle": "یہ سپلائر لوڈ نہیں ہو سکا",
+      "supplierNameLabel": "سپلائر کا نام",
+      "contactLabel": "رابطہ",
+      "productsSuppliedLabel": "فراہم کردہ مصنوعات",
+      "notesLabel": "نوٹس",
+      "statusLabel": "حیثیت",
+      "saveButton": "سپلائر محفوظ کریں",
+      "deleteButton": "سپلائر حذف کریں",
+      "saveFailedTitle": "سپلائر محفوظ کرنے میں ناکامی",
+      "deleteConfirmTitle": "سپلائر حذف کریں"
+    },
+    "supplierList": {
+      "couldntLoadTitle": "سپلائرز لوڈ نہیں ہو سکے",
+      "emptyTitle": "ابھی تک کوئی سپلائر نہیں",
+      "emptyDescription": "شروع کرنے کے لیے اپنا پہلا سپلائر شامل کریں۔",
+      "noProductsListed": "کوئی مصنوعات درج نہیں",
+      "newSupplierFab": "+ نیا سپلائر"
+    }
+  },
+  "expert": {
+    "analytics": {
+      "errorTitle": "تجزیات لوڈ نہیں ہو سکے",
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "totalConsultations": "کل مشورے",
+      "completed": "مکمل شدہ",
+      "avgRating": "اوسط درجہ بندی ({{count}})",
+      "consultationsByMonth": "ماہانہ مشورے",
+      "noDataMessage": "ابھی تک کوئی مشورہ نہیں"
+    },
+    "consultationDetail": {
+      "withCounterparty": "{{name}} کے ساتھ",
+      "cropLabel": "فصل: {{name}}",
+      "priorityLabel": "ترجیح: {{priority}}",
+      "yourReview": "آپ کا جائزہ",
+      "accept": "قبول کریں",
+      "reject": "مسترد کریں",
+      "startWorking": "کام شروع کریں",
+      "markResolved": "حل شدہ نشان زد کریں",
+      "cancelRequest": "درخواست منسوخ کریں",
+      "closeConsultation": "مشورہ بند کریں",
+      "writeReview": "جائزہ لکھیں",
+      "recommendProduct": "پروڈکٹ تجویز کریں",
+      "listingLabel": "لسٹنگ",
+      "sendRecommendation": "تجویز بھیجیں",
+      "rateConsultation": "اس مشورے کی درجہ بندی کریں",
+      "commentOptional": "تبصرہ (اختیاری)",
+      "submitReview": "جائزہ جمع کریں",
+      "updateStatusError": "مشورہ اپ ڈیٹ نہیں ہو سکا",
+      "submitReviewError": "جائزہ جمع نہیں ہو سکا",
+      "recommendedMessage": "تجویز کردہ: {{title}}",
+      "thisProduct": "یہ پروڈکٹ",
+      "unknownCounterparty": "نامعلوم"
+    },
+    "consultationList": {
+      "errorTitle": "مشورے لوڈ نہیں ہو سکے",
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "unknownCounterparty": "نامعلوم",
+      "emptyTitleExpert": "ابھی تک کوئی مشورے کی درخواست نہیں",
+      "emptyTitleRequester": "ابھی تک کوئی مشورہ نہیں",
+      "emptyDescriptionExpert": "کسانوں اور خریداروں کی درخواستیں یہاں ظاہر ہوں گی۔",
+      "emptyDescriptionRequester": "مشورہ حاصل کرنے کے لیے تصدیق شدہ ماہرین تلاش کریں۔"
+    },
+    "dashboard": {
+      "errorTitle": "ڈیش بورڈ لوڈ نہیں ہو سکا",
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "completeProfileTitle": "اپنا ماہر پروفائل مکمل کریں",
+      "completeProfileDescription": "اپنی قابلیت جمع کروائیں تاکہ خریدار اور کسان آپ کو تلاش کر سکیں۔",
+      "pendingReviewTitle": "درخواست کا جائزہ زیر التوا ہے",
+      "pendingReviewDescription": "خریداروں/کسانوں کو نظر آنے سے پہلے ایڈمن آپ کے پروفائل کی تصدیق کرے گا۔",
+      "rejectedTitle": "درخواست منظور نہیں ہوئی",
+      "rejectedDescription": "اپنا پروفائل اپ ڈیٹ کریں، اس کا دوبارہ جائزہ لیا جائے گا۔",
+      "openRequests": "کھلی درخواستیں",
+      "resolved": "حل شدہ",
+      "analytics": "تجزیات",
+      "recentRequestsTitle": "حالیہ مشورے کی درخواستیں",
+      "emptyTitle": "ابھی تک کوئی درخواست نہیں",
+      "emptyDescription": "خریداروں اور کسانوں کی مشورے کی درخواستیں یہاں ظاہر ہوں گی۔",
+      "unknownCounterparty": "نامعلوم"
+    },
+    "expertApplication": {
+      "loadErrorTitle": "آپ کی درخواست لوڈ نہیں ہو سکی",
+      "loadErrorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "qualificationsLabel": "قابلیت",
+      "qualificationsPlaceholder": "مثلاً پی ایچ ڈی زراعت، 10 سال کا توسیعی کام",
+      "qualificationsRequiredError": "اپنی قابلیت درج کریں",
+      "degreeLabel": "ڈگری / سرٹیفیکیشن",
+      "experienceLabel": "تجربہ",
+      "aboutYouLabel": "آپ کے بارے میں",
+      "contactLabel": "رابطہ",
+      "specializationsLabel": "مہارت کے شعبے",
+      "documentLabel": "قابلیت کی دستاویز (اختیاری)",
+      "addDocumentPhoto": "+ اپنے سرٹیفکیٹ کی تصویر شامل کریں",
+      "saveChanges": "تبدیلیاں محفوظ کریں",
+      "submitApplication": "درخواست جمع کریں",
+      "selectSpecializationError": "کم از کم ایک مہارت کا شعبہ منتخب کریں",
+      "profileUpdatedTitle": "پروفائل اپ ڈیٹ ہو گیا",
+      "applicationSubmittedTitle": "درخواست جمع ہو گئی",
+      "reviewMessage": "ایڈمن آپ کی درخواست کا جائزہ لے گا۔",
+      "saveErrorTitle": "محفوظ نہیں ہو سکا"
+    },
+    "expertList": {
+      "errorTitle": "ماہرین لوڈ نہیں ہو سکے",
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "emptyTitle": "ابھی تک کوئی تصدیق شدہ ماہر نہیں",
+      "emptyDescription": "دستیاب ماہرین کے لیے جلد دوبارہ چیک کریں۔"
+    },
+    "expertProfile": {
+      "errorTitle": "یہ ماہر لوڈ نہیں ہو سکا",
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "defaultName": "ماہر",
+      "specializationsTitle": "مہارت کے شعبے",
+      "qualificationsTitle": "قابلیت",
+      "experienceTitle": "تجربہ",
+      "aboutTitle": "تعارف",
+      "requestConsultation": "مشورہ طلب کریں",
+      "messageExpert": "ماہر کو پیغام بھیجیں",
+      "reviewsTitle": "جائزے"
+    },
+    "requestConsultation": {
+      "subjectLabel": "موضوع",
+      "subjectRequiredError": "موضوع درج کریں",
+      "cropLabel": "فصل (اختیاری)",
+      "farmLabel": "فارم (اختیاری)",
+      "problemDescriptionLabel": "مسئلے کی وضاحت کریں",
+      "priorityLabel": "ترجیح",
+      "priorityLow": "کم",
+      "priorityMedium": "درمیانہ",
+      "priorityHigh": "زیادہ",
+      "photosLabel": "تصاویر (اختیاری)",
+      "addPhoto": "+ شامل کریں",
+      "sendRequest": "درخواست بھیجیں",
+      "sendRequestError": "درخواست نہیں بھیجی جا سکی"
+    },
+    "specializations": {
+      "cropManagement": "فصل کا انتظام",
+      "plantDiseases": "پودوں کی بیماریاں",
+      "pestManagement": "کیڑوں کا انتظام",
+      "fertilizerManagement": "کھاد کا انتظام",
+      "irrigation": "آبپاشی",
+      "soilManagement": "مٹی کا انتظام",
+      "cropNutrition": "فصل کی غذائیت",
+      "generalAgriculture": "عمومی زراعت"
+    }
+  },
+  "farmer": {
+    "addCrop": {
+      "dateFormatError": "براہ کرم YYYY-MM-DD فارمیٹ استعمال کریں",
+      "saveFailedTitle": "فصل محفوظ کرنے میں ناکامی",
+      "removeCropAlertTitle": "فصل ہٹائیں",
+      "removeCropAlertMessage": "یہ عمل واپس نہیں کیا جا سکتا۔",
+      "removeButton": "ہٹائیں",
+      "loadErrorTitle": "یہ فصل لوڈ نہیں ہو سکی",
+      "loadErrorDescription": "اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "cropLabel": "فصل",
+      "varietyLabel": "قسم",
+      "plantingDateLabel": "بوائی کی تاریخ",
+      "datePlaceholder": "YYYY-MM-DD",
+      "areaLabel": "رقبہ",
+      "expectedHarvestDateLabel": "متوقع کٹائی کی تاریخ",
+      "growthStageLabel": "نشوونما کا مرحلہ",
+      "notesLabel": "نوٹس",
+      "saveChangesButton": "تبدیلیاں محفوظ کریں",
+      "addCropButton": "فصل شامل کریں",
+      "removeCropButton": "فصل ہٹائیں"
+    },
+    "analytics": {
+      "loadErrorTitle": "تجزیات لوڈ نہیں ہو سکے",
+      "loadErrorDescription": "اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "listingViewsLabel": "لسٹنگ ملاحظات",
+      "ordersLabel": "آرڈرز",
+      "salesLabel": "فروخت",
+      "popularProductsTitle": "مقبول مصنوعات",
+      "noSalesMessage": "ابھی تک کوئی مکمل فروخت نہیں",
+      "topProductsByRevenueTitle": "آمدنی کے لحاظ سے سرفہرست مصنوعات",
+      "unitsSoldSuffix": "{{count}} یونٹس فروخت ہوئیں"
+    },
+    "createFarm": {
+      "nameRequiredError": "فارم کا نام درج کریں",
+      "createFailedTitle": "فارم بنانے میں ناکامی",
+      "farmNameLabel": "فارم کا نام",
+      "areaLabel": "رقبہ",
+      "landUnitLabel": "زمین کی اکائی",
+      "notesLabel": "نوٹس",
+      "createFarmButton": "فارم بنائیں"
+    },
+    "cropList": {
+      "loadErrorTitle": "فصلیں لوڈ نہیں ہو سکیں",
+      "loadErrorDescription": "اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "unspecifiedCrop": "غیر متعین فصل",
+      "noDetailsYet": "ابھی تک کوئی تفصیلات نہیں",
+      "plantedLabel": "بویا گیا {{date}}",
+      "emptyCropsTitle": "کوئی فصل درج نہیں",
+      "emptyCropsDescription": "اس فارم پر اگنے والی فصلیں شامل کریں۔",
+      "addCropFab": "+ فصل شامل کریں"
+    },
+    "farmDetail": {
+      "nameRequiredError": "فارم کا نام درج کریں",
+      "updateFailedTitle": "فارم اپ ڈیٹ کرنے میں ناکامی",
+      "deleteFarmAlertTitle": "فارم حذف کریں",
+      "deleteFarmAlertMessage": "اس سے اس کی درج شدہ فصلیں بھی حذف ہو جائیں گی۔ یہ عمل واپس نہیں کیا جا سکتا۔",
+      "deleteButton": "حذف کریں",
+      "loadErrorTitle": "یہ فارم لوڈ نہیں ہو سکا",
+      "loadErrorDescription": "اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "farmNameLabel": "فارم کا نام",
+      "areaLabel": "رقبہ",
+      "landUnitLabel": "زمین کی اکائی",
+      "notesLabel": "نوٹس",
+      "cropsOnThisFarmButton": "اس فارم کی فصلیں",
+      "saveChangesButton": "تبدیلیاں محفوظ کریں",
+      "deleteFarmButton": "فارم حذف کریں"
+    },
+    "farmList": {
+      "loadErrorTitle": "فارمز لوڈ نہیں ہو سکے",
+      "loadErrorDescription": "اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "areaNotSet": "رقبہ متعین نہیں",
+      "emptyFarmsTitle": "ابھی تک کوئی فارم نہیں",
+      "emptyFarmsDescription": "شروع کرنے کے لیے اپنا پہلا فارم شامل کریں۔",
+      "newFarmFab": "+ نیا فارم"
+    }
+  },
+  "marketplace": {
+    "browse": {
+      "cartLabel": "کارٹ",
+      "cartLabelWithCount_one": "کارٹ، {{count}} چیز",
+      "cartLabelWithCount_other": "کارٹ، {{count}} اشیاء",
+      "emptyTitle": "ابھی کوئی لسٹنگ نہیں",
+      "emptyDescription": "بعد میں دوبارہ چیک کریں، یا یہاں سب سے پہلے اپنی پیداوار کی فہرست بنائیں۔",
+      "listFab": "+ فہرست"
+    },
+    "createListing": {
+      "addPhotoTitle": "تصویر شامل کریں",
+      "addPhotoMessage": "براہ کرم اپنی پیداوار کی کم از کم ایک تصویر شامل کریں۔",
+      "failedTitle": "لسٹنگ بنانے میں ناکامی",
+      "photosLabel": "تصاویر",
+      "addImageLabel": "+ شامل کریں",
+      "publishLabel": "لسٹنگ شائع کریں"
+    },
+    "editListing": {
+      "failedTitle": "لسٹنگ اپ ڈیٹ کرنے میں ناکامی",
+      "deleteConfirmTitle": "لسٹنگ حذف کریں",
+      "deleteConfirmMessage": "اسے واپس نہیں لایا جا سکتا۔",
+      "deleteConfirmButton": "حذف کریں",
+      "loadErrorTitle": "یہ لسٹنگ لوڈ نہیں ہو سکی",
+      "loadErrorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "photosLabel": "تصاویر",
+      "addImageLabel": "+ شامل کریں",
+      "saveChangesLabel": "تبدیلیاں محفوظ کریں",
+      "deleteListingLabel": "لسٹنگ حذف کریں"
+    },
+    "listingDetail": {
+      "notFoundTitle": "لسٹنگ نہیں ملی",
+      "notFoundDescription": "ہو سکتا ہے اسے ہٹا دیا گیا ہو، یا کنکشن میں کوئی مسئلہ ہو۔",
+      "priceLine": "روپے {{price}} / {{unit}} · {{quantity}} {{unit}} دستیاب",
+      "editListingLabel": "لسٹنگ میں ترمیم کریں",
+      "addToCartLabel": "کارٹ میں شامل کریں",
+      "addedToCartTitle": "کارٹ میں شامل کر دیا گیا",
+      "addedToCartMessage": "{{title}} آپ کے کارٹ میں شامل کر دیا گیا۔",
+      "messageSellerLabel": "بیچنے والے کو پیغام بھیجیں",
+      "reviewsTitle": "جائزے"
+    },
+    "myListings": {
+      "itemAccessibilityLabel": "{{title}}، روپے {{price}} فی {{unit}}، {{status}}",
+      "priceQtyLine": "روپے {{price}}/{{unit}} · مقدار {{quantity}}",
+      "emptyTitle": "ابھی کوئی لسٹنگ نہیں",
+      "emptyDescription": "آپ کی بنائی گئی لسٹنگز یہاں ظاہر ہوں گی۔"
+    },
+    "listingForm": {
+      "titleLabel": "عنوان",
+      "descriptionLabel": "تفصیل",
+      "categoryLabel": "قسم",
+      "priceLabel": "قیمت",
+      "unitLabel": "اکائی",
+      "quantityLabel": "دستیاب مقدار",
+      "brandLabel": "برانڈ (اختیاری)",
+      "conditionLabel": "حالت (اختیاری)",
+      "cropCompatibilityLabel": "فصل کی مطابقت",
+      "locationLabel": "مقام (اختیاری)"
+    }
+  },
+  "orders": {
+    "cart": {
+      "emptyTitle": "آپ کا کارٹ خالی ہے",
+      "emptyDescription": "پیداوار شامل کرنے کے لیے مارکیٹ پلیس دیکھیں۔",
+      "totalLabel": "کل رقم",
+      "totalValue": "روپے {{amount}}",
+      "checkoutLabel": "چیک آؤٹ"
+    },
+    "checkout": {
+      "orderPlacedTitle": "آرڈر دے دیا گیا",
+      "orderPlacedMessage_one": "{{count}} آرڈر بن گیا۔ اسے آرڈرز ٹیب سے ٹریک کریں۔",
+      "orderPlacedMessage_other": "{{count}} آرڈرز بن گئے۔ انہیں آرڈرز ٹیب سے ٹریک کریں۔",
+      "failedTitle": "چیک آؤٹ ناکام",
+      "sellerOrderTitle_one": "آرڈر میں {{count}} چیز",
+      "sellerOrderTitle_other": "آرڈر میں {{count}} اشیاء",
+      "itemLine": "{{quantity}} × {{title}}",
+      "itemPrice": "روپے {{amount}}",
+      "deliveryChargeLabel": "ترسیل کا خرچہ (اختیاری)",
+      "deliveryChargePlaceholder": "0",
+      "subtotalLabel": "ذیلی مجموعہ",
+      "deliveryLabel": "ترسیل",
+      "totalLabel": "کل رقم",
+      "placeOrderLabel": "آرڈر دیں"
+    },
+    "orderDetail": {
+      "couldNotUpdateOrderTitle": "آرڈر اپ ڈیٹ نہیں ہو سکا",
+      "couldNotUpdatePaymentTitle": "ادائیگی اپ ڈیٹ نہیں ہو سکی",
+      "amountLine": "روپے {{amount}}",
+      "paymentSectionTitle": "ادائیگی",
+      "markPaymentReceivedLabel": "ادائیگی موصول ہونے کی تصدیق کریں",
+      "markPaymentFailedLabel": "ادائیگی ناکام کے طور پر نشان زد کریں",
+      "payNowLabel": "ابھی ادائیگی کریں",
+      "statusLabels": {
+        "pending": "زیر التوا",
+        "confirmed": "تصدیق شدہ",
+        "processing": "زیر عمل",
+        "ready": "تیار",
+        "completed": "مکمل",
+        "cancelled": "منسوخ شدہ",
+        "rejected": "مسترد",
+        "payment_failed": "ادائیگی ناکام",
+        "disputed": "متنازع",
+        "refunded": "رقم واپس شدہ",
+        "expired": "میعاد ختم"
+      },
+      "itemsSectionTitle": "اشیاء",
+      "itemLine": "{{quantity}} {{unit}} × {{title}}",
+      "listingRemovedFallback": "لسٹنگ ہٹا دی گئی",
+      "subtotalLabel": "ذیلی مجموعہ",
+      "deliveryLabel": "ترسیل",
+      "buyerLabel": "خریدار",
+      "sellerLabel": "بیچنے والا",
+      "unknownPartyFallback": "نامعلوم",
+      "messageSellerLabel": "بیچنے والے کو پیغام بھیجیں",
+      "messageBuyerLabel": "خریدار کو پیغام بھیجیں",
+      "confirmOrderLabel": "آرڈر کی تصدیق کریں",
+      "startProcessingLabel": "کارروائی شروع کریں",
+      "markReadyLabel": "تیار کے طور پر نشان زد کریں",
+      "markCompletedLabel": "مکمل کے طور پر نشان زد کریں",
+      "rejectOrderLabel": "آرڈر مسترد کریں",
+      "cancelOrderLabel": "آرڈر منسوخ کریں",
+      "disputeOrderLabel": "آرڈر پر اعتراض کریں",
+      "writeReviewLabel": "جائزہ لکھیں",
+      "statusHistoryTitle": "حیثیت کی تاریخ"
+    },
+    "orderHistory": {
+      "purchasesLabel": "خریداریاں",
+      "salesLabel": "فروخت",
+      "unknownCounterpartyFallback": "نامعلوم",
+      "emptyPurchasesTitle": "ابھی کوئی خریداری نہیں",
+      "emptySalesTitle": "ابھی کوئی فروخت نہیں",
+      "emptyDescription": "آرڈر دیے جانے کے بعد وہ یہاں ظاہر ہوں گے۔"
+    }
+  },
+  "payments": {
+    "paymentMethod": {
+      "couldNotStartPaymentTitle": "ادائیگی شروع نہیں ہو سکی",
+      "amountLine": "روپے {{amount}}",
+      "subtitle": "منتخب کریں کہ آپ اس آرڈر کی ادائیگی کیسے کریں گے",
+      "methods": {
+        "cod": { "label": "ترسیل پر نقد ادائیگی", "description": "اپنا آرڈر پہنچنے پر نقد ادائیگی کریں۔" },
+        "bank_transfer": { "label": "بینک ٹرانسفر", "description": "رقم منتقل کریں اور بیچنے والا وصولی کی تصدیق کرے گا۔" }
+      },
+      "continueLabel": "جاری رکھیں"
+    },
+    "paymentProcessing": {
+      "amountLine": "روپے {{amount}}",
+      "methodLabels": {
+        "cod": "ترسیل پر نقد ادائیگی",
+        "bank_transfer": "بینک ٹرانسفر"
+      },
+      "waitingMessage": "بیچنے والے کی جانب سے ادائیگی کی وصولی کی تصدیق کا انتظار ہے۔ آپ کسی بھی وقت اسے اپنے آرڈر سے ٹریک کر سکیں گے۔",
+      "checkStatusLabel": "حیثیت چیک کریں",
+      "backToOrderLabel": "آرڈر پر واپس جائیں"
+    },
+    "paymentResult": {
+      "loadErrorTitle": "ادائیگی کا نتیجہ لوڈ نہیں ہو سکا",
+      "loadErrorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "resultCopy": {
+        "successful": { "title": "ادائیگی کی تصدیق ہو گئی", "description": "بیچنے والے نے آپ کی ادائیگی موصول ہونے کی تصدیق کر دی ہے۔" },
+        "failed": { "title": "ادائیگی ناکام", "description": "یہ ادائیگی مکمل نہیں ہو سکی۔" },
+        "cancelled": { "title": "ادائیگی منسوخ", "description": "یہ ادائیگی منسوخ کر دی گئی تھی۔" },
+        "refunded": { "title": "رقم واپس کر دی گئی", "description": "اس ادائیگی کی رقم واپس کر دی گئی ہے۔" },
+        "pending": { "title": "ادائیگی زیر التوا", "description": "ابھی بھی تصدیق کا انتظار ہے۔" },
+        "processing": { "title": "ادائیگی زیر عمل", "description": "ابھی بھی تصدیق کا انتظار ہے۔" }
+      },
+      "amountLine": "روپے {{amount}}",
+      "backToOrderLabel": "آرڈر پر واپس جائیں"
+    }
+  },
+  "notifications": {
+    "notificationList": {
+      "loadErrorTitle": "اطلاعات لوڈ نہیں ہو سکیں",
+      "loadErrorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "markAllReadLabel": "سب کو پڑھا ہوا نشان زد کریں",
+      "emptyTitle": "ابھی کوئی اطلاع نہیں",
+      "emptyDescription": "آپ کی سرگرمی سے متعلق تازہ کاریاں یہاں ظاہر ہوں گی۔"
+    }
   }
 }

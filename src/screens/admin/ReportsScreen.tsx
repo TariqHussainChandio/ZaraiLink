@@ -1,7 +1,9 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { Badge, Button, EmptyState, FilterChips, Spinner } from '../../components/ui';
+import { i18n } from '../../localization';
 import {
   dismissReport,
   fetchAllProfiles,
@@ -19,24 +21,20 @@ import type { ReportStatus, ReportTargetType, ReportWithReporter } from '../../t
 
 type FilterValue = ReportStatus | 'all';
 
-const FILTERS: { value: FilterValue; label: string }[] = [
-  { value: 'open', label: 'Open' },
-  { value: 'investigating', label: 'Investigating' },
-  { value: 'resolved', label: 'Resolved' },
-  { value: 'dismissed', label: 'Dismissed' },
-  { value: 'all', label: 'All' },
-];
-
 const TARGET_LABEL: Record<ReportTargetType, string> = {
-  product: 'LISTING',
-  listing: 'LISTING',
-  user: 'USER',
-  review: 'REVIEW',
-  message: 'MESSAGE',
-  expert: 'EXPERT',
+  product: 'admin.reports.targetListing',
+  listing: 'admin.reports.targetListing',
+  user: 'admin.reports.targetUser',
+  review: 'admin.reports.targetReview',
+  message: 'admin.reports.targetMessage',
+  expert: 'admin.reports.targetExpert',
 };
 
-/** Best-effort one-line preview of the reported content, fetched per report's target_type. */
+/**
+ * Best-effort one-line preview of the reported content, fetched per report's target_type.
+ * Runs outside the component tree, so it reads translations via the shared i18n instance's
+ * `t` rather than the `useTranslation` hook.
+ */
 async function fetchPreview(report: ReportWithReporter): Promise<string> {
   try {
     switch (report.target_type) {
@@ -47,7 +45,7 @@ async function fetchPreview(report: ReportWithReporter): Promise<string> {
       }
       case 'review': {
         const review = await fetchReviewById(report.target_id);
-        return review.comment ?? '(no comment)';
+        return review.comment ?? i18n.t('admin.reports.noComment');
       }
       case 'message': {
         const message = await fetchMessageById(report.target_id);
@@ -55,23 +53,34 @@ async function fetchPreview(report: ReportWithReporter): Promise<string> {
       }
       case 'expert': {
         const expert = await fetchExpertById(report.target_id);
-        return expert.profile?.full_name ?? 'Unknown expert';
+        return expert.profile?.full_name ?? i18n.t('admin.reports.unknownExpert');
       }
       case 'user': {
         const profiles = await fetchAllProfiles();
-        return profiles.find(p => p.id === report.target_id)?.full_name ?? 'Unknown user';
+        return profiles.find(p => p.id === report.target_id)?.full_name ?? i18n.t('admin.reports.unknownUser');
       }
       default:
         return report.target_id;
     }
   } catch {
-    return '(content unavailable — may have been removed)';
+    return i18n.t('admin.reports.contentUnavailable');
   }
 }
 
 export function ReportsScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const filters: { value: FilterValue; label: string }[] = useMemo(
+    () => [
+      { value: 'open', label: t('admin.reports.open') },
+      { value: 'investigating', label: t('admin.reports.investigating') },
+      { value: 'resolved', label: t('admin.reports.resolved') },
+      { value: 'dismissed', label: t('admin.reports.dismissed') },
+      { value: 'all', label: t('admin.reports.all') },
+    ],
+    [t],
+  );
   const actorId = useAuthStore(state => state.user?.id);
   const [filter, setFilter] = useState<FilterValue>('open');
   const [reports, setReports] = useState<ReportWithReporter[]>([]);
@@ -131,34 +140,39 @@ export function ReportsScreen() {
       case 'listing':
       case 'product':
         return {
-          label: 'Remove Listing',
+          label: t('admin.reports.removeListing'),
           onPress: () => takeAction(report, () => updateListingStatus(report.target_id, 'inactive')),
         };
       case 'user':
         return {
-          label: 'Suspend User',
+          label: t('admin.reports.suspendUser'),
           onPress: () => takeAction(report, () => setProfileSuspended(report.target_id, true)),
         };
       case 'review':
         return {
-          label: 'Delete Review',
+          label: t('admin.reports.deleteReview'),
           onPress: () => takeAction(report, () => deleteReview(report.target_id)),
         };
       case 'expert':
         return {
-          label: 'Suspend Expert',
+          label: t('admin.reports.suspendExpert'),
           onPress: () =>
             takeAction(report, async () => {
               const expert = await fetchExpertForAdminById(report.target_id);
               const latestVerification = expert.expert_verifications[0];
               if (latestVerification) {
-                await reviewExpertVerification(report.target_id, latestVerification.id, 'suspended', 'Suspended via report resolution');
+                await reviewExpertVerification(
+                  report.target_id,
+                  latestVerification.id,
+                  'suspended',
+                  t('admin.reports.suspendedViaReportNote'),
+                );
               }
             }),
         };
       case 'message':
         return {
-          label: 'Redact Message',
+          label: t('admin.reports.redactMessage'),
           onPress: () => takeAction(report, () => redactMessage(report.target_id)),
         };
       default:
@@ -178,19 +192,23 @@ export function ReportsScreen() {
   };
 
   const confirmAction = (report: ReportWithReporter, action: { label: string; onPress: () => void }) => {
-    Alert.alert(action.label, `This will ${action.label.toLowerCase()} and mark the report resolved.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: action.label, style: 'destructive', onPress: action.onPress },
-    ]);
+    Alert.alert(
+      action.label,
+      t('admin.reports.confirmActionMessage', { action: action.label.toLowerCase() }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: action.label, style: 'destructive', onPress: action.onPress },
+      ],
+    );
   };
 
   if (loading) return <Spinner fullscreen />;
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load reports"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('admin.reports.loadErrorTitle')}
+        description={t('admin.reports.loadErrorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -198,25 +216,29 @@ export function ReportsScreen() {
 
   return (
     <View style={styles.container}>
-      <FilterChips options={FILTERS} value={filter} onChange={setFilter} />
+      <FilterChips options={filters} value={filter} onChange={setFilter} />
       <FlatList
         contentContainerStyle={styles.list}
         data={reports}
         keyExtractor={item => item.id}
-        ListEmptyComponent={<EmptyState title="No reports in this status" />}
+        ListEmptyComponent={<EmptyState title={t('admin.reports.emptyTitle')} />}
         renderItem={({ item }) => {
           const action = primaryAction(item);
           return (
             <View style={styles.card}>
               <View style={styles.headerRow}>
-                <Badge label={TARGET_LABEL[item.target_type]} tone="error" />
+                <Badge label={t(TARGET_LABEL[item.target_type])} tone="error" />
                 <Text style={styles.time}>{new Date(item.created_at).toLocaleString()}</Text>
               </View>
               <Text style={styles.preview} numberOfLines={2}>
                 {previews[item.id] ?? '…'}
               </Text>
-              <Text style={styles.reason}>Reason: {item.reason}</Text>
-              <Text style={styles.reporter}>Reported by {item.reporter?.full_name ?? 'Unknown'}</Text>
+              <Text style={styles.reason}>{t('admin.reports.reasonLine', { reason: item.reason })}</Text>
+              <Text style={styles.reporter}>
+                {t('admin.reports.reportedByLine', {
+                  reporter: item.reporter?.full_name ?? t('admin.reports.unknownReporter'),
+                })}
+              </Text>
 
               {item.status === 'open' || item.status === 'investigating' ? (
                 <View style={styles.actions}>
@@ -230,7 +252,7 @@ export function ReportsScreen() {
                     />
                   ) : null}
                   <Button
-                    label="Dismiss"
+                    label={t('admin.reports.dismiss')}
                     variant="secondary"
                     fullWidth={false}
                     loading={updatingId === item.id}

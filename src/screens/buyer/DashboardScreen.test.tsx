@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { BuyerDashboardScreen } from './DashboardScreen';
 import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
 import { APP_TABS, CONSULTATIONS_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../constants/routes';

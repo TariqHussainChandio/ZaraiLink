@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ConversationListItem } from '../../components/features/messaging/ConversationListItem';
@@ -13,6 +14,7 @@ import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavi
 export function ConversationListScreen({ navigation }: MessagingScreenProps<'ConversationList'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useTranslation();
   const userId = useAuthStore(state => state.user?.id);
   const [conversations, setConversations] = useState<ConversationWithPreview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,15 +48,15 @@ export function ConversationListScreen({ navigation }: MessagingScreenProps<'Con
             onPress={() =>
               navigation.navigate(MESSAGING_ROUTES.Chat, {
                 conversationId: item.id,
-                otherUserName: item.otherParticipant?.full_name ?? 'Unknown',
+                otherUserName: item.otherParticipant?.full_name ?? t('messaging.conversationList.unknownParticipant'),
               })
             }
           />
         )}
         ListEmptyComponent={
           <EmptyState
-            title="No conversations yet"
-            description="Message a seller from a listing or an order to start chatting."
+            title={t('messaging.conversationList.emptyTitle')}
+            description={t('messaging.conversationList.emptyDescription')}
           />
         }
       />

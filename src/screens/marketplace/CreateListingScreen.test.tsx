@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { CreateListingScreen } from './CreateListingScreen';
 import { createListing, uploadListingImages } from '../../services/modules/marketplace/listingsService';
 import { pickPhotos } from '../../utils/photoPicker';

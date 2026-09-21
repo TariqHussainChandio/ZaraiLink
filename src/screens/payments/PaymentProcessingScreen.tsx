@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, Spinner } from '../../components/ui';
 import { PaymentStatusBadge } from '../../components/features/payments/PaymentStatusBadge';
@@ -11,13 +12,13 @@ import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator'
 
 const TERMINAL_STATUSES: Payment['status'][] = ['successful', 'failed', 'cancelled', 'refunded'];
 
-const METHOD_LABEL: Record<string, string> = {
-  cod: 'Cash on Delivery',
-  bank_transfer: 'Bank Transfer',
-};
+// Method display labels live under payments.paymentProcessing.methodLabels.<method> in the
+// translation resources; falls back to the raw method value for one that isn't recognized.
+const KNOWN_METHODS = ['cod', 'bank_transfer'];
 
 export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps<'PaymentProcessing'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { paymentId } = route.params;
   const [payment, setPayment] = useState<Payment | null>(null);
@@ -43,15 +44,18 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
   return (
     <View style={styles.container}>
       <PaymentStatusBadge status={payment.status} />
-      <Text style={styles.amount}>Rs. {payment.amount.toFixed(0)}</Text>
-      <Text style={styles.method}>{METHOD_LABEL[payment.method] ?? payment.method}</Text>
-      <Text style={styles.waiting}>
-        Waiting for the seller to confirm payment receipt. You'll be able to track this from your
-        order at any time.
+      <Text style={styles.amount}>
+        {t('payments.paymentProcessing.amountLine', { amount: payment.amount.toFixed(0) })}
       </Text>
-      <Button label="Check Status" onPress={load} variant="secondary" style={styles.action} />
+      <Text style={styles.method}>
+        {KNOWN_METHODS.includes(payment.method)
+          ? t(`payments.paymentProcessing.methodLabels.${payment.method}`)
+          : payment.method}
+      </Text>
+      <Text style={styles.waiting}>{t('payments.paymentProcessing.waitingMessage')}</Text>
+      <Button label={t('payments.paymentProcessing.checkStatusLabel')} onPress={load} variant="secondary" style={styles.action} />
       <Button
-        label="Back to Order"
+        label={t('payments.paymentProcessing.backToOrderLabel')}
         onPress={() =>
           navigation.reset({
             index: 1,

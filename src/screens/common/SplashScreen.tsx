@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '../../components/ui';
 import { useTheme, type Theme } from '../../theme';
@@ -6,10 +7,11 @@ import { useTheme, type Theme } from '../../theme';
 export function SplashScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>ZaraiLink</Text>
+      <Text style={styles.title}>{t('common.splash.appName')}</Text>
       <Spinner />
     </View>
   );

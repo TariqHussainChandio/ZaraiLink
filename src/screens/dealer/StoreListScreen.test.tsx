@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { StoreListScreen } from './StoreListScreen';
 import { fetchStores } from '../../services/modules/dealer/storeService';
 import { useAuthStore } from '../../store/authStore';

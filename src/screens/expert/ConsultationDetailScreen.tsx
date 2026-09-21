@@ -1,5 +1,6 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Asset } from 'react-native-image-picker';
 import {
   Alert,
@@ -34,6 +35,7 @@ import type { ConsultationMessageWithListing, ConsultationStatus, ConsultationWi
 import type { ReviewWithBuyer } from '../../types/reviews';
 
 export function ConsultationDetailScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { consultationId } = useRoute().params as { consultationId: string };
@@ -91,7 +93,9 @@ export function ConsultationDetailScreen() {
 
   const isRequester = consultation.user_id === userId;
   const isExpert = consultation.expert_id === userId;
-  const counterpartyName = (isRequester ? consultation.expert?.full_name : consultation.user?.full_name) ?? 'Unknown';
+  const counterpartyName =
+    (isRequester ? consultation.expert?.full_name : consultation.user?.full_name) ??
+    t('expert.consultationDetail.unknownCounterparty');
 
   const advance = async (to: ConsultationStatus) => {
     setUpdating(true);
@@ -99,7 +103,10 @@ export function ConsultationDetailScreen() {
       await updateConsultationStatus(consultation.id, to);
       await load();
     } catch (error) {
-      Alert.alert('Could not update consultation', error instanceof Error ? error.message : String(error));
+      Alert.alert(
+        t('expert.consultationDetail.updateStatusError'),
+        error instanceof Error ? error.message : String(error),
+      );
     } finally {
       setUpdating(false);
     }
@@ -130,8 +137,14 @@ export function ConsultationDetailScreen() {
     if (!userId || !selectedListingId) return;
     setSending(true);
     try {
-      const title = listingOptions.find(l => l.id === selectedListingId)?.title ?? 'this product';
-      const message = await sendConsultationMessage(consultationId, `Recommended: ${title}`, [], selectedListingId);
+      const title =
+        listingOptions.find(l => l.id === selectedListingId)?.title ?? t('expert.consultationDetail.thisProduct');
+      const message = await sendConsultationMessage(
+        consultationId,
+        t('expert.consultationDetail.recommendedMessage', { title }),
+        [],
+        selectedListingId,
+      );
       setMessages(prev => [...prev, message]);
       setRecommendVisible(false);
       setSelectedListingId(null);
@@ -148,7 +161,10 @@ export function ConsultationDetailScreen() {
       setReview({ ...created, buyer: null });
       setReviewVisible(false);
     } catch (error) {
-      Alert.alert('Could not submit review', error instanceof Error ? error.message : String(error));
+      Alert.alert(
+        t('expert.consultationDetail.submitReviewError'),
+        error instanceof Error ? error.message : String(error),
+      );
     } finally {
       setSubmittingReview(false);
     }
@@ -192,9 +208,17 @@ export function ConsultationDetailScreen() {
                 <Text style={styles.subject}>{consultation.subject}</Text>
                 <ConsultationStatusBadge status={consultation.status} />
               </View>
-              <Text style={styles.meta}>With {counterpartyName}</Text>
-              {consultation.crop ? <Text style={styles.meta}>Crop: {consultation.crop.name}</Text> : null}
-              <Text style={styles.meta}>Priority: {consultation.priority}</Text>
+              <Text style={styles.meta}>
+                {t('expert.consultationDetail.withCounterparty', { name: counterpartyName })}
+              </Text>
+              {consultation.crop ? (
+                <Text style={styles.meta}>
+                  {t('expert.consultationDetail.cropLabel', { name: consultation.crop.name })}
+                </Text>
+              ) : null}
+              <Text style={styles.meta}>
+                {t('expert.consultationDetail.priorityLabel', { priority: consultation.priority })}
+              </Text>
               {consultation.problem_description ? (
                 <Card style={styles.descriptionCard}>
                   <Text style={styles.description}>{consultation.problem_description}</Text>
@@ -212,28 +236,78 @@ export function ConsultationDetailScreen() {
 
               {review ? (
                 <Card style={styles.reviewCard}>
-                  <Text style={styles.reviewTitle}>Your Review</Text>
+                  <Text style={styles.reviewTitle}>{t('expert.consultationDetail.yourReview')}</Text>
                   <RatingStars value={review.rating} />
                   {review.comment ? <Text style={styles.description}>{review.comment}</Text> : null}
                 </Card>
               ) : null}
 
               <View style={styles.actions}>
-                {canAccept ? <Button label="Accept" loading={updating} onPress={() => advance('accepted')} style={styles.action} /> : null}
+                {canAccept ? (
+                  <Button
+                    label={t('expert.consultationDetail.accept')}
+                    loading={updating}
+                    onPress={() => advance('accepted')}
+                    style={styles.action}
+                  />
+                ) : null}
                 {canReject ? (
-                  <Button label="Reject" variant="destructive" loading={updating} onPress={() => advance('rejected')} style={styles.action} />
+                  <Button
+                    label={t('expert.consultationDetail.reject')}
+                    variant="destructive"
+                    loading={updating}
+                    onPress={() => advance('rejected')}
+                    style={styles.action}
+                  />
                 ) : null}
-                {canStart ? <Button label="Start Working" loading={updating} onPress={() => advance('in_progress')} style={styles.action} /> : null}
-                {canResolve ? <Button label="Mark Resolved" loading={updating} onPress={() => advance('resolved')} style={styles.action} /> : null}
+                {canStart ? (
+                  <Button
+                    label={t('expert.consultationDetail.startWorking')}
+                    loading={updating}
+                    onPress={() => advance('in_progress')}
+                    style={styles.action}
+                  />
+                ) : null}
+                {canResolve ? (
+                  <Button
+                    label={t('expert.consultationDetail.markResolved')}
+                    loading={updating}
+                    onPress={() => advance('resolved')}
+                    style={styles.action}
+                  />
+                ) : null}
                 {canCancel ? (
-                  <Button label="Cancel Request" variant="destructive" loading={updating} onPress={() => advance('cancelled')} style={styles.action} />
+                  <Button
+                    label={t('expert.consultationDetail.cancelRequest')}
+                    variant="destructive"
+                    loading={updating}
+                    onPress={() => advance('cancelled')}
+                    style={styles.action}
+                  />
                 ) : null}
-                {canClose ? <Button label="Close Consultation" loading={updating} onPress={() => advance('closed')} style={styles.action} /> : null}
+                {canClose ? (
+                  <Button
+                    label={t('expert.consultationDetail.closeConsultation')}
+                    loading={updating}
+                    onPress={() => advance('closed')}
+                    style={styles.action}
+                  />
+                ) : null}
                 {canReview ? (
-                  <Button label="Write a Review" variant="secondary" onPress={() => setReviewVisible(true)} style={styles.action} />
+                  <Button
+                    label={t('expert.consultationDetail.writeReview')}
+                    variant="secondary"
+                    onPress={() => setReviewVisible(true)}
+                    style={styles.action}
+                  />
                 ) : null}
                 {isExpert ? (
-                  <Button label="Recommend a Product" variant="secondary" onPress={openRecommend} style={styles.action} />
+                  <Button
+                    label={t('expert.consultationDetail.recommendProduct')}
+                    variant="secondary"
+                    onPress={openRecommend}
+                    style={styles.action}
+                  />
                 ) : null}
               </View>
             </View>
@@ -243,23 +317,29 @@ export function ConsultationDetailScreen() {
       </View>
 
       <Sheet visible={recommendVisible} onClose={() => setRecommendVisible(false)}>
-        <Text style={styles.sheetTitle}>Recommend a Product</Text>
+        <Text style={styles.sheetTitle}>{t('expert.consultationDetail.recommendProduct')}</Text>
         <SelectField
-          label="Listing"
+          label={t('expert.consultationDetail.listingLabel')}
           value={selectedListingId}
           options={listingOptions.map(l => ({ id: l.id, label: l.title }))}
           onSelect={setSelectedListingId}
         />
-        <Button label="Send Recommendation" loading={sending} onPress={onSendRecommendation} />
+        <Button label={t('expert.consultationDetail.sendRecommendation')} loading={sending} onPress={onSendRecommendation} />
       </Sheet>
 
       <Sheet visible={reviewVisible} onClose={() => setReviewVisible(false)}>
-        <Text style={styles.sheetTitle}>Rate this Consultation</Text>
+        <Text style={styles.sheetTitle}>{t('expert.consultationDetail.rateConsultation')}</Text>
         <View style={styles.starsRow}>
           <RatingStars value={reviewRating} size={28} onChange={setReviewRating} />
         </View>
-        <Input label="Comment (optional)" value={reviewComment} onChangeText={setReviewComment} multiline numberOfLines={3} />
-        <Button label="Submit Review" loading={submittingReview} onPress={onSubmitReview} />
+        <Input
+          label={t('expert.consultationDetail.commentOptional')}
+          value={reviewComment}
+          onChangeText={setReviewComment}
+          multiline
+          numberOfLines={3}
+        />
+        <Button label={t('expert.consultationDetail.submitReview')} loading={submittingReview} onPress={onSubmitReview} />
       </Sheet>
     </KeyboardAvoidingView>
   );

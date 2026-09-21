@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +18,7 @@ const RESEND_COOLDOWN_SECONDS = 30;
 export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOtp'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useTranslation();
   const { channel, identifier } = route.params;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
       // the new session and RootNavigator swaps to the app shell automatically.
       await verifySignupOtp(channel, identifier, code);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid or expired code');
+      setError(err instanceof Error ? err.message : t('auth.verifyOtp.defaultVerifyError'));
     } finally {
       setSubmitting(false);
     }
@@ -54,7 +56,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
         });
       }, 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resend code');
+      setError(err instanceof Error ? err.message : t('auth.verifyOtp.resendDefaultError'));
     } finally {
       setResending(false);
     }
@@ -66,13 +68,13 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.container}>
-        <Text style={styles.title}>{channel === 'email' ? 'Verify your email' : 'Verify your phone'}</Text>
-        <Text style={styles.subtitle}>
-          We sent a verification code to {identifier}. Enter it below to activate your account.
+        <Text style={styles.title}>
+          {channel === 'email' ? t('auth.verifyOtp.titleEmail') : t('auth.verifyOtp.titlePhone')}
         </Text>
+        <Text style={styles.subtitle}>{t('auth.verifyOtp.subtitle', { identifier })}</Text>
 
         <Input
-          label="Verification code"
+          label={t('auth.verifyOtp.codeLabel')}
           keyboardType="number-pad"
           maxLength={6}
           value={code}
@@ -81,7 +83,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
         />
 
         <Button
-          label="Verify"
+          label={t('auth.verifyOtp.verifyButton')}
           loading={submitting}
           disabled={code.length === 0}
           onPress={onVerify}
@@ -90,12 +92,12 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
 
         <TouchableOpacity onPress={onResend} disabled={resending || cooldown > 0}>
           <Text style={[styles.link, (resending || cooldown > 0) && styles.linkDisabled]}>
-            {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
+            {cooldown > 0 ? t('auth.verifyOtp.resendCooldown', { seconds: cooldown }) : t('auth.verifyOtp.resendButton')}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>Back to sign up</Text>
+          <Text style={styles.back}>{t('auth.verifyOtp.backLink')}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

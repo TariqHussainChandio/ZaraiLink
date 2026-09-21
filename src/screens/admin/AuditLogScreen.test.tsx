@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { AuditLogScreen } from './AuditLogScreen';
 import { fetchAuditLogs } from '../../services/modules/admin/adminService';
 import type { AuditLogEntryWithActor } from '../../types/audit';

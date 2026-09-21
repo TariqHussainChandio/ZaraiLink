@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ConversationListScreen } from './ConversationListScreen';
 import { fetchConversations } from '../../services/modules/messaging/messagingService';
 import { MESSAGING_ROUTES } from '../../constants/routes';
