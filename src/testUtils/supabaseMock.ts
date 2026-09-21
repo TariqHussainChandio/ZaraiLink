@@ -48,6 +48,7 @@ export function makeSupabaseMock(options: SupabaseMockOptions = {}) {
     verifyOtp: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
     resend: jest.fn(() => Promise.resolve({ data: {}, error: null })),
     resetPasswordForEmail: jest.fn(() => Promise.resolve({ data: {}, error: null })),
+    exchangeCodeForSession: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
     updateUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
     onAuthStateChange: jest.fn(() => ({
       data: { subscription: { unsubscribe: jest.fn() } },
