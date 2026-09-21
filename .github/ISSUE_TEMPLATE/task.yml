@@ -1,0 +1,42 @@
+name: Task
+description: A unit of work with acceptance tests written up front (see docs/process/task-card.md)
+labels: [task]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: One sentence. Link the requirement, business rule (BR-xx), audit finding, or plan phase.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance tests
+      description: What must be observably true when this is done, ideally as steps a verifier can re-run on the real local stack. For a bug, the failing test.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Files in scope, and explicitly out of scope
+  - type: dropdown
+    id: outside-service
+    attributes:
+      label: Does it need an outside service?
+      description: Email, SMS, push, payments, hosting, error tracking, an app store, model storage, a domain.
+      options:
+        - "No"
+        - "Yes: an Integration Brief is linked below"
+    validations:
+      required: true
+  - type: textarea
+    id: brief
+    attributes:
+      label: Integration Brief link
+      description: Required when the answer above is yes. See docs/process/integration-brief.md.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence required to close it
+      description: Commands and output, screenshots, and a two-user proof if it is security related.
