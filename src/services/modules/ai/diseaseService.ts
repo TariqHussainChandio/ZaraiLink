@@ -29,9 +29,11 @@ export async function createDiseaseCase(cropId: string | null, imageUrl: string)
 }
 
 /**
- * Calls the FastAPI inference endpoint. Until real Colab-trained weights replace the placeholder
- * `model.pth`, this reliably fails with a 503 — callers should treat any failure here as "AI
- * analysis isn't available right now" rather than a hard error.
+ * Calls the FastAPI inference endpoint. It answers 503 when the model checkpoint is missing or
+ * fails to load, and 422 when the stored image can't be fetched or decoded — callers should treat
+ * any failure here as "AI analysis isn't available right now" rather than a hard error. A
+ * successful response is advisory only (BR-13): the model cannot yet tell "not a plant leaf" from
+ * a real leaf, so a confident label is not evidence of a diagnosis (docs/status/baseline-2026-09.md).
  */
 export async function predictDisease(diseaseCaseId: string): Promise<DiseasePrediction> {
   return apiFetch('/api/v1/disease/predict', {
