@@ -1,127 +1,133 @@
 # ZaraiLink Development Setup
 
-## Project
-
-ZaraiLink is a React Native mobile application for an agricultural marketplace.
-
-## Technology Stack
-
-- React Native 0.86.2
-- React 19.2.3
-- TypeScript
-- React Navigation
-- Zustand
-- TanStack React Query
-- Supabase
-- FastAPI backend
-- PostgreSQL through Supabase
+The README has the short version. This is the full guide for a Windows, macOS, or Linux machine. Every
+command below was run against the current tree.
 
 ## Requirements
 
-- Node.js >= 22.11.0
-- npm
-- Java/JDK compatible with React Native 0.86.2
-- Android Studio
-- Android SDK
-- Git
-- Supabase CLI
-- Python 3.x for backend development
+| Tool | Why | Notes |
+|---|---|---|
+| Node.js 22.11 or newer | App tooling | `engines` in `package.json` |
+| Python 3.12 | Backend and quality gates | The gates in `scripts/` use only the standard library |
+| [uv](https://docs.astral.sh/uv/) | Backend dependencies | Reads `backend/uv.lock`; installs Python 3.12 itself if missing |
+| Docker Desktop | Local Supabase | Must be running before `supabase start` |
+| Supabase CLI | Local stack | Installed by `npm ci` (`npx supabase`) |
+| JDK 17, Android Studio, Android SDK | Building and running the app | Only needed to run the app, not the API or tests |
+| Git | | |
+| gitleaks (optional) | Secret scan in the local git hook | CI scans regardless |
 
-## Clone
+## 1. Install app dependencies
 
+```bash
 git clone https://github.com/TariqHussainChandio/ZaraiLink.git
 cd ZaraiLink
-
-## Install React Native Dependencies
-
 npm ci
+```
 
-## Environment
+`npm ci` also installs fast git hooks (lefthook's postinstall step; CI skips it). Before each commit they
+check staged files with the reality gate and ESLint, scan the staged diff for secrets if `gitleaks` is
+installed, and check the commit message against Conventional Commits. Skip a single commit with
+`LEFTHOOK=0 git commit ...`, remove the hooks with `npx lefthook uninstall`, and put them back with
+`npm run hooks:install`.
 
-Copy:
+## 2. Local Supabase
 
-.env.example
+```bash
+npx supabase start        # first run pulls images; applies all migrations and supabase/seed.sql
+npx supabase status -o env
+```
 
-to:
+`status` prints `API_URL`, `ANON_KEY`, and `SERVICE_ROLE_KEY`. These are the public demo keys for a
+local stack. They only work against it. Mail sent by Auth (signup codes, password reset) is caught by
+the local mail inbox at `http://127.0.0.1:54324`, so no email account is needed for development.
 
-.env
+To start again from a clean database: `npx supabase db reset`. To stop: `npx supabase stop`.
 
-Then configure the required environment variables.
+`supabase/seed.sql` holds admin-curated reference data only (categories, crops, currencies, units).
+Never add dummy users, listings, orders, or other user content to it, and never push test data to a
+real Supabase project. Fixtures for tests are created inside the disposable local stack.
 
-`API_BASE_URL` must point at the backend's LAN address, not `127.0.0.1` / `localhost` — the app
-runs on an Android emulator or a physical device, neither of which shares the host machine's
-loopback interface, so `127.0.0.1` there resolves to the device itself and every backend call
-fails with `TypeError: Network request failed`. Find the host machine's LAN IP (`ipconfig` on
-Windows, Wi-Fi adapter's IPv4 address) and use `http://<that-ip>:8000`, e.g.
-`API_BASE_URL=http://192.168.18.96:8000`. This works for both the emulator and a physical device
-on the same Wi-Fi network; it must be updated if that IP changes (e.g. after reconnecting to
-Wi-Fi). The backend must also be started with `--host 0.0.0.0` (see below) so it accepts
-connections on that interface.
+## 3. Backend
 
-## Supabase
+```bash
+cd backend
+uv sync --frozen
+cp .env.example .env
+```
 
-Supabase configuration and migrations are stored in:
+Fill `backend/.env` from step 2: `SUPABASE_URL` is `API_URL`, plus `SUPABASE_ANON_KEY` and
+`SUPABASE_SERVICE_ROLE_KEY`. The anon key backs the default RLS-respecting, request-scoped client used
+for almost every database call. The service-role key bypasses RLS and is reserved for the documented
+exceptions in `docs/architecture/backend-architecture.md`. It must never reach the mobile app, a log, or git.
 
-supabase/
+Run the API from the `backend/` folder so `.env` is found:
 
-Do not commit private API keys.
+```bash
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-## Backend
+`--host 0.0.0.0` lets an emulator or a phone on the same Wi-Fi reach it. If Windows Firewall prompts,
+allow private networks. The API serves interactive docs at `/docs` in development.
 
-Backend requirements are stored in:
+`backend/app/ml/checkpoints/` holds the disease-model weights and their metadata. See
+`docs/architecture/ai-disease-advisory.md` for what the model does and does not cover.
 
-backend/requirements.txt
+## 4. The app
 
-Create a Python virtual environment:
+Copy `.env.example` to `.env` in the repository root:
 
-python -m venv .venv
+| Variable | Emulator | Physical device |
+|---|---|---|
+| `SUPABASE_URL` | `http://10.0.2.2:54321` | `http://<your LAN IP>:54321` |
+| `SUPABASE_ANON_KEY` | `ANON_KEY` from step 2 | same |
+| `API_BASE_URL` | `http://10.0.2.2:8000` | `http://<your LAN IP>:8000` |
+| `APP_ENV` | `development` | `development` |
 
-Activate on Windows:
+`127.0.0.1` will not work from an emulator or phone: it resolves to the device itself and every call fails
+with `Network request failed`. `10.0.2.2` is the Android emulator's alias for the host machine. For a
+physical device use the host's LAN address (`ipconfig` on Windows) and update it if it changes.
 
-.venv\Scripts\Activate.ps1
+```bash
+npm start            # Metro bundler
+npm run android      # second terminal, with an emulator running
+```
 
-Install:
+## Checks
 
-pip install -r backend/requirements.txt
+| Command | What it does |
+|---|---|
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript, no emit |
+| `npm test` | Jest (add `-- --coverage` for a coverage report) |
+| `cd backend && uv run pytest` | API tests |
+| `python scripts/check_reality.py` | The reality gate: no stubs, fake behaviour, swallowed errors, or growing debt |
+| `cd backend && uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy` | Linter and type-check ratchets |
+| `npm run reality` | Reality gate plus the dead-code ratchet |
 
-Copy `backend/.env.example` to `backend/.env` and add both `SUPABASE_ANON_KEY` and
-`SUPABASE_SERVICE_ROLE_KEY`. The anon key backs the default, RLS-respecting request-scoped
-client (`get_user_scoped_client`, see `docs/architecture/backend-architecture.md`) used for
-almost every DB call; the service-role key is reserved for the few documented cases that
-genuinely need to bypass RLS (audit logging, notifications, disease inference, the
-`available_stock` RPC).
+The ratchets record today's debt in `scripts/reality-baseline.json` and fail if any count rises. After
+you reduce a count, run `python scripts/check_reality.py --update-baseline` (add `--tools ...`) to lock
+in the improvement; it refuses to record an increase.
 
-## Run the backend locally
+## Real-stack tests
 
-From the repo root, with the virtual environment active:
+Some backend tests need a real Auth and REST stack and skip themselves without one. With step 2 running:
 
-uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+```bash
+cd backend
+export LOCAL_SUPABASE_URL=http://127.0.0.1:54321
+export LOCAL_SUPABASE_ANON_KEY=<ANON_KEY>
+export LOCAL_SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY>
+uv run pytest tests/integration -rxs
+```
 
-`--host 0.0.0.0` is required (not just `--reload`'s default `127.0.0.1`) so the app running on an
-Android emulator or a physical device on the same Wi-Fi can reach the backend — see the
-`API_BASE_URL` note below. If Windows Firewall prompts on first run, allow access on private
-networks.
+They refuse to run against anything that is not localhost.
 
-`backend/app/ml/checkpoints/model.pth` ships as a placeholder until real MobileNetV2 weights (trained in
-Google Colab, see `docs/architecture/ai-disease-advisory.md`) are dropped in at that same path —
-until then, `POST /api/v1/disease/predict` responds with `503`.
+## Troubleshooting
 
-## Start Metro
-
-npm start
-
-## Android
-
-npm run android
-
-## Testing
-
-npm test
-
-## Lint
-
-npm run lint
-
-## TypeScript
-
-npx tsc --noEmit
+| Symptom | Cause and fix |
+|---|---|
+| `supabase start` fails immediately | Docker Desktop is not running |
+| Backend cannot find its keys | It was started from the repository root; run it from `backend/` |
+| App shows `Network request failed` | `API_BASE_URL` uses `127.0.0.1`; use `10.0.2.2` or the LAN address |
+| Sign-up email never arrives | Open the local mail inbox at `http://127.0.0.1:54324` |
+| Metro crashes with `ENOENT` on Windows | The watcher; `metro.config.js` already excludes native build output |

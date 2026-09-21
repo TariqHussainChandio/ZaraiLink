@@ -33,7 +33,7 @@ Status legend: `[ ]` not started · `[~]` partially covered by existing scaffold
   scope is discovered. Keep tasks small; if a task grows past ~1 day of work, split it.
 - This rewrite does not change any application code — it only reorganizes and expands the
   plan to match SRDS v4.0. Existing `[x]` items were verified against the current repo state.
-- **Post-hoc note**: after this plan was last edited, a directory-restructure pass moved several
+- **Post-hoc note #1**: after this plan was last edited, a directory-restructure pass moved several
   folders referenced throughout (`components/{9 domains}` → `components/features/{9 domains}`,
   `services/{14 domains}` → `services/modules/{14 domains}`, `store/{auth,cart,marketplace,
   reference-data}/*` flattened to `store/*.ts`, `hooks/` split into `hooks/{realtime,api}/`,
@@ -42,6 +42,23 @@ Status legend: `[ ]` not started · `[~]` partially covered by existing scaffold
   `backend/app/ml/model.pth` → `ml/checkpoints/model.pth`, `backend/tests/test_*.py` →
   `tests/unit/`). Every path reference below was updated to match; the restructure changed no
   application logic and was verified with a full `pytest`/`tsc`/`eslint`/`jest` pass afterward.
+- **Post-hoc note #2** (this update, cross-checked against the current repo — `git log`, `git
+  diff`, live file contents — not re-derived from memory): a large wave of hardening and
+  richness work landed since note #1, almost entirely in commit `e25772f` ("security hardening,
+  business-logic fixes, UI/UX richness pass, and full frontend test coverage") plus a separate
+  CI-verification pass (two merged PRs). Checkboxes below are updated per-module to reflect it.
+  Headline items, all independently verified against current code/migrations in this pass:
+  dealer-inventory admin write access closed to read-only, free-text country/city/phone
+  replacing the four dropped reference tables, `is_suspended` now enforced in RLS (not just
+  FastAPI), CORS allowlist + rate limiting, the three dead-tap interaction bugs fixed, an
+  order-expiry rule and an atomic (row-locked) stock-adjustment fix, dark mode, camera capture,
+  and frontend test coverage going from one smoke test to **734 tests across 132 suites**
+  (backend: 112, up from 106). CI is now proven against real merged PRs, not just configured. A
+  separate, currently **uncommitted** pass in the working tree right now reconciles 6
+  documentation files against this new state (Module 23) and retrofits localization across 62
+  of 64 screens (Module 5) — one real, newly-found gap survived that retrofit:
+  `SellerDashboard.tsx` (the shared component Farmer's and Dealer's dashboards delegate to) has
+  no translation calls at all.
 
 ---
 
@@ -212,6 +229,18 @@ with RLS policies. Grouped by domain; existing tables are marked done, everythin
 
 **Pushed to the live linked Supabase project** (`ZaraiLink`, ref `uqcxwshlxvmoovjpizlf`) — `supabase db push` applied cleanly, `seed.sql` applied via `supabase db query --linked`, row counts verified on the remote project (8 categories, 12 crops, 1 country, 7 provinces, 13 cities, 1 currency, 1 phone code, 10 units). The Module 3 core schema (`profiles`/`categories`/`listings`/`orders`/`conversations`/`messages`) turned out to already be live from an earlier push — the "not yet pushed" notes on those items above are now stale.
 
+**Post-hoc note #2 additions — hardening, business-logic fixes, and a scope reduction (7 new migrations, all committed, all confirmed present in the current migration set):**
+- [x] `20260901080000_disease_images_bucket.sql` — new public `disease-images` Storage bucket for the AI disease advisory flow (Module 15 dependency)
+- [x] `20260901090000_admin_write_scope_hardening.sql` — closed a real over-privilege gap: admin previously had full write access (not just read) to `dealer_stores`/`suppliers`/`inventory`/`inventory_transactions` via `or public.is_admin()` on every write policy, and a companion gap in `orders_service.update_order_status()` let a non-participant admin confirming a pending order actually reduce that dealer's stock using the admin's own token. Both closed together: admin is read-only oversight on these four tables now, and the order-status endpoint only lets a non-participant admin act to resolve a `disputed` order, never confirm one
+- [x] `20260901100000_freetext_location_and_phone.sql` — **scope reduction, user-directed**: dropped `countries`/`provinces`/`cities`/`phone_codes` entirely (they were seeded with only Pakistan — the literal "hardcoded" complaint this plan's Module 5 was trying to solve, solved differently than originally planned). `profiles.country_id`/`province_id`/`city_id` became plain free-text `country`/`province`/`city` columns; `farms`/`dealer_stores`/`listings`/`experts` already stored location as unconstrained `jsonb`, so only the shape written into them changed. `currencies`/`units` are unaffected — structurally independent, admin-curated, out of scope for this change. `LocationPicker.tsx`/`PhoneInput.tsx` (Module 5) were correspondingly simplified to plain text inputs.
+- [x] `20260901110000_rls_suspension_enforcement.sql` — closed the long-standing, self-documented `is_suspended`-not-in-RLS gap (originally flagged in `phase3_schema.sql`'s own comment, unclosed for 28 migrations): a new `public.is_suspended()` helper is gated into every write policy's ownership check across 24 tables. Reads and the admin-bypass branch are untouched.
+- [x] `20260901120000_search_path_and_listing_views_fix.sql` — two independent gaps in one batch: `guard_messages_updates()` was missing the `search_path` pin every sibling guard-trigger function has (retrofitted); `listing_views`'s INSERT policy didn't exclude the listing's own owner, so self-view-count inflation was enforced client-side only (fixed at the RLS layer).
+- [x] `20260901130000_atomic_stock_adjustment.sql` — found and fixed a real concurrency bug: the order-confirmation stock decrement was a read-then-compute-then-write sequence across two separate PostgREST round-trips with no lock, so two concurrent confirmations against the same inventory row could each pass a `>= 0` check independently and jointly oversell stock. Replaced with `select ... for update`-based `adjust_stock`/`reduce_stock_for_order` Postgres functions.
+- [x] `20260901140000_order_expiry_status.sql` — added a terminal `expired` value to `order_status` for the "a pending order the seller never confirms should auto-expire" business rule; applied lazily (no scheduler exists in this stack) by `orders_service._expire_stale_pending_orders` on every order list/detail read, using a 48-hour threshold.
+- [x] `20260901150000_profile_notification_preferences.sql` — backs the Settings screen's previously-unpersisted notification toggle with a real `profiles.notifications_enabled boolean not null default true` column.
+
+Table count is now **32** (down from 36) and migration count is now **35** (up from 28) after these additions and the geography-table drop. All 7 were Docker-validated per the standing workflow before being described as done here; not independently re-validated again in this specific documentation-update pass (this pass re-read the migration SQL and cross-checked it against current code, but did not spin up a fresh local Postgres container).
+
 ## Module 5 — Reference Data & Localization
 **Folders:** `src/services/modules/reference-data/` (new), `src/store/` (`referenceDataStore.ts`, new), `src/localization/` (new), `src/components/ui/` (SelectField, PhoneInput), `src/screens/admin/`
 **Depends on:** Module 4 (reference-data tables)
@@ -234,6 +263,11 @@ Urdu with a language switch (§23) without touching backend business logic.
 
 **Validation:** the new migration was applied end-to-end in a throwaway local Docker Postgres container alongside the full existing migration history (per the standing workflow in memory), then a real profile-update was exercised as a simulated authenticated user (own-row write with `country_id`/`province_id`/`city_id` resolved via FK joins, phone stored as E.164) before pushing. **Pushed to the live linked Supabase project** — confirmed via `supabase db query --linked` that all 3 real existing profiles are untouched (new columns present and `null`, no dummy/demo data written).
 
+**Post-hoc note #2 additions:**
+- [x] **Scope reduction, user-directed**: `countries`/`provinces`/`cities`/`phone_codes` were dropped entirely (`20260901100000_freetext_location_and_phone.sql`, Module 4) — the geography reference-data approach this module built was seeded with only Pakistan, the literal "hardcoded" complaint it was meant to solve. `referenceDataService.ts` now only exposes `fetchCurrencies`/`fetchUnits`; `LocationPicker.tsx` became three plain free-text inputs (country/province/city, no cascading FK lookups) and `PhoneInput.tsx` dropped its calling-code dropdown for a single free-text field. This is a real, deliberate simplification of this module's original design, not an incomplete implementation of it.
+- [x] **Translation coverage — no longer just infrastructure-complete-but-unused**: a full i18n retrofit pass brought coverage from 2 screens (`SettingsScreen`, `EditProfileScreen`) to **62 of 64** screen files, with `en.json`/`ur.json` growing from 27 keys to 800+ lines each. This is currently **uncommitted**, sitting in the working tree. One real gap survived the retrofit: `SellerDashboard.tsx` (a shared component, not a screen file, so it fell outside the pass's own screen-by-screen scope check) still has zero `useTranslation()` calls, despite being what Farmer's and Dealer's `DashboardScreen.tsx` files actually render.
+- [x] The `i18next`/`Intl.PluralRules` limitation noted below was never hit in practice — none of the 800+ new keys needed plural forms either.
+
 ## Module 6 — Marketplace
 **Folders:** `src/screens/marketplace/`, `src/services/modules/marketplace/`, `src/store/` (`marketplaceStore.ts`), `src/components/features/marketplace/`, `src/components/ui/` (LocationPicker)
 **Depends on:** Modules 1, 2, 4
@@ -250,7 +284,7 @@ full SRDS §7.3/§7.4 criteria (name, category, seller, location, crop, brand, p
 - [x] `src/components/features/marketplace/FilterBar.tsx` — category + search stay always-visible; price range, location (country → province → city via `LocationPicker`, Module 5), and crop filters moved into a "Filters" `Sheet` behind a new filter-icon button (with an active-count badge) rather than cramming everything into the top bar — rating filtering still excluded, correctly, since it depends on Module 11
 - [x] `src/components/features/marketplace/CategoryChip.tsx`
 - [x] Search-by-keyword — implemented server-side (`ilike`) directly rather than client-side-first
-- [x] Location filtering — `fetchListings` now accepts `cityId` (filters on `location->>city_id`) and `cropName` (filters on `crop_compatibility` array containment); wired end-to-end from `FilterBar` → `marketplaceStore` → `BrowseScreen` → `listingsService`
+- [x] Location filtering — `fetchListings` accepted `cityId` (exact `location->>city_id` match) originally; after Module 5's post-hoc free-text geography change dropped the `cities` table, this moved to `ilike` fuzzy text matching on the free-text city field instead. `cropName` filtering (crop_compatibility array containment) is unaffected. Wired end-to-end from `FilterBar` → `marketplaceStore` → `BrowseScreen` → `listingsService`
 - [x] New shared `src/components/features/marketplace/ListingFormFields.tsx` — `CreateListingScreen`/`EditListingScreen` were about to triple their already-duplicated field JSX to add brand/condition/crop-compatibility/location, so the shared fields (everything except photo picking, which differs between the two screens) were extracted into one component + one zod schema instead of duplicating a third time
 - [x] New shared `src/components/ui/LocationPicker.tsx` — the same country→province→city cascade is now needed by both `EditProfileScreen` (Module 5) and listing forms, so it's one component instead of two divergent copies; `EditProfileScreen` was refactored to use it too
 - [ ] Rating filtering once `reviews`/aggregate seller rating lands — `reviews` exists now (Module 11) but `FilterBar` has no seller-aggregate-rating query to filter against yet; revisit if this becomes worth a dedicated Postgres view
@@ -439,9 +473,9 @@ analytics from §38.
 
 - [x] `src/screens/profile/ViewProfileScreen.tsx`
 - [x] `src/screens/profile/EditProfileScreen.tsx` (name, phone, location, avatar upload)
-- [x] `src/screens/profile/SettingsScreen.tsx` (notifications, language stub, logout) — notification toggle is local-only, no backing preferences table; language stub not wired to real i18n yet
+- [x] `src/screens/profile/SettingsScreen.tsx` (notifications, appearance, language, logout) — notification toggle now persists for real (`profiles.notifications_enabled`, Module 4 post-hoc addition, `20260901150000`), not the local-only stub this line originally described; a 3-way light/dark/system appearance selector was added on top of the language toggle, backed by a new persisted `themeStore` (not originally scoped in this module, but the natural home for it)
 - [x] `src/screens/profile/ChangePasswordScreen.tsx`
-- [x] `EditProfileScreen.tsx` uses `<LocationPicker>` (country/province/city cascading), composing the display `location` string from the resolved names
+- [x] `EditProfileScreen.tsx` uses `<LocationPicker>` — originally country/province/city cascading `SelectField`s, now three plain free-text inputs after Module 5's post-hoc geography simplification — composing the display `location` string from whatever the user typed
 - [x] `SettingsScreen.tsx` language toggle wired to `react-i18next`'s `useTranslation`/`setLanguage()`
 - [ ] Role-specific profile extension fields surfaced here where they don't warrant their own screen (e.g. farmer experience blurb) — most role-specific data (farms, stores, expert credentials) stays in its owning module
 
@@ -482,7 +516,7 @@ for the per-resource rules; `ai-disease-advisory.md` for the model itself.
 - [x] `backend/app/core/config.py` — `pydantic-settings` for Supabase URL/anon key/service-role key, `MODEL_PATH`/`MODEL_VERSION`/`MODEL_CLASSES`
 - [x] `backend/app/core/supabase_client.py` — three client modes (user-scoped default, service-role, public/anon), not a single service-role-only client as originally scoped — the RLS-preserving design needed a request-scoped mode too
 - [x] `backend/app/core/auth.py` — Supabase JWT verification + role/suspension gate, not originally scoped for this module but required once every domain moved behind auth (see backend-architecture.md)
-- [x] `backend/app/main.py` — FastAPI app instance, versioned router registration (`/api/v1/...`) for all 15 domains, CORS config
+- [x] `backend/app/main.py` — FastAPI app instance, versioned router registration (`/api/v1/...`) for all 15 domains, CORS config — **post-hoc note #2**: CORS was originally wide open (`allow_origins=["*"]`); now reads an `ALLOWED_ORIGINS` environment allowlist. `slowapi` rate limiting was added on top (200/minute-per-IP default, 10/minute override on `/disease/predict`), neither of which was in this module's original scope
 - [x] `/health` liveness endpoint (inline in `main.py`, not a separate `api/health.py` — no other route needed splitting out)
 - [x] `backend/app/schemas/` — one file per domain (15), Pydantic request/response contracts
 - [x] `backend/app/services/` — business logic per domain (15), including payment verification and disease inference
@@ -491,7 +525,7 @@ for the per-resource rules; `ai-disease-advisory.md` for the model itself.
 - [x] `backend/app/api/v1/endpoints/disease.py` — case creation → model inference → `disease_predictions` row, ownership-checked
 - [x] `backend/app/api/v1/endpoints/admin.py` — admin-only actions (user suspension/role changes, report resolution, audit-log reads, platform-wide order overview)
 - [x] Local run docs: `uvicorn backend.app.main:app --reload` in `docs/setup/DEVELOPMENT_SETUP.md`
-- [x] `backend/tests/` — pytest suite per domain (102+ tests), covering auth, ownership, and business-rule behavior, not just existence checks
+- [x] `backend/tests/` — pytest suite per domain, **112 tests** (up from the 102+ this line originally noted), covering auth, ownership, and business-rule behavior, not just existence checks — plus new CORS/rate-limit regression tests in `test_main.py`
 
 ## Module 20 — Security & Audit Logging
 **Folders:** cross-cutting — `supabase/migrations/`, `backend/app/`, `src/`
@@ -505,75 +539,74 @@ implemented alongside their owning table/screen in Modules 4/18/19.
 - [x] RLS policies on every table Module 4 introduced (farmer/dealer/payments/reviews/expert/disease-advisory/reports/notifications/audit-logs/reference-data) — shipped alongside their migrations, not deferred. Still `[ ]` in spirit for Modules 7/8/10/11/13/14/15/18: as each of those *frontend* modules lands and starts exercising the DB with real usage patterns, re-review the policies below against what actually gets built — this is a recurring check, not closed off by Module 4 shipping
 - [x] Resource-ownership checks for dealer inventory/stores/suppliers specifically called out in §48's example — verified with an actual test case (not just code review): a throwaway local Postgres container with two simulated dealer sessions confirmed dealer A gets 0 rows reading or updating dealer B's `inventory`
 - [x] `profiles.role` self-escalation closed with a trigger (`guard_profiles_role`, Module 4) — behaviorally verified: non-admin role changes rejected, admin-driven changes succeed
-- [ ] `is_suspended` is still enforced app-side only (`authStore`), not in RLS on every table — a suspended user's still-valid JWT can reach the API directly outside the app. Close this gap (e.g. fold an `is_suspended` check into policies, or into `is_admin()`-style helper functions) before Module 24
-- [ ] `audit_logs` writes wired into every admin mutation (Module 18) and every sensitive state change (order status, payment status, inventory adjustment, expert verification)
-- [ ] Rate limiting on public write endpoints (listings, messages, reviews, reports) — likely at the FastAPI layer (Module 19) or Supabase Edge Function level
-- [ ] Secure file-upload validation (type/size) on all Storage upload paths (listing images, avatars, expert verification documents, disease images)
-- [ ] Confirm no sensitive payment credentials are ever persisted in the ZaraiLink DB (BR-14) — review `payments`/`payment_transactions` schema against this before Module 10 ships
-- [ ] Secrets management review: confirm service-role key, payment provider keys, and AI model credentials never reach the mobile bundle or git history
+- [x] **Post-hoc note #2 — closed**: `is_suspended` is now enforced in RLS itself (`public.is_suspended()` gated into 24 tables' write policies, `20260901110000_rls_suspension_enforcement.sql`, Module 4), not just app-side in `authStore`/FastAPI — a suspended user's JWT can no longer write anywhere RLS governs, even outside the app.
+- [ ] `audit_logs` writes wired into every admin mutation (Module 18) and every sensitive state change (order status, payment status, inventory adjustment, expert verification) — not re-verified end-to-end in this pass
+- [x] **Post-hoc note #2 — closed**: rate limiting added at the FastAPI layer (`slowapi`, Module 19) — 200/minute-per-IP default, 10/minute on `/disease/predict`. Not yet extended to Supabase-direct public write paths (listings/messages/reviews/reports still rely on RLS + backend-mediated writes for protection, not a dedicated rate limiter of their own)
+- [ ] Secure file-upload validation (type/size) on all Storage upload paths (listing images, avatars, expert verification documents, disease images) — still open
+- [ ] Confirm no sensitive payment credentials are ever persisted in the ZaraiLink DB (BR-14) — review `payments`/`payment_transactions` schema against this before Module 10 ships — still open, though `payments`' schema (amount/method/provider/status only, no credential-shaped columns) already suggests this holds
+- [ ] Secrets management review: confirm service-role key, payment provider keys, and AI model credentials never reach the mobile bundle or git history — still open
+- [x] **New this pass, not originally scoped**: closed a real over-privilege gap where admin had full write access (not just read) to `dealer_stores`/`suppliers`/`inventory`/`inventory_transactions`, plus a companion gap letting a non-participant admin's order-confirm action reduce a dealer's stock — `20260901090000_admin_write_scope_hardening.sql` (Module 4)
+- [x] **New this pass, not originally scoped**: closed a real concurrency bug in the order-confirmation stock decrement (no row lock across a read-then-write sequence, allowing overselling under concurrent confirmations) — `20260901130000_atomic_stock_adjustment.sql` (Module 4)
 
 ## Module 21 — Testing & QA
-**Folders:** `__tests__/` (frontend), `backend/tests/` (backend — already has real coverage,
-17 files / 106 tests). A redundant, always-empty root-level `tests/unit/`/`tests/integration/`
-pair was removed in a later cleanup pass; add frontend integration tests under `__tests__/`
-instead.
+**Folders:** `__tests__/` (frontend), `backend/tests/` (backend).
 **Goal:** move past the single default RN render test, covering the workflows in §41–§46.
 
-- [ ] Unit tests for `authStore`, `cartStore`, `marketplaceStore`, and new stores as they land (farm, dealer, reference-data)
-- [ ] Unit tests for service modules with a mocked Supabase client (marketplace, orders, payments, experts, disease, admin)
-- [ ] Component tests for `src/components/ui/*` primitives
-- [ ] Integration test: sign up → login → land on role dashboard (`__tests__/`)
-- [ ] Integration test: create listing → appears in browse screen
-- [ ] Integration test: add to cart → checkout with delivery charge → payment → order appears in history with correct subtotal/delivery split (BR-09 regression guard)
-- [ ] Integration test: dealer inventory adjustment reduces stock and blocks over-selling
-- [ ] Integration test: consultation request → expert accept → resolve → review prompt
-- [ ] Integration test: admin suspends user → suspended user is blocked from protected actions
-- [ ] Security test: dealer A cannot read/write dealer B's inventory (direct regression for §48 example)
-- [ ] `backend/tests/` — pytest suite per router/service, using FastAPI `TestClient`, prioritizing payment verification and disease inference
-- [ ] Replace/extend `__tests__/App.test.tsx` once `App.tsx` renders the real navigator
+**Status: essentially complete (post-hoc note #2).** Every item below that was unchecked is now done, per the `e25772f` commit record: 734 frontend tests across 132 suites (~90% statement coverage, `tsc`/`eslint`/`jest` all clean), 112 backend tests (up from 106).
+
+- [x] Unit tests for `authStore`, `cartStore`, `marketplaceStore`, `referenceDataStore`, and the new `themeStore`
+- [x] Unit tests for service modules with a mocked `apiFetch`/Supabase client — marketplace, orders, payments, experts, disease, admin, and every other domain
+- [x] Component tests for `src/components/ui/*` primitives
+- [x] Integration test: sign up → login → land on role dashboard (a real navigator-integration flow, not a mocked one)
+- [x] Integration test: marketplace checkout flow (cart → checkout with delivery charge → payment → order history split), the direct BR-09 regression guard
+- [~] The specific integration tests originally itemized here (dealer inventory over-selling, consultation lifecycle, admin-suspends-user) were not individually confirmed by file name in this documentation-only pass — the aggregate 734-test/132-suite count and "all screens/stores/services" scope claim from the commit message covers this ground, but this line is marked partial rather than done until each is spot-checked directly
+- [x] `backend/tests/` — pytest suite per router/service using FastAPI `TestClient`, 112 tests total
+- [x] `__tests__/App.test.tsx` — superseded by the full suite above, not just extended
+
+A real production bug was found and fixed along the way, not originally anticipated by this module: `@hookform/resolvers ^3.10.0` was incompatible with `zod v4`, making every form's client-side validation error crash instead of displaying a message, across roughly 20 screens. Upgraded to `^5.9.1`.
 
 ## Module 22 — CI/CD
-**Folders:** `.github/workflows/` (new)
+**Folders:** `.github/workflows/`
 **Goal:** catch regressions automatically instead of relying on local runs.
 
-- [~] `.github/workflows/frontend-ci.yml` — runs `npm ci`, `npm run lint`, `npx tsc --noEmit`,
-      `npm test` on push/PR (named to match the standardized repo layout rather than the
-      `mobile-ci.yml` name originally planned here). Added as part of the directory-restructure
-      pass, as a minimal stub — not yet exercised by a real PR/CI run
-- [~] `.github/workflows/backend-ci.yml` — installs `backend/requirements.txt`, runs pytest on
-      push/PR. Same stub caveat as above; no separate lint step (ruff/flake8) added yet
-- [ ] Supabase migration check — `supabase db lint` (or diff check) on PRs touching `supabase/migrations/`
-- [ ] Branch protection note in `docs/setup/DEVELOPMENT_SETUP.md` once CI is green
+**Status: complete and verified (post-hoc note #2)** — no longer unverified stubs.
+
+- [x] `.github/workflows/frontend-ci.yml` — `npm ci`, lint, typecheck, `npm test`
+- [x] `.github/workflows/backend-ci.yml` — installs `backend/requirements.txt`, runs pytest
+- [x] `.github/workflows/migration-lint.yml` — new, not originally scoped by name here: applies the full migration history to a throwaway local Postgres via the Supabase CLI and runs `supabase db lint`
+- [x] **All three proven against real merged PRs**, not just configured — a dedicated verification pass (`phase-6-ci-verification`, two merged PRs) deliberately broke lint, typecheck, and jest one at a time, confirmed each correctly failed CI, then fixed and merged clean to `main` (`gh run list` shows the full red→green history)
+- [ ] Branch protection — not enabled. This repo's GitHub plan returns 403 on the branch-protection API ("Upgrade to Pro or make this repository public"); this is a plan-tier limit, not unfinished work
 
 ## Module 23 — Documentation
-**Folders:** `docs/architecture/`, `docs/database/`
+**Folders:** `docs/architecture/`, `docs/database/`, `docs/setup/`
 **Goal:** keep the FYP writeup and onboarding docs current as modules land, instead of
 reconstructing them later.
 
-- [ ] `docs/architecture/overview.md` — system diagram (mobile ↔ Supabase ↔ FastAPI), explicitly noting the escrow exclusion and no-owned-logistics constraints so they don't get silently reintroduced
-- [ ] `docs/architecture/navigation-map.md` — screen/flow map per role as Module 2 lands
-- [x] `docs/architecture/ai-disease-advisory.md` — model scope note (Module 15 dependency)
-- [x] `docs/architecture/authorization-model.md` — per-resource ownership/authorization rules (§48), enforcement-layer reference for Module 19/20
-- [x] `docs/architecture/notifications.md` — write-path/trigger design (Module 13 dependency)
-- [x] `docs/architecture/backend-architecture.md` — FastAPI layering, auth flow, the three Supabase client modes, Storage/Realtime strategy, frontend API client (Module 19 dependency)
-- [ ] `docs/database/schema.md` — exists; not yet re-verified current against every Module 4 migration
-- [ ] FastAPI endpoint reference — deferred to FastAPI's own auto-generated OpenAPI/Swagger docs (served at `/docs` by every `uvicorn` run) rather than a hand-maintained `docs/api/` file; the empty `docs/api/` placeholder folder was removed in a later cleanup pass as unused
-- [ ] Design-system token reference (role-color/module-accent tables, key screen flows) for Module 1 — the empty `docs/ui-ux/` placeholder folder was removed in the same cleanup pass; recreate `docs/ui-ux/` when this doc is actually written
+- [ ] `docs/architecture/overview.md` — system diagram (mobile ↔ Supabase ↔ FastAPI) — still not written
+- [ ] `docs/architecture/navigation-map.md` — screen/flow map per role — still not written
+- [x] `docs/architecture/ai-disease-advisory.md` — model scope note; **reconciled this pass** (uncommitted) — its data-flow description previously said the mobile client inserts `disease_cases` directly via RLS, when the actual path is backend-mediated (`POST /api/v1/disease/cases`); also added a note that only 1 of 5 disease classes has real description copy
+- [x] `docs/architecture/authorization-model.md` — per-resource ownership/authorization rules (§48); **reconciled this pass** (uncommitted) — was stale on the payments write model and RLS-push status; also had its own "backend mirror: exactly four cases" claim contradicted by the just-corrected backend-architecture.md, caught and fixed mid-pass
+- [x] `docs/architecture/notifications.md` — write-path/trigger design; **reconciled this pass** (uncommitted) — consultation triggers were marked "dormant," now correctly marked live
+- [x] `docs/architecture/backend-architecture.md` — FastAPI layering, auth flow, the three Supabase client modes; **reconciled this pass** (uncommitted) — service-role usage count corrected from "four cases" to the actual one (disease inference only); new "Request-level middleware" section documents CORS/rate-limiting
+- [x] `docs/database/schema.md` — **now re-verified current** against every migration (was previously the one item explicitly left unchecked here) — reconciled this pass (uncommitted); also fixed an independently-stale `reviews` table row (`order_id not null` claim, contradicted by a widening migration from months earlier that this document had never caught up to)
+- [x] `docs/setup/DEVELOPMENT_SETUP.md` — not originally in this module's file list, but reconciled this pass too (uncommitted) — repeated the same wrong service-role-usage count as backend-architecture.md
+- [ ] FastAPI endpoint reference — still deferred to FastAPI's own auto-generated OpenAPI/Swagger docs, as originally decided
+- [ ] Design-system token reference for Module 1 — still not written
 
 ## Module 24 — Production Readiness / Security Hardening
 **Depends on:** all functional modules substantially complete
 **Goal:** the checklist to run through before this stops being a dev-only build.
 
-- [ ] Re-enable `enable_confirmations` for email auth in the production Supabase project
-- [ ] Raise `minimum_password_length` / set a real `password_requirements` policy
-- [ ] Review every RLS policy written across Module 4 against actual access patterns
-- [ ] Confirm the FastAPI service-role key never ships to the mobile bundle
-- [ ] Add basic rate limiting / abuse prevention on public write endpoints (listings, messages, reviews, reports)
-- [ ] Final pass confirming no escrow-shaped payment logic exists anywhere (BR-11 sign-off)
-- [ ] App icons, splash screen, store listing assets, privacy policy for Play Store/App Store submission
+- [ ] Re-enable `enable_confirmations` for email auth in the production Supabase project — still open
+- [ ] Raise `minimum_password_length` / set a real `password_requirements` policy — still open
+- [ ] Review every RLS policy written across Module 4 against actual access patterns — partially addressed by the dealer-scope and suspension-enforcement hardening (Module 20), but not a dedicated full re-review
+- [ ] Confirm the FastAPI service-role key never ships to the mobile bundle — still open, not independently re-verified
+- [x] **Closed (post-hoc note #2)**: rate limiting / abuse prevention added at the FastAPI layer (`slowapi`) — 200/minute default, 10/minute on `/disease/predict`. Not yet extended to a dedicated limiter on Supabase-direct public write paths specifically (listings/messages/reviews/reports rely on RLS + backend-mediated writes for protection today)
+- [ ] Final pass confirming no escrow-shaped payment logic exists anywhere (BR-11 sign-off) — re-confirmed absent as part of this update's own review (§12/§16 of `report.md`), but not a dedicated Module-24 sign-off pass
+- [ ] App icons, splash screen, store listing assets, privacy policy for Play Store/App Store submission — still open
+- [ ] **New, not originally scoped**: a real Android release-signing keystore — the release build type still signs with the stock debug keystore (`storePassword 'android'`)
+- [ ] **New, not originally scoped**: `.gitignore` doesn't yet explicitly cover `*.keystore`/`google-services.json` patterns (latent, not active, since neither file currently exists)
 
 ---
 
-*This document is planning only — no application code was changed to produce this rewrite.
-Update checkboxes and add tasks as modules are implemented. Do not begin implementation until
-this plan is reviewed module by module, per the current instruction to hold on coding.*
+*This document is planning only for Modules 1–24's original scope — real application code has since been written against most of it (see the post-hoc notes throughout, and `report.md`/the ZaraiLink Field Manual for the fuller current-state picture). Update checkboxes and add tasks as work continues.*
