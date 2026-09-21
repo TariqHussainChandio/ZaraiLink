@@ -79,15 +79,20 @@ payments, error tracking, hosting, app stores, model-weight storage, domains, or
 |---|---|
 | Local stack | `npx supabase start`, `npx supabase status -o env`, `npx supabase db reset`, `npx supabase stop` |
 | Backend | `cd backend && uv sync --frozen && uv run uvicorn app.main:app --reload --port 8000` |
-| App checks | `npm run lint`, `npm run typecheck`, `npm test` |
+| App checks | `npm run lint`, `npm run typecheck`, `npm test`, `npm run doctor` (Expo project checks) |
+| Run the app | `npm run android` (generates `android/`, builds, installs on the emulator, starts Metro), then `npm start` |
+| Native project | `npm run prebuild` regenerates `android/` from `app.config.ts`; `npm run prebuild:clean` starts it over |
 | Backend checks | `cd backend && uv run pytest` |
 | Reality gate | `python scripts/check_reality.py --tools knip` and `cd backend && uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy` |
 | Real-stack tests | see `docs/setup/DEVELOPMENT_SETUP.md` |
 
-Run the backend from `backend/`, not the repository root, or it loads the wrong `.env`.
+Run the backend from `backend/`, not the repository root, or it loads the wrong `.env`. Run `npm` with
+`LEFTHOOK=0` in the maintainer's repository: an install otherwise writes git hooks, which the rule above forbids.
 
 ## Where things go
 
+`app.config.ts` holds every native Android setting: permissions, SDK levels, plugins. `android/` is
+**generated output, git-ignored, never edited**: the next prebuild erases the edit.
 `src/screens/<role or domain>/`, `src/components/{ui,features/<domain>}/`, `src/services/modules/<domain>/`,
 `src/store/`, `src/types/<domain>.ts`, `src/localization/{en,ur}.json` (add both languages together);
 `backend/app/{api/v1/endpoints,services,repositories,schemas,core,ml}/`; `supabase/migrations/` (timestamped,
@@ -102,3 +107,21 @@ never edited after being pushed); `docs/{architecture,database,setup,process,sta
 - Handlers are `async` but the database client is synchronous, so a slow call stalls every request.
 - lefthook wraps `run:` blocks in `sh -c "..."`; a double quote inside one is truncated on Windows.
 - Line endings are LF everywhere (`.gitattributes`).
+- Each Expo SDK pins exact versions of React Native and several native libraries. Bumping one alone breaks the
+  build; `npx expo install --check` lists the mismatches and `--fix` applies them. Dependabot ignores them.
+- Expo replaces only the literal `process.env.EXPO_PUBLIC_NAME`. Destructuring or computed access reads
+  `undefined` on the device. `src/config/env.ts` is the one place that reads them and validates the result.
+- To test a deep link, run the real flow: request the reset in the app, read the email from the local mail
+  catcher, open its link. A made-up `?code=` proves nothing: with no stored PKCE verifier, supabase-js rejects it
+  locally, so the app shows nothing and the server sees nothing, whether or not the link was delivered.
+- JavaScript `console` output does not reach `adb logcat` in this React Native version, in debug or release.
+  Prove app behaviour by what the screen shows, by gateway or backend logs, or through React Native DevTools.
+- `adb shell`, `cmd //c`, and `sleep` all misbehave under Git Bash on Windows. A command that prints only a
+  shell banner and exits 0 ran nothing. Read the actual output; never trust the exit code alone.
+- Jest runs as Android. Testing Library treats only iOS's `RCTSwitch` as accessible by default, so an
+  Android `Switch` needs an explicit `accessible` prop and label to be found by role.
+- Test the release build, not only debug. R8 renames classes in release, and Expo derives the JavaScript error
+  code of a native error from its class name, so a check like `error.code === 'ERR_USER_REJECTED_PERMISSIONS'`
+  passes in debug and fails in release. `app.config.ts` keeps those names; prefer a plain result over a code.
+- When you swap a lint config, diff the active rules (`eslint --print-config`) before and after. Unchanged findings
+  do not mean unchanged checks: a rule that is switched off finds nothing.
