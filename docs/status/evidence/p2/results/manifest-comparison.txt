@@ -1,0 +1,20 @@
+--- BEFORE release (tag pre-expo-cng)
+  permissions : INTERNET, VIBRATE, com.zarailink.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+  attributes  : {'allowBackup': 'false', 'extractNativeLibs': 'false', 'supportsRtl': 'true', 'usesCleartextTraffic': 'false'}
+  exported    : ['activity com.zarailink.MainActivity', 'receiver androidx.profileinstaller.ProfileInstallReceiver']
+  link schemes: [('zarailink', 'reset-password')]
+--- AFTER release (final)
+  permissions : CAMERA, INTERNET, VIBRATE, WRITE_EXTERNAL_STORAGE(<=API32), com.zarailink.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+  attributes  : {'allowBackup': 'false', 'enableOnBackInvokedCallback': 'false', 'extractNativeLibs': 'false', 'supportsRtl': 'true'}
+  exported    : ['activity com.zarailink.MainActivity', 'receiver androidx.profileinstaller.ProfileInstallReceiver']
+  link schemes: [('exp+zarailink', None), ('zarailink', None)]
+--- BEFORE debug
+  permissions : INTERNET, SYSTEM_ALERT_WINDOW, VIBRATE, com.zarailink.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+  attributes  : {'allowBackup': 'false', 'debuggable': 'true', 'extractNativeLibs': 'false', 'supportsRtl': 'true', 'usesCleartextTraffic': 'true'}
+  exported    : ['activity com.zarailink.MainActivity', 'receiver androidx.profileinstaller.ProfileInstallReceiver']
+  link schemes: [('zarailink', 'reset-password')]
+--- AFTER debug
+  permissions : ACCESS_NETWORK_STATE, CAMERA, CHANGE_WIFI_MULTICAST_STATE, INTERNET, SYSTEM_ALERT_WINDOW, VIBRATE, WRITE_EXTERNAL_STORAGE(<=API32), com.zarailink.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+  attributes  : {'allowBackup': 'false', 'debuggable': 'true', 'enableOnBackInvokedCallback': 'false', 'extractNativeLibs': 'false', 'supportsRtl': 'true', 'usesCleartextTraffic': 'true'}
+  exported    : ['activity androidx.compose.ui.tooling.PreviewActivity', 'activity com.zarailink.MainActivity', 'activity expo.modules.devlauncher.compose.AuthActivity', 'activity expo.modules.devlauncher.launcher.DevLauncherActivity', 'receiver androidx.profileinstaller.ProfileInstallReceiver']
+  link schemes: [('exp+zarailink', None), ('expo-dev-launcher', None), ('zarailink', None)]

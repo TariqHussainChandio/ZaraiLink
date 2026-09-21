@@ -1,0 +1,9 @@
+x86_64-only builds of the pre-migration tree (tag pre-expo-cng) and the final tree, in bytes
+
+release build                             before         final   change
+APK file                              31,189,406    30,092,710    -3.5%
+JS bundle (Hermes bytecode)            4,841,576     4,957,464    +2.4%
+compiled code (dex)                   17,294,492     8,543,152   -50.6%
+native libraries (x86_64)             18,002,688    19,696,216    +9.4%
+
+debug APK file                        55,714,218    77,038,420   +38.3%

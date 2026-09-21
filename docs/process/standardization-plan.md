@@ -4,8 +4,9 @@
 
 # ZaraiLink Standardization Program — Plan v2
 
-> **Status (2026-09-21): P0 and P1 executed** (P1 proven locally; GitHub-side proof needs your push,
-> see `docs/status/p1-gates-2026-09.md`).
+> **Status (2026-09-21): P0, P1, and P2 executed** (P1 and P2 proven locally; GitHub-side proof needs your
+> push, see `docs/status/p1-gates-2026-09.md` and `docs/status/p2-expo-2026-09.md`. P2 stops at gate G13:
+> the EAS brief waits for you and blocks nothing before P12).
 >
 > **P0 executed.** Runtime results are in §1.6 and in
 > `docs/status/baseline-2026-09.md`. They confirmed the source-level findings, re-rated one, and
@@ -633,6 +634,29 @@ proven by before/after evidence.
     account, `eas init`, add `EXPO_TOKEN`; produce a first EAS preview build.
 
 **Exit:** merged only after you test it on a device; `pre-expo-cng` tag kept until P4 finishes.
+
+**Result (2026-09-21):** every item of the evidence bar was met on an Android 16 emulator against the local
+stack, and `expo-doctor` passes 21 of 21 on a fresh copy of the tree. Details, numbers, and screenshots are in
+`docs/status/p2-expo-2026-09.md`. Findings that change later phases:
+
+- Item 4 was right: Expo's generated activity delivers a link tapped in a running app, so the `onNewIntent`
+  override is gone. Proven with a control build, after my first tests turned out to be invalid.
+- Item 6: the SDK pins several packages *below* what the repo had (gesture-handler, async-storage, screens,
+  safe-area-context, svg), and TypeScript 6. The repo now follows the pins. Dependabot ignores them.
+- Item 6: the unused packages (`expo-secure-store`, `expo-image`, `expo-image-manipulator`, `expo-font`,
+  `expo-localization`) are added by the phase that first uses them (P4, P7, P8), because an unused package raises
+  the dead-code ratchet.
+- Item 7: ESLint 9 and Expo's config are in, with findings unchanged, and the 55 useful rules that Expo's config
+  dropped are restored (jest, React Native, deep imports, shadowing, `eval`, and others). `typescript-eslint`
+  strict, a11y, and the layer-boundary rule move to P7 and P8, where their findings are burned down. Prettier 3 is
+  installed but not enforced: 263 of 316 files never matched `.prettierrc.js`.
+- Item 10: the `android` CI job and Dependabot rules are in. G13 is a written brief, not a provisioned account.
+- New for P4: camera capture now needs the CAMERA permission, and a bad reset link shows the user nothing.
+- Found by the independent verifier: R8 renames the classes Expo derives JavaScript error codes from, which broke
+  the camera-refusal check in release builds only. Fixed, and now a lesson in `AGENTS.md`. Test release builds.
+- New for P8: the app must be checked on Android 15 and older, because SDK 57 forces edge-to-edge on.
+- New for P12: release builds carry the developer scheme `exp+zarailink://`; Expo's template adds JitPack; the
+  release is still signed with the debug key.
 
 ---
 

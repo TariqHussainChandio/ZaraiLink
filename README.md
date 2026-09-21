@@ -47,10 +47,12 @@ cp .env.example .env              # then fill in the local values from step 2
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 cd ..
 
-# 4. App: copy .env.example to .env (emulator uses 10.0.2.2 for the host machine)
-npm start                         # Metro
-npm run android                   # in a second terminal, with an emulator running
+# 4. App (Expo): copy .env.example to .env and fill the EXPO_PUBLIC_ values (emulator uses 10.0.2.2)
+npm run android                   # first run generates android/, builds and installs the dev app (10-40 min)
+npm start                         # later runs: Metro only; open the installed app
 ```
+
+`android/` is generated from `app.config.ts` and is not checked in. Native changes go in `app.config.ts`.
 
 Local data is disposable. Never seed dummy users, listings, or orders into a real Supabase project.
 

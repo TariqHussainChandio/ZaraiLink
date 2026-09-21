@@ -15,7 +15,7 @@ the same change that changes a capability's state, and link the evidence.
 | Not started | No implementation exists |
 | Unverified | Not exercised in P0 |
 
-Evidence: [baseline-2026-09.md](baseline-2026-09.md). Defect ids (C, H, M) refer to the plan's audit;
+Evidence: [baseline-2026-09.md](baseline-2026-09.md), and for the device checks [p2-expo-2026-09.md](p2-expo-2026-09.md). Defect ids (C, H, M) refer to the plan's audit;
 N ids are from the baseline report.
 
 ## Authentication
@@ -25,7 +25,7 @@ N ids are from the baseline report.
 | Email sign-up with code verification | Blocked | Email carries a link, not a code (A2); hosted default sender reaches only team members. Needs custom SMTP (G1) and a token template | P4 |
 | Email sign-in, confirmed user | Works (API) | A6 | P4 |
 | Phone sign-up / sign-in / verify | Blocked | `phone_provider_disabled` (A4). Needs an SMS provider (G2) | P4D |
-| Password reset | Blocked | Link email needs G1; deep link untested on a device (A5) | P4 |
+| Password reset | Blocked | Real users cannot get the email until G1 exists. On the Android emulator against the local stack the rest works: request in the app, email in the local mail catcher, tap the link while the app is running, and the app shows the new-password screen ([P2 report](p2-expo-2026-09.md)). A made-up or expired code shows the user nothing: the handler only catches thrown errors, and supabase-js returns them instead | P4 |
 | Role chosen at sign-up | Broken | A public sign-up can create an admin (A1, A3b, C1) | P3 |
 | Session storage | Works, insecure | Plain AsyncStorage (H1) | P4 |
 | Suspension | Works (API) | B12. RLS side not re-run here | P4 |
