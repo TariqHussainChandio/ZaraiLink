@@ -1,0 +1,74 @@
+# OSV-Scanner accepted-risk list. CI runs `osv-scanner scan source` over both lockfiles
+# (backend/uv.lock and package-lock.json) and FAILS on any advisory not covered here.
+#
+# Every entry below is a version that is already pinned today and is scheduled for an upgrade in the
+# standardization plan. Each has an expiry date: after it, CI fails again until the upgrade lands, so
+# accepted risk cannot quietly become permanent. Never add an entry without a reason and a date.
+# Baseline recorded 2026-09-21 (phase P1).
+
+# ---- Python (backend/uv.lock): upgraded in P3 (torch, pillow) and P5a (fastapi/starlette) ----------
+
+[[PackageOverrides]]
+name = "torch"
+ecosystem = "PyPI"
+ignore = true
+effectiveUntil = 2026-11-15T00:00:00Z
+reason = "torch 2.5.1 is affected by CVE-2025-32434 (RCE via torch.load). Phase P3 pins 2.6 or later; P9 moves inference to ONNX so nothing is unpickled."
+
+[[PackageOverrides]]
+name = "pillow"
+ecosystem = "PyPI"
+ignore = true
+effectiveUntil = 2026-11-15T00:00:00Z
+reason = "pillow 11.0.0 has known image-parsing advisories. Phase P3 upgrades it together with the upload-validation work (image size and pixel limits)."
+
+[[PackageOverrides]]
+name = "starlette"
+ecosystem = "PyPI"
+ignore = true
+effectiveUntil = 2026-11-15T00:00:00Z
+reason = "starlette 0.41.3 is pinned transitively by fastapi 0.115.6. Phase P5a upgrades fastapi and starlette with the rest of the backend dependencies."
+
+[[PackageOverrides]]
+name = "python-dotenv"
+ecosystem = "PyPI"
+ignore = true
+effectiveUntil = 2026-11-15T00:00:00Z
+reason = "python-dotenv 1.0.1 is upgraded with the backend dependency refresh in P5a."
+
+[[PackageOverrides]]
+name = "pytest"
+ecosystem = "PyPI"
+ignore = true
+effectiveUntil = 2026-11-15T00:00:00Z
+reason = "Development-only tool (not in the production image). Upgraded with the backend dependency refresh in P5a."
+
+# ---- JavaScript (package-lock.json): transitive development tooling; resolved by the Expo move (P2) ---
+
+[[PackageOverrides]]
+name = "qs"
+ecosystem = "npm"
+ignore = true
+effectiveUntil = 2026-12-15T00:00:00Z
+reason = "Transitive development dependency of the React Native CLI. Resolved when the toolchain moves to Expo (phase P2)."
+
+[[PackageOverrides]]
+name = "decode-uri-component"
+ecosystem = "npm"
+ignore = true
+effectiveUntil = 2026-12-15T00:00:00Z
+reason = "Transitive development dependency. Resolved when the toolchain moves to Expo (phase P2)."
+
+[[PackageOverrides]]
+name = "fast-xml-parser"
+ecosystem = "npm"
+ignore = true
+effectiveUntil = 2026-12-15T00:00:00Z
+reason = "Transitive development dependency of the React Native CLI. Resolved when the toolchain moves to Expo (phase P2)."
+
+[[PackageOverrides]]
+name = "js-yaml"
+ecosystem = "npm"
+ignore = true
+effectiveUntil = 2026-12-15T00:00:00Z
+reason = "Transitive development dependency (linting and config parsing). Resolved when the toolchain moves to Expo (phase P2)."

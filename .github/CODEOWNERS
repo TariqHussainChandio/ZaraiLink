@@ -1,0 +1,10 @@
+# Every path needs the maintainer's review until more owners exist. Listing sensitive areas separately
+# means a future co-owner can be added to them without touching the rest.
+*                       @TariqHussainChandio
+
+/supabase/              @TariqHussainChandio
+/backend/app/core/      @TariqHussainChandio
+/.github/               @TariqHussainChandio
+/scripts/               @TariqHussainChandio
+/AGENTS.md              @TariqHussainChandio
+/SECURITY.md            @TariqHussainChandio

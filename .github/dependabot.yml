@@ -1,0 +1,48 @@
+# Dependency updates. Minor and patch updates are grouped so review noise stays low; security updates
+# still open their own pull requests.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # These move together as one set with the Expo SDK (plan phase P2). Bumping one alone breaks the
+      # build, so they are upgraded by hand, deliberately.
+      - dependency-name: react-native
+      - dependency-name: react
+      - dependency-name: react-test-renderer
+      - dependency-name: "@react-native/*"
+
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Upgraded deliberately with the model-serving work (plan phases P3 and P9); torch and torchvision
+      # must move as a matched pair from the CPU index.
+      - dependency-name: torch
+      - dependency-name: torchvision
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "ci(deps)"

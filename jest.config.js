@@ -6,6 +6,16 @@ module.exports = {
   // test's cold start there even though it's not actually hung. 15s gives real headroom without
   // masking a genuine infinite-await bug (which would still hang well past that).
   testTimeout: 15000,
+  // Coverage is reported over every source file, not only the ones a test happens to import, so an
+  // untested screen shows up as 0% instead of being invisible. There is no threshold yet: phase
+  // P11 sets them once the tests exercise real behaviour rather than mocks.
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.test.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/testUtils/**',
+    '!src/**/__mocks__/**',
+  ],
   // lucide-react-native ships .mjs; the RN preset's transform only matches js/ts/tsx, so it's
   // added here (the asset transformer entry is copied over since this replaces, not merges,
   // the preset's transform map).
