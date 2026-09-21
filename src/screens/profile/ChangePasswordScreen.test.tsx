@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ChangePasswordScreen } from './ChangePasswordScreen';
 import { updatePassword } from '../../services/modules/profile/profileService';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';

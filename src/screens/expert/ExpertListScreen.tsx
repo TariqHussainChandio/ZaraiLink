@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ExpertCard } from '../../components/features/expert/ExpertCard';
@@ -10,6 +11,7 @@ import type { ExpertWithProfile } from '../../types/expert';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
 
 export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps<'ExpertList'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { specialization, prefill } = route.params ?? {};
@@ -44,9 +46,9 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load experts"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('expert.expertList.errorTitle')}
+        description={t('expert.expertList.errorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -65,7 +67,10 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
           />
         )}
         ListEmptyComponent={
-          <EmptyState title="No verified experts yet" description="Check back soon for available experts." />
+          <EmptyState
+            title={t('expert.expertList.emptyTitle')}
+            description={t('expert.expertList.emptyDescription')}
+          />
         }
       />
     </View>

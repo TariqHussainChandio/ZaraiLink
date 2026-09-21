@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { BarChart } from '../../components/features/dashboards/BarChart';
@@ -13,6 +14,7 @@ function capitalize(value: string): string {
 }
 
 export function AdminAnalyticsScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
@@ -45,9 +47,9 @@ export function AdminAnalyticsScreen() {
   if (error || !analytics) {
     return (
       <EmptyState
-        title="Couldn't load analytics"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('admin.analytics.loadErrorTitle')}
+        description={t('admin.analytics.loadErrorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -56,39 +58,39 @@ export function AdminAnalyticsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Total Users" value={Object.values(analytics.usersByRole).reduce((a, b) => a + b, 0)} accent={theme.moduleAccents.admin} />
-        <StatCard label="Total Listings" value={analytics.totalListings} accent={theme.moduleAccents.marketplace} />
-        <StatCard label="Active Listings" value={analytics.activeListings} accent={theme.moduleAccents.marketplace} />
+        <StatCard label={t('admin.analytics.totalUsers')} value={Object.values(analytics.usersByRole).reduce((a, b) => a + b, 0)} accent={theme.moduleAccents.admin} />
+        <StatCard label={t('admin.analytics.totalListings')} value={analytics.totalListings} accent={theme.moduleAccents.marketplace} />
+        <StatCard label={t('admin.analytics.activeListings')} value={analytics.activeListings} accent={theme.moduleAccents.marketplace} />
       </View>
 
-      <Text style={styles.sectionTitle}>User Growth</Text>
+      <Text style={styles.sectionTitle}>{t('admin.analytics.userGrowth')}</Text>
       <BarChart
         data={analytics.userGrowth.map(m => ({ label: m.month.slice(5), value: m.value }))}
         color={theme.roleColors.admin}
-        emptyMessage="No signups yet"
+        emptyMessage={t('admin.analytics.noSignups')}
       />
 
       <View style={styles.statsRow}>
-        <StatCard label="Total Orders" value={analytics.totalOrders} accent={theme.moduleAccents.orders} />
-        <StatCard label="Payments Total" value={`Rs. ${analytics.paymentsTotal.toFixed(0)}`} accent={theme.moduleAccents.payments} />
-        <StatCard label="Pending Verifications" value={analytics.pendingExpertVerifications} accent={theme.moduleAccents.expert} />
+        <StatCard label={t('admin.analytics.totalOrders')} value={analytics.totalOrders} accent={theme.moduleAccents.orders} />
+        <StatCard label={t('admin.analytics.paymentsTotal')} value={`${t('admin.analytics.currencyPrefix')}${analytics.paymentsTotal.toFixed(0)}`} accent={theme.moduleAccents.payments} />
+        <StatCard label={t('admin.analytics.pendingVerifications')} value={analytics.pendingExpertVerifications} accent={theme.moduleAccents.expert} />
       </View>
 
-      <Text style={styles.sectionTitle}>Order Volume</Text>
+      <Text style={styles.sectionTitle}>{t('admin.analytics.orderVolume')}</Text>
       <BarChart
         data={analytics.orderVolume.map(m => ({ label: m.month.slice(5), value: m.value }))}
         color={theme.roleColors.admin}
-        emptyMessage="No orders yet"
+        emptyMessage={t('admin.analytics.noOrders')}
       />
 
-      <Text style={styles.sectionTitle}>Payments by Status</Text>
+      <Text style={styles.sectionTitle}>{t('admin.analytics.paymentsByStatus')}</Text>
       <View style={styles.statsRow}>
         {Object.entries(analytics.paymentsByStatus).map(([status, count]) => (
           <StatCard key={status} label={capitalize(status)} value={count} accent={theme.moduleAccents.payments} />
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Reports by Status</Text>
+      <Text style={styles.sectionTitle}>{t('admin.analytics.reportsByStatus')}</Text>
       <View style={styles.statsRow}>
         {Object.entries(analytics.reportsByStatus).map(([status, count]) => (
           <StatCard key={status} label={capitalize(status)} value={count} accent={theme.moduleAccents.admin} />
@@ -96,8 +98,10 @@ export function AdminAnalyticsScreen() {
       </View>
 
       <Text style={styles.footnote}>
-        Consultation resolution rate: {(analytics.consultationResolutionRate * 100).toFixed(0)}% ·
-        Approved experts: {analytics.approvedExperts}
+        {t('admin.analytics.footnote', {
+          rate: (analytics.consultationResolutionRate * 100).toFixed(0),
+          experts: analytics.approvedExperts,
+        })}
       </Text>
     </ScrollView>
   );

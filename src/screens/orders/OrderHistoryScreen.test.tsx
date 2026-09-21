@@ -1,6 +1,7 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { OrderHistoryScreen } from './OrderHistoryScreen';
 import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
 import { useAuthStore } from '../../store/authStore';

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { AuthNavigator } from './AuthNavigator';
 import { signUp, verifySignupOtp } from '../../services/modules/auth/authService';
 

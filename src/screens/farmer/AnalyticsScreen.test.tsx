@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { FarmerAnalyticsScreen } from './AnalyticsScreen';
 import { fetchFarmerAnalytics } from '../../services/modules/analytics/analyticsService';
 import { useAuthStore } from '../../store/authStore';

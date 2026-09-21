@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Asset } from 'react-native-image-picker';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
@@ -21,6 +22,7 @@ import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavi
 export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useTranslation();
   const { conversationId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -86,9 +88,9 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load messages"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('messaging.chat.loadErrorTitle')}
+        description={t('common.checkConnectionRetry')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );

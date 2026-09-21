@@ -1,6 +1,7 @@
 import React from 'react';
 import { Linking } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ExpertVerificationScreen } from './ExpertVerificationScreen';
 import {
   fetchExpertsForAdmin,

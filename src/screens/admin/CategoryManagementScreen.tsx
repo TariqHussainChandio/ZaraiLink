@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { Button, EmptyState, Input, Sheet, Spinner } from '../../components/ui';
 import {
@@ -13,6 +14,7 @@ import { useTheme, type Theme } from '../../theme';
 import type { Category } from '../../types/marketplace';
 
 export function CategoryManagementScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
@@ -72,22 +74,26 @@ export function CategoryManagementScreen() {
 
   const remove = (category: Category) => {
     if (!actorId) return;
-    Alert.alert('Delete category', `Delete "${category.name}"? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setSavingId(category.id);
-          try {
-            await deleteCategory(category.id);
-            await load();
-          } finally {
-            setSavingId(null);
-          }
+    Alert.alert(
+      t('admin.categoryManagement.deleteConfirmTitle'),
+      t('admin.categoryManagement.deleteConfirmMessage', { name: category.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('admin.categoryManagement.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            setSavingId(category.id);
+            try {
+              await deleteCategory(category.id);
+              await load();
+            } finally {
+              setSavingId(null);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   if (loading) return <Spinner fullscreen />;
@@ -106,14 +112,14 @@ export function CategoryManagementScreen() {
             </View>
             <View style={styles.actions}>
               <Button
-                label="Edit"
+                label={t('admin.categoryManagement.edit')}
                 variant="secondary"
                 fullWidth={false}
                 loading={savingId === item.id}
                 onPress={() => openEdit(item)}
               />
               <Button
-                label="Delete"
+                label={t('admin.categoryManagement.delete')}
                 variant="destructive"
                 fullWidth={false}
                 loading={savingId === item.id}
@@ -123,20 +129,46 @@ export function CategoryManagementScreen() {
           </View>
         )}
         ListEmptyComponent={
-          <EmptyState title="No categories yet" description="Add the first product category below." />
+          <EmptyState
+            title={t('admin.categoryManagement.emptyTitle')}
+            description={t('admin.categoryManagement.emptyDescription')}
+          />
         }
         ListFooterComponent={
-          <Button label="+ Add Category" variant="secondary" onPress={openCreate} style={styles.addButton} />
+          <Button
+            label={t('admin.categoryManagement.addCategory')}
+            variant="secondary"
+            onPress={openCreate}
+            style={styles.addButton}
+          />
         }
       />
 
       <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)}>
-        <Text style={styles.sheetTitle}>{editing ? 'Edit Category' : 'New Category'}</Text>
-        <Input label="Name" value={name} onChangeText={setName} placeholder="e.g. Seeds" />
-        <Input label="Slug" value={slug} onChangeText={setSlug} placeholder="e.g. seeds" autoCapitalize="none" />
-        <Input label="Icon (optional)" value={icon} onChangeText={setIcon} placeholder="e.g. sprout" />
+        <Text style={styles.sheetTitle}>
+          {editing ? t('admin.categoryManagement.editCategoryTitle') : t('admin.categoryManagement.newCategoryTitle')}
+        </Text>
+        <Input
+          label={t('admin.categoryManagement.nameLabel')}
+          value={name}
+          onChangeText={setName}
+          placeholder={t('admin.categoryManagement.namePlaceholder')}
+        />
+        <Input
+          label={t('admin.categoryManagement.slugLabel')}
+          value={slug}
+          onChangeText={setSlug}
+          placeholder={t('admin.categoryManagement.slugPlaceholder')}
+          autoCapitalize="none"
+        />
+        <Input
+          label={t('admin.categoryManagement.iconLabel')}
+          value={icon}
+          onChangeText={setIcon}
+          placeholder={t('admin.categoryManagement.iconPlaceholder')}
+        />
         <Button
-          label={editing ? 'Save Changes' : 'Create Category'}
+          label={editing ? t('admin.categoryManagement.saveChangesButton') : t('admin.categoryManagement.createCategoryButton')}
           loading={savingId === (editing?.id ?? 'new')}
           onPress={save}
         />

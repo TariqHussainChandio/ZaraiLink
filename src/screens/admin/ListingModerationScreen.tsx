@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Badge, Button, EmptyState, Spinner } from '../../components/ui';
 import { fetchAllListingsForModeration, updateListingStatus } from '../../services/modules/marketplace/listingsService';
@@ -8,6 +9,7 @@ import { useTheme, type Theme } from '../../theme';
 import type { ListingWithRelations } from '../../types/marketplace';
 
 export function ListingModerationScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
@@ -53,7 +55,11 @@ export function ListingModerationScreen() {
               {item.title}
             </Text>
             <Text style={styles.owner} numberOfLines={1}>
-              {item.owner?.full_name ?? 'Unknown'} · Rs. {item.price.toFixed(0)}/{item.unit}
+              {t('admin.listingModeration.ownerPriceLine', {
+                owner: item.owner?.full_name ?? t('admin.listingModeration.unknownOwner'),
+                price: item.price.toFixed(0),
+                unit: item.unit,
+              })}
             </Text>
             <Badge
               label={item.status}
@@ -62,7 +68,7 @@ export function ListingModerationScreen() {
           </View>
           {item.status !== 'sold' ? (
             <Button
-              label={item.status === 'active' ? 'Deactivate' : 'Activate'}
+              label={item.status === 'active' ? t('admin.listingModeration.deactivate') : t('admin.listingModeration.activate')}
               variant={item.status === 'active' ? 'destructive' : 'secondary'}
               fullWidth={false}
               loading={updatingId === item.id}
@@ -71,7 +77,12 @@ export function ListingModerationScreen() {
           ) : null}
         </View>
       )}
-      ListEmptyComponent={<EmptyState title="No listings yet" description="Listings will show up here once sellers start publishing." />}
+      ListEmptyComponent={
+        <EmptyState
+          title={t('admin.listingModeration.emptyTitle')}
+          description={t('admin.listingModeration.emptyDescription')}
+        />
+      }
     />
   );
 }

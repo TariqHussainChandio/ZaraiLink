@@ -1,5 +1,6 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, Spinner } from '../../components/ui';
 import { createDiseaseCase, predictDisease, uploadDiseaseImage } from '../../services/modules/ai/diseaseService';
@@ -20,6 +21,7 @@ interface RouteParams {
 export function DiseaseProcessingScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useTranslation();
   const { imageUri, imageFileName, imageType, cropId } = useRoute().params as RouteParams;
   const navigation = useNavigation<any>();
   const userId = useAuthStore(state => state.user?.id);
@@ -51,19 +53,19 @@ export function DiseaseProcessingScreen() {
     return (
       <View style={styles.container}>
         <Spinner />
-        <Text style={styles.status}>Analyzing your photo...</Text>
+        <Text style={styles.status}>{t('disease.processing.analyzingStatus')}</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.errorTitle}>AI analysis isn't available right now</Text>
+      <Text style={styles.errorTitle}>{t('disease.processing.errorTitle')}</Text>
       <Text style={styles.errorText}>{error}</Text>
 
-      <Button label="Retry" onPress={run} style={styles.action} />
+      <Button label={t('common.retry')} onPress={run} style={styles.action} />
       <Button
-        label="Talk to an Expert"
+        label={t('disease.processing.talkToExpertButton')}
         variant="secondary"
         onPress={() => navigateToConsultExpert(navigation, { cropId, imageUrl: uploadedImageUrl })}
         style={styles.action}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { RegisterScreen } from './RegisterScreen';
 import { signUp } from '../../services/modules/auth/authService';
 import { AUTH_ROUTES } from '../../constants/routes';

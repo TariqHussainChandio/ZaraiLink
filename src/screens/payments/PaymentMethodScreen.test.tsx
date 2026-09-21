@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import '../../localization';
 import { PaymentMethodScreen } from './PaymentMethodScreen';
 import { fetchOrderById } from '../../services/modules/orders/ordersService';
 import { fetchPaymentByOrderId, initiatePayment } from '../../services/modules/payments/paymentsService';

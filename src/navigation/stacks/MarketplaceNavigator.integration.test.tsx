@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { MarketplaceNavigator } from './MarketplaceNavigator';
 import { fetchListingById, fetchListings } from '../../services/modules/marketplace/listingsService';
 import { fetchReviewsForListing } from '../../services/modules/reviews/reviewsService';

@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ListingModerationScreen } from './ListingModerationScreen';
 import {
   fetchAllListingsForModeration,

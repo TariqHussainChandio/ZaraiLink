@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar, Button, EmptyState, Spinner } from '../../components/ui';
 import { RatingSummary } from '../../components/features/reviews/RatingSummary';
@@ -14,18 +15,21 @@ import type { ExpertWithProfile } from '../../types/expert';
 import type { ReviewWithBuyer } from '../../types/reviews';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
 
-const SPECIALIZATION_LABEL: Record<string, string> = {
-  crop_management: 'Crop Management',
-  plant_diseases: 'Plant Diseases',
-  pest_management: 'Pest Management',
-  fertilizer_management: 'Fertilizer Management',
-  irrigation: 'Irrigation',
-  soil_management: 'Soil Management',
-  crop_nutrition: 'Crop Nutrition',
-  general_agriculture: 'General Agriculture',
+// Maps each specialization id to its translation key suffix under `expert.specializations` —
+// shared verbatim with ExpertApplicationScreen's own copy of this map.
+const SPECIALIZATION_KEY_MAP: Record<string, string> = {
+  crop_management: 'cropManagement',
+  plant_diseases: 'plantDiseases',
+  pest_management: 'pestManagement',
+  fertilizer_management: 'fertilizerManagement',
+  irrigation: 'irrigation',
+  soil_management: 'soilManagement',
+  crop_nutrition: 'cropNutrition',
+  general_agriculture: 'generalAgriculture',
 };
 
 export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenProps<'ExpertProfile'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { expertId, prefill } = route.params;
@@ -60,62 +64,63 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
   if (error || !expert) {
     return (
       <EmptyState
-        title="Couldn't load this expert"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('expert.expertProfile.errorTitle')}
+        description={t('expert.expertProfile.errorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
   }
 
-  const specializations = expert.expert_specializations.map(
-    s => SPECIALIZATION_LABEL[s.specialization] ?? s.specialization,
-  );
+  const specializations = expert.expert_specializations.map(s => {
+    const key = SPECIALIZATION_KEY_MAP[s.specialization];
+    return key ? t(`expert.specializations.${key}`) : s.specialization;
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={72} />
-        <Text style={styles.name}>{expert.profile?.full_name ?? 'Expert'}</Text>
+        <Text style={styles.name}>{expert.profile?.full_name ?? t('expert.expertProfile.defaultName')}</Text>
         {expert.degree ? <Text style={styles.degree}>{expert.degree}</Text> : null}
         <RatingSummary reviews={reviews} />
       </View>
 
       {specializations.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Specializations</Text>
+          <Text style={styles.sectionTitle}>{t('expert.expertProfile.specializationsTitle')}</Text>
           <Text style={styles.sectionText}>{specializations.join(', ')}</Text>
         </View>
       ) : null}
 
       {expert.qualifications ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Qualifications</Text>
+          <Text style={styles.sectionTitle}>{t('expert.expertProfile.qualificationsTitle')}</Text>
           <Text style={styles.sectionText}>{expert.qualifications}</Text>
         </View>
       ) : null}
 
       {expert.experience ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Experience</Text>
+          <Text style={styles.sectionTitle}>{t('expert.expertProfile.experienceTitle')}</Text>
           <Text style={styles.sectionText}>{expert.experience}</Text>
         </View>
       ) : null}
 
       {expert.professional_description ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.sectionTitle}>{t('expert.expertProfile.aboutTitle')}</Text>
           <Text style={styles.sectionText}>{expert.professional_description}</Text>
         </View>
       ) : null}
 
       <Button
-        label="Request Consultation"
+        label={t('expert.expertProfile.requestConsultation')}
         onPress={() => navigation.navigate(CONSULTATIONS_ROUTES.RequestConsultation, { expertId, prefill })}
         style={styles.action}
       />
       <Button
-        label="Message Expert"
+        label={t('expert.expertProfile.messageExpert')}
         variant="secondary"
         loading={messaging}
         onPress={async () => {
@@ -125,7 +130,10 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
             const conversation = await findOrCreateConversation(expertId);
             tabNavigation?.navigate(APP_TABS.Messages, {
               screen: MESSAGING_ROUTES.Chat,
-              params: { conversationId: conversation.id, otherUserName: expert.profile?.full_name ?? 'Expert' },
+              params: {
+                conversationId: conversation.id,
+                otherUserName: expert.profile?.full_name ?? t('expert.expertProfile.defaultName'),
+              },
             });
           } finally {
             setMessaging(false);
@@ -136,7 +144,7 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
 
       {reviews.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
+          <Text style={styles.sectionTitle}>{t('expert.expertProfile.reviewsTitle')}</Text>
           {reviews.map(review => (
             <ReviewCard key={review.id} review={review} />
           ))}

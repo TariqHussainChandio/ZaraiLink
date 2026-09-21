@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FlatList,
   RefreshControl,
@@ -23,6 +24,7 @@ import type { MarketplaceScreenProps } from '../../navigation/stacks/Marketplace
 
 function CartHeaderButton({ onPress }: { onPress: () => void }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const count = useCartStore(state => cartItemCount(state.items));
 
@@ -31,7 +33,11 @@ function CartHeaderButton({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       style={styles.cartButton}
       accessibilityRole="button"
-      accessibilityLabel={count > 0 ? `Cart, ${count} item${count === 1 ? '' : 's'}` : 'Cart'}
+      accessibilityLabel={
+        count > 0
+          ? t('marketplace.browse.cartLabelWithCount', { count })
+          : t('marketplace.browse.cartLabel')
+      }
     >
       <View style={styles.cartIconWrap}>
         <ShoppingCart color={theme.colors.text.primary} size={22} />
@@ -47,6 +53,7 @@ function CartHeaderButton({ onPress }: { onPress: () => void }) {
 
 export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const role = useAuthStore(state => state.role);
   const canSell = role === 'farmer' || role === 'dealer';
@@ -159,8 +166,8 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
           )}
           ListEmptyComponent={
             <EmptyState
-              title="No listings yet"
-              description="Check back soon, or be the first to list produce here."
+              title={t('marketplace.browse.emptyTitle')}
+              description={t('marketplace.browse.emptyDescription')}
             />
           }
         />
@@ -170,7 +177,7 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
           style={styles.fab}
           onPress={() => navigation.navigate(MARKETPLACE_ROUTES.CreateListing)}
         >
-          <Text style={styles.fabLabel}>+ List</Text>
+          <Text style={styles.fabLabel}>{t('marketplace.browse.listFab')}</Text>
         </TouchableOpacity>
       ) : null}
     </View>

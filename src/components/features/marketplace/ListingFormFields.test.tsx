@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../../localization';
 import {
   ListingFormFields,
   listingFormDefaults,

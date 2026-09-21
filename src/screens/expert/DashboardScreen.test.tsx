@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ExpertDashboardScreen } from './DashboardScreen';
 import { fetchExpertProfile } from '../../services/modules/expert/expertService';
 import { fetchConsultationsForExpert } from '../../services/modules/expert/consultationService';

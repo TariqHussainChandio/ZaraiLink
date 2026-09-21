@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Spinner } from '../../components/ui';
 import { ORDERS_ROUTES } from '../../constants/routes';
@@ -9,13 +10,13 @@ import { useTheme, type Theme } from '../../theme';
 import type { PaymentMethod } from '../../types/payments';
 import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
 
-const METHODS: { id: PaymentMethod; label: string; description: string }[] = [
-  { id: 'cod', label: 'Cash on Delivery', description: 'Pay in cash when your order arrives.' },
-  { id: 'bank_transfer', label: 'Bank Transfer', description: 'Transfer the amount and the seller will confirm receipt.' },
-];
+// Labels/descriptions for each payment method live under payments.paymentMethod.methods.<id> in
+// the translation resources, keyed by the same PaymentMethod ids used throughout the app.
+const METHOD_IDS: PaymentMethod[] = ['cod', 'bank_transfer'];
 
 export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'PaymentMethod'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { orderId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
@@ -49,7 +50,10 @@ export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'Pa
       const payment = await initiatePayment(orderId, method);
       navigation.replace(ORDERS_ROUTES.PaymentProcessing, { paymentId: payment.id });
     } catch (error) {
-      Alert.alert('Could not start payment', error instanceof Error ? error.message : String(error));
+      Alert.alert(
+        t('payments.paymentMethod.couldNotStartPaymentTitle'),
+        error instanceof Error ? error.message : String(error),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -59,19 +63,19 @@ export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'Pa
 
   return (
     <View style={styles.container}>
-      <Text style={styles.total}>Rs. {orderTotal.toFixed(0)}</Text>
-      <Text style={styles.subtitle}>Choose how you'll pay for this order</Text>
+      <Text style={styles.total}>{t('payments.paymentMethod.amountLine', { amount: orderTotal.toFixed(0) })}</Text>
+      <Text style={styles.subtitle}>{t('payments.paymentMethod.subtitle')}</Text>
 
-      {METHODS.map(option => (
-        <TouchableOpacity key={option.id} onPress={() => setMethod(option.id)}>
-          <Card style={[styles.option, method === option.id && styles.optionSelected]}>
-            <Text style={styles.optionLabel}>{option.label}</Text>
-            <Text style={styles.optionDescription}>{option.description}</Text>
+      {METHOD_IDS.map(id => (
+        <TouchableOpacity key={id} onPress={() => setMethod(id)}>
+          <Card style={[styles.option, method === id && styles.optionSelected]}>
+            <Text style={styles.optionLabel}>{t(`payments.paymentMethod.methods.${id}.label`)}</Text>
+            <Text style={styles.optionDescription}>{t(`payments.paymentMethod.methods.${id}.description`)}</Text>
           </Card>
         </TouchableOpacity>
       ))}
 
-      <Button label="Continue" loading={submitting} onPress={onSubmit} style={styles.submit} />
+      <Button label={t('payments.paymentMethod.continueLabel')} loading={submitting} onPress={onSubmit} style={styles.submit} />
     </View>
   );
 }

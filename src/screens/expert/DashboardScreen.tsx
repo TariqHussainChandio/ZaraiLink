@@ -1,5 +1,6 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ConsultationCard } from '../../components/features/expert/ConsultationCard';
@@ -15,6 +16,7 @@ import type { ConsultationWithRelations, ExpertWithProfile } from '../../types/e
 const OPEN_STATUSES = ['requested', 'accepted', 'in_progress'];
 
 export function ExpertDashboardScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -54,9 +56,9 @@ export function ExpertDashboardScreen() {
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load the dashboard"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('expert.dashboard.errorTitle')}
+        description={t('expert.dashboard.errorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -69,35 +71,38 @@ export function ExpertDashboardScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {!profile ? (
         <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate(EXPERT_HOME_ROUTES.ExpertApplication)}>
-          <Text style={styles.bannerTitle}>Complete your expert profile</Text>
-          <Text style={styles.bannerText}>Submit your qualifications so buyers and farmers can find you.</Text>
+          <Text style={styles.bannerTitle}>{t('expert.dashboard.completeProfileTitle')}</Text>
+          <Text style={styles.bannerText}>{t('expert.dashboard.completeProfileDescription')}</Text>
         </TouchableOpacity>
       ) : profile.verification_status === 'pending' ? (
         <View style={[styles.banner, styles.bannerPending]}>
-          <Text style={styles.bannerTitle}>Application pending review</Text>
-          <Text style={styles.bannerText}>An admin will verify your profile before it's visible to buyers/farmers.</Text>
+          <Text style={styles.bannerTitle}>{t('expert.dashboard.pendingReviewTitle')}</Text>
+          <Text style={styles.bannerText}>{t('expert.dashboard.pendingReviewDescription')}</Text>
         </View>
       ) : profile.verification_status === 'rejected' ? (
         <TouchableOpacity style={[styles.banner, styles.bannerRejected]} onPress={() => navigation.navigate(EXPERT_HOME_ROUTES.ExpertApplication)}>
-          <Text style={styles.bannerTitle}>Application not approved</Text>
-          <Text style={styles.bannerText}>Update your profile and it will be reviewed again.</Text>
+          <Text style={styles.bannerTitle}>{t('expert.dashboard.rejectedTitle')}</Text>
+          <Text style={styles.bannerText}>{t('expert.dashboard.rejectedDescription')}</Text>
         </TouchableOpacity>
       ) : null}
 
       <View style={styles.statsRow}>
-        <StatCard label="Open Requests" value={openCount} accent={theme.moduleAccents.consultation} />
-        <StatCard label="Resolved" value={resolvedCount} accent={theme.moduleAccents.consultation} />
+        <StatCard label={t('expert.dashboard.openRequests')} value={openCount} accent={theme.moduleAccents.consultation} />
+        <StatCard label={t('expert.dashboard.resolved')} value={resolvedCount} accent={theme.moduleAccents.consultation} />
       </View>
 
       <QuickActions
         actions={[
-          { label: 'Analytics', onPress: () => navigation.navigate(EXPERT_HOME_ROUTES.Analytics) },
+          { label: t('expert.dashboard.analytics'), onPress: () => navigation.navigate(EXPERT_HOME_ROUTES.Analytics) },
         ]}
       />
 
-      <Text style={styles.sectionTitle}>Recent Consultation Requests</Text>
+      <Text style={styles.sectionTitle}>{t('expert.dashboard.recentRequestsTitle')}</Text>
       {consultations.length === 0 ? (
-        <EmptyState title="No requests yet" description="Consultation requests from buyers and farmers will show up here." />
+        <EmptyState
+          title={t('expert.dashboard.emptyTitle')}
+          description={t('expert.dashboard.emptyDescription')}
+        />
       ) : (
         consultations
           .slice(0, 5)
@@ -105,7 +110,7 @@ export function ExpertDashboardScreen() {
             <ConsultationCard
               key={consultation.id}
               consultation={consultation}
-              counterpartyName={consultation.user?.full_name ?? 'Unknown'}
+              counterpartyName={consultation.user?.full_name ?? t('expert.dashboard.unknownCounterparty')}
               onPress={() =>
                 navigation.navigate(EXPERT_TABS.Consultations, { screen: CONSULTATIONS_ROUTES.ConsultationDetail, params: { consultationId: consultation.id } })
               }

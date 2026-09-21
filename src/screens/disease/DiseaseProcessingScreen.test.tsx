@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import '../../localization';
 import { DiseaseProcessingScreen } from './DiseaseProcessingScreen';
 import { createDiseaseCase, predictDisease, uploadDiseaseImage } from '../../services/modules/ai/diseaseService';
 import { CONSULTATIONS_ROUTES, APP_TABS } from '../../constants/routes';

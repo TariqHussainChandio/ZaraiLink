@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import type { Asset } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/ui';
@@ -19,6 +20,7 @@ import type { MarketplaceScreenProps } from '../../navigation/stacks/Marketplace
 
 export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'CreateListing'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [images, setImages] = useState<Asset[]>([]);
@@ -43,7 +45,7 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
   const onSubmit = async (values: ListingFormValues) => {
     if (!userId) return;
     if (images.length === 0) {
-      Alert.alert('Add a photo', 'Please add at least one image of your produce.');
+      Alert.alert(t('marketplace.createListing.addPhotoTitle'), t('marketplace.createListing.addPhotoMessage'));
       return;
     }
 
@@ -59,7 +61,10 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
       });
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Failed to create listing', error instanceof Error ? error.message : String(error));
+      Alert.alert(
+        t('marketplace.createListing.failedTitle'),
+        error instanceof Error ? error.message : String(error),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -69,17 +74,22 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
 
-      <Text style={styles.label}>Photos</Text>
+      <Text style={styles.label}>{t('marketplace.createListing.photosLabel')}</Text>
       <View style={styles.imageRow}>
         {images.map((image, index) => (
           <Image key={image.uri ?? index} source={{ uri: image.uri }} style={styles.thumbnail} />
         ))}
         <TouchableOpacity style={styles.addImage} onPress={pickImages}>
-          <Text style={styles.addImageLabel}>+ Add</Text>
+          <Text style={styles.addImageLabel}>{t('marketplace.createListing.addImageLabel')}</Text>
         </TouchableOpacity>
       </View>
 
-      <Button label="Publish Listing" loading={submitting} onPress={handleSubmit(onSubmit)} style={styles.submit} />
+      <Button
+        label={t('marketplace.createListing.publishLabel')}
+        loading={submitting}
+        onPress={handleSubmit(onSubmit)}
+        style={styles.submit}
+      />
     </ScrollView>
   );
 }

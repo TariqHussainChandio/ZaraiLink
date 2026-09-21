@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { RequestConsultationScreen } from './RequestConsultationScreen';
 import { fetchFarms } from '../../services/modules/farmer/farmService';
 import {

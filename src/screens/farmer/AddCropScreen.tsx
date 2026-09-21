@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
 import { Button, EmptyState, Input, SelectField, Spinner } from '../../components/ui';
@@ -14,22 +15,25 @@ import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
-const DATE_MESSAGE = 'Use YYYY-MM-DD format';
-const dateField = z.string().refine(value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value), DATE_MESSAGE);
+const dateField = (message: string) =>
+  z.string().refine(value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value), message);
 
-const farmCropSchema = z.object({
-  cropId: z.string().nullable(),
-  variety: z.string(),
-  plantingDate: dateField,
-  area: z.string(),
-  expectedHarvestDate: dateField,
-  growthStage: z.string(),
-  notes: z.string(),
-});
+function buildFarmCropSchema(dateMessage: string) {
+  return z.object({
+    cropId: z.string().nullable(),
+    variety: z.string(),
+    plantingDate: dateField(dateMessage),
+    area: z.string(),
+    expectedHarvestDate: dateField(dateMessage),
+    growthStage: z.string(),
+    notes: z.string(),
+  });
+}
 
-type FarmCropFormValues = z.infer<typeof farmCropSchema>;
+type FarmCropFormValues = z.infer<ReturnType<typeof buildFarmCropSchema>>;
 
 export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { farmId, cropId } = route.params;
@@ -44,6 +48,11 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
   useEffect(() => {
     loadCrops();
   }, [loadCrops]);
+
+  const farmCropSchema = useMemo(
+    () => buildFarmCropSchema(t('farmer.addCrop.dateFormatError', 'Use YYYY-MM-DD format')),
+    [t],
+  );
 
   const {
     control,
@@ -109,7 +118,10 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
       }
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Failed to save crop', err instanceof Error ? err.message : String(err));
+      Alert.alert(
+        t('farmer.addCrop.saveFailedTitle', 'Failed to save crop'),
+        err instanceof Error ? err.message : String(err),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -117,26 +129,30 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
 
   const onDelete = () => {
     if (!cropId) return;
-    Alert.alert('Remove crop', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteFarmCrop(cropId);
-          navigation.goBack();
+    Alert.alert(
+      t('farmer.addCrop.removeCropAlertTitle', 'Remove crop'),
+      t('farmer.addCrop.removeCropAlertMessage', 'This cannot be undone.'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('farmer.addCrop.removeButton', 'Remove'),
+          style: 'destructive',
+          onPress: async () => {
+            await deleteFarmCrop(cropId);
+            navigation.goBack();
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   if (loading) return <Spinner fullscreen />;
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load this crop"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('farmer.addCrop.loadErrorTitle', "Couldn't load this crop")}
+        description={t('farmer.addCrop.loadErrorDescription', 'Check your connection and try again.')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -149,7 +165,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         name="cropId"
         render={({ field: { onChange, value } }) => (
           <SelectField
-            label="Crop"
+            label={t('farmer.addCrop.cropLabel', 'Crop')}
             value={value}
             options={crops.map(c => ({ id: c.id, label: c.name }))}
             onSelect={onChange}
@@ -161,7 +177,12 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="variety"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Variety" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input
+            label={t('farmer.addCrop.varietyLabel', 'Variety')}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+          />
         )}
       />
 
@@ -170,8 +191,8 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         name="plantingDate"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label="Planting date"
-            placeholder="YYYY-MM-DD"
+            label={t('farmer.addCrop.plantingDateLabel', 'Planting date')}
+            placeholder={t('farmer.addCrop.datePlaceholder', 'YYYY-MM-DD')}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -184,7 +205,13 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="area"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Area" keyboardType="numeric" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input
+            label={t('farmer.addCrop.areaLabel', 'Area')}
+            keyboardType="numeric"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+          />
         )}
       />
 
@@ -193,8 +220,8 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         name="expectedHarvestDate"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label="Expected harvest date"
-            placeholder="YYYY-MM-DD"
+            label={t('farmer.addCrop.expectedHarvestDateLabel', 'Expected harvest date')}
+            placeholder={t('farmer.addCrop.datePlaceholder', 'YYYY-MM-DD')}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -207,7 +234,12 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="growthStage"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Growth stage" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input
+            label={t('farmer.addCrop.growthStageLabel', 'Growth stage')}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+          />
         )}
       />
 
@@ -215,18 +247,34 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="notes"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Notes" value={value} onChangeText={onChange} onBlur={onBlur} multiline numberOfLines={3} />
+          <Input
+            label={t('farmer.addCrop.notesLabel', 'Notes')}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            multiline
+            numberOfLines={3}
+          />
         )}
       />
 
       <Button
-        label={isEditing ? 'Save Changes' : 'Add Crop'}
+        label={
+          isEditing
+            ? t('farmer.addCrop.saveChangesButton', 'Save Changes')
+            : t('farmer.addCrop.addCropButton', 'Add Crop')
+        }
         loading={submitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.action}
       />
       {isEditing ? (
-        <Button label="Remove Crop" variant="destructive" onPress={onDelete} style={styles.delete} />
+        <Button
+          label={t('farmer.addCrop.removeCropButton', 'Remove Crop')}
+          variant="destructive"
+          onPress={onDelete}
+          style={styles.delete}
+        />
       ) : null}
     </ScrollView>
   );

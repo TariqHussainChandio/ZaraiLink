@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ForgotPasswordScreen } from './ForgotPasswordScreen';
 import { resetPassword } from '../../services/modules/auth/authService';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';

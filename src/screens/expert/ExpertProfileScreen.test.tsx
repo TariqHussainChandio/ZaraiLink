@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ExpertProfileScreen } from './ExpertProfileScreen';
 import { fetchExpertById } from '../../services/modules/expert/expertService';
 import { findOrCreateConversation } from '../../services/modules/messaging/messagingService';

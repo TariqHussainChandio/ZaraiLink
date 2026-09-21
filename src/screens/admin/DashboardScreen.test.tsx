@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { AdminDashboardScreen } from './DashboardScreen';
 import { fetchPlatformStats, type PlatformStats } from '../../services/modules/admin/adminService';
 import { ADMIN_HOME_ROUTES } from '../../constants/routes';

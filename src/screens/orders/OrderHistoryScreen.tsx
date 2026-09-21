@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { EmptyState, SkeletonList, StaggeredItem } from '../../components/ui';
 import { OrderCard } from '../../components/features/orders/OrderCard';
@@ -14,6 +15,7 @@ type Segment = 'buyer' | 'seller';
 
 export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHistory'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const role = useAuthStore(state => state.role);
@@ -43,7 +45,7 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
             onPress={() => setSegment(value)}
           >
             <Text style={[styles.segmentLabel, segment === value && styles.segmentLabelActive]}>
-              {value === 'buyer' ? 'Purchases' : 'Sales'}
+              {value === 'buyer' ? t('orders.orderHistory.purchasesLabel') : t('orders.orderHistory.salesLabel')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -61,7 +63,8 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
               <OrderCard
                 order={item}
                 counterpartyName={
-                  (segment === 'buyer' ? item.seller?.full_name : item.buyer?.full_name) ?? 'Unknown'
+                  (segment === 'buyer' ? item.seller?.full_name : item.buyer?.full_name) ??
+                  t('orders.orderHistory.unknownCounterpartyFallback')
                 }
                 onPress={() => navigation.navigate(ORDERS_ROUTES.OrderDetail, { orderId: item.id })}
               />
@@ -69,8 +72,8 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
           )}
           ListEmptyComponent={
             <EmptyState
-              title={segment === 'buyer' ? 'No purchases yet' : 'No sales yet'}
-              description="Orders will show up here once they're placed."
+              title={segment === 'buyer' ? t('orders.orderHistory.emptyPurchasesTitle') : t('orders.orderHistory.emptySalesTitle')}
+              description={t('orders.orderHistory.emptyDescription')}
             />
           }
         />
