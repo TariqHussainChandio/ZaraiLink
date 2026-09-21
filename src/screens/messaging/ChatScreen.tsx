@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../utils/photoPicker';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ChatInput } from '../../components/features/messaging/ChatInput';
@@ -71,7 +71,7 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
     resolveNewAttachments([incoming]);
   });
 
-  const onSend = async (body: string, images: Asset[]) => {
+  const onSend = async (body: string, images: PickedPhoto[]) => {
     if (!userId) return;
     setSending(true);
     try {

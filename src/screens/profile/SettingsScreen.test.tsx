@@ -49,7 +49,7 @@ describe('SettingsScreen', () => {
     useAuthStore.setState({ refreshProfile });
     await render(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
 
-    const notificationsSwitch = screen.getByRole('switch');
+    const notificationsSwitch = screen.getByRole('switch', { name: 'Notifications' });
     await fireEvent(notificationsSwitch, 'valueChange', false);
 
     expect(mockUpdateProfile).toHaveBeenCalledWith({ notifications_enabled: false });
@@ -60,7 +60,7 @@ describe('SettingsScreen', () => {
     mockUpdateProfile.mockRejectedValue(new Error('offline'));
     await render(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
 
-    const notificationsSwitch = screen.getByRole('switch');
+    const notificationsSwitch = screen.getByRole('switch', { name: 'Notifications' });
     await fireEvent(notificationsSwitch, 'valueChange', false);
 
     await waitFor(() =>

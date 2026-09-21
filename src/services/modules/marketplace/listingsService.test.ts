@@ -1,4 +1,4 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { apiFetch } from '../../api/client';
 
 jest.mock('../../api/client');
@@ -229,7 +229,7 @@ describe('fetchListingViewCounts', () => {
 });
 
 describe('uploadListingImages', () => {
-  const withUri = (uri: string): Asset => ({ uri, fileName: `${uri}.jpg`, type: 'image/jpeg' });
+  const withUri = (uri: string): PickedPhoto => ({ uri, fileName: `${uri}.jpg`, mimeType: 'image/jpeg' });
 
   it('uploads every image with a uri and returns a public URL derived from its own path', async () => {
     mockedSupabase.storage.from.mockReturnValue({
@@ -250,7 +250,7 @@ describe('uploadListingImages', () => {
       getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://example.com/image.jpg' } })),
     } as never);
 
-    const urls = await uploadListingImages('user-1', [{}, withUri('a')]);
+    const urls = await uploadListingImages('user-1', [{ uri: '' }, withUri('a')]);
 
     expect(urls).toEqual(['https://example.com/image.jpg']);
   });

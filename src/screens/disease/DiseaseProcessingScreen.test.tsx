@@ -61,7 +61,7 @@ describe('DiseaseProcessingScreen', () => {
     expect(mockUploadDiseaseImage).toHaveBeenCalledWith('farmer-1', {
       uri: 'file://leaf.jpg',
       fileName: 'leaf.jpg',
-      type: 'image/jpeg',
+      mimeType: 'image/jpeg',
     });
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('DiseaseResult', { diseaseCaseId: 'case-1' }));

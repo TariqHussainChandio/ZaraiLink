@@ -1,12 +1,11 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Asset } from 'react-native-image-picker';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Button, SelectField } from '../../components/ui';
 import { useTheme, type Theme } from '../../theme';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
-import { pickPhotos } from '../../utils/photoPicker';
+import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 
 // Registered in the shared `HomeNavigator` (Buyer/Farmer/Dealer's Home stack), but farmer-only
 // in practice — only `SellerDashboard.tsx`'s farmer branch has a Quick Action leading here,
@@ -20,7 +19,7 @@ export function DiseaseUploadScreen() {
   const crops = useMarketplaceStore(state => state.crops);
   const loadCrops = useMarketplaceStore(state => state.loadCrops);
   const [cropId, setCropId] = useState<string | null>(null);
-  const [image, setImage] = useState<Asset | null>(null);
+  const [image, setImage] = useState<PickedPhoto | null>(null);
 
   useEffect(() => {
     loadCrops();
@@ -36,7 +35,7 @@ export function DiseaseUploadScreen() {
     navigation.navigate('DiseaseProcessing', {
       imageUri: image.uri,
       imageFileName: image.fileName ?? null,
-      imageType: image.type ?? null,
+      imageType: image.mimeType ?? null,
       cropId,
     });
   };

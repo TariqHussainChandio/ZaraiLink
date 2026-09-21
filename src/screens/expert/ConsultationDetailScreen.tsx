@@ -1,7 +1,7 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../utils/photoPicker';
 import {
   Alert,
   FlatList,
@@ -112,7 +112,7 @@ export function ConsultationDetailScreen() {
     }
   };
 
-  const onSend = async (body: string, images: Asset[]) => {
+  const onSend = async (body: string, images: PickedPhoto[]) => {
     if (!userId) return;
     setSending(true);
     try {

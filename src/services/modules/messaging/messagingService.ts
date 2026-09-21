@@ -1,4 +1,4 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { apiFetch } from '../../api/client';
 import { supabase } from '../../supabase/client';
 import type { Conversation, ConversationWithPreview, Message } from '../../../types/messaging';
@@ -37,7 +37,7 @@ export async function sendMessage(
 export async function uploadMessageAttachments(
   conversationId: string,
   senderId: string,
-  images: Asset[],
+  images: PickedPhoto[],
 ): Promise<string[]> {
   const paths: string[] = [];
 
@@ -52,7 +52,7 @@ export async function uploadMessageAttachments(
 
     const { error } = await supabase.storage
       .from(ATTACHMENTS_BUCKET)
-      .upload(path, arrayBuffer, { contentType: image.type ?? 'image/jpeg' });
+      .upload(path, arrayBuffer, { contentType: image.mimeType ?? 'image/jpeg' });
 
     if (error) throw error;
     paths.push(path);

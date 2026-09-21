@@ -1,4 +1,4 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { apiFetch } from '../../api/client';
 
 jest.mock('../../api/client');
@@ -72,7 +72,7 @@ describe('sendMessage', () => {
 });
 
 describe('uploadMessageAttachments', () => {
-  const withUri = (uri: string): Asset => ({ uri, fileName: `${uri}.jpg`, type: 'image/jpeg' });
+  const withUri = (uri: string): PickedPhoto => ({ uri, fileName: `${uri}.jpg`, mimeType: 'image/jpeg' });
 
   it('uploads each image under conversationId/senderId and returns the paths', async () => {
     mockedSupabase.storage.from.mockReturnValue({
@@ -91,7 +91,7 @@ describe('uploadMessageAttachments', () => {
       upload: jest.fn(() => Promise.resolve({ data: {}, error: null })),
       getPublicUrl: jest.fn(),
     } as never);
-    const paths = await uploadMessageAttachments('conv-1', 'user-1', [{}]);
+    const paths = await uploadMessageAttachments('conv-1', 'user-1', [{ uri: '' }]);
     expect(paths).toEqual([]);
   });
 

@@ -1,4 +1,4 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { apiFetch } from '../../api/client';
 import { supabase } from '../../supabase/client';
 
@@ -23,7 +23,7 @@ export async function updateProfile(input: ProfileUpdateInput): Promise<void> {
 // Storage-direct, unchanged — owner-scoped RLS on the `avatars` bucket already correctly
 // restricts this; only the resulting `profiles.avatar_url` write goes through FastAPI, via
 // `updateProfile` above, called separately by the screen after a successful upload.
-export async function uploadAvatar(userId: string, image: Asset): Promise<string> {
+export async function uploadAvatar(userId: string, image: PickedPhoto): Promise<string> {
   if (!image.uri) throw new Error('No image selected');
 
   const extension = image.fileName?.split('.').pop() ?? 'jpg';
@@ -34,7 +34,7 @@ export async function uploadAvatar(userId: string, image: Asset): Promise<string
 
   const { error } = await supabase.storage
     .from('avatars')
-    .upload(path, arrayBuffer, { contentType: image.type ?? 'image/jpeg' });
+    .upload(path, arrayBuffer, { contentType: image.mimeType ?? 'image/jpeg' });
 
   if (error) throw error;
 

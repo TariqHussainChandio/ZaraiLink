@@ -1,13 +1,12 @@
 import { ImagePlus, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import type { Asset } from 'react-native-image-picker';
 import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
 import { hapticTap } from '../../../utils/haptics';
-import { pickPhotos } from '../../../utils/photoPicker';
+import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
 
 export interface ChatInputProps {
-  onSend: (body: string, images: Asset[]) => void;
+  onSend: (body: string, images: PickedPhoto[]) => void;
   sending?: boolean;
 }
 
@@ -15,7 +14,7 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [value, setValue] = useState('');
-  const [images, setImages] = useState<Asset[]>([]);
+  const [images, setImages] = useState<PickedPhoto[]>([]);
 
   const pickImages = async () => {
     const assets = await pickPhotos({ selectionLimit: 4 });

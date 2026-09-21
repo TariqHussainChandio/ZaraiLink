@@ -156,7 +156,7 @@ describe('resolveExpertDocumentUrl', () => {
 
 describe('uploadExpertDocument', () => {
   it('returns null without uploading when there is no file uri', async () => {
-    const result = await uploadExpertDocument('user-1', {});
+    const result = await uploadExpertDocument('user-1', { uri: '' });
     expect(result).toBeNull();
     expect(mockedSupabase.storage.from).not.toHaveBeenCalled();
   });
@@ -168,7 +168,7 @@ describe('uploadExpertDocument', () => {
     const path = await uploadExpertDocument('user-1', {
       uri: 'file:///tmp/cert.pdf',
       fileName: 'cert.pdf',
-      type: 'application/pdf',
+      mimeType: 'application/pdf',
     });
 
     expect(mockedSupabase.storage.from).toHaveBeenCalledWith('expert-documents');

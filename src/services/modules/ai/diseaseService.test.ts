@@ -22,7 +22,7 @@ beforeEach(() => {
 
 describe('uploadDiseaseImage', () => {
   it('throws when no image uri is provided', async () => {
-    await expect(uploadDiseaseImage('user-1', {})).rejects.toThrow('No image selected');
+    await expect(uploadDiseaseImage('user-1', { uri: '' })).rejects.toThrow('No image selected');
   });
 
   it('uploads to the disease-images bucket and returns the public URL', async () => {
@@ -32,7 +32,7 @@ describe('uploadDiseaseImage', () => {
       getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://example.com/disease.jpg' } })),
     } as never);
 
-    const url = await uploadDiseaseImage('user-1', { uri: 'file:///tmp/leaf.jpg', fileName: 'leaf.jpg', type: 'image/jpeg' });
+    const url = await uploadDiseaseImage('user-1', { uri: 'file:///tmp/leaf.jpg', fileName: 'leaf.jpg', mimeType: 'image/jpeg' });
 
     expect(mockedSupabase.storage.from).toHaveBeenCalledWith('disease-images');
     expect(uploadMock).toHaveBeenCalledWith(
