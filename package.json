@@ -6,8 +6,13 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "test:ci": "jest --ci --coverage",
+    "knip": "knip",
+    "reality": "python scripts/check_reality.py --tools knip,eslint",
+    "hooks:install": "lefthook install"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -39,6 +44,8 @@
     "@babel/plugin-transform-export-namespace-from": "^7.29.7",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
     "@react-native-community/cli": "20.1.0",
     "@react-native-community/cli-platform-android": "20.1.0",
     "@react-native-community/cli-platform-ios": "20.1.0",
@@ -53,6 +60,8 @@
     "@types/react-test-renderer": "^19.1.0",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
+    "knip": "^6.37.0",
+    "lefthook": "^2.1.14",
     "prettier": "2.8.8",
     "react-test-renderer": "19.2.3",
     "supabase": "^2.113.0",
