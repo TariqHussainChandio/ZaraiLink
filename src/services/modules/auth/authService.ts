@@ -66,6 +66,11 @@ export async function resendSignupOtp(channel: AuthChannel, identifier: string) 
 }
 
 export async function resetPassword(email: string) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  // Without redirectTo, Supabase falls back to the project's site_url (a placeholder value with
+  // nothing hosted there, since this app has no web frontend) — the app-scheme deep link below is
+  // registered in AndroidManifest.xml/linking.ts and caught by authStore's Linking listener.
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'zarailink://reset-password',
+  });
   if (error) throw error;
 }

@@ -22,6 +22,15 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
+        <!-- Catches zarailink://reset-password links from password-reset emails (authService.ts's
+             resetPassword). No android:autoVerify — that's for HTTPS App Links domain
+             verification, not applicable to a custom scheme. -->
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="zarailink" android:host="reset-password" />
+        </intent-filter>
       </activity>
     </application>
 </manifest>

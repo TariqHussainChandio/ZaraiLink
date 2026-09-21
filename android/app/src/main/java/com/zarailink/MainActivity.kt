@@ -1,5 +1,6 @@
 package com.zarailink
 
+import android.content.Intent
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -19,4 +20,16 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+  /**
+   * Required for React Native's `Linking` module to receive a deep link (e.g.
+   * zarailink://reset-password) while the app is already running. MainActivity's launchMode is
+   * `singleTask` (see AndroidManifest.xml), so a tapped link delivers here via onNewIntent
+   * instead of a fresh onCreate — without this override, Linking.addEventListener('url', ...)
+   * never fires and only the cold-start case (Linking.getInitialURL()) would work.
+   */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+  }
 }

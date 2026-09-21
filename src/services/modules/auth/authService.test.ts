@@ -137,10 +137,15 @@ describe('resendSignupOtp', () => {
 });
 
 describe('resetPassword', () => {
-  it('requests a reset email', async () => {
+  it('requests a reset email with the app-scheme deep link as the redirect target', async () => {
     mockedSupabase.auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
     await resetPassword('farmer@example.com');
-    expect(mockedSupabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('farmer@example.com');
+    // Without an explicit redirectTo, Supabase falls back to the project's site_url — a
+    // placeholder with nothing hosted there, since this app has no web frontend. Regression
+    // guard: this must stay pointed at the app's own deep link, not the default.
+    expect(mockedSupabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('farmer@example.com', {
+      redirectTo: 'zarailink://reset-password',
+    });
   });
 
   it('throws on error', async () => {
