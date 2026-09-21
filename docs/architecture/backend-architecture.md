@@ -11,8 +11,9 @@ those three don't cover: the layering, the auth flow, and the three Supabase cli
 The mobile app talks to Supabase directly for identity (Auth) and for reads/writes RLS already
 authorizes correctly on its own. FastAPI exists for the operations RLS structurally can't express
 alone — cross-row business rules (checkout math, order state transitions, stock adjustment
-semantics), anything needing a privileged Supabase call (AI inference writes, audit logging), and
-anywhere a client-supplied value (an amount, a status, an actor id) must never be trusted as-is.
+semantics), the one operation needing a privileged Supabase call (AI inference writes — see
+below), and anywhere a client-supplied value (an amount, a status, an actor id) must never be
+trusted as-is.
 Every such operation for all 15 domains now goes through this service; nothing new was invented
 beyond what each domain's existing frontend logic already did — the logic moved, it wasn't
 redesigned.
@@ -47,6 +48,19 @@ Cross-domain business calls (e.g. `orders_service` reducing `dealer_service`'s i
 confirm, `payments_service` calling `orders_service.update_order_status`, several services
 calling the shared `audit_log_service.log_admin_action`) are direct in-process Python calls —
 this is one FastAPI monolith, not a set of services, so there's no HTTP hop between domains.
+
+## Request-level middleware (`main.py`)
+
+Two cross-cutting concerns are wired at the app level, before any route runs — neither is a
+per-domain concern, so neither lives in `services/`:
+
+- **CORS**: `CORSMiddleware` reads an `ALLOWED_ORIGINS` allowlist (env-driven, defaults to local
+  dev origins) instead of `allow_origins=["*"]`. This only matters for browser callers (Swagger
+  UI, a future admin web surface) — the mobile app itself isn't subject to CORS.
+- **Rate limiting**: `slowapi`'s `limiter` (`core/rate_limit.py`) applies a 200/minute-per-IP
+  default to every route automatically via `SlowAPIMiddleware`, with a tighter 10/minute override
+  on `/api/v1/disease/predict` specifically — the one genuinely expensive, model-inference
+  endpoint. Both have permanent regression tests in `backend/tests/unit/test_main.py`.
 
 ## Authentication flow (`core/auth.py`)
 
@@ -99,16 +113,31 @@ Supabase Auth itself (`supabase.auth.signUp/signIn/signOut/...`) stays entirely 
 | `get_service_role_client()` | service-role key, bypasses RLS | only the narrow, documented cases below |
 | `get_public_client()` | anon key, no user identity | only reads a table's RLS/grants already expose to `anon` (e.g. reference-data lookups, marketplace browsing) |
 
-Service-role is used in exactly four places: `audit_log_service` (`audit_logs` is
-admin-select-only by RLS regardless), the notifications trigger domain (inserts were already
-trigger-only, never client-writable), disease inference (`disease_cases`/`disease_predictions`
-writes), and the `available_stock` RPC call during checkout. Every one of those derives its
-filtering identifier from the verified `AuthenticatedUser`, never from a request value — a
-service-role client bypasses RLS entirely, so this discipline is the only thing standing in for
-it. Three admin-facing reads (`fetch_all_profiles`, `fetch_reports`, `fetch_all_orders`) that
-might look like service-role candidates deliberately use the user-scoped client instead, since
-the calling user IS an admin and RLS already permits admin-wide reads for those tables — no
-bypass needed.
+Service-role is used in exactly one place today: disease inference
+(`repositories/disease_repository.py`, `disease_cases`/`disease_predictions` reads and writes) —
+confirmed by grepping every repository for `get_service_role_client`. It derives its filtering
+identifier from the verified `AuthenticatedUser`, never from a request value; ownership
+(`case.user_id == caller.id`, or admin) is checked in `services/disease_service.py` before
+trusting anything the repository returns — a service-role client bypasses RLS entirely, so that
+discipline is the only thing standing in for it.
+
+Three domains that might look like service-role candidates deliberately don't reach for it,
+each with its own reason documented at the call site:
+- `audit_log_service.log_admin_action` uses the user-scoped client — every caller has already
+  passed `require_admin`, and `audit_logs`' insert policy is admin-only, so RLS already permits
+  the write; there's no reason for a full-bypass client just to log an action the caller was
+  already allowed to take.
+- `orders_repository.get_available_stock` calls the `available_stock` RPC through the
+  user-scoped client too — the Postgres function itself is `security definer` (elevated at the
+  database level), so the elevation lives in the RPC, not in the calling client.
+- Notification *creation* isn't a backend code path at all — it's written entirely by Postgres
+  triggers calling `public.create_notification` (`security definer`), with no FastAPI
+  involvement (see [notifications.md](notifications.md)). The backend's own
+  `notifications_repository.py` (reading, marking read) uses the user-scoped client like
+  everything else.
+- Three admin-facing reads (`fetch_all_profiles`, `fetch_reports`, `fetch_all_orders`) also use
+  the user-scoped client, since the calling user IS an admin and RLS already permits admin-wide
+  reads for those tables — no bypass needed.
 
 ## Storage
 
@@ -136,9 +165,13 @@ session, unchanged by this migration. Only the *write* side of each of those dom
 `src/services/api/client.ts` exports `apiFetch<T>(path, options)` — attaches the current Supabase
 session's access token as `Authorization: Bearer <token>`, sends to `ENV.apiBaseUrl`, parses
 JSON, and throws a typed `ApiError` (carrying the backend's `detail` message and HTTP status) on
-a non-2xx response. Every domain service under `src/services/modules/` calls through this one
-function; none construct their own `fetch` calls or attach tokens independently. `authService.ts`
-(`src/services/modules/auth/`) is the one exception — it never calls FastAPI at all.
+a non-2xx response. Every domain service's business-logic calls go through this one function;
+none construct their own `fetch` calls or attach tokens independently. Several services (`marketplace`,
+`messaging`, `profile`, `expert`, `consultations`, `disease`) also import `supabase` directly
+alongside `apiFetch` — confirmed to be Storage-bucket upload/`getPublicUrl`/`createSignedUrls`
+calls only (per the "Storage" section above), plus one `supabase.auth.updateUser` for password
+changes — never a `.from(table)` read/write bypassing FastAPI. `authService.ts`
+(`src/services/modules/auth/`) is the one service that never calls FastAPI at all.
 
 ## Model integration (disease domain)
 

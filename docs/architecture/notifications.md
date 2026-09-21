@@ -49,8 +49,9 @@ Postgres trigger reacting to the event it represents (`20260827080000_notificati
 | Expert verification decision | `experts` after update (`verification_status`) | the expert |
 | Account suspension toggled | `profiles` after update (`is_suspended`) | the affected user |
 
-Consultation triggers are schema-ready but dormant — nothing writes to `consultations` yet
-(Module 14).
+Consultation triggers are live — Module 14 (`consultationService.ts`, `RequestConsultationScreen`,
+`ConsultationListScreen`, `ConsultationDetailScreen`) writes to `consultations` and
+`consultation_messages` and drives both the request and status-change notification events above.
 
 ## Entry points by role
 
