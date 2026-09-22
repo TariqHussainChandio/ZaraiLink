@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Dead-code detection: unused files, exports, types, and dependencies. Findings are a ratchet in
+  // scripts/check_reality.py: what exists today is recorded, anything new fails CI, and each
+  // cleanup lowers the recorded count.
+  // jest.config.js names babel-jest as a transform string; jest-expo provides it.
+  "ignoreUnresolved": ["babel-jest"]
+}

@@ -1,0 +1,360 @@
+name: CI
+
+# One workflow for every pull request and every push to main. Path filtering happens INSIDE it
+# (the `changes` job) rather than in `on.paths`, because a workflow that is skipped by a path filter
+# never reports a status, which would leave a required check pending forever. The final `ci-required`
+# job always runs and is the single check to require in branch protection.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Nothing gets a token unless the job asks for one.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.12.17"
+  SUPABASE_CLI_VERSION: "2.115.0"
+  # lefthook installs git hooks in its postinstall step on a developer machine; never on a runner.
+  LEFTHOOK: "0"
+
+jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      frontend: ${{ steps.areas.outputs.frontend }}
+      android: ${{ steps.areas.outputs.android }}
+      backend: ${{ steps.areas.outputs.backend }}
+      database: ${{ steps.areas.outputs.database }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: areas
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "pull_request" ]; then
+            printf 'frontend=true\nandroid=true\nbackend=true\ndatabase=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only "$BASE_SHA" HEAD)"
+          match() { if printf '%s\n' "$changed" | grep -Eq "$1"; then echo true; else echo false; fi; }
+          {
+            echo "frontend=$(match '^(src/|__tests__/|__mocks__/|App\.tsx$|index\.js$|app\.config\.ts$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|jest\.config\.js$|jest\.env\.js$|eslint\.config\.js$|\.prettierrc\.js$|knip\.jsonc$|scripts/|\.github/)')"
+            echo "android=$(match '^(src/|App\.tsx$|index\.js$|app\.config\.ts$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|\.github/)')"
+            echo "backend=$(match '^(backend/|scripts/|osv-scanner\.toml$|\.github/)')"
+            echo "database=$(match '^(supabase/|backend/|\.github/)')"
+          } >> "$GITHUB_OUTPUT"
+
+  reality:
+    name: Reality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      # No stubs, fake behaviour, swallowed errors, or growth in recorded debt (scripts/check_reality.py).
+      - name: Text rules
+        run: python scripts/check_reality.py
+
+  frontend:
+    name: Frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Tests with coverage
+        run: >-
+          npm run test:ci --
+          --coverageReporters=json-summary --coverageReporters=text-summary --coverageReporters=lcov
+      # Dead code (knip) and ESLint warnings may only go down, via the reality gate.
+      - name: Dead-code and lint-warning ratchets
+        run: python scripts/check_reality.py --tools knip,eslint
+      - name: Coverage summary
+        run: python scripts/ci/coverage_summary.py "Frontend (jest)" coverage/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-coverage
+          path: coverage/
+          retention-days: 14
+
+  android:
+    name: Android build
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+      # Caches Gradle's dependencies and build cache. Pull requests only read it; the main branch writes it.
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - run: npm ci
+      # Expo's own project checks: every package at the version the SDK was tested with, and a valid app config.
+      - name: Expo doctor
+        run: npm run doctor
+      # android/ is generated output and never checked in. Build it from app.config.ts exactly as a developer does.
+      - name: Generate the native project
+        run: npx expo prebuild --platform android --clean --no-install
+      # One ABI (the emulator's) proves the whole build and keeps CI minutes down. The release build is
+      # here on purpose: R8 minification breaks apps in ways a debug build never shows.
+      - name: Build debug and release APKs
+        working-directory: android
+        run: ./gradlew assembleDebug assembleRelease -PreactNativeArchitectures=x86_64 --console=plain
+      - name: APK sizes
+        run: |
+          {
+            echo "### Android APK sizes (x86_64 only)"
+            echo
+            echo "| Build | Size |"
+            echo "|---|---|"
+            for variant in debug release; do
+              apk="android/app/build/outputs/apk/$variant/app-$variant.apk"
+              echo "| $variant | $(du -h "$apk" | cut -f1) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  backend:
+    name: Backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      # --frozen: install exactly what uv.lock records, never re-resolve.
+      - run: uv sync --frozen
+      # ruff, formatting, and mypy findings may only go down. mypy alone flags every write path that
+      # crashes against a real database, which the mocked unit tests cannot see.
+      - name: Lint and type ratchets
+        run: uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy
+      - name: Tests for the reality gate itself
+        run: uv run pytest ../scripts/test_check_reality.py -q -p no:cacheprovider
+      - name: Tests with coverage
+        run: uv run pytest --cov --cov-report=term --cov-report=json:coverage.json -q
+      - name: Coverage summary
+        run: python3 ../scripts/ci/coverage_summary.py "Backend (pytest)" coverage.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-coverage
+          path: backend/coverage.json
+          retention-days: 14
+
+  database:
+    name: Database and real-stack tests
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      # Applies the full migration history to a throwaway Postgres and starts Auth and the REST API,
+      # the same local validation done by hand before any `supabase db push`. Fails if any migration
+      # does not apply cleanly.
+      - name: Start local Supabase
+        run: supabase start -x studio,edge-runtime,logflare,vector,imgproxy,supavisor
+      - name: Lint schema for typing errors
+        run: supabase db lint --local --fail-on error
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --frozen
+      # Real Auth, real database, no mocks. The expected-failure tests here flip red the moment the
+      # defect they document is fixed, which forces their marker to be removed.
+      - name: Real-stack tests
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          export LOCAL_SUPABASE_URL="$API_URL"
+          export LOCAL_SUPABASE_ANON_KEY="$ANON_KEY"
+          export LOCAL_SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          uv run pytest tests/integration -rxs -q
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
+
+  security:
+    name: Secrets and known vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install scanners (checksum-verified)
+        run: bash scripts/ci/install-tool.sh gitleaks osv-scanner
+      # Full history, every run: a secret committed once stays in history even after it is deleted.
+      - name: Secret scan
+        run: gitleaks git --redact --no-banner .
+      # Fails on any advisory not listed in osv-scanner.toml. Every accepted entry there expires.
+      - name: Dependency vulnerability scan
+        run: osv-scanner scan source --config osv-scanner.toml -L backend/uv.lock -L package-lock.json
+
+  sast:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      SEMGREP_ENABLE_VERSION_CHECK: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false
+      # Semgrep OSS with the OWASP Top 10, TypeScript, and Python rule packs. The codebase has zero
+      # findings today, so this blocks from day one with no baseline. Telemetry is off.
+      - name: Semgrep
+        run: >-
+          uvx --from semgrep==1.177.0 semgrep scan
+          --config p/owasp-top-ten --config p/typescript --config p/python
+          --metrics=off --error --quiet
+          src backend/app scripts App.tsx index.js
+
+  workflow-lint:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install actionlint (checksum-verified)
+        run: bash scripts/ci/install-tool.sh actionlint
+      - name: actionlint (syntax and expressions)
+        run: actionlint
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false
+      # zizmor: injection, excessive permissions, unpinned actions, and other pipeline weaknesses.
+      - name: zizmor (workflow security)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uvx zizmor==1.30.1 --min-severity low .github/workflows
+
+  pr-hygiene:
+    name: Pull request title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Conventional Commits, so history stays readable and release notes can be generated.
+      - name: Title follows Conventional Commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | npx --no-install commitlint
+
+  ci-required:
+    name: ci-required
+    if: always()
+    needs: [changes, reality, frontend, android, backend, database, security, sast, workflow-lint, pr-hygiene]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      # Skipped jobs (nothing relevant changed) are fine; failed or cancelled ones are not.
+      - name: Every required job passed or was legitimately skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) echo "a required job did not pass"; exit 1 ;;
+          esac

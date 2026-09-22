@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import '../../localization';
 import { DiseaseProcessingScreen } from './DiseaseProcessingScreen';
 import { createDiseaseCase, predictDisease, uploadDiseaseImage } from '../../services/modules/ai/diseaseService';
 import { CONSULTATIONS_ROUTES, APP_TABS } from '../../constants/routes';
@@ -60,7 +61,7 @@ describe('DiseaseProcessingScreen', () => {
     expect(mockUploadDiseaseImage).toHaveBeenCalledWith('farmer-1', {
       uri: 'file://leaf.jpg',
       fileName: 'leaf.jpg',
-      type: 'image/jpeg',
+      mimeType: 'image/jpeg',
     });
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('DiseaseResult', { diseaseCaseId: 'case-1' }));

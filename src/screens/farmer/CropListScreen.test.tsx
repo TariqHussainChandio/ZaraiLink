@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { CropListScreen } from './CropListScreen';
 import { fetchFarmCrops } from '../../services/modules/farmer/farmService';
 import { HOME_ROUTES } from '../../constants/routes';

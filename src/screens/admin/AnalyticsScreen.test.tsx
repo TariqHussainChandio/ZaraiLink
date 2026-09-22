@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import '../../localization';
 import { AdminAnalyticsScreen } from './AnalyticsScreen';
 import { fetchAdminAnalytics } from '../../services/modules/analytics/analyticsService';
 import type { AdminAnalytics } from '../../types/analytics';

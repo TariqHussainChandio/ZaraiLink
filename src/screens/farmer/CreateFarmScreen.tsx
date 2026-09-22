@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
 import { Button, Input, LocationPicker, SelectField } from '../../components/ui';
@@ -10,19 +11,22 @@ import { useReferenceDataStore } from '../../store/referenceDataStore';
 import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
-const farmSchema = z.object({
-  name: z.string().min(2, 'Enter a farm name'),
-  area: z.string(),
-  landUnit: z.string().nullable(),
-  notes: z.string(),
-  country: z.string().nullable(),
-  province: z.string().nullable(),
-  city: z.string().nullable(),
-});
+function buildFarmSchema(nameRequiredMessage: string) {
+  return z.object({
+    name: z.string().min(2, nameRequiredMessage),
+    area: z.string(),
+    landUnit: z.string().nullable(),
+    notes: z.string(),
+    country: z.string().nullable(),
+    province: z.string().nullable(),
+    city: z.string().nullable(),
+  });
+}
 
-type FarmFormValues = z.infer<typeof farmSchema>;
+type FarmFormValues = z.infer<ReturnType<typeof buildFarmSchema>>;
 
 export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -34,6 +38,11 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
   }, [loadUnits]);
 
   const areaUnits = useMemo(() => units.filter(u => u.applies_to === 'area'), [units]);
+
+  const farmSchema = useMemo(
+    () => buildFarmSchema(t('farmer.createFarm.nameRequiredError', 'Enter a farm name')),
+    [t],
+  );
 
   const {
     control,
@@ -68,7 +77,10 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
       });
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Failed to create farm', error instanceof Error ? error.message : String(error));
+      Alert.alert(
+        t('farmer.createFarm.createFailedTitle', 'Failed to create farm'),
+        error instanceof Error ? error.message : String(error),
+      );
     }
   };
 
@@ -78,7 +90,13 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         control={control}
         name="name"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Farm name" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.name?.message} />
+          <Input
+            label={t('farmer.createFarm.farmNameLabel', 'Farm name')}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            error={errors.name?.message}
+          />
         )}
       />
 
@@ -95,7 +113,13 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         control={control}
         name="area"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Area" keyboardType="numeric" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input
+            label={t('farmer.createFarm.areaLabel', 'Area')}
+            keyboardType="numeric"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+          />
         )}
       />
 
@@ -104,7 +128,7 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         name="landUnit"
         render={({ field: { onChange, value } }) => (
           <SelectField
-            label="Land unit"
+            label={t('farmer.createFarm.landUnitLabel', 'Land unit')}
             value={value}
             options={areaUnits.map(u => ({ id: u.code, label: u.label }))}
             onSelect={onChange}
@@ -116,11 +140,23 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         control={control}
         name="notes"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Notes" value={value} onChangeText={onChange} onBlur={onBlur} multiline numberOfLines={3} />
+          <Input
+            label={t('farmer.createFarm.notesLabel', 'Notes')}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            multiline
+            numberOfLines={3}
+          />
         )}
       />
 
-      <Button label="Create Farm" loading={isSubmitting} onPress={handleSubmit(onSubmit)} style={styles.submit} />
+      <Button
+        label={t('farmer.createFarm.createFarmButton', 'Create Farm')}
+        loading={isSubmitting}
+        onPress={handleSubmit(onSubmit)}
+        style={styles.submit}
+      />
     </ScrollView>
   );
 }

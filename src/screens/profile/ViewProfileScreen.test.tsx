@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ViewProfileScreen } from './ViewProfileScreen';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../store/authStore';

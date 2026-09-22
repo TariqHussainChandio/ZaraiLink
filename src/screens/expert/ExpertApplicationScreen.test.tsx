@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { ExpertApplicationScreen } from './ExpertApplicationScreen';
 import {
   fetchExpertProfile,
@@ -112,7 +113,7 @@ describe('ExpertApplicationScreen', () => {
 
   it('submits a new application with a picked document', async () => {
     mockFetchExpertProfile.mockResolvedValue(null);
-    mockPickPhotos.mockResolvedValue([{ uri: 'file://cert.jpg', fileName: 'cert.jpg', type: 'image/jpeg' }]);
+    mockPickPhotos.mockResolvedValue([{ uri: 'file://cert.jpg', fileName: 'cert.jpg', mimeType: 'image/jpeg' }]);
     mockUploadExpertDocument.mockResolvedValue('expert1/cert.jpg');
     mockSubmitExpertApplication.mockResolvedValue({ id: 'expert1' });
 
@@ -127,7 +128,7 @@ describe('ExpertApplicationScreen', () => {
     expect(mockUploadExpertDocument).toHaveBeenCalledWith('expert1', {
       uri: 'file://cert.jpg',
       fileName: 'cert.jpg',
-      type: 'image/jpeg',
+      mimeType: 'image/jpeg',
     });
     expect(mockSubmitExpertApplication).toHaveBeenCalledWith(
       {

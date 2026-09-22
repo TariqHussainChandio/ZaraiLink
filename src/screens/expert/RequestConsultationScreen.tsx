@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { TFunction } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { launchImageLibrary, type Asset } from 'react-native-image-picker';
+import { useTranslation } from 'react-i18next';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Button, Input, SelectField } from '../../components/ui';
@@ -16,25 +17,32 @@ import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useTheme, type Theme } from '../../theme';
 import type { ConsultationPriority } from '../../types/expert';
 import type { Farm } from '../../types/farmer';
+import { pickFromLibrary, type PickedPhoto } from '../../utils/photoPicker';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
 
-const PRIORITY_OPTIONS: { id: ConsultationPriority; label: string }[] = [
-  { id: 'low', label: 'Low' },
-  { id: 'medium', label: 'Medium' },
-  { id: 'high', label: 'High' },
-];
+const PRIORITY_IDS: ConsultationPriority[] = ['low', 'medium', 'high'];
 
-const requestSchema = z.object({
-  subject: z.string().min(3, 'Enter a subject'),
-  cropId: z.string().nullable(),
-  problemDescription: z.string(),
-  farmId: z.string().nullable(),
-  priority: z.enum(['low', 'medium', 'high']),
-});
+// Maps each priority id to its translation key suffix under `expert.requestConsultation`.
+const PRIORITY_KEY_MAP: Record<ConsultationPriority, string> = {
+  low: 'priorityLow',
+  medium: 'priorityMedium',
+  high: 'priorityHigh',
+};
 
-type RequestFormValues = z.infer<typeof requestSchema>;
+function buildRequestSchema(t: TFunction) {
+  return z.object({
+    subject: z.string().min(3, t('expert.requestConsultation.subjectRequiredError')),
+    cropId: z.string().nullable(),
+    problemDescription: z.string(),
+    farmId: z.string().nullable(),
+    priority: z.enum(['low', 'medium', 'high']),
+  });
+}
+
+type RequestFormValues = z.infer<ReturnType<typeof buildRequestSchema>>;
 
 export function RequestConsultationScreen({ route, navigation }: ConsultationsScreenProps<'RequestConsultation'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { expertId, prefill } = route.params;
@@ -45,8 +53,8 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   // A disease-advisory handoff seeds this with the case's already-uploaded remote image —
   // `uploadConsultationAttachments` just does `fetch(image.uri)`, which works the same for a
   // remote `https://` URL as for a local picker `file://` URI, so no service changes needed.
-  const [images, setImages] = useState<Asset[]>(
-    prefill?.imageUrl ? [{ uri: prefill.imageUrl, fileName: 'disease-photo.jpg', type: 'image/jpeg' }] : [],
+  const [images, setImages] = useState<PickedPhoto[]>(
+    prefill?.imageUrl ? [{ uri: prefill.imageUrl, fileName: 'disease-photo.jpg', mimeType: 'image/jpeg' }] : [],
   );
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,6 +64,12 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
       console.warn('[RequestConsultationScreen] failed to load farms:', err);
     });
   }, [userId, loadCrops]);
+
+  const requestSchema = useMemo(() => buildRequestSchema(t), [t]);
+  const priorityOptions = useMemo(
+    () => PRIORITY_IDS.map(id => ({ id, label: t(`expert.requestConsultation.${PRIORITY_KEY_MAP[id]}`) })),
+    [t],
+  );
 
   const {
     control,
@@ -73,8 +87,9 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   });
 
   const pickImages = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 4 });
-    if (result.assets) setImages(result.assets);
+    const photos = await pickFromLibrary({ selectionLimit: 4 });
+    // Backing out of the picker returns nothing; keep whatever was already chosen.
+    if (photos.length > 0) setImages(photos);
   };
 
   const onSubmit = async (values: RequestFormValues) => {
@@ -98,7 +113,7 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
 
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Could not send request', error instanceof Error ? error.message : String(error));
+      Alert.alert(t('expert.requestConsultation.sendRequestError'), error instanceof Error ? error.message : String(error));
     } finally {
       setSubmitting(false);
     }
@@ -110,7 +125,13 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
         control={control}
         name="subject"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Subject" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.subject?.message} />
+          <Input
+            label={t('expert.requestConsultation.subjectLabel')}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            error={errors.subject?.message}
+          />
         )}
       />
 
@@ -119,7 +140,7 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
         name="cropId"
         render={({ field: { onChange, value } }) => (
           <SelectField
-            label="Crop (optional)"
+            label={t('expert.requestConsultation.cropLabel')}
             value={value}
             options={crops.map(c => ({ id: c.id, label: c.name }))}
             onSelect={onChange}
@@ -133,7 +154,7 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
           name="farmId"
           render={({ field: { onChange, value } }) => (
             <SelectField
-              label="Farm (optional)"
+              label={t('expert.requestConsultation.farmLabel')}
               value={value}
               options={farms.map(f => ({ id: f.id, label: f.name }))}
               onSelect={onChange}
@@ -147,7 +168,7 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
         name="problemDescription"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label="Describe the problem"
+            label={t('expert.requestConsultation.problemDescriptionLabel')}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -161,21 +182,32 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
         control={control}
         name="priority"
         render={({ field: { onChange, value } }) => (
-          <SelectField label="Priority" value={value} options={PRIORITY_OPTIONS} onSelect={onChange} searchable={false} />
+          <SelectField
+            label={t('expert.requestConsultation.priorityLabel')}
+            value={value}
+            options={priorityOptions}
+            onSelect={onChange}
+            searchable={false}
+          />
         )}
       />
 
-      <Text style={styles.label}>Photos (optional)</Text>
+      <Text style={styles.label}>{t('expert.requestConsultation.photosLabel')}</Text>
       <View style={styles.imageRow}>
         {images.map(image => (
           <Image key={image.uri} source={{ uri: image.uri }} style={styles.thumb} />
         ))}
         <TouchableOpacity style={styles.addImage} onPress={pickImages}>
-          <Text style={styles.addImageLabel}>+ Add</Text>
+          <Text style={styles.addImageLabel}>{t('expert.requestConsultation.addPhoto')}</Text>
         </TouchableOpacity>
       </View>
 
-      <Button label="Send Request" loading={submitting} onPress={handleSubmit(onSubmit)} style={styles.submit} />
+      <Button
+        label={t('expert.requestConsultation.sendRequest')}
+        loading={submitting}
+        onPress={handleSubmit(onSubmit)}
+        style={styles.submit}
+      />
     </ScrollView>
   );
 }

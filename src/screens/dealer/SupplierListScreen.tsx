@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
@@ -10,6 +11,7 @@ import type { Supplier } from '../../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -45,9 +47,9 @@ export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>)
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load suppliers"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('dealer.supplierList.couldntLoadTitle')}
+        description={t('dealer.shared.checkConnectionDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -68,19 +70,22 @@ export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>)
                 <Text style={styles.name}>{item.name}</Text>
                 <Badge label={item.status} tone={item.status === 'active' ? 'success' : 'neutral'} />
               </View>
-              <Text style={styles.meta}>{item.products_supplied ?? 'No products listed'}</Text>
+              <Text style={styles.meta}>{item.products_supplied ?? t('dealer.supplierList.noProductsListed')}</Text>
             </Card>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <EmptyState title="No suppliers yet" description="Add your first supplier to get started." />
+          <EmptyState
+            title={t('dealer.supplierList.emptyTitle')}
+            description={t('dealer.supplierList.emptyDescription')}
+          />
         }
       />
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.SupplierDetail, {})}
       >
-        <Text style={styles.fabLabel}>+ New Supplier</Text>
+        <Text style={styles.fabLabel}>{t('dealer.supplierList.newSupplierFab')}</Text>
       </TouchableOpacity>
     </View>
   );

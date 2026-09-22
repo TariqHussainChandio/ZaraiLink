@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { UserManagementScreen } from './UserManagementScreen';
 import { fetchAllProfiles, setProfileSuspended, updateUserRole } from '../../services/modules/admin/adminService';
 import { useAuthStore } from '../../store/authStore';

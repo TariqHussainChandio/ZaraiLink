@@ -1,10 +1,14 @@
 import type { Session, User } from '@supabase/supabase-js';
+import { Alert, Linking } from 'react-native';
 import { create } from 'zustand';
 import type { Role } from '../constants/roles';
 import { supabase } from '../services/supabase/client';
 import type { Profile } from '../types/profile';
 
-export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'suspended';
+// 'passwordRecovery': the user tapped a password-reset email link. A real session now exists
+// (via exchangeCodeForSession below) but they haven't set a new password yet — RootNavigator
+// routes this status to ResetPasswordScreen instead of the normal authenticated app shell.
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'suspended' | 'passwordRecovery';
 
 interface AuthState {
   session: Session | null;
@@ -84,15 +88,46 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      // A password-reset link was just exchanged (handleDeepLink below) — route to
+      // ResetPasswordScreen instead of applySession, which would otherwise grant full app
+      // access via the recovery session before the user has actually set a new password.
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        if (!cancelled) {
+          set({ session, user: session.user, status: 'passwordRecovery' });
+        }
+        return;
+      }
       applySession(session).catch(err => {
         console.warn('[authStore] failed to apply auth state change:', err);
       });
     });
 
+    // Password-reset emails link to zarailink://reset-password?code=... (authService.ts's
+    // resetPassword, registered natively from `scheme` in app.config.ts). PKCE's `code` isn't a session
+    // by itself — exchanging it is what actually triggers the PASSWORD_RECOVERY event above.
+    const handleDeepLink = (url: string | null) => {
+      if (!url) return;
+      const code = new URL(url).searchParams.get('code');
+      if (!code) return;
+      supabase.auth.exchangeCodeForSession(code).catch(err => {
+        console.warn('[authStore] failed to exchange recovery code:', err);
+        Alert.alert(
+          'Link expired or invalid',
+          'This password reset link is no longer valid. Please request a new one.',
+        );
+      });
+    };
+
+    // Cold start (app opened by tapping the link) and warm start (app already running) are two
+    // separate APIs on React Native's Linking module — both are needed to catch every case.
+    Linking.getInitialURL().then(handleDeepLink);
+    const urlSubscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+
     return () => {
       cancelled = true;
       listener.subscription.unsubscribe();
+      urlSubscription.remove();
     };
   },
 

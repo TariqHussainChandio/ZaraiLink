@@ -1,5 +1,6 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { NotificationRow } from '../../components/features/notifications/NotificationRow';
@@ -13,6 +14,7 @@ const ORDER_TYPES = new Set(['order_new', 'order_status_changed', 'payment_statu
 
 export function NotificationListScreen() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   // Untyped: this screen is mounted inside three different tab navigators (buyer/farmer/dealer,
@@ -81,9 +83,9 @@ export function NotificationListScreen() {
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load notifications"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('notifications.notificationList.loadErrorTitle')}
+        description={t('notifications.notificationList.loadErrorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -95,7 +97,7 @@ export function NotificationListScreen() {
     <View style={styles.container}>
       {hasUnread ? (
         <TouchableOpacity onPress={onMarkAllRead} style={styles.markAllRow}>
-          <Text style={styles.markAllLabel}>Mark all as read</Text>
+          <Text style={styles.markAllLabel}>{t('notifications.notificationList.markAllReadLabel')}</Text>
         </TouchableOpacity>
       ) : null}
       <FlatList
@@ -105,7 +107,10 @@ export function NotificationListScreen() {
           <NotificationRow notification={item} onPress={() => onPressNotification(item)} />
         )}
         ListEmptyComponent={
-          <EmptyState title="No notifications yet" description="Updates about your activity will show up here." />
+          <EmptyState
+            title={t('notifications.notificationList.emptyTitle')}
+            description={t('notifications.notificationList.emptyDescription')}
+          />
         }
       />
     </View>

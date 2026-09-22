@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar, Button, EmptyState, Spinner } from '../../components/ui';
 import { RatingSummary } from '../../components/features/reviews/RatingSummary';
@@ -18,6 +19,7 @@ import type { MarketplaceScreenProps } from '../../navigation/stacks/Marketplace
 
 export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProps<'ListingDetail'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
@@ -54,9 +56,9 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
   if (!listing) {
     return (
       <EmptyState
-        title="Listing not found"
-        description="It may have been removed, or there was a connection problem."
-        actionLabel="Retry"
+        title={t('marketplace.listingDetail.notFoundTitle')}
+        description={t('marketplace.listingDetail.notFoundDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -74,8 +76,11 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
 
       <Text style={styles.title}>{listing.title}</Text>
       <Text style={styles.price}>
-        Rs. {listing.price.toFixed(0)} / {listing.unit} · {listing.quantity} {listing.unit}{' '}
-        available
+        {t('marketplace.listingDetail.priceLine', {
+          price: listing.price.toFixed(0),
+          unit: listing.unit,
+          quantity: listing.quantity,
+        })}
       </Text>
       {listing.category ? <Text style={styles.category}>{listing.category.name}</Text> : null}
       {listing.description ? <Text style={styles.description}>{listing.description}</Text> : null}
@@ -89,7 +94,7 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
 
       {isOwner ? (
         <Button
-          label="Edit Listing"
+          label={t('marketplace.listingDetail.editListingLabel')}
           onPress={() =>
             navigation.navigate(MARKETPLACE_ROUTES.EditListing, { listingId: listing.id })
           }
@@ -98,7 +103,7 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
       ) : (
         <>
           <Button
-            label="Add to Cart"
+            label={t('marketplace.listingDetail.addToCartLabel')}
             onPress={() => {
               addItem({
                 listingId: listing.id,
@@ -109,12 +114,15 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
                 image: listing.images[0] ?? null,
               });
               hapticTap();
-              Alert.alert('Added to cart', `${listing.title} was added to your cart.`);
+              Alert.alert(
+                t('marketplace.listingDetail.addedToCartTitle'),
+                t('marketplace.listingDetail.addedToCartMessage', { title: listing.title }),
+              );
             }}
             style={styles.action}
           />
           <Button
-            label="Message Seller"
+            label={t('marketplace.listingDetail.messageSellerLabel')}
             variant="secondary"
             loading={messaging}
             onPress={async () => {
@@ -136,7 +144,7 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
       )}
 
       <View style={styles.reviewsSection}>
-        <Text style={styles.sectionTitle}>Reviews</Text>
+        <Text style={styles.sectionTitle}>{t('marketplace.listingDetail.reviewsTitle')}</Text>
         <RatingSummary reviews={reviews} />
         {reviews.map(review => (
           <ReviewCard key={review.id} review={review} />

@@ -1,4 +1,4 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { apiFetch } from '../../api/client';
 import { supabase } from '../../supabase/client';
 import type {
@@ -156,7 +156,7 @@ export async function fetchListingViewCounts(listingIds: string[]): Promise<Reco
   });
 }
 
-export async function uploadListingImages(userId: string, images: Asset[]): Promise<string[]> {
+export async function uploadListingImages(userId: string, images: PickedPhoto[]): Promise<string[]> {
   const urls: string[] = [];
 
   for (const image of images) {
@@ -170,7 +170,7 @@ export async function uploadListingImages(userId: string, images: Asset[]): Prom
 
     const { error } = await supabase.storage
       .from('listing-images')
-      .upload(path, arrayBuffer, { contentType: image.type ?? 'image/jpeg' });
+      .upload(path, arrayBuffer, { contentType: image.mimeType ?? 'image/jpeg' });
 
     if (error) throw error;
 

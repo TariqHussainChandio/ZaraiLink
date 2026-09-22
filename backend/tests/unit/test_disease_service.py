@@ -13,8 +13,10 @@ from fastapi import HTTPException
 from PIL import UnidentifiedImageError
 
 from app.core.auth import AuthenticatedUser
+from app.core.config import settings
 from app.services import disease_service
 from app.services.ai_engine import ModelUnavailableError
+from app.services.disease_service import DEFAULT_DESCRIPTION, DESCRIPTIONS, _humanize_class_name
 
 OWNER = AuthenticatedUser(id="owner-1", email="owner@x.com", role="farmer", access_token="t")
 STRANGER = AuthenticatedUser(id="stranger-1", email="stranger@x.com", role="farmer", access_token="t")
@@ -122,3 +124,77 @@ def test_get_case_for_user_allows_owner_and_unwraps_prediction_list():
     ):
         result = disease_service.get_case_for_user(OWNER, CASE["id"])
     assert result["prediction"] == {"id": "pred-1"}
+
+
+# --- _humanize_class_name: real PlantVillage taxonomy strings, chosen to cover the tricky
+# formatting cases (trailing underscore, comma in crop name, parenthetical, multi-word disease
+# joined by a bare space, and the "___healthy" suffix) rather than a synthetic example ---
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("Tomato___Late_blight", "Tomato — Late blight"),
+        ("Tomato___healthy", "Tomato — Healthy"),
+        ("Corn_(maize)___Common_rust_", "Corn (maize) — Common rust"),
+        ("Pepper,_bell___Bacterial_spot", "Pepper, bell — Bacterial spot"),
+        ("Grape___Esca_(Black_Measles)", "Grape — Esca (Black Measles)"),
+        (
+            "Tomato___Spider_mites Two-spotted_spider_mite",
+            "Tomato — Spider mites Two-spotted spider mite",
+        ),
+    ],
+)
+def test_humanize_class_name(raw, expected):
+    assert _humanize_class_name(raw) == expected
+
+
+def test_descriptions_covers_every_configured_model_class():
+    # Regression guard: every class the real model can actually predict (settings.model_classes,
+    # loaded from model_metadata.json) must have a real DESCRIPTIONS entry — a class missing here
+    # would silently fall back to DEFAULT_DESCRIPTION for every prediction of that type.
+    missing = [c for c in settings.model_classes if c not in DESCRIPTIONS]
+    assert missing == [], f"model_classes entries with no DESCRIPTIONS copy: {missing}"
+
+
+def test_descriptions_entries_are_never_empty():
+    # Every entry must be real, non-empty advisory copy — never the old (None, []) shape.
+    for raw_class, (description, actions) in DESCRIPTIONS.items():
+        assert description, f"{raw_class!r} has an empty description"
+        assert actions, f"{raw_class!r} has no recommended actions"
+
+
+def test_unknown_class_falls_back_to_default_description_not_none():
+    # Direct regression guard for the exact bug this pass fixed: DESCRIPTIONS.get(unknown, ...)
+    # must never resolve to (None, []) — a bare label with no advisory copy at all.
+    description, actions = DESCRIPTIONS.get("Some_Future_Class___Not_Yet_Documented", DEFAULT_DESCRIPTION)
+    assert description is not None
+    assert description == DEFAULT_DESCRIPTION[0]
+    assert actions == DEFAULT_DESCRIPTION[1]
+    assert len(actions) > 0
+
+
+@pytest.mark.asyncio
+async def test_predict_stores_humanized_label_and_looks_up_description_by_raw_label():
+    # End-to-end (within this mocked test) check that predict() humanizes the STORED label but
+    # looks up DESCRIPTIONS by the RAW label the classifier actually returned — getting this
+    # order backwards would make every real prediction miss its DESCRIPTIONS entry.
+    captured = {}
+
+    def fake_insert_prediction(**kwargs):
+        captured.update(kwargs)
+        return {"id": "pred-1", **kwargs}
+
+    with patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE):
+        with _mock_httpx_image_fetch():
+            with patch(
+                "app.services.disease_service.classifier.predict",
+                return_value=("Tomato___Late_blight", 0.87),
+            ):
+                with patch(
+                    "app.services.disease_service.disease_repository.insert_prediction",
+                    side_effect=fake_insert_prediction,
+                ):
+                    await disease_service.predict(OWNER, CASE["id"])
+
+    assert captured["predicted_disease"] == "Tomato — Late blight"
+    assert captured["description"] == DESCRIPTIONS["Tomato___Late_blight"][0]
+    assert captured["recommended_actions"] == DESCRIPTIONS["Tomato___Late_blight"][1]

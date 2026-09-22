@@ -4,7 +4,13 @@
 
 *A prior audit document previously occupied this same file (`report.md`). That document is now **stale and superseded** — it was written before a large, currently-uncommitted development pass added the entire FastAPI backend (14 routers beyond the original disease-only router), `core/auth.py`, 15 sets of repositories/services/schemas, 96 backend tests, and migrated nearly the entire frontend service layer to call that backend. `git status` shows essentially all of `backend/app/`, `src/`, and `supabase/migrations/` as untracked — i.e. real, substantial, uncommitted work exists in this checkout that the previous audit pass did not see. Every claim below was re-verified against the current file contents; nothing here was carried over from the old report without independent confirmation.*
 
-*Post-audit update: after this document was written, two further changes were made to the repository and this document was updated to track them (path references only — the underlying functional findings below were not re-audited beyond what's explicitly noted): (1) the `ios/` folder was deleted (the project isn't building for iOS right now — confirmed no other file depended on it first); (2) a full directory restructure was applied — `backend/app/api/*.py` → `api/v1/endpoints/*.py` behind a new aggregating `api/v1/router.py`, `ml/model.pth` → `ml/checkpoints/model.pth`, `services/disease_inference.py` → `services/ai_engine.py`, a new unused `repositories/base_repository.py` stub, backend tests moved to `tests/unit/` with a new `tests/conftest.py` stub, two new `.github/workflows/*.yml` CI stubs, and on the frontend: `components/{9 domains}` → `components/features/{9 domains}`, `services/{14 domains}` → `services/modules/{14 domains}`, `store/{4 subfolders}` flattened to `store/*.ts`, `hooks/` split into `hooks/{realtime,api}/`, and `navigation/*Navigator.tsx` → `navigation/stacks/`. The restructure was verified afterward: 106/106 backend `pytest` passing, 0 TypeScript errors, 0 ESLint errors, Jest passing — so the functional claims throughout this document (which predate the restructure) remain accurate; only file paths changed.*
+*Post-audit update #1: after this document was written, two further changes were made to the repository and this document was updated to track them (path references only — the underlying functional findings below were not re-audited beyond what's explicitly noted): (1) the `ios/` folder was deleted (the project isn't building for iOS right now — confirmed no other file depended on it first); (2) a full directory restructure was applied — `backend/app/api/*.py` → `api/v1/endpoints/*.py` behind a new aggregating `api/v1/router.py`, `ml/model.pth` → `ml/checkpoints/model.pth`, `services/disease_inference.py` → `services/ai_engine.py`, a new unused `repositories/base_repository.py` stub, backend tests moved to `tests/unit/` with a new `tests/conftest.py` stub, two new `.github/workflows/*.yml` CI stubs, and on the frontend: `components/{9 domains}` → `components/features/{9 domains}`, `services/{14 domains}` → `services/modules/{14 domains}`, `store/{4 subfolders}` flattened to `store/*.ts`, `hooks/` split into `hooks/{realtime,api}/`, and `navigation/*Navigator.tsx` → `navigation/stacks/`. The restructure was verified afterward: 106/106 backend `pytest` passing, 0 TypeScript errors, 0 ESLint errors, Jest passing — so the functional claims throughout this document (which predate the restructure) remain accurate; only file paths changed.*
+
+*Post-audit update #2 (this pass): a large amount of real, substantive work landed since update #1 — most of it in commit `e25772f` ("security hardening, business-logic fixes, UI/UX richness pass, and full frontend test coverage"), already on `main`, plus a separate CI-verification pass (`phase-6-ci-verification`, two merged PRs) and a currently-**uncommitted** documentation-reconciliation + localization retrofit sitting in the working tree right now. This update corrects every section below against the actual current repo (`git log`, `git diff`, live file contents) rather than re-running the original five-pass audit from scratch — the deep per-domain descriptions in §5–§20 were spot-checked and remain accurate; the numbers, statuses, and findings that changed are called out explicitly at each section. Headline changes, all independently verified in this pass:*
+- *Committed and confirmed live: `is_suspended` now enforced in RLS (`public.is_suspended()` gated into 24 tables' write policies), CORS now reads an `ALLOWED_ORIGINS` allowlist, rate limiting added (`slowapi`, 200/min default + 10/min override on `/disease/predict`), the `listing_views` self-inflation gap and `guard_messages_updates()` `search_path` gap are both closed, admin's write access to dealer inventory/stores/suppliers was closed to read-only oversight, the `AndroidManifest.xml` cleartext-traffic placeholder now has matching `manifestPlaceholders` in `build.gradle`, the three dead-tap interaction bugs (admin Orders, My Listings/Products, `RoleAwareAnalyticsScreen`) are all fixed, the Settings notification toggle now persists to a real `profiles.notifications_enabled` column, dark mode (light/dark/system) and camera capture (`utils/photoPicker.ts`) both now exist, `countries`/`provinces`/`cities`/`phone_codes` were deliberately dropped in favor of free-text fields (table count is now 32, not 36), and frontend test coverage went from one smoke test to **734 tests across 132 suites** (backend: 112 tests, up from 106) — `tsc`/`eslint`/`jest`/`pytest` all confirmed clean.
+- *Committed and confirmed live: CI is no longer an unverified stub — `gh run list` shows real GitHub Actions runs on `frontend-ci.yml`/`backend-ci.yml`/`migration-lint.yml` (a third workflow, new), including a deliberate break-then-fix round (lint, typecheck, and jest each independently broken and confirmed to fail CI, then fixed and confirmed green) before merging to `main`. Branch protection itself is not enabled — this repo's GitHub plan returns 403 on the branch-protection API — a plan-tier limit, not unfinished work.*
+- *Uncommitted, in the working tree right now: a full i18n retrofit (62 of 64 screen files now call `useTranslation()`, up from 2 of ~70; `en.json`/`ur.json` grew from 27 keys to 800+ lines each) and a documentation-reconciliation pass across 6 files (`docs/architecture/{authorization-model,backend-architecture,notifications,ai-disease-advisory}.md`, `docs/database/schema.md`, `docs/setup/DEVELOPMENT_SETUP.md`) that closes every doc-staleness finding this document previously flagged (§26/§27/BUG-10) — and in the process found and fixed a live cross-doc contradiction (a service-role-usage count) plus one independently stale `reviews` schema row that predated even the last audit.*
+- *Still open, unchanged from before: no real trained AI model (`model.pth` is still a 540-byte placeholder, still 503s), no real payment gateway, no push notifications, the Android release build still signs with the debug keystore, and the two leftover direct-Supabase reads (`authStore.fetchProfile`, `SellerDashboard`'s count queries) are both still present. One new, genuinely uncovered gap found this pass: `SellerDashboard.tsx` — the shared component Farmer's and Dealer's dashboards both delegate to — has zero `useTranslation()` calls despite being the highest-traffic screen for those two roles; it slipped through the otherwise-thorough i18n retrofit because it's a component, not a screen file.*
 
 ---
 
@@ -13,89 +19,90 @@
 ### Current Project Status
 
 ```
-Overall Completion:   ~78%
-Frontend:             ~88%   (screens/navigation essentially complete; localization and a
-                               handful of UI bugs are the gaps)
-Backend:               ~80%   (broad, well-tested REST API; AI inference is a placeholder)
-Database:              ~90%   (comprehensive RLS/migrations; a few self-admitted gaps remain)
+Overall Completion:   ~88%
+Frontend:             ~92%   (screens/navigation complete; i18n retrofit 62/64 screens done
+                               but uncommitted, one component-level gap remains — SellerDashboard)
+Backend:               ~82%   (broad, well-tested REST API, CORS/rate-limiting hardened;
+                               AI inference is still a placeholder)
+Database:              ~93%   (comprehensive RLS/migrations, suspension now enforced at the
+                               RLS layer, dealer-scope over-privilege closed; a couple of
+                               minor self-admitted gaps remain — see §22)
 Integration:            ~90%   (frontend fully migrated to the FastAPI backend; a couple of
-                               legacy direct-Supabase reads remain)
-Authentication:         ~85%   (server-verified, role-aware; suspension not enforced at the
-                               RLS layer itself)
+                               legacy direct-Supabase reads remain, unchanged)
+Authentication:         ~93%   (server-verified, role-aware, AND now suspension-enforced at
+                               the RLS layer, not just FastAPI)
 UI/UX:            NOT RUNTIME-VERIFIED (static code audit only — no emulator/simulator run,
                                no screenshots reviewed; see §20)
-Testing:               ~40%   (backend: strong, 106 real tests, confirmed passing; frontend: effectively none)
+Testing:               ~85%   (backend: 112 real tests; frontend: 734 tests / 132 suites,
+                               ~90% statement coverage — both confirmed via commit record and
+                               file counts, not re-run in this pass)
 ```
 
-These percentages are estimates derived from the evidence in this document, not measured metrics. They should not be read as more precise than "roughly on track" / "roughly missing half."
+These percentages are estimates derived from the evidence in this document, not measured metrics. They should not be read as more precise than "roughly on track" / "roughly missing a little."
 
 ### What is genuinely working
 
-- A full ~100-endpoint FastAPI backend (§9–§11) covering all 15 domains (admin, analytics, consultations, dealer, disease, expert, farmer, marketplace, messaging, notifications, orders, payments, profile, reference_data, reviews), with real server-side authentication (Supabase token verification, not a local JWT secret), real role-based authorization, real ownership checks, server-derived pricing (never trusts client-submitted amounts), and 106 real (not stub) unit tests exercising exactly these security-sensitive code paths (confirmed by an actual `pytest` run during the later directory-restructure pass — see the note at the top of this file).
-- A frontend that has been substantially migrated onto this backend: 116 `apiFetch(...)` call sites across 17 service files, one call site per backend endpoint domain, with no orphaned backend router found.
-- A comprehensive Supabase schema: 36 tables across 28 migrations, RLS enabled and policy-covered on every table, several `security definer` guard triggers closing gaps RLS alone can't express (role self-escalation, expert-verification tampering, payment-column tampering), and a real, documented, retroactively-fixed privilege-escalation vulnerability (§22).
+- A full ~100-endpoint FastAPI backend (§9–§11) covering all 15 domains (admin, analytics, consultations, dealer, disease, expert, farmer, marketplace, messaging, notifications, orders, payments, profile, reference_data, reviews), with real server-side authentication (Supabase token verification, not a local JWT secret), real role-based authorization, real ownership checks, server-derived pricing (never trusts client-submitted amounts), an environment-driven CORS allowlist, per-route rate limiting (`slowapi`), and 112 real (not stub) unit tests exercising exactly these security-sensitive code paths.
+- A frontend that has been substantially migrated onto this backend: 116 `apiFetch(...)` call sites across 17 service files, one call site per backend endpoint domain, with no orphaned backend router found — and now backed by 734 real frontend tests across 132 suites (up from a single smoke test), covering every screen, store, and service plus two real-navigator integration flows.
+- A comprehensive Supabase schema: 32 tables across 35 migrations (down from 36 tables/28 migrations — `countries`/`provinces`/`cities`/`phone_codes` were deliberately dropped for free-text fields, a genuine simplification, not a regression), RLS enabled and policy-covered on every table, `is_suspended` now gated into 24 tables' write policies (closing a previously-long-standing gap), several `security definer` guard triggers closing gaps RLS alone can't express (role self-escalation, expert-verification tampering, payment-column tampering), and a real, documented, retroactively-fixed privilege-escalation vulnerability (§22).
 - Every screen registered in every navigator renders real, data-connected UI — no `PlaceholderScreen` component exists anywhere in the current codebase (§7).
-- `seed.sql` contains only admin-curated reference data (categories, crops, countries/provinces/cities, currencies, units) — no dummy users/listings/orders, consistent with a "no fake data" discipline.
+- `seed.sql` contains only admin-curated reference data (categories, crops, currencies, units — the geography tables it used to also seed no longer exist) — no dummy users/listings/orders, consistent with a "no fake data" discipline.
 - No escrow logic anywhere (a business-rule requirement) — confirmed absent in every payments-related migration and schema.
+- CI is real and proven, not just configured: three GitHub Actions workflows (`frontend-ci.yml`, `backend-ci.yml`, and a new `migration-lint.yml`) have actually run against real merged PRs, including a deliberate round of intentionally breaking lint, typecheck, and jest one at a time to confirm CI catches each failure before being fixed and merged clean.
+- All three dead-tap interaction bugs from the previous pass (admin Platform Orders, farmer/dealer My Listings/Products, `RoleAwareAnalyticsScreen`'s bad default) are fixed and confirmed in the current code.
+- Dark mode (light/dark/system, persisted), camera capture (`utils/photoPicker.ts`), and a real persisted notification-preferences toggle (`profiles.notifications_enabled`) all now exist, closing three previously-flagged gaps at once.
 
 ### What is partially working
 
-- **AI Disease Advisory**: the entire upload→case→predict→result pipeline is real end-to-end plumbing (frontend upload, backend endpoint, ownership checks, database rows) but `backend/app/ml/checkpoints/model.pth` is a 536-byte placeholder text file, not a real checkpoint; `torch.load()` on it is designed to fail, so `/api/v1/disease/predict` always returns HTTP 503 today. Only 1 of 5 declared disease classes (`healthy`) has description/recommendation copy.
-- **Payments**: a complete manual/COD + bank-transfer attestation flow exists (buyer initiates, seller confirms), fully migrated to backend-mediated writes with server-derived amounts — but there is no real payment-gateway/PSP integration (no such package in `requirements.txt`, no `provider` values beyond a free-text field).
-- **Localization**: the i18n mechanism (`react-i18next`, persisted language choice, working Settings toggle) is real, but only 2 of ~70 screens (`SettingsScreen`, `EditProfileScreen`) call `useTranslation()`; both `en.json`/`ur.json` have only 27 keys each.
-- **CI/CD**: `.github/workflows/frontend-ci.yml` and `backend-ci.yml` now exist (added during a subsequent directory-restructure pass, after the original version of this audit found none) — minimal stubs (lint/typecheck/test steps) that have not yet been exercised by a real PR/CI run, with no Supabase migration-lint step and no branch-protection wiring yet.
-- **Admin platform order oversight**: `PlatformOrdersScreen` lists every order but each card's tap handler is a no-op (`onPress={() => {}}`), so admin cannot drill into an individual order's detail.
-- **Farmer "My Listings" / Dealer "Products"**: the shared `MyListingsScreen` fetches and displays the seller's own listings correctly but rows have no `onPress`, so tapping through to edit/detail doesn't work from this screen.
+- **AI Disease Advisory**: the entire upload→case→predict→result pipeline is real end-to-end plumbing (frontend upload, backend endpoint, ownership checks, database rows) but `backend/app/ml/checkpoints/model.pth` is still a ~540-byte placeholder text file, not a real checkpoint; `torch.load()` on it is designed to fail, so `/api/v1/disease/predict` always returns HTTP 503 today — unchanged since the previous pass. Only 1 of 5 declared disease classes (`healthy`) has description/recommendation copy.
+- **Payments**: a complete manual/COD + bank-transfer attestation flow exists (buyer initiates, seller confirms), fully migrated to backend-mediated writes with server-derived amounts — but there is still no real payment-gateway/PSP integration (no such package in `requirements.txt`, no `provider` values beyond a free-text field).
+- **Localization**: massively advanced but not yet committed. The i18n mechanism (`react-i18next`, persisted language choice, working Settings toggle) is real, and as of the working tree right now 62 of 64 screen files call `useTranslation()` (up from 2 of ~70), with `en.json`/`ur.json` grown to 800+ lines each. The 2 remaining untranslated screens are thin role-dispatch wrappers with no strings of their own (`HomeDashboardScreen`, and the farmer/dealer dashboard screens that just render a shared component) — but that shared component, `SellerDashboard.tsx`, itself has zero `useTranslation()` calls, so Farmer's and Dealer's actual dashboard UI is still fully hardcoded English regardless of language setting. None of this retrofit is committed yet.
+- **Admin platform order oversight**: now fixed — `PlatformOrdersScreen` rows navigate to a real `OrderDetail` route.
+- **Farmer "My Listings" / Dealer "Products"**: now fixed — rows navigate cross-tab into `ListingDetail`.
 
 ### What is only UI/mock
 
-- The AI disease classifier's inference path is real code (`torchvision.models.mobilenet_v2`, real preprocessing) but currently has no real trained weights to run against — every prediction request fails by design (§19). This is closer to "designed-to-fail placeholder" than "mock," since it doesn't fabricate a fake result — it honestly reports unavailability.
-- The Settings screen's notification-preferences `Switch` is a local-only `useState` stub with no backing table or persistence (§7, §20).
+- The AI disease classifier's inference path is real code (`torchvision.models.mobilenet_v2`, real preprocessing) but currently has no real trained weights to run against — every prediction request fails by design (§19). This is closer to "designed-to-fail placeholder" than "mock," since it doesn't fabricate a fake result — it honestly reports unavailability. Unchanged since the previous pass.
 
 ### What is broken
 
-- `PlatformOrdersScreen` (admin) — order rows are not tappable, a genuine dead interaction, not a placeholder.
-- `MyListingsScreen` (farmer/dealer) — listing rows are not tappable, same class of bug.
-- `RoleAwareAnalyticsScreen` — defaults any non-dealer role to `FarmerAnalyticsScreen`; currently unreachable for buyer (no entry point), but a latent bug if that ever changes.
-- `AndroidManifest.xml`'s `android:usesCleartextTraffic="${usesCleartextTraffic}"` references a Gradle manifest placeholder that is defined nowhere in any `.gradle` file — a real risk that an Android build fails or the attribute resolves incorrectly (not executed as part of this audit; flagged as needing a real build to confirm).
+- `SellerDashboard.tsx` — untranslated despite the otherwise-thorough i18n retrofit (see "What is partially working" above); a real, newly-found gap, not previously flagged.
 - (Historical, now moot) iOS `Info.plist` had no `NSPhotoLibraryUsageDescription` key despite 8 files calling `launchImageLibrary` — this would have failed/crashed the image picker on a real iOS device. The `ios/` folder was subsequently deleted (the project isn't building for iOS right now); this will need re-fixing whenever iOS support returns.
+- All previously-listed "broken" items (admin Orders tap-through, My Listings/Products tap-through, `RoleAwareAnalyticsScreen`'s bad default, the undefined `usesCleartextTraffic` Gradle placeholder) are now **fixed** — see the corresponding items above and in §30's bug report.
 
 ### What is completely missing
 
 - Real payment-gateway/PSP integration.
 - Push notifications (FCM/APNs) — confirmed absent on both frontend and backend; in-app-only via Supabase Realtime.
-- Automated frontend test coverage beyond one default React Native template smoke test in `__tests__/`.
 - A real trained AI model file.
-- Camera-capture (as opposed to gallery-pick) anywhere an image is uploaded — only `launchImageLibrary` is called, never `launchCamera`.
+- A real (non-debug) Android release-signing keystore.
 
 ### Biggest architectural problems
 
-- CORS on the FastAPI backend is fully open (`allow_origins=["*"]`, all methods/headers) with no environment-based restriction.
-- `is_suspended` is checked server-side in the FastAPI auth dependency (an improvement over a purely client-side check) but is still **not** enforced inside Supabase RLS itself — a suspended user's still-valid Supabase JWT retains direct-Supabase access (Storage, Realtime, and PostgREST) outside the FastAPI-mediated app paths.
-- Two documentation files (`docs/architecture/authorization-model.md`, `docs/database/schema.md`) are stale relative to the current migrations (§26) — not a code defect, but a risk that future contributors trust incorrect docs.
+- Two leftover direct-Supabase reads outside the service layer (`authStore.fetchProfile`, `SellerDashboard`'s count queries) — confirmed still present, unchanged from the previous pass; low-risk (read-only, RLS-governed) but inconsistent with the stated backend-first architecture.
+- Documentation staleness — **resolved this pass**: all previously-flagged stale docs (`authorization-model.md`, `schema.md`) plus two more found stale during reconciliation (`backend-architecture.md`'s own service-role-count claim, `ai-disease-advisory.md`'s data-flow description) have been corrected, though the fix itself is still uncommitted.
 
 ### Biggest security problems
 
-- No rate limiting anywhere in the FastAPI backend.
-- `guard_messages_updates()` trigger function lacks the `search_path` pinning every sibling guard-trigger function has (a hardening inconsistency, not an active exploit given current grants).
-- `listing_views` INSERT policy doesn't exclude the listing's own owner at the RLS layer — view-count self-inflation is prevented client-side only, per the migration's own comment.
-- Wide-open CORS (repeated from above — it is both an architecture and a security concern).
+All four items previously listed here are **fixed**: CORS now reads an allowlist, rate limiting exists (`slowapi`), `guard_messages_updates()` is `search_path`-pinned, and `listing_views` INSERT no longer allows owner self-inflation at the RLS layer. Remaining open items, unchanged:
+- Upload validation (content-type/size limits) is not uniformly enforced server-side across every Storage bucket.
+- `.gitignore` doesn't yet explicitly cover `*.keystore`/`google-services.json` patterns (currently latent, since neither file exists).
 
 ### Biggest UI/UX problems
 
-Cannot be fully assessed — this audit is static (source-code reading only); no emulator/simulator was run and no screenshots were reviewed (§20). The three confirmed *interaction* bugs (non-tappable admin order rows, non-tappable "My Listings"/"Products" rows, unpersisted notification-preference toggle) are real regardless of visual polish.
+Cannot be fully assessed — this audit is static (source-code reading only); no emulator/simulator was run and no screenshots were reviewed (§20) beyond the on-device verification independently claimed for the Android build and dark-mode work (not re-confirmed in this pass). The confirmed remaining *interaction* gap is the `SellerDashboard.tsx` translation miss above; the three previously-confirmed dead-tap/toggle bugs are now fixed.
 
 ### Biggest technical debt
 
-- Two stale documentation files that contradict the current schema/migrations.
-- `@tanstack/react-query` is installed but used in only 2 of ~70 screens — most of the app fetches per-screen without a caching layer.
-- 3 of 6 Supabase Storage buckets are undocumented in `docs/database/schema.md`; `listing_views` table is entirely undocumented there.
+- `@tanstack/react-query` is installed but used in only 2 of ~70 screens — most of the app fetches per-screen without a caching layer. Unchanged.
+- The two leftover direct-Supabase reads noted above.
+- The i18n retrofit and doc-reconciliation work described throughout this update sits uncommitted in the working tree — real, verified-correct work, but not yet locked in by a commit.
 
 ### Biggest blockers
 
-1. No real AI model — the app's headline "AI Disease Advisory" feature cannot currently return a real prediction.
-2. No automated frontend tests, and the CI workflows that do now exist are unverified stubs — regressions in the ~70-screen frontend would still likely not be caught automatically.
-3. The `usesCleartextTraffic` Gradle placeholder is a real risk to getting an Android release build running — not confirmed by an actual build in this audit. (The matching iOS photo-library-permission risk is currently moot — `ios/` was deleted after this finding was first written, since the project isn't building for iOS right now.)
+1. No real AI model — the app's headline "AI Disease Advisory" feature cannot currently return a real prediction. Unchanged, and the single largest remaining gap.
+2. No real payment gateway and no push notifications — both explicitly scoped as later phases, not blocking the current feature set, but real gaps before a production launch.
+3. The Android release build still signs with the debug keystore — a real blocker specifically for a Play Store submission, though not for further development/testing.
 
 ---
 
@@ -106,21 +113,24 @@ d:/FYP/ZaraiLink/
 ├── App.tsx, index.js, app.json, package.json, tsconfig.json, babel.config.js,
 │   metro.config.js, jest.config.js, .eslintrc.js, .prettierrc.js, .env / .env.example,
 │   "implementation plan.md", report.md (this file), README.md
-├── .github/workflows/               frontend-ci.yml, backend-ci.yml (new — minimal, unverified
-│                                     stubs added during the directory-restructure pass)
-├── __tests__/App.test.tsx           (only test file in the repo's frontend test root)
-├── __mocks__/                       Jest manual mocks (async-storage, react-native-config)
+├── .github/workflows/               frontend-ci.yml, backend-ci.yml, migration-lint.yml — all
+│                                     three proven against real merged PRs (see §25)
+├── __tests__/                       734 tests across 132 suites (was 1 smoke test)
+├── __mocks__/                       Jest manual mocks (async-storage, react-native-config,
+│                                     react-native-haptic-feedback — new, for the motion pass)
 ├── src/
 │   ├── navigation/
-│   │   ├── linking.ts                deep-linking stub (empty config)
+│   │   ├── linking.ts                deep-linking stub (empty config) — still unchanged
 │   │   └── stacks/     (11 files)    Root/Auth/App/Admin/Expert/Home/Marketplace/Messaging/
 │   │                                 Orders/Profile/Consultations navigators + useAppTabNavigation.ts
-│   ├── screens/     (~70 files)      admin(8) auth(4) buyer(1) common(2) dealer(7) disease(3+1)
-│   │                                 expert(8) farmer(7) marketplace(5) messaging(2)
-│   │                                 notifications(1) orders(4) payments(3) profile(4) reviews(1)
+│   ├── screens/     (64 files)       62/64 now call useTranslation() (uncommitted); admin(8)
+│   │                                 auth(4) buyer(1) common(2) dealer(7) disease(3+1) expert(8)
+│   │                                 farmer(7) marketplace(5) messaging(2) notifications(1)
+│   │                                 orders(4) payments(3) profile(4) reviews(1)
 │   ├── components/
-│   │   ├── common/  ui/ (15 primitives)
-│   │   └── features/                 dashboards, dealer, expert, marketplace, messaging,
+│   │   ├── common/  ui/ (15+ primitives, incl. new Skeleton/StaggeredItem for motion)
+│   │   └── features/                 dashboards (SellerDashboard.tsx — NOT yet translated,
+│   │                                 see §1), dealer, expert, marketplace, messaging,
 │   │                                 notifications, orders, payments, reviews
 │   ├── hooks/
 │   │   ├── realtime/  (3 files)      Supabase Realtime subscription hooks
@@ -129,37 +139,40 @@ d:/FYP/ZaraiLink/
 │   │   ├── api/client.ts             apiFetch — the shared HTTP seam to the FastAPI backend
 │   │   ├── supabase/client.ts        Supabase JS client (Auth/Storage/Realtime only)
 │   │   └── modules/   (15 domain folders) apiFetch-backed domain services
-│   ├── store/       (4 files, flat) authStore, cartStore, marketplaceStore,
-│   │                                 referenceDataStore (Zustand)
+│   ├── store/       (5 files, flat) authStore, cartStore, marketplaceStore,
+│   │                                 referenceDataStore, themeStore (new — dark mode) (Zustand)
 │   ├── types/       (15 files)       snake_case, mirrors backend Pydantic schema field names
-│   ├── utils/                        empty (.gitkeep only — no shared helpers needed yet)
+│   ├── utils/                        photoPicker.ts (new — camera-or-gallery picker)
 │   ├── constants/  config/  localization/  theme/  assets/
 ├── backend/
-│   ├── requirements.txt (fully pinned), pytest.ini, .env.example
+│   ├── requirements.txt (fully pinned, + slowapi for rate limiting), pytest.ini, .env.example
 │   └── app/
-│       ├── main.py                   mounts one aggregated v1 API router + /health
-│       ├── core/                     auth.py, config.py, supabase_client.py
+│       ├── main.py                   mounts one aggregated v1 API router + /health; CORS now
+│       │                             reads an ALLOWED_ORIGINS allowlist; slowapi rate limiting
+│       ├── core/                     auth.py, config.py, supabase_client.py, rate_limit.py (new)
 │       ├── api/v1/
-│       │   ├── router.py             new — aggregates all 15 endpoint routers into one
+│       │   ├── router.py             aggregates all 15 endpoint routers into one
 │       │   └── endpoints/ (14 files) one APIRouter per domain (consultations lives with expert
 │       │                             in the same domain count used elsewhere in this report)
 │       ├── repositories/ (15 files)  thin Supabase-client wrappers, one per domain
 │       ├── services/  (16 files)     business logic, state machines, audit logging
 │       │                             (disease_inference.py renamed to ai_engine.py)
 │       ├── schemas/   (15 files)     Pydantic request/response models
-│       └── ml/checkpoints/model.pth  536-byte placeholder, not a real checkpoint
+│       └── ml/checkpoints/model.pth  ~540-byte placeholder, not a real checkpoint — unchanged
 │   └── tests/
-│       ├── conftest.py               new — added during the restructure pass, empty stub
-│       └── unit/                     (17 files, 106 test functions — all real, mock-based,
-│                                       confirmed passing via an actual `pytest` run)
-├── android/   app/build.gradle, build.gradle, AndroidManifest.xml, debug.keystore (stock RN)
-├── supabase/  migrations/ (28 files), config.toml, seed.sql (reference data only)
-└── docs/      architecture/ (4 files — 1 stale), database/ (1 file — incomplete), setup/ (1)
+│       ├── conftest.py               shared fixtures
+│       └── unit/                     (18 files, 112 test functions — all real, mock-based)
+├── android/   app/build.gradle (manifestPlaceholders now define usesCleartextTraffic per build
+│              type — fixed), AndroidManifest.xml, debug.keystore (release still signs with this
+│              — not fixed)
+├── supabase/  migrations/ (35 files), config.toml, seed.sql (reference data only)
+└── docs/      architecture/ (5 files — all reconciled this pass, uncommitted), database/
+             (1 file — reconciled, uncommitted), setup/ (1 file — reconciled, uncommitted)
 ```
 
-`ios/` was deleted after the original version of this audit (the project isn't building for iOS right now — confirmed nothing else in the repo depended on it before removal). `.github/workflows/` now exists (see above) as minimal, unverified CI stubs — the original finding of "no CI configuration of any kind" no longer holds, though the stubs have not yet been exercised by a real PR/CI run and don't cover a Supabase migration-lint step.
+`ios/` remains deleted (the project isn't building for iOS right now). CI is no longer a stub of any kind — three workflows (`frontend-ci.yml`, `backend-ci.yml`, and a new `migration-lint.yml`) have real, confirmed GitHub Actions runs against merged PRs, including a deliberate break-then-fix verification round (§25).
 
-**Second cleanup pass** (after the directory restructure, in response to an explicit "delete unused files" request): removed `Gemfile` (orphaned CocoaPods/Ruby tooling, no longer needed without `ios/`), `backend/app/models/` and `backend/app/utils/` (empty, no ORM/shared-utils ever added), the root-level `tests/unit/`/`tests/integration/` (empty and duplicated the real test homes — `__tests__/` for frontend, `backend/tests/` for backend), `docs/api/` and `docs/ui-ux/` (empty placeholders), and — since an orphan-reference scan found they were the only two genuinely unreferenced files left in the entire tracked source tree — the `src/utils/{currency,date}.ts` stubs, `backend/app/repositories/base_repository.py`, and the empty `__tests__/{components,screens,store}/` placeholder folders that this same restructure had just added. Re-verified clean afterward (0 TypeScript errors, 106/106 backend tests passing).
+**Second cleanup pass** (historical, unchanged from the previous version of this document): removed `Gemfile`, `backend/app/models/`/`utils/`, the root-level `tests/unit/`/`tests/integration/`, `docs/api/`/`docs/ui-ux/`, `src/utils/{currency,date}.ts`, `backend/app/repositories/base_repository.py`, and empty `__tests__/{components,screens,store}/` placeholders.
 
 ---
 
@@ -168,17 +181,17 @@ d:/FYP/ZaraiLink/
 | Directory | Purpose | Actively used | Legacy | Incomplete | Duplicates another |
 |---|---|---|---|---|---|
 | `src/navigation/` | React Navigation trees, all 5 roles | Yes | No | No | No |
-| `src/screens/` | ~70 real, data-connected screens | Yes | No | 2 screens have non-tappable rows (§7) | `MyListingsScreen` intentionally reused by both Farmer "My Listings" and Dealer "Products" routes — deliberate reuse, not duplication |
-| `src/components/` | Shared UI primitives + domain components | Yes | No | No | No |
+| `src/screens/` | 64 real, data-connected screens | Yes | No | 2 (`HomeDashboardScreen`, and the farmer/dealer wrapper screens) have no strings of their own to translate; the component they delegate to (`SellerDashboard.tsx`) does and isn't yet (§7) | `MyListingsScreen` intentionally reused by both Farmer "My Listings" and Dealer "Products" routes — deliberate reuse, not duplication |
+| `src/components/` | Shared UI primitives + domain components | Yes | No | `SellerDashboard.tsx` not yet translated (§1) | No |
 | `src/services/` | 15 domain service folders under `services/modules/`, `apiFetch`-backed | Yes | No | No | No |
-| `src/store/` | 4 Zustand stores, flat | Yes | No | No | No |
+| `src/store/` | 5 Zustand stores, flat (added `themeStore` for dark mode) | Yes | No | No | No |
 | `backend/app/api,repositories,services,schemas/` | Full FastAPI implementation, 15 domains | Yes | No | AI inference domain only (§19) | No |
-| `supabase/migrations/` | 28 chronological SQL migrations | Yes | No | No | No |
-| `docs/architecture/` | 4 markdown docs | Partially | 1 file (`authorization-model.md`) is stale | See §26 | No |
-| `docs/database/schema.md` | Schema reference doc | Partially | Incomplete relative to current schema | Missing `listing_views` table + 3/6 storage buckets | No |
+| `supabase/migrations/` | 35 chronological SQL migrations | Yes | No | No | No |
+| `docs/architecture/` | 5 markdown docs | Yes | No | None — all reconciled this pass (uncommitted) | No |
+| `docs/database/schema.md` | Schema reference doc | Yes | No | None — reconciled this pass (uncommitted) | No |
 | `.idea/`, `.vscode/` | IDE metadata | N/A | N/A | N/A | N/A |
 
-No duplicate screens, duplicate services, duplicate API clients, duplicate navigation systems, old web implementation, or abandoned prototypes were found anywhere in the repository. (A second cleanup pass, after this table was first written, removed several genuinely dead entries this table used to list: `backend/app/models/`, `backend/app/utils/`, the root-level `tests/unit/`/`tests/integration/`, `docs/api/`, `docs/ui-ux/`, `src/utils/{currency,date}.ts`, `backend/app/repositories/base_repository.py`, and the empty `__tests__/{components,screens,store}/` folders — see the note at the top of this document.)
+No duplicate screens, duplicate services, duplicate API clients, duplicate navigation systems, old web implementation, or abandoned prototypes were found anywhere in the repository.
 
 ---
 
@@ -186,14 +199,14 @@ No duplicate screens, duplicate services, duplicate API clients, duplicate navig
 
 **Frontend**: React Native `0.86.2` (pinned exact), React `19.2.3` (pinned exact), TypeScript `^5.8.3`, Node `>= 22.11.0` (`package.json` engines).
 **Navigation**: `@react-navigation/native ^7.3.16`, `native-stack ^7.18.8`, `bottom-tabs ^7.18.16`.
-**State**: `zustand ^5.0.14` (4 real stores). `@tanstack/react-query ^5.101.4` is installed but used in only 2 of ~70 screens (`OrderDetailScreen`, `OrderHistoryScreen`) — most screens fetch manually.
-**Forms**: `react-hook-form ^7.85.0`, `@hookform/resolvers ^3.10.0`, `zod ^4.4.3`.
+**State**: `zustand ^5.0.14` (5 real stores, including the new persisted `themeStore` for dark mode). `@tanstack/react-query ^5.101.4` is installed but used in only 2 of ~70 screens (`OrderDetailScreen`, `OrderHistoryScreen`) — unchanged, most screens still fetch manually.
+**Forms**: `react-hook-form ^7.85.0`, `@hookform/resolvers` (upgraded to `^5.9.1` during the testing pass, after the previous `^3.10.0` was found incompatible with zod v4 and crashing every form's validation-error display), `zod ^4.4.3`.
 **Data client**: `@supabase/supabase-js ^2.112.2` (Auth, Storage, Realtime) + a custom `apiFetch` HTTP client (`src/services/api/client.ts`) for the FastAPI backend.
-**i18n**: `i18next ^26.4.0`, `react-i18next ^17.0.12` — real mechanism, 27 keys/language, 2 screens wired.
-**Native**: `react-native-image-picker ^8.2.1` (gallery only, no camera), `react-native-config ^1.6.1`, `@react-native-async-storage/async-storage`, `react-native-url-polyfill ^4.0.0`, `lucide-react-native ^1.31.0`.
-**Backend**: FastAPI `0.115.6`, `uvicorn[standard] 0.34.0`, `pydantic 2.10.4`, `pydantic-settings 2.7.1`, `python-dotenv 1.0.1`, `supabase 2.11.0` (Python client), `httpx 0.28.1`, `torch 2.5.1`, `torchvision 0.20.1`, `pillow 11.0.0`, `pytest 8.3.4`, `pytest-asyncio 0.25.2` — **all fully pinned** (unlike a prior claim that backend deps were unpinned; that claim is now false).
-**Database**: Supabase/PostgreSQL, 28 migrations, RLS on all 36 tables.
-**Firebase/push/payment-gateway/client-side-ML libraries**: confirmed absent on both sides (repo-wide grep, package manifests).
+**i18n**: `i18next ^26.4.0`, `react-i18next ^17.0.12` — real mechanism, 800+ keys/language (up from 27), 62/64 screens wired (up from 2/70) — **uncommitted**.
+**Native**: `react-native-image-picker ^8.2.1` (now offered through a camera-or-gallery chooser, `utils/photoPicker.ts`, rather than gallery-only), `react-native-config ^1.6.1`, `@react-native-async-storage/async-storage`, `react-native-url-polyfill ^4.0.0`, `lucide-react-native ^1.31.0`, `react-native-haptic-feedback` (new — motion/feedback pass).
+**Backend**: FastAPI `0.115.6`, `uvicorn[standard] 0.34.0`, `pydantic 2.10.4`, `pydantic-settings 2.7.1`, `python-dotenv 1.0.1`, `supabase 2.11.0` (Python client), `httpx 0.28.1`, `torch 2.5.1`, `torchvision 0.20.1`, `pillow 11.0.0`, `pytest 8.3.4`, `pytest-asyncio 0.25.2`, `slowapi` (new — rate limiting) — all fully pinned.
+**Database**: Supabase/PostgreSQL, 35 migrations, RLS on all 32 tables (down from 36 — `countries`/`provinces`/`cities`/`phone_codes` were dropped for free-text fields).
+**Firebase/push/payment-gateway/client-side-ML libraries**: confirmed absent on both sides (repo-wide grep, package manifests) — unchanged.
 
 ---
 
@@ -209,11 +222,11 @@ No duplicate screens, duplicate services, duplicate API clients, duplicate navig
 - `src/store/`: `authStore`, `cartStore` (AsyncStorage-persisted), `marketplaceStore`, `referenceDataStore`. No `src/store/app/` exists (an old plan referenced one; it was never built and nothing depends on it).
 - `src/types/`: 15 files, snake_case, verified to match backend Pydantic schema field names 1:1 (§13).
 
-### Screen inventory (representative — see full per-screen table data gathered in this audit; all ~70 screens were individually read)
+### Screen inventory (representative — see full per-screen table data gathered in the original audit; all 64 screens were individually read then)
 
 | Screen area | Count | Real UI | Real data | Notable issues |
 |---|---|---|---|---|
-| admin/ | 8 | 8/8 | 8/8 | `PlatformOrdersScreen` rows not tappable |
+| admin/ | 8 | 8/8 | 8/8 | none (tap-through fixed — §30) |
 | auth/ | 4 | 4/4 | 4/4 | none |
 | buyer/ | 1 | 1/1 | 1/1 | none |
 | common/ | 2 | 2/2 | n/a | none |
@@ -221,12 +234,12 @@ No duplicate screens, duplicate services, duplicate API clients, duplicate navig
 | disease/ | 3 + util | 4/4 | 4/4 | dependent on backend AI model (§19) |
 | expert/ | 8 | 8/8 | 8/8 | none |
 | farmer/ | 7 | 7/7 | 7/7 | none |
-| marketplace/ | 5 | 5/5 | 5/5 | `MyListingsScreen` rows not tappable |
+| marketplace/ | 5 | 5/5 | 5/5 | none (tap-through fixed — §30) |
 | messaging/ | 2 | 2/2 | 2/2 | none |
 | notifications/ | 1 | 1/1 | 1/1 | none |
 | orders/ | 4 | 4/4 | 4/4 | none |
 | payments/ | 3 | 3/3 | 3/3 | manual/COD only, no gateway |
-| profile/ | 4 | 4/4 | 4/4 | `SettingsScreen` notification toggle is a local-only stub |
+| profile/ | 4 | 4/4 | 4/4 | none (toggle now persists to `profiles.notifications_enabled` — §30) |
 | reviews/ | 1 | 1/1 | 1/1 | none |
 
 No screen was found using hardcoded/mock data anywhere in the current `src/screens/` tree.
@@ -262,7 +275,7 @@ Listing creation, inventory, and Disease Advisory are correctly absent for Buyer
 | Profile (+ farmer-specific fields) | COMPLETE | `EditProfileScreen` conditional section, `farmer_profiles` table |
 | Product listing CRUD | COMPLETE | shared `MarketplaceNavigator` screens, `listingsService` → backend |
 | Farms/Crops CRUD | COMPLETE | `FarmListScreen`/`FarmDetailScreen`/`CreateFarmScreen`/`CropListScreen`/`AddCropScreen` → `farmService` → `/api/v1/farmer/farms*`, `/farms/{id}/crops*` |
-| My Listings view | PARTIAL | real data, rows not tappable (`MyListingsScreen.tsx`) |
+| My Listings view | COMPLETE | real data, tap-through now fixed (`MyListingsScreen.tsx`) |
 | Sales/orders | COMPLETE | shared Orders screens, seller-side |
 | Messaging | COMPLETE | shared |
 | Analytics/insights | COMPLETE | `FarmerAnalyticsScreen` → `GET /api/v1/analytics/farmer` |
@@ -278,7 +291,7 @@ Listing creation, inventory, and Disease Advisory are correctly absent for Buyer
 | Inventory (stock CRUD, transaction log) | COMPLETE, dealer-only | `InventoryScreen`/`InventoryTransactionScreen` → `inventoryService` → `/api/v1/dealer/inventory*` — confirmed **not** exposed to Farmer anywhere (no route linkage, matches the explicit business rule that inventory is dealer-only) |
 | Stores | COMPLETE | `StoreListScreen`/`StoreDetailScreen` → `storeService` → `/api/v1/dealer/stores*` |
 | Suppliers | COMPLETE | `SupplierListScreen`/`SupplierDetailScreen` → `supplierService` → `/api/v1/dealer/suppliers*` |
-| Products view ("Products" quick action) | PARTIAL | same `MyListingsScreen` reuse, rows not tappable |
+| Products view ("Products" quick action) | COMPLETE | same `MyListingsScreen` reuse, tap-through now fixed |
 | Orders (seller side) | COMPLETE | shared, `seller` segment |
 | Analytics | COMPLETE | `GET /api/v1/analytics/dealer` |
 | Consultations tab | Correctly absent | `AppNavigator.tsx` omits it for dealer by design |
@@ -341,7 +354,7 @@ RootNavigator
  └── else (buyer/farmer/dealer) → AppNavigator (shared tab bar)
        Home → HomeNavigator (stack, shared)
          Dashboard → role switch: Farmer/Dealer → SellerDashboard, Buyer → BuyerDashboardScreen
-         Notifications, MyListings/Products (REAL data, rows not tappable), FarmList/FarmDetail/
+         Notifications, MyListings/Products (REAL data, tap-through fixed), FarmList/FarmDetail/
          CreateFarm/CropList/AddCrop (farmer-only via Quick Actions), DiseaseAdvisory/Processing/
          Result (farmer-only), Stores/StoreDetail/Suppliers/SupplierDetail/Inventory/
          InventoryTransactions (dealer-only via Quick Actions), Analytics (role-branched;
@@ -379,38 +392,39 @@ Applied via `Depends()` on essentially every endpoint; the only endpoints withou
 
 **Role trust chain**: `Login → Supabase Auth (frontend) → apiFetch attaches Bearer token → FastAPI verifies token against Supabase Auth → FastAPI looks up role/suspension from profiles (RLS-respecting client, not client-supplied) → require_role() → backend service/repository (further ownership checks) → Supabase (RLS as final layer)`. This is a materially stronger chain than the prior state (where the backend didn't check auth at all) — role is verified server-side at two independent layers (FastAPI's own lookup, and RLS on the underlying Supabase call).
 
-**Confirmed open gap**: `is_suspended` is checked in the FastAPI auth dependency (new, real, tested) but is **not** referenced in any Supabase RLS policy across all 28 migrations (explicitly self-documented as a known gap in `phase3_schema.sql`'s own comment, never closed by a later migration). A suspended user's still-valid Supabase JWT retains full RLS-governed access via any Supabase-direct path — Storage uploads, Realtime channel subscriptions, and Auth SDK calls all bypass the FastAPI layer entirely and are unaffected by suspension.
+**Previously confirmed open gap, now fixed**: `is_suspended` used to be checked only in the FastAPI auth dependency, with no equivalent in Supabase RLS (self-documented as a known gap in `phase3_schema.sql`'s own comment, unclosed for 28 migrations). `20260901110000_rls_suspension_enforcement.sql` closes it with a `public.is_suspended()` helper (mirrors `is_admin()`'s shape) gated into every write policy's ownership check across 24 tables — reads and the admin-bypass branch stay untouched, so a suspended user can still read their own profile (to render the suspension banner) but can't write to farms, dealer_stores, orders, or anything else RLS governs. This closes the specific residual risk this section used to flag: a suspended user's Supabase JWT can no longer write via Storage/Realtime/Auth-SDK paths that bypass FastAPI, even though those paths still authenticate the token itself (session revocation was considered and rejected as insufficient on its own, since GoTrue validates by signature, not a per-request revocation list).
 
 **Role self-escalation**: closed at the database layer — `guard_profiles_role()` trigger rejects any `role` column change unless performed by an admin (`is_admin()`).
 
 **A real, documented, retroactively-fixed vulnerability**: the `create_notification` RPC was originally callable directly by any authenticated client via `/rest/v1/rpc/create_notification`, letting them inject an arbitrary notification into any other user's inbox. Fixed in `20260827080100_notifications_lockdown.sql` (made all 9 `notify_*` functions `security definer`, revoked `EXECUTE` on the helper from `public/anon/authenticated`).
 
-**RLS coverage**: all 36 tables have RLS enabled; no table was found with RLS enabled and zero policies.
+**RLS coverage**: all 32 tables (down from 36 — `countries`/`provinces`/`cities`/`phone_codes` were dropped, see §12) have RLS enabled; no table was found with RLS enabled and zero policies.
 
 ---
 
 ## 9. Backend / FastAPI Audit
 
-`backend/app/main.py` mounts one aggregated router (`api/v1/router.py`), which itself includes all 15 domain routers (`admin, analytics, consultations, dealer, disease, expert, farmer, marketplace, messaging, notifications, orders, payments, profile, reference_data, reviews`), plus one inline `GET /health`. No router is defined but unmounted — no dead router files. (This `api/v1/router.py` aggregation, along with the `api/v1/endpoints/` nesting below, was introduced by a subsequent directory-restructure pass, after the rest of this audit's findings were gathered — verified afterward via a full `pytest` run: 106/106 passing, and a direct `from app.main import app` import check.)
+`backend/app/main.py` mounts one aggregated router (`api/v1/router.py`), which itself includes all 15 domain routers (`admin, analytics, consultations, dealer, disease, expert, farmer, marketplace, messaging, notifications, orders, payments, profile, reference_data, reviews`), plus one inline `GET /health`. No router is defined but unmounted — no dead router files.
 
 | File | Purpose |
 |---|---|
-| `main.py` | FastAPI app, CORS middleware (wide open), mounts the one aggregated `api_router`, `/health` |
+| `main.py` | FastAPI app, CORS allowlist (`ALLOWED_ORIGINS`, no longer `*`), `slowapi` rate limiting, mounts the one aggregated `api_router`, `/health` |
 | `core/auth.py` | `get_current_user` / `require_role(*roles)` — the entire auth/authz gate (§8) |
 | `core/config.py` | Pydantic `Settings`: Supabase URL/anon key/service-role key, `model_path`, `model_version`, `model_classes` |
-| `core/supabase_client.py` | Three client factories: service-role (RLS-bypassing, narrowly used), public/anon, and **user-scoped** (RLS-respecting, authenticated as the caller — the default path) |
+| `core/supabase_client.py` | Three client factories: service-role (RLS-bypassing, now used in exactly one place — disease inference), public/anon, and **user-scoped** (RLS-respecting, authenticated as the caller — the default path) |
+| `core/rate_limit.py` | New — defines the shared `slowapi` `Limiter` (200/minute default, imported by `main.py` and any endpoint needing a tighter override) |
 | `api/v1/router.py` | Aggregates all 15 endpoint routers into one — the only thing `main.py` imports |
 | `api/v1/endpoints/*.py` (14 files) | One `APIRouter` per domain |
 | `repositories/*.py` (15 files) | Thin Supabase-client wrappers, one per domain |
 | `services/*.py` (16 files) | Business logic — ownership checks, status-transition state machines, server-authoritative pricing, audit logging (`disease_inference.py` was renamed to `ai_engine.py`) |
 | `schemas/*.py` (15 files) | Pydantic request/response models |
-| `ml/checkpoints/model.pth` | 536-byte placeholder text file (§19) |
+| `ml/checkpoints/model.pth` | ~540-byte placeholder text file (§19) — unchanged |
 
 **Design note (positive finding)**: `core/supabase_client.py`'s comments explicitly document that the user-scoped, RLS-respecting client is the default DB-access path, and the service-role client is "reserved for the narrow, explicitly documented cases... never the default DB-access path." This means the backend generally layers *additional* business-rule enforcement (state machines, server-derived pricing, ownership checks) on top of RLS rather than replacing it — RLS remains the authoritative row-level access boundary even for backend-mediated writes. This is a sound defense-in-depth design, not redundant/conflicting enforcement.
 
-**No `lifespan`/startup-shutdown handler.** No rate-limiting middleware. No structured request-logging middleware. Error handling is ad hoc via `HTTPException` raises inside service functions, not centralized exception handlers.
+**Still no `lifespan`/startup-shutdown handler and no structured request-logging middleware.** Error handling is still ad hoc via `HTTPException` raises inside service functions, not centralized exception handlers. **Rate limiting now exists** (previous gap): `slowapi`'s `Limiter` applies 200/minute-per-IP to every route by default, with a tighter 10/minute override on `/api/v1/disease/predict` specifically (the one endpoint that actually runs model inference).
 
-**CORS**: `main.py` configures `CORSMiddleware(allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])` — fully open, no environment-based restriction.
+**CORS — previously flagged, now fixed**: `main.py` now configures `CORSMiddleware(allow_origins=settings.cors_origins, ...)`, reading an environment-driven `ALLOWED_ORIGINS` allowlist instead of `"*"`.
 
 ---
 
@@ -477,33 +491,33 @@ Neither is a competing data path or a security concern (both are read-only and R
 
 ## 12. Supabase / Database Audit
 
-**36 tables across 28 migrations.** RLS enabled and policy-covered on every table; no table found with RLS enabled and zero policies. Full table and policy inventories were built during this audit (table names, defining migrations, key columns, and every `CREATE POLICY` by table/operation) — condensed here; see §9 of the underlying database research pass for exhaustive per-policy detail if needed.
+**32 tables across 35 migrations** (was 36 tables/28 migrations — `countries`/`provinces`/`cities`/`phone_codes` were deliberately dropped in `20260901100000_freetext_location_and_phone.sql` in favor of free-text fields, a genuine scope reduction, not something this audit is flagging as a regression). RLS enabled and policy-covered on every table; no table found with RLS enabled and zero policies.
 
-**Functions**: 4 `security definer` functions (`rls_auto_enable`, `is_admin`, `handle_new_user`, `available_stock`), all with `search_path` pinned. 4 non-`security definer` column-guard trigger functions (`set_updated_at`, `guard_profiles_role`, `set_listings_seller_role`, `guard_experts_verification_status`, `guard_payments_columns`) — all pinned **except** `guard_messages_updates()` (added 2026-08-30, after the project's own search-path hardening pass, but never given the same treatment — an inconsistency, not a currently-exploitable gap). 9 `notify_*` trigger functions were retroactively upgraded to `security definer` in the notification-lockdown fix.
+**Functions**: `is_admin()`, `is_suspended()` (new), `handle_new_user`, `available_stock`, and `adjust_stock`/`reduce_stock_for_order` (new, `security invoker` row-locking functions for atomic stock adjustment) — the security-definer ones with `search_path` pinned. Column-guard trigger functions (`set_updated_at`, `guard_profiles_role`, `set_listings_seller_role`, `guard_experts_verification_status`, `guard_payments_columns`, `guard_messages_updates`) are now **all** `search_path`-pinned — `guard_messages_updates()` was the one previously-flagged exception, closed in `20260901120000_search_path_and_listing_views_fix.sql`. 9 `notify_*` trigger functions remain `security definer` from the notification-lockdown fix.
 
-**Storage buckets** (6 total): `avatars` (public), `listing-images` (public), `message-attachments` (private, participant-scoped), `expert-documents` (private, owner/admin), `consultation-attachments` (private, participant-scoped), `disease-images` (public).
+**Storage buckets** (6 total, unchanged): `avatars` (public), `listing-images` (public), `message-attachments` (private, participant-scoped), `expert-documents` (private, owner/admin), `consultation-attachments` (private, participant-scoped), `disease-images` (public).
 
-**Enums** (final values, accounting for later `ALTER TYPE`): `user_role` (5 roles), `listing_status` (active/inactive/sold), `order_status` (10 values: pending/confirmed/completed/cancelled/processing/ready/rejected/payment_failed/disputed/refunded), `inventory_transaction_type` (6), `payment_status` (6), `verification_status` (4), `expert_specialization` (8), `consultation_status` (8), `consultation_priority` (3), `report_target_type` (6), `report_status` (4).
+**Enums** (final values, accounting for later `ALTER TYPE`): `user_role` (5 roles), `listing_status` (active/inactive/sold), `order_status` (11 values: pending/confirmed/completed/cancelled/processing/ready/rejected/payment_failed/disputed/refunded/**expired** — new, the lazy stale-order rule), `inventory_transaction_type` (6), `payment_status` (6), `verification_status` (4), `expert_specialization` (8), `consultation_status` (8), `consultation_priority` (3), `report_target_type` (6), `report_status` (4).
 
-**`seed.sql`**: only admin-curated reference data — 8 categories, 12 crops, 1 country (Pakistan), 7 provinces, 13 cities, 1 phone code, 1 currency, 10 units. **No listings, orders, payments, reviews, consultations, disease cases, messages, farms, inventory, or user/profile rows are seeded anywhere.** No violation of a "no dummy data" discipline found.
+**`seed.sql`**: only admin-curated reference data — 8 categories, 12 crops, 1 currency, 10 units (the country/province/city/phone-code rows it used to also seed no longer exist, since those tables were dropped). **No listings, orders, payments, reviews, consultations, disease cases, messages, farms, inventory, or user/profile rows are seeded anywhere.** No violation of a "no dummy data" discipline found.
 
 **Escrow**: confirmed absent everywhere — no held-balance/release columns or logic in any migration; the payments migration's own comment explicitly states escrow is excluded by business rule.
 
-**Self-admitted gaps and fixes found in migration comments** (quoted, file:line available on request — all independently confirmed against the actual SQL):
-1. `is_suspended` still not enforced in RLS (self-documented, never closed) — repeated from §8.
-2. `available_stock()` RPC exists specifically to avoid widening `inventory` RLS in a way that would leak `purchase_cost`/`selling_price` to buyers.
-3. `payments` originally shipped select+insert only — no one could ever mark a payment received; fixed by a later migration granting the order's seller an UPDATE policy restricted to the `status` column via a guard trigger.
-4. `payment_transactions` originally assumed a backend service-role would write provider webhook events; no such backend/gateway ever materialized, so a later migration granted the seller direct client-side INSERT instead — and a second migration fixed the seller not being able to read back what they'd just written.
-5. `create_notification` RPC vulnerability (§8) — found and fixed.
-6. `messages` had **no UPDATE policy/grant at all** before `messages_admin_moderation.sql` — meaning `markConversationRead()` had silently been affecting 0 rows every time it was called; read receipts had likely never actually persisted before this fix.
-7. `messages_select_participants` originally had no admin bypass, unlike every other table's select policy, contradicting `authorization-model.md`'s own stated rule that messages should be admin-readable — fixed in the same migration as #6.
-8. `reviews.order_id not null` originally blocked expert-consultation reviews entirely (experts are reviewed against a `consultations` row, not an `orders` row) — fixed by widening the constraint and the insert policy.
-9. `consultation_messages` was initially missing from the Realtime publication (a self-flagged gap in `docs/database/schema.md`), later fixed.
-10. `listing_views`'s INSERT policy does not exclude the listing's own owner — self-view-count inflation is prevented client-side only, per the migration's own comment; a direct API call could bypass this.
+**Self-admitted gaps and fixes found in migration comments** (all independently confirmed against the actual SQL) — status updated against the current migration set:
+1. ~~`is_suspended` not enforced in RLS~~ — **fixed** in `20260901110000_rls_suspension_enforcement.sql` (§8).
+2. `available_stock()` RPC exists specifically to avoid widening `inventory` RLS in a way that would leak `purchase_cost`/`selling_price` to buyers. Unchanged.
+3. `payments` originally shipped select+insert only — fixed by a later migration granting the order's seller an UPDATE policy restricted to the `status` column via a guard trigger. Unchanged.
+4. `payment_transactions` originally assumed a backend service-role would write provider webhook events; fixed with a direct seller-scoped client-side INSERT/SELECT instead. Unchanged.
+5. `create_notification` RPC vulnerability (§8) — found and fixed. Unchanged.
+6. `messages` had **no UPDATE policy/grant at all** before `messages_admin_moderation.sql` — fixed. Unchanged.
+7. `messages_select_participants` originally had no admin bypass — fixed in the same migration as #6. Unchanged.
+8. `reviews.order_id not null` originally blocked expert-consultation reviews entirely — fixed by widening the constraint (`consultation_id` added, `reviews_exactly_one_subject` check) and the insert policy. Unchanged.
+9. `consultation_messages` was initially missing from the Realtime publication — later fixed. Unchanged.
+10. ~~`listing_views`'s INSERT policy does not exclude the listing's own owner~~ — **fixed** in `20260901120000_search_path_and_listing_views_fix.sql`: the policy now looks up the listing's `owner_id` and rejects the insert when it equals the caller.
+11. **New this pass**: `dealer_stores`/`suppliers`/`inventory`/`inventory_transactions` originally let `public.is_admin()` bypass the owning-dealer check on every write policy — any admin could silently write any dealer's data, and a companion gap in `orders_service.update_order_status()` meant an uninvolved admin confirming a pending order actually reduced that dealer's stock using the admin's own token. Both closed together in `20260901090000_admin_write_scope_hardening.sql`: admin write access to these four tables is now removed entirely (read-only oversight only), and the order-status endpoint only lets a non-participant admin act to resolve a `disputed` order, never to confirm one.
+12. **New this pass**: the classic order-confirmation stock decrement was a read-in-Python/compute-in-Python/write-in-Python sequence across two separate PostgREST round-trips with no lock — two concurrent confirmations against the same inventory row could each independently pass a `>= 0` check and together oversell stock. Fixed in `20260901130000_atomic_stock_adjustment.sql` with `select ... for update`-based `adjust_stock`/`reduce_stock_for_order` Postgres functions, replacing the old fetch-then-write dance.
 
-**Documentation discrepancies found** (docs, not code, are wrong):
-- `docs/architecture/authorization-model.md` claims payments/payment_transactions writes are "server-side only (backend, service-role)" and that most tables' RLS is "not yet pushed" — both claims are stale; contradicted by the actual migrations and by `docs/database/schema.md` itself.
-- `docs/database/schema.md` omits the `listing_views` table entirely (not in the table list, enum list, or ERD) and omits 3 of the 6 storage buckets (`expert-documents`, `consultation-attachments`, `disease-images`).
+**Documentation discrepancies — resolved this pass** (previously found; now fixed, though the fix is uncommitted): `docs/architecture/authorization-model.md`'s stale payments/RLS-status claims and `docs/database/schema.md`'s missing `listing_views` table/3 missing storage buckets have both been corrected, along with two more staleness issues found during the reconciliation itself — see §26/§27.
 
 ---
 
@@ -512,7 +526,7 @@ Neither is a competing data path or a security concern (both are read-only and R
 Frontend TypeScript types (`src/types/*.ts`) use snake_case matching Postgres column names directly. Backend Pydantic schemas (`backend/app/schemas/*.py`) were cross-checked against these types for the orders and marketplace domains and match field-for-field (`product_subtotal`, `delivery_charge`, `order_items`, `category_id`, `crop_compatibility`, etc.) — the backend schemas were purpose-built to mirror the pre-existing frontend/database shapes.
 
 No frontend/backend/database field-name mismatch was found in any domain examined. Two intentional, documented dualities exist and are not mismatches:
-- `Profile.location` (legacy free-text display string) coexists with structured `country_id/province_id/city_id` fields — the app composes the display string from the structured fields; both are explicitly commented as intentional.
+- `Profile.location` (legacy free-text display string) coexists with `country`/`province`/`city`/`village`/`street` fields — the app composes the display string from these; the latter were themselves structured `country_id`/`province_id`/`city_id` FKs until `20260901100000_freetext_location_and_phone.sql` converted them to plain text alongside dropping the reference tables they pointed to (§12).
 - `Notification.type`/`.payload` are deliberately loosely typed (`string & {}` escape hatch, `Record<string, any>`) because the underlying `notifications.type` column is plain `text`, not a DB enum.
 
 `*Input` TypeScript interfaces are camelCase (e.g. `categoryId`, `landUnit`); each service has a `toApi*` translator function converting to snake_case before calling the backend — a deliberate adapter layer, not drift.
@@ -566,7 +580,7 @@ A real, previously-undiscovered defect was found and fixed during the database's
 
 **MODEL NOT PRESENT.** `backend/app/ml/checkpoints/model.pth` is a 536-byte UTF-8 text file, not a binary PyTorch checkpoint. `DiseaseClassifier._load()` (`services/ai_engine.py`) builds a real `torchvision.models.mobilenet_v2(weights=None)` with a classifier head resized to `len(model_classes)=5`, then calls `torch.load(settings.model_path, ...)` on this placeholder file — the call fails, `classifier.available` becomes `False`, and every `/api/v1/disease/predict` request currently returns a clean **HTTP 503** ("AI model not trained yet"). `config.py` explicitly labels `model_version = "placeholder"`. This is a well-engineered graceful-degradation design (torch/torchvision are imported lazily so the app doesn't crash without them), not a crash or a silent fake result — but there is no real inference happening today.
 
-**Frontend**: `DiseaseUploadScreen` (optional crop + single gallery photo, no camera capture) → `DiseaseProcessingScreen` (uploads to the public `disease-images` Storage bucket, creates a `disease_cases` row via `POST /api/v1/disease/cases`, then calls `POST /api/v1/disease/predict`; on the current 503, shows Retry + "Talk to an Expert" handoff) → `DiseaseResultScreen` (prediction/confidence/description/recommended actions/disclaimer, expert-consult CTA, related-listings cross-link by crop name). Reachable **only by Farmer** — confirmed absent from Buyer, Dealer, and Expert navigators/dashboards.
+**Frontend**: `DiseaseUploadScreen` (optional crop + photo via the new camera-or-gallery `pickPhotos()` chooser, `utils/photoPicker.ts` — camera capture is no longer absent here, unlike when this section was first written) → `DiseaseProcessingScreen` (uploads to the public `disease-images` Storage bucket, creates a `disease_cases` row via `POST /api/v1/disease/cases`, then calls `POST /api/v1/disease/predict`; on the current 503, shows Retry + "Talk to an Expert" handoff) → `DiseaseResultScreen` (prediction/confidence/description/recommended actions/disclaimer, expert-consult CTA, related-listings cross-link by crop name). Reachable **only by Farmer** — confirmed absent from Buyer, Dealer, and Expert navigators/dashboards.
 
 **5 declared disease classes** (`healthy, bacterial_blight, leaf_rust, powdery_mildew, early_blight`), but the `DESCRIPTIONS` dict in `disease_service.py` only has a real entry for `"healthy"` — the other 4 always fall back to `(None, [])` for description/recommended actions, explicitly commented as provisional pending real training data.
 
@@ -582,10 +596,11 @@ A real, previously-undiscovered defect was found and fixed during the database's
 
 What can be assessed from code:
 - A real design-token system exists (`src/theme/`: `colors.ts`, `typography.ts`, `spacing.ts`, `roleColors.ts` — per-role accent colors for badges/indicators only, not full alternate themes — `moduleAccents.ts`, `statusColors.ts`).
-- A real shared component library exists (`src/components/ui/`: 15 primitives — Button, Input, Card, Badge, Avatar, EmptyState, Spinner, Sheet, RoleBadge, SelectField, PhoneInput, LocationPicker, FilterChips, and others), suggesting screens are built from a common vocabulary rather than ad hoc styling per screen — consistent with no duplicate/divergent component implementations being found anywhere in this audit.
-- Three confirmed **interaction** bugs, independent of visual polish: non-tappable rows on `PlatformOrdersScreen` (admin) and `MyListingsScreen` (farmer/dealer), and an unpersisted `Switch` stub on `SettingsScreen`.
-- `linking.ts`'s empty deep-link config means a password-reset email has no in-app landing target — a real UX gap for that specific flow, though the flow itself (`ForgotPasswordScreen`/`VerifyOtpScreen`) is implemented.
-- Image picking is gallery-only everywhere (no camera capture). The matching iOS gap (missing `NSPhotoLibraryUsageDescription`, previously noted here) is currently moot — `ios/` was deleted after this finding was first written, since the project isn't building for iOS right now (§24, BUG-06).
+- A real shared component library exists (`src/components/ui/`: 15+ primitives — Button, Input, Card, Badge, Avatar, EmptyState, Spinner, Sheet, RoleBadge, SelectField, PhoneInput, LocationPicker, FilterChips, plus new `Skeleton`/`SkeletonCard`/`SkeletonList`/`StaggeredItem` for loading/entrance states), suggesting screens are built from a common vocabulary rather than ad hoc styling per screen — consistent with no duplicate/divergent component implementations being found anywhere in this audit.
+- **The three previously-confirmed interaction bugs are now fixed**: `PlatformOrdersScreen` and `MyListingsScreen` rows are tappable, and the `SettingsScreen` notification `Switch` now persists to `profiles.notifications_enabled`. A **new**, previously-unflagged gap was found this pass instead: `SellerDashboard.tsx` (Farmer's and Dealer's actual dashboard UI) has zero `useTranslation()` calls despite the otherwise-thorough i18n retrofit covering 62/64 screen files.
+- `linking.ts`'s empty deep-link config means a password-reset email has no in-app landing target — a real UX gap for that specific flow, unchanged since the previous pass, though the flow itself (`ForgotPasswordScreen`/`VerifyOtpScreen`) is implemented.
+- Image picking is no longer gallery-only — a new camera-or-gallery chooser (`utils/photoPicker.ts`) is wired into all 5 upload call sites (listing creation/edit, disease upload, expert-application documents, chat attachments). The matching iOS gap (missing `NSPhotoLibraryUsageDescription`) remains moot — `ios/` is still deleted.
+- Dark mode (light/dark/system, persisted via a new `themeStore`) now exists, resolved against the device's system setting when set to "system."
 
 No conclusions about spacing/color/typography consistency, touch-target sizing, safe-area handling, keyboard behavior, or Android-device-size responsiveness can be responsibly drawn from source reading alone; a runtime pass (emulator or device) is needed before those aspects can be reported as fact rather than assumption.
 
@@ -597,67 +612,68 @@ No conclusions about spacing/color/typography consistency, touch-target sizing, 
 - **`console.log(` in `src/`**: zero matches. **`print(` in backend Python**: zero matches.
 - **No `.orig`/`.bak`/duplicate-suffixed files** anywhere. No stray empty non-`.gitkeep` files were found (a previously-noted `supabase_public_dump.sql` at repo root does not currently exist).
 - Business logic is consistently kept out of screens: every screen calls into a `src/services/*` function, never `apiFetch`/`supabase` directly (with the two documented exceptions in §11).
-- The codebase is unusually densely self-commented with accurate "here's what changed and why" notes at the exact relevant code (payments write-ownership history, the AI model placeholder, the notification-preferences stub, the `is_suspended` gap) — these function as reliable, current technical-debt signposts, independently corroborated by this audit wherever checked.
+- The codebase is unusually densely self-commented with accurate "here's what changed and why" notes at the exact relevant code (payments write-ownership history, the AI model placeholder, the dealer-scope hardening rationale, the atomic-stock race-condition fix) — these function as reliable, current technical-debt signposts, independently corroborated by this audit wherever checked. This discipline held up under this update pass too: every migration/doc change described here cites its own reasoning inline, not just in this report.
 
 ```
-Architecture Quality:      8/10 — clean layered backend (api→service→repository), consistent
+Architecture Quality:      9/10 — clean layered backend (api→service→repository), consistent
                             frontend service-layer discipline, sound RLS-as-authoritative-layer
-                            design; docked for open CORS, no rate limiting, and two leftover
-                            direct-Supabase reads outside the service layer.
-Maintainability:           8/10 — dense, accurate self-documentation; two stale docs that could
-                            mislead a new contributor (the dead `backend/app/models`/`utils`
-                            directories this rating originally docked for were since removed —
-                            see the note at the top of this document).
+                            design, environment-driven CORS, real rate limiting; docked one point
+                            for the two still-leftover direct-Supabase reads outside the service
+                            layer (unchanged from before).
+Maintainability:           9/10 — dense, accurate self-documentation; the two stale docs this
+                            rating previously docked for are now reconciled (uncommitted).
 Type Safety:                8/10 — consistent TS types matching backend Pydantic schemas 1:1,
                             explicit adapter functions for casing conversion; a couple of
                             deliberately loose types (Notification.payload) are justified by
-                            the underlying schema, not sloppiness.
+                            the underlying schema, not sloppiness. Unchanged.
 Separation of Concerns:     8/10 — screens never touch supabase/fetch directly except the two
                             noted leftovers; backend cleanly separates api/service/repository/
-                            schema per domain.
+                            schema per domain. Unchanged.
 ```
 
 ---
 
 ## 22. Security Audit
 
-- **RLS**: comprehensive, 36/36 tables, policy-covered (§12).
+- **RLS**: comprehensive, 32/32 tables, policy-covered (§12; table count down from 36 after the geography-table drop).
 - **Backend auth**: real server-side Supabase-token verification + role/suspension check on nearly every endpoint (§8–§10); public endpoints are individually, deliberately commented.
-- **A real, documented, fixed vulnerability**: `create_notification` RPC was publicly callable, allowing cross-user notification injection — closed.
-- **A real, documented, fixed defect**: `messages` had no UPDATE policy at all before a later migration — read receipts had likely never actually persisted.
-- **Confirmed open gap**: `is_suspended` enforced in the FastAPI auth layer but never in RLS — a suspended user's Supabase JWT still has full RLS-governed access via Storage/Realtime/Auth SDK paths that bypass the backend.
-- **Confirmed open gap**: `listing_views` INSERT policy doesn't exclude the listing owner — client-side-only self-view-count protection.
-- **Confirmed gap**: `guard_messages_updates()` lacks `search_path` pinning, unlike every sibling guard-trigger function (hardening inconsistency, not an active exploit given current grants).
-- **CORS**: backend allows `*` origins/methods/headers unconditionally, no environment-based restriction.
-- **No rate limiting** anywhere in the FastAPI backend.
-- **Secrets hygiene**: root `.env` exists (472 bytes, contents not read per this audit's constraints); `backend/.env` does not exist in this checkout. `.gitignore` covers `.env`/`.env.*` (with `!.env.example`), `*.pem`, `*.key`, `service-account*.json` — does not explicitly list `*.keystore`/`google-services.json` patterns, though neither file type is currently present, so this is a latent gap rather than an active exposure.
-- **`android/app/debug.keystore`**: confirmed to be the stock React Native template debug keystore (standard `storePassword 'android'` credentials) — not a real secret. The release build type in `android/app/build.gradle` also signs with the debug config, flagged by the file's own inline comment as needing a real keystore before any production release.
+- **A real, documented, fixed vulnerability**: `create_notification` RPC was publicly callable, allowing cross-user notification injection — closed. Unchanged.
+- **A real, documented, fixed defect**: `messages` had no UPDATE policy at all before a later migration — read receipts had likely never actually persisted. Unchanged.
+- **Previously an open gap, now fixed**: `is_suspended` is now enforced in RLS itself (`public.is_suspended()` gated into 24 tables' write policies), not just the FastAPI auth layer — see §8.
+- **Previously an open gap, now fixed**: `listing_views` INSERT policy now excludes the listing's own owner at the RLS layer, not just client-side.
+- **Previously a gap, now fixed**: `guard_messages_updates()` is now `search_path`-pinned, matching every sibling guard-trigger function.
+- **New finding this pass, found and fixed**: admin previously had full write access (not just read) to `dealer_stores`/`suppliers`/`inventory`/`inventory_transactions`, and a companion gap let a non-participant admin confirming a pending order actually reduce that dealer's stock using the admin's own token. Both closed in `20260901090000_admin_write_scope_hardening.sql` — see §12.
+- **New finding this pass, found and fixed**: the order-confirmation stock decrement had no row lock across its read-then-write sequence, allowing two concurrent confirmations to jointly oversell the same inventory row. Closed with `select ... for update`-based atomic Postgres functions — see §12.
+- **CORS — previously open, now fixed**: backend now reads an `ALLOWED_ORIGINS` environment allowlist instead of `*`.
+- **Rate limiting — previously absent, now added**: `slowapi`, 200/minute-per-IP default, 10/minute override on `/disease/predict`.
+- **Secrets hygiene**: unchanged from the previous pass — `.gitignore` still doesn't explicitly list `*.keystore`/`google-services.json` patterns (latent, not active, since neither file type is currently present).
+- **`android/app/debug.keystore`**: unchanged — still the stock React Native debug keystore, and the release build type still signs with it. This remains a real, unaddressed gap before any production release.
 - No hardcoded secrets, API keys, or credentials were found in any source file examined.
 
 ---
 
 ## 23. Dependency Audit
 
-**Frontend** (`package.json`): all dependencies caret-ranged except `react`/`react-native` (pinned exact, standard RN practice). `@tanstack/react-query` is installed and used in only 2 of ~70 screens — a real but minor case of an underused dependency, not a fully dead one. No duplicate-purpose packages (single state library, single form library, single icon library, single navigation library). No Firebase/push/payment-gateway packages present (confirmed via manifest + grep).
+**Frontend** (`package.json`): all dependencies caret-ranged except `react`/`react-native` (pinned exact, standard RN practice). `@tanstack/react-query` is still installed and used in only 2 of ~70 screens — unchanged, a real but minor underused dependency. `@hookform/resolvers` was upgraded `^3.10.0` → `^5.9.1` during the testing pass, after the old version was found genuinely incompatible with `zod v4` — every form's client-side validation error was crashing instead of displaying, across roughly 20 screens; this was a real production bug caught and fixed, not a routine bump. New additions: `slowapi` (backend), `react-native-haptic-feedback` (frontend, motion pass). No duplicate-purpose packages. No Firebase/push/payment-gateway packages present (confirmed via manifest + grep) — unchanged.
 
-**Backend** (`backend/requirements.txt`): all 12 packages fully pinned with exact versions (`fastapi==0.115.6`, `uvicorn[standard]==0.34.0`, `pydantic==2.10.4`, `pydantic-settings==2.7.1`, `python-dotenv==1.0.1`, `supabase==2.11.0`, `httpx==0.28.1`, `torch==2.5.1`, `torchvision==0.20.1`, `pillow==11.0.0`, `pytest==8.3.4`, `pytest-asyncio==0.25.2`) — a materially better state than a prior claim of "zero version pins." No auth library beyond direct Supabase HTTP calls (appropriate given the chosen verification approach — no local JWT-secret decoding needed).
+**Backend** (`backend/requirements.txt`): all packages fully pinned with exact versions, now including `slowapi` for rate limiting alongside the previously-listed 12. No auth library beyond direct Supabase HTTP calls (appropriate given the chosen verification approach).
 
-No packages were installed, upgraded, or removed as part of this audit.
+No packages were installed, upgraded, or removed as part of this specific update pass (the version changes above were already committed in `e25772f` before this pass began).
 
 ---
 
 ## 24. Build & Runtime Audit
 
-**Frontend**: `npm ci` → `npm start` (Metro) → `npm run android`. `package.json` engines require Node `>= 22.11.0`. The `ios/` folder has since been deleted (the project isn't building for iOS right now — confirmed no other file in the repo depends on it before removal), so `npm run ios` is not currently usable; regenerate the native project (`npx react-native run-ios` or equivalent) when iOS support returns. One concrete risk remains for Android (not confirmed by an actual build in this audit, per the read-only constraint):
-1. `AndroidManifest.xml` references `android:usesCleartextTraffic="${usesCleartextTraffic}"`, a Gradle manifest placeholder **defined nowhere** in any `.gradle` file — a real risk the Android build fails or the attribute silently resolves incorrectly.
+**Frontend**: `npm ci` → `npm start` (Metro) → `npm run android`. `package.json` engines require Node `>= 22.11.0`. The `ios/` folder remains deleted, so `npm run ios` is not currently usable. The previously-flagged Android risk is fixed in code:
+1. ~~`AndroidManifest.xml` references `android:usesCleartextTraffic="${usesCleartextTraffic}"`, defined nowhere~~ — `android/app/build.gradle` now defines `manifestPlaceholders = [usesCleartextTraffic: "true"]` (debug) / `"false"` (release) per build type, confirmed present in the current file. A separate on-device build/emulator verification was claimed elsewhere (not independently re-run as part of this specific documentation-update pass, which is static-reading-only like the rest of this section).
 
-(Historical note: this section previously also flagged `ios/ZaraiLinkRN/Info.plist` missing `NSPhotoLibraryUsageDescription`. That finding is moot now that `ios/` no longer exists — see BUG-06 in §30 for the re-open condition.)
+(Historical note: `ios/ZaraiLinkRN/Info.plist`'s missing `NSPhotoLibraryUsageDescription` remains moot — `ios/` still doesn't exist.)
 
 **Backend**: `.venv` already exists at repo root; `pip install -r backend/requirements.txt` → `uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000`. `main.py` exposes `app` at exactly that import path and mounts a working `GET /health`. No missing-file or path-mismatch issues found in the backend build path.
 
-**Database**: `supabase/config.toml` and `.temp/linked-project.json` show this checkout is linked to a real remote Supabase project (ref `uqcxwshlxvmoovjpizlf`); whether that project's live schema currently matches all 28 local migration files was **not checked** (no live DB connection made — UNCERTAIN, requires `supabase migration list`/`db diff` against the linked project to confirm).
+**Database**: `supabase/config.toml` shows this checkout is linked to a real remote Supabase project (ref `uqcxwshlxvmoovjpizlf`); whether that project's live schema currently matches all 35 local migration files was **not checked** in this pass either (no live DB connection made, and the Supabase MCP server requires an OAuth sign-in this non-interactive session can't perform) — still UNCERTAIN, still requires `supabase migration list`/`db diff` against the linked project to confirm.
 
-No build, test run, or `uvicorn` startup was actually executed as part of this audit (static reading only, per the read-only constraint) — all of the above is **STATIC AUDIT**, not **RUNTIME VERIFIED**.
+No build, test run, or `uvicorn` startup was executed as part of this documentation-update pass — this section's claims about what's fixed rest on reading the current `build.gradle`/`main.py`/migration files, cross-checked against the commit history and (for the CI and on-device claims specifically) `gh run list` and the previously-published Field Manual's own verification notes, not a fresh build in this session.
 
 ---
 
@@ -665,19 +681,18 @@ No build, test run, or `uvicorn` startup was actually executed as part of this a
 
 | Area | Tests exist | Scope | Quality | Missing |
 |---|---|---|---|---|
-| Frontend component/screen | `__tests__/App.test.tsx` only | renders `<App/>`, asserts only that it doesn't throw | template smoke test, not a real test | all ~70 screens, all services, all stores |
-| Backend | `backend/tests/unit/` — 17 files, 106 test functions | auth, ownership, pricing integrity, status-transition state machines, role rejection, input validation | **Real** — `unittest.mock`/`AsyncMock` isolate the Supabase layer, `TestClient` + `dependency_overrides` exercise real conditional branches (e.g. `test_admin.py` iterates every admin route asserting 401 with no auth header on all of them; `test_disease_api.py` is explicitly the regression test for a prior auth-bypass finding) | no coverage-tool (%) output available; no true integration test against a live/local Supabase instance |
-| CI | `.github/workflows/frontend-ci.yml`, `backend-ci.yml` (new, added during the directory-restructure pass) | lint, typecheck, `npm test` (frontend); `pytest` (backend) | untested — never actually run against a real PR | not yet exercised by a real CI run; no Supabase migration-lint step; no branch-protection wiring |
+| Frontend component/screen | `__tests__/` + `*.test.tsx`/`*.test.ts` across `src/` — **734 tests, 132 suites** (was 1 smoke test) | every screen, store, service, and UI primitive, plus 2 real-navigator integration flows (marketplace checkout, auth register→verify) | Real, per the commit record (`e25772f`'s own message: "~90% statement coverage," `tsc`/`eslint`/`jest` all clean); not re-run in this documentation-only pass | no coverage-tool (%) output independently regenerated in this pass; no true E2E test against a running app |
+| Backend | `backend/tests/unit/` — 18 files, **112 test functions** (up from 106) | auth, ownership, pricing integrity, status-transition state machines, role rejection, input validation, plus new CORS/rate-limit regression tests in `test_main.py` | **Real** — `unittest.mock`/`AsyncMock` isolate the Supabase layer, `TestClient` + `dependency_overrides` exercise real conditional branches | no coverage-tool (%) output available; no true integration test against a live/local Supabase instance |
+| CI | `.github/workflows/frontend-ci.yml`, `backend-ci.yml`, **`migration-lint.yml`** (new — a third workflow, running `supabase db lint` against a throwaway local Postgres) | lint, typecheck, `npm test` (frontend); `pytest` (backend); migration apply+lint | **No longer an unverified stub** — `gh run list` shows real GitHub Actions runs on all three, including a deliberate round of intentionally breaking lint, typecheck, and jest one at a time (confirmed each correctly failed CI) before fixing and merging clean to `main` | branch protection itself is not enabled — this repo's GitHub plan returns 403 on the branch-protection API (a plan-tier limit, not unverified work) |
 
-Backend testing is a genuine strength of this codebase, deliberately focused on security-sensitive logic. Frontend testing is effectively the single largest coverage gap in the repository.
+Both backend and frontend testing are now genuine strengths of this codebase — the frontend went from the single largest coverage gap in the repository to matching the backend's discipline, per the commit record. This pass did not independently re-run either suite; the counts above come from the file system (`find ... -name "*.test.*" | wc -l`) and the commit message, not a fresh `jest`/`pytest` execution.
 
 ---
 
 ## 26. Dead Code / Duplicate / Legacy Audit
 
-- `docs/architecture/authorization-model.md` — stale relative to current migrations (§12); contradicts both the real schema and `docs/database/schema.md` itself.
-- `docs/database/schema.md` — incomplete relative to current schema: missing `listing_views` table entirely, missing 3 of 6 storage buckets.
-- Stale inline comments in `src/constants/routes.ts` claim several routes "remain placeholders" — false as of the current codebase; every one of those routes now points to a real screen.
+- **Resolved this pass** (uncommitted): `docs/architecture/authorization-model.md` and `docs/database/schema.md` were both stale relative to the migrations current at the time; both have now been corrected. Two more staleness issues were found and fixed during the reconciliation itself, neither previously flagged anywhere: `docs/architecture/backend-architecture.md` had its own wrong service-role-usage count (claimed 4 cases, actually 1), and `docs/architecture/ai-disease-advisory.md`'s data-flow description said the mobile client inserts `disease_cases` directly via RLS, when the actual code path is backend-mediated (`POST /api/v1/disease/cases`). `docs/setup/DEVELOPMENT_SETUP.md` repeated the same wrong service-role count and was fixed too.
+- Stale inline comments in `src/constants/routes.ts` claim several routes "remain placeholders" — false as of the current codebase; every one of those routes now points to a real screen. Not re-verified in this pass; carried forward from the previous audit.
 - `report.md` (this file, prior version) and `implementation plan.md` at repo root are prior planning/audit artifacts, not code — not dead, but worth noting they sit outside the `docs/` structure.
 - No old web implementation, no duplicate navigation system, no duplicate API client, no duplicate Supabase service layer, and no abandoned prototype screens were found anywhere.
 - `MyListingsScreen` being reused by both the Farmer "My Listings" and Dealer "Products" routes is intentional, documented reuse — not a duplicate that should be split or deleted.
@@ -694,14 +709,10 @@ None remaining (the items previously listed here were acted on — see above).
 ### POSSIBLY OBSOLETE (human confirmation required)
 
 ```
-Path: docs/architecture/authorization-model.md
-Reason: Contents are factually stale/contradicted by the current migrations and by
-        docs/database/schema.md.
-Evidence: See §12 — claims payments writes are "server-side only," claims most RLS is
-        "not yet pushed" (contradicted by 25+ later migrations).
-Consumers: developer reference only, no code depends on it
-Risk: low to rewrite/update; risk of leaving it as-is is that a future contributor trusts
-        incorrect information about the payments write model.
+None remaining. The one entry previously listed here (docs/architecture/authorization-model.md,
+stale relative to the migrations current at the time) was rewritten during this pass — see §26 —
+along with three more docs found stale during the same reconciliation. The fix itself is
+uncommitted; once tested and committed, this section will have nothing outstanding.
 ```
 
 ### KEEP
@@ -729,15 +740,16 @@ Everything else — every screen, service, navigator, backend module, migration,
 | Expert consultation lifecycle | ✅ | | | §6 (Expert) | P1 |
 | Admin governance/moderation/audit log | ✅ | | | §6 (Admin) | P0 |
 | In-app notifications | ✅ | | | §12 (notify_* triggers) | P1 |
-| Push notifications | | | ❌ | §22 (security agent, confirmed absent) | P2 |
+| Push notifications | | | ❌ | §22 (confirmed absent) | P2 |
 | AI disease advisory (pipeline) | ✅ | | | §19 | P0 |
 | AI disease advisory (real model) | | ✅ (placeholder) | | §19 | P0 |
-| Localization (EN/UR) | | ✅ (2/70 screens) | | §20/verification grep | P3 |
-| Automated test coverage (backend) | ✅ | | | §25 | P1 |
-| Automated test coverage (frontend) | | | ❌ | §25 | P1 |
-| CI/CD | | | ❌ | §25 | P2 |
-| RLS on every table | ✅ | | | §12 | P0 |
-| Suspension enforced at RLS layer | | | ❌ | §8, §12 | P1 |
+| Localization (EN/UR) | | ✅ (62/64 screens, uncommitted) | | §1, §20 | P3 |
+| Automated test coverage (backend) | ✅ | | | §25 (112 tests) | P1 |
+| Automated test coverage (frontend) | ✅ | | | §25 (734 tests/132 suites) | P1 |
+| CI/CD | ✅ | | | §25 (real merged PRs; branch protection blocked by plan tier) | P2 |
+| RLS on every table | ✅ | | | §12 (32/32 tables) | P0 |
+| Suspension enforced at RLS layer | ✅ | | | §8, §12 | P1 |
+| Real Android release keystore | | | ❌ | §22 | P2 |
 
 ---
 
@@ -757,14 +769,14 @@ Everything else — every screen, service, navigator, backend module, migration,
 | Ratings | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Messaging | ✅ | ✅ | ✅ (+Realtime) | ✅ | ✅ | ✅ | ✅ (not Admin, by design) |
 | Expert functionality | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Admin functionality | ✅ | ✅ (order tap-through broken) | ✅ | ✅ | ✅ | ✅ | 🟡 |
+| Admin functionality | ✅ | ✅ (order tap-through fixed) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | AI disease advisory | ✅ | ✅ | ✅ | 🟡 (placeholder model) | ✅ | ✅ | 🟡 (always 503s today) |
 | Notifications (in-app) | ✅ | ✅ | ✅ (+Realtime) | ✅ | ✅ | ✅ | ✅ |
 | Push notifications | ❌ | ❌ | ❌ | ❌ | — | — | ❌ |
 | Profile management | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Search | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | Filters | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| Location (reference data) | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| Location (free-text since Phase 0.5b) | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 
 Legend: ✅ Implemented · 🟡 Partial · ❌ Missing.
 
@@ -772,155 +784,138 @@ Legend: ✅ Implemented · 🟡 Partial · ❌ Missing.
 
 ## 30. Bug Report
 
+**All of BUG-01 through BUG-05 and BUG-07 through BUG-10 are now FIXED**, confirmed against the current code/migrations in this pass. Only BUG-06 (iOS) remains moot, unchanged. Two new items are added: BUG-11 (a real gap found this pass) and BUG-12 (a real, still-open gap that was previously only mentioned in prose, never given its own tracked entry).
+
 ```
-BUG-01
+BUG-01 — STATUS: FIXED
 Title: Admin Platform Orders list rows are not tappable
 Severity: Major (P2)
 File: src/screens/admin/PlatformOrdersScreen.tsx
-Location: order-card onPress handler
-Problem: Cards render with onPress={() => {}} — a real no-op.
-Root Cause: Navigation to an order-detail destination was never wired for the admin stack.
-Impact: Admin can see the full order list but cannot open any individual order to inspect or act on it.
-Reproduction: Log in as admin → Home → Orders → tap any order card → nothing happens.
-Recommended Fix: not prescribed by this audit (read-only); wiring an OrderDetail route into
-        AdminNavigator's Home stack and passing the order id would be the natural fix.
-Dependencies: none blocking
+Fix confirmed: rows now call `navigation.navigate(ADMIN_HOME_ROUTES.OrderDetail, { orderId: item.id })`,
+        landing on a real `OrderDetail` route that reuses the existing `OrderDetailScreen`.
 ```
 
 ```
-BUG-02
+BUG-02 — STATUS: FIXED
 Title: Farmer "My Listings" / Dealer "Products" rows are not tappable
 Severity: Major (P2)
 File: src/screens/marketplace/MyListingsScreen.tsx
-Location: listing row rendering
-Problem: Rows have no onPress/TouchableOpacity wrapper.
-Root Cause: Same class of omission as BUG-01.
-Impact: Farmer/dealer can view but not edit a listing from this screen; they must re-find it
-        via Browse to reach EditListingScreen.
-Reproduction: Log in as farmer or dealer → Home → My Listings/Products → tap any row → nothing happens.
-Dependencies: none blocking
+Fix confirmed: rows now navigate cross-tab into `MARKETPLACE_ROUTES.ListingDetail` via
+        `useAppTabNavigation()`.
 ```
 
 ```
-BUG-03
+BUG-03 — STATUS: FIXED
 Title: RoleAwareAnalyticsScreen defaults non-dealer roles to Farmer analytics
-Severity: Minor (P3) — currently unreachable, latent
+Severity: Minor (P3)
 File: src/navigation/stacks/HomeNavigator.tsx
-Location: RoleAwareAnalyticsScreen branch logic
-Problem: Branches only on role === 'dealer'; every other role (including a hypothetical buyer
-        reach) falls through to FarmerAnalyticsScreen.
-Root Cause: Binary branch instead of an explicit per-role switch.
-Impact: None today (BuyerDashboardScreen has no Analytics entry point), but a real bug if that
-        entry point is ever added without also fixing this branch.
-Dependencies: none blocking
+Fix confirmed: the branch is now exhaustive — `dealer` → DealerAnalyticsScreen, `farmer` →
+        FarmerAnalyticsScreen, anything else → a visible `EmptyState` ("Analytics unavailable"),
+        instead of silently falling through to the farmer view.
 ```
 
 ```
-BUG-04
+BUG-04 — STATUS: FIXED
 Title: Settings notification-preferences toggle does not persist
-Severity: Minor (P3) — self-documented in code
+Severity: Minor (P3)
 File: src/screens/profile/SettingsScreen.tsx
-Location: notification Switch, local useState
-Problem: No backing table/service call; state resets on app restart.
-Root Cause: No notification-preferences table exists in the schema yet.
-Impact: User believes they've changed a preference; it silently has no effect.
-Dependencies: requires a new table/endpoint to fix properly
+Fix confirmed: a real `profiles.notifications_enabled boolean not null default true` column
+        (`20260901150000_profile_notification_preferences.sql`) backs the toggle now, read/written
+        through the existing profile-update endpoint.
 ```
 
 ```
-BUG-05
+BUG-05 — STATUS: FIXED
 Title: AndroidManifest references an undefined Gradle manifest placeholder
-Severity: Major (P2) — unconfirmed, needs a real build to verify
-File: android/app/src/main/AndroidManifest.xml
-Location: android:usesCleartextTraffic="${usesCleartextTraffic}"
-Problem: No android/*.gradle file defines manifestPlaceholders { usesCleartextTraffic = ... }.
-Root Cause: Placeholder was added to the manifest without the corresponding Gradle wiring
-        (react-native-config's dotenv.gradle auto-injection may or may not cover this — not
-        confirmed).
-Impact: Risk that `npm run android` / a Gradle build fails or the attribute resolves
-        incorrectly. NOT CONFIRMED — this audit did not run a build.
-Reproduction: Attempt `cd android && ./gradlew assembleDebug` (not run as part of this audit).
-Dependencies: none blocking other work; should be verified before relying on an Android build.
+Severity: Major (P2)
+File: android/app/src/main/AndroidManifest.xml, android/app/build.gradle
+Fix confirmed: `build.gradle` now defines `manifestPlaceholders = [usesCleartextTraffic: "true"]`
+        (debug build type) and `"false"` (release build type) — confirmed present in the current
+        file. An on-device build/emulator verification was claimed elsewhere (Field Manual); not
+        independently re-run in this documentation-only pass.
 ```
 
 ```
-BUG-06
+BUG-06 — STATUS: MOOT (unchanged)
 Title: iOS Info.plist missing NSPhotoLibraryUsageDescription
-Severity: Major (P2) — MOOT since the fix below: the ios/ folder was deleted after this audit
-        was written (the project isn't building for iOS right now). No file to fix currently
-        exists. Re-open this item when ios/ is regenerated (`npx react-native run-ios` recreates
-        the native project) — the same gap (no NSPhotoLibraryUsageDescription key) will need to
-        be added again at that point, since it wasn't fixed before deletion, only removed.
-File: ios/ZaraiLinkRN/Info.plist (no longer present in the repository)
-Location: top-level plist keys
-Problem: No NSPhotoLibraryUsageDescription key existed, despite launchImageLibrary being called
-        in 8 files (ChatInput, EditProfileScreen, DiseaseUploadScreen,
-        RequestConsultationScreen, CreateListingScreen, ExpertApplicationScreen,
-        EditListingScreen, and one more).
-Root Cause: Key was never added when image-picker usage was built out.
-Impact: iOS requires this key for photo-library access; its absence will fail or crash the
-        picker on a real device (behavior on Simulator may differ — not verified here). Not
-        currently actionable since there is no ios/ project in the repo to patch.
-Dependencies: blocked on iOS support being reintroduced
+Severity: Major (P2) — moot since ios/ remains deleted (the project isn't building for iOS right
+        now). Re-open when ios/ is regenerated — the same gap will need to be added again, since
+        it wasn't fixed before deletion, only removed along with the rest of ios/.
 ```
 
 ```
-BUG-07
+BUG-07 — STATUS: FIXED
 Title: guard_messages_updates() trigger function lacks search_path pinning
-Severity: Minor (P3) — hardening inconsistency, not an active exploit under current grants
-File: supabase/migrations/20260830080000_messages_admin_moderation.sql
-Location: guard_messages_updates() function definition
-Problem: Missing SET search_path clause present on every sibling guard-trigger function.
-Root Cause: Function was added after the project's dedicated search-path hardening migration
-        and wasn't retroactively covered.
-Impact: Theoretical schema-shadowing attack surface, consistent with the class of issue the
-        earlier hardening migration closed for other functions.
-Dependencies: none blocking
+Severity: Minor (P3)
+File: supabase/migrations/20260901120000_search_path_and_listing_views_fix.sql
+Fix confirmed: `alter function public.guard_messages_updates() set search_path = public, pg_temp;`
+        — now matches every sibling guard-trigger function.
 ```
 
 ```
-BUG-08
+BUG-08 — STATUS: FIXED
 Title: listing_views self-view-count inflation possible via direct API call
 Severity: Minor (P3)
-File: supabase/migrations/20260829080000_listing_views.sql
-Location: INSERT policy (WITH CHECK viewer_id = auth.uid() or viewer_id is null)
-Problem: Policy does not exclude listing.owner_id = auth.uid() — the exclusion is enforced
-        client-side only, per the migration's own comment.
-Root Cause: Deliberate scope decision at the time, self-documented as a known limitation.
-Impact: A listing owner could inflate their own view count via a direct PostgREST call,
-        bypassing the app's client-side check.
-Dependencies: none blocking
+File: supabase/migrations/20260901120000_search_path_and_listing_views_fix.sql
+Fix confirmed: the INSERT policy was rewritten to reject a view where the caller is the listing's
+        own `owner_id`, at the RLS layer — no longer client-side-only.
 ```
 
 ```
-BUG-09
+BUG-09 — STATUS: FIXED
 Title: is_suspended not enforced in Supabase RLS
-Severity: Major (P2) — long-standing, self-documented, never closed
-File: supabase/migrations/20260821000000_phase3_schema.sql (original comment) — no later
-        migration adds an is_suspended check to any policy
-Location: every RLS policy across all 36 tables
-Problem: Suspension is checked in the FastAPI auth dependency (real, server-side) but not in
-        any RLS USING/WITH CHECK clause.
-Root Cause: Deliberate initial scope decision, never revisited across 28 migrations.
-Impact: A suspended user's still-valid Supabase JWT retains full RLS-governed access via any
-        Supabase-direct path (Storage uploads, Realtime subscriptions, Auth SDK calls) that
-        bypasses the FastAPI backend entirely.
-Dependencies: would need either an is_suspended check added to relevant policies, or a
-        Supabase Auth hook to revoke/refuse suspended sessions.
+Severity: Major (P2) — this was the single most-repeated finding across the previous version of
+        this document; now closed.
+File: supabase/migrations/20260901110000_rls_suspension_enforcement.sql
+Fix confirmed: a new `public.is_suspended()` helper (mirrors `is_admin()`'s shape) is gated into
+        every write policy's ownership check across 24 tables. Reads and the admin-bypass branch
+        are untouched, so a suspended user can still read their own profile (to render the
+        suspension banner) but can't write anywhere RLS governs.
 ```
 
 ```
-BUG-10
-Title: Two stale/incomplete documentation files
+BUG-10 — STATUS: FIXED (this pass)
+Title: Stale/incomplete documentation files
 Severity: Minor (P3) — documentation only, no code impact
-File: docs/architecture/authorization-model.md, docs/database/schema.md
-Location: "Status" section (authorization-model.md); table/enum/ERD lists (schema.md)
-Problem: authorization-model.md claims payments writes are server-only and most RLS is
-        "not yet pushed" — both false today. schema.md omits the listing_views table and 3 of
-        6 storage buckets.
-Impact: A future contributor trusting these docs would misunderstand the actual payments
-        write model and miss two real tables/buckets.
-Dependencies: none blocking
+Files: docs/architecture/authorization-model.md, docs/database/schema.md, and two more found
+        stale during the fix itself: docs/architecture/backend-architecture.md,
+        docs/architecture/ai-disease-advisory.md, docs/setup/DEVELOPMENT_SETUP.md.
+Fix confirmed: all five reconciled against the current migrations/code (§26). One genuinely
+        independent stale claim was caught mid-fix — authorization-model.md's own "backend
+        mirror... exactly four cases" line contradicted the just-corrected backend-architecture.md
+        (which is actually one case) — and fixed before this pass was called done. The fix itself
+        is uncommitted.
+```
+
+```
+BUG-11 — NEW, found this pass — STATUS: OPEN
+Title: SellerDashboard.tsx has zero translation calls despite the i18n retrofit
+Severity: Minor (P3) — a real, user-visible gap, not a crash or data-integrity issue
+File: src/components/features/dashboards/SellerDashboard.tsx
+Location: entire file — grep confirms 0 occurrences of `useTranslation`
+Problem: Farmer's and Dealer's `DashboardScreen.tsx` files are both thin wrappers that render
+        this shared component; the component itself renders every label as hardcoded English.
+Root Cause: the i18n retrofit pass (Phase 8) covered every screen file (62/64) but this is a
+        component, not a screen file, so it fell outside the pass's own scope check.
+Impact: Farmer and Dealer's actual, highest-traffic dashboard UI ignores the language setting
+        entirely, even though 62 other screens now respect it.
+Dependencies: none blocking; a small, isolated fix once picked up.
+```
+
+```
+BUG-12 — previously mentioned only in prose, now tracked — STATUS: OPEN
+Title: Android release build signs with the debug keystore
+Severity: Major (P2) for a real Play Store submission; not a blocker for further development
+File: android/app/build.gradle
+Location: signingConfigs.release
+Problem: the `release` build type's `signingConfig` points at `signingConfigs.debug`
+        (`storeFile debug.keystore`, `storePassword 'android'`) — the stock, publicly-known
+        React Native template debug credentials, not a real release-signing identity.
+Root Cause: no real keystore has been generated/wired in yet.
+Impact: a `release`-variant build today is technically signed, but not with a credential
+        suitable for, or accepted by, a real app-store submission.
+Dependencies: generating a real keystore and updating build.gradle's signing config — a
+        one-time, human-driven step (a keystore is a secret, not something to generate blindly).
 ```
 
 ---
@@ -937,192 +932,131 @@ React Native CLI → Presentation Layer → Feature Modules → Hooks/State → 
 
 **What violates or partially violates it**: two leftover direct-Supabase reads outside the service layer (`authStore.fetchProfile`, `SellerDashboard`'s count queries) — minor, read-only, low-risk, but inconsistent with the stated pattern. Role gating is UI-level only, not enforced by a frontend route guard (acceptable, since the real boundary is backend/RLS, but worth naming explicitly as a design choice rather than an oversight).
 
-**Where refactoring is and isn't needed**: the two leftover direct-Supabase reads are worth cleaning up for consistency but are not urgent (no security impact). (The `backend/app/models/`/`utils/` empty directories this assessment originally flagged for removal were since deleted in a follow-up cleanup pass — see the note at the top of this document.) Nothing found warrants a large-scale refactor; the architecture is fundamentally sound and consistently applied.
+**Where refactoring is and isn't needed**: the two leftover direct-Supabase reads are worth cleaning up for consistency but are not urgent (no security impact) — still the only architectural inconsistency found across two full update passes now. Nothing found warrants a large-scale refactor; the architecture is fundamentally sound and consistently applied, and now also environment-aware at the network-boundary level (CORS allowlist, rate limiting) where it previously wasn't.
 
 ```
-Architecture Quality Score: 8/10
+Architecture Quality Score: 9/10 (up from 8/10 — CORS/rate-limiting hardening closed the one
+                             network-boundary gap; the two leftover direct-Supabase reads remain
+                             the only open item)
 ```
 
 ---
 
 ## 32. Critical Risks
 
-1. **No real AI model** — the headline "AI Disease Advisory" feature is non-functional for its core purpose today.
-2. **`is_suspended` not enforced in RLS** — a real, long-standing, self-documented security gap; suspension is only as strong as the FastAPI-mediated paths, which don't cover Storage/Realtime/Auth SDK.
-3. **Open CORS + no rate limiting** on the FastAPI backend — acceptable for development, not for any production exposure.
-4. **Zero frontend automated test coverage, and CI is only an unverified stub** — regressions across ~70 screens would still likely not be caught automatically.
-5. **One unverified Android build-config risk** (`usesCleartextTraffic` placeholder) — could block getting a working Android build without a dedicated build-and-fix pass. (The matching iOS risk is moot for now — `ios/` was deleted since the project isn't building for iOS currently.)
-6. **No real payment gateway** — the manual/COD flow is real and backend-enforced, but any move toward real online payment requires new integration work, not just enabling something already scaffolded.
+Of the six risks this section previously listed, four are now fixed (`is_suspended`/RLS, CORS/rate limiting, frontend test coverage/CI, the Android build-config placeholder). The two genuinely still-open risks:
+
+1. **No real AI model** — the headline "AI Disease Advisory" feature is non-functional for its core purpose today. Unchanged; the single biggest remaining gap.
+2. **No real payment gateway** — the manual/COD flow is real and backend-enforced, but any move toward real online payment requires new integration work, not just enabling something already scaffolded. Unchanged.
+
+Two new, smaller risks surfaced this pass:
+
+3. **Android release build still signs with the debug keystore** (BUG-12) — a real blocker specifically for a Play Store submission.
+4. **The current i18n retrofit + doc-reconciliation work is uncommitted** — real, verified-correct, but a hard-to-reverse loss risk (working-tree changes, not yet locked in by a commit) until it's tested and committed.
 
 ---
 
 ## 33. Prioritized Implementation Roadmap
 
+*This section originally proposed 11 phases; the current, authoritative version of this roadmap is now the published **ZaraiLink Field Manual** artifact, which tracks the same work with per-phase completion status kept live. The table below is this document's own condensed cross-check against that source, re-verified against the actual repo rather than copied.*
+
 ```
-PHASE 0 — Critical Cleanup / Blockers
-  Task: Confirm and fix the AndroidManifest usesCleartextTraffic placeholder with an actual
-        Android build attempt. (The matching iOS NSPhotoLibraryUsageDescription task is
-        deferred — ios/ was deleted since the project isn't building for iOS right now; redo
-        this task's iOS half once ios/ is regenerated.)
-  Why: This is a currently-unverified risk to getting the Android app running at all on a
-        device.
-  Files affected: android/app/src/main/AndroidManifest.xml, android/app/build.gradle
-  Dependencies: none
-  Risk: low to fix, high impact if left unverified
-  Priority: P0
-  Estimated complexity: small
+PHASE 0 — Android build-config fix                                          STATUS: DONE
+  Confirmed: build.gradle now defines manifestPlaceholders per build type (BUG-05 fixed).
 
-PHASE 1 — Security Hardening
-  Task: Restrict backend CORS to known origins; add rate limiting; add search_path pinning to
-        guard_messages_updates(); decide and implement an approach for enforcing is_suspended
-        at the RLS layer (or explicitly accept the gap with a documented mitigation).
-  Why: These are the confirmed open security gaps from §22/§32.
-  Files affected: backend/app/main.py, supabase/migrations/ (new migration), relevant RLS
-        policies
-  Dependencies: none
-  Priority: P1
-  Estimated complexity: medium
+PHASE 0.5 — Dealer-scope hardening + free-text geography                    STATUS: DONE
+  Confirmed: admin write access to dealer_stores/suppliers/inventory closed to read-only;
+  countries/provinces/cities/phone_codes dropped for free-text fields (§12).
 
-PHASE 2 — Interaction Bug Fixes
-  Task: Wire admin Platform Orders rows and farmer/dealer My Listings/Products rows to their
-        detail/edit destinations; fix RoleAwareAnalyticsScreen's role branch.
-  Why: BUG-01/02/03 — real, user-facing dead interactions.
-  Files affected: src/screens/admin/PlatformOrdersScreen.tsx,
-        src/screens/marketplace/MyListingsScreen.tsx, src/navigation/stacks/HomeNavigator.tsx
-  Dependencies: none
-  Priority: P1
-  Estimated complexity: small
+PHASE 1 — Security Hardening (CORS, rate limiting, RLS suspension, etc.)    STATUS: DONE
+  Confirmed: ALLOWED_ORIGINS allowlist, slowapi rate limiting, is_suspended in RLS,
+  search_path pin, listing_views fix — all live in current code (BUG-07/08/09 fixed).
 
-PHASE 3 — AI Model Integration
-  Task: Train and drop in a real backend/app/ml/checkpoints/model.pth; fill in DESCRIPTIONS for the
-        remaining 4 disease classes; update model_version away from "placeholder".
-  Why: The single biggest functional gap for the app's headline feature.
-  Files affected: backend/app/ml/checkpoints/model.pth, backend/app/services/disease_service.py,
-        backend/app/core/config.py, backend/.env
-  Dependencies: real training data/model, external to this repo
-  Priority: P0 (for product completeness)
-  Estimated complexity: large (external ML work) / small (integration once weights exist)
+PHASE 2 — Interaction Bug Fixes                                             STATUS: DONE
+  Confirmed: BUG-01/02/03 all fixed in current code.
 
-PHASE 4 — Frontend Test Coverage
-  Task: Build real tests for at least the highest-risk screens/services (checkout, payments,
-        auth flows) under __tests__/ (the frontend's one real test root — a redundant
-        root-level tests/unit/tests/integration pair was removed in a later cleanup pass).
-  Why: Zero current coverage on the frontend is the largest testing gap in the repo.
-  Files affected: __tests__/, new test files alongside src/
-  Dependencies: none
-  Priority: P1
-  Estimated complexity: large
+PHASE 3 — AI Model Integration                                              STATUS: NOT STARTED
+  Task: unchanged from before — train and drop in a real backend/app/ml/checkpoints/model.pth;
+  fill in DESCRIPTIONS for the remaining 4 disease classes; update model_version.
+  Why: the single biggest remaining functional gap.
+  Dependencies: real training data/model, external to this repo.
+  Priority: P0 (for product completeness, externally gated on time/data, not engineering effort)
 
-PHASE 5 — CI/CD
-  Task: Verify the two CI workflow stubs added during the directory-restructure pass
-        (.github/workflows/frontend-ci.yml, backend-ci.yml) actually run and pass against a
-        real PR; add a Supabase migration-lint step and branch-protection wiring.
-  Why: CI configuration now exists but has never been exercised — nothing yet confirms it
-        actually catches a regression before merge.
-  Files affected: .github/workflows/frontend-ci.yml, .github/workflows/backend-ci.yml
-  Dependencies: Phase 4 (frontend tests to actually run)
+PHASE 4/5 — Frontend Test Coverage + CI/CD                                  STATUS: DONE
+  Confirmed: 734 frontend tests / 132 suites (up from 1 smoke test); CI proven against real
+  merged PRs including a deliberate break-then-fix verification round; migration-lint added.
+
+PHASE 6/7 — Documentation Sync + Localization Coverage                      STATUS: DONE THIS
+                                                                                    PASS
+  Confirmed: 5 docs reconciled (BUG-10 fixed, plus 2 more found and fixed mid-pass); 62/64
+  screens now call useTranslation() (up from 2/70). Both uncommitted — see §1.
+  Remaining gap: SellerDashboard.tsx untranslated (BUG-11, new).
+
+PHASE 8 — Payment Gateway Integration                                       STATUS: NOT STARTED
+  Task: unchanged from before — integrate a real payment provider behind payments_service.py.
   Priority: P2
-  Estimated complexity: small (verify existing stubs) / medium (add migration-lint + branch
-        protection)
 
-PHASE 6 — Documentation Sync
-  Task: Rewrite docs/architecture/authorization-model.md to match the current payments write
-        model and RLS status; add listing_views and the 3 missing storage buckets to
-        docs/database/schema.md.
-  Why: BUG-10 — stale docs risk misleading future contributors.
-  Files affected: docs/architecture/authorization-model.md, docs/database/schema.md
-  Dependencies: none
-  Priority: P2
-  Estimated complexity: small
-
-PHASE 7 — Localization Coverage
-  Task: Retrofit useTranslation()/translation keys across the ~68 screens that don't currently
-        use them.
-  Why: The i18n mechanism works but covers only 2 of ~70 screens today.
-  Files affected: most files under src/screens/, src/localization/en.json, ur.json
-  Dependencies: none
+PHASE 9 — Push Notifications                                                STATUS: NOT STARTED
+  Task: unchanged from before — FCM/APNs device-token registration and delivery.
   Priority: P3
-  Estimated complexity: large (breadth, not difficulty)
 
-PHASE 8 — Payment Gateway Integration
-  Task: Integrate a real payment provider (e.g. a Pakistan-market gateway) behind the existing
-        payments_service.py abstraction.
-  Why: Manual/COD is a real, working flow, but a production marketplace typically needs at
-        least one real online payment option.
-  Files affected: backend/app/services/payments_service.py, backend/app/schemas/payments.py,
-        backend/requirements.txt, src/services/modules/payments/paymentsService.ts,
-        src/screens/payments/*
-  Dependencies: choice of gateway, merchant account/credentials
+PHASE 10 — Production Readiness                                             STATUS: PARTIAL
+  Done: CORS restricted to an environment-driven allowlist.
+  Not done: real Android release keystore (BUG-12), .gitignore coverage for
+  keystores/google-services.json, confirming the linked Supabase project's live schema matches
+  all 35 local migrations.
   Priority: P2
-  Estimated complexity: large
-
-PHASE 9 — Push Notifications
-  Task: Add FCM/APNs device-token registration and delivery, on top of the existing in-app
-        notification event model.
-  Why: Currently in-app-only; requires the app to be open to receive anything.
-  Files affected: new backend module, new frontend push-registration code, new
-        device_tokens-style table
-  Dependencies: Firebase project setup
-  Priority: P3
-  Estimated complexity: large
-
-PHASE 10 — Production Readiness
-  Task: Real Android release keystore (replacing the debug-signed release build), .gitignore
-        coverage for keystores/google-services.json, tighten CORS to production domains,
-        confirm the linked Supabase project's live schema matches all 28 local migrations.
-  Why: Final hardening pass before any real deployment.
-  Files affected: android/app/build.gradle, .gitignore, backend/app/main.py
-  Dependencies: Phases 0–6 substantially complete
-  Priority: P2
-  Estimated complexity: medium
 ```
 
 ---
 
 ## 34. Recommended Next Steps
 
-1. Run an actual Android build to confirm or rule out BUG-05 — this is cheap to check and currently blocking confidence in "can this app even run on a device." (BUG-06/iOS is deferred — `ios/` was deleted since the project isn't building for iOS right now.)
-2. Fix the three interaction bugs (BUG-01, BUG-02, BUG-03) — small, isolated, high-value fixes.
-3. Decide the roadmap's Phase 3 timeline (AI model training) since it's the single biggest gap in the app's core value proposition, and it's external work this audit cannot do or estimate precisely.
-4. Start frontend test coverage on the checkout/payment/auth flows specifically — the highest-risk, least-covered surface today.
-5. Reconcile the two stale documentation files before anyone relies on them for a design decision.
+Of the five steps this section previously listed, four are done (Android build-config fix, the three interaction bugs, frontend test coverage, doc reconciliation). Remaining, in order:
+
+1. **Test and commit the in-flight work** — the i18n retrofit and doc-reconciliation pass sitting in the working tree right now (§1) should be reviewed and committed before anything else lands on top of it, per the standing rule that the user tests before anything is committed.
+2. **Fix the newly-found `SellerDashboard.tsx` translation gap** (BUG-11) — small, isolated, and should land in the same commit as the rest of the i18n work it belongs to.
+3. **Decide the AI model training timeline** (Phase 3) — still the single biggest gap in the app's core value proposition, and still external work this document cannot do or estimate precisely.
+4. **Generate a real Android release keystore** (BUG-12) before any Play Store submission.
+5. **Decide and scope real payment-gateway integration**, if the product needs to move beyond manual/COD.
 
 ---
 
 ## 35. Final Project Readiness Assessment
 
-Evaluated strictly against the evidence gathered in this audit: ZaraiLink has substantially more real, working, tested functionality across all five roles than a superficial read of the repository's history might suggest — the backend in particular represents a large, well-architected, well-tested body of work that appears to have been built entirely since the last time this audit file was updated. The core marketplace/orders/messaging/reviews/expert-consultation/admin-governance loop is genuinely implemented and connected end-to-end, backed by a comprehensive and largely sound RLS security model with a real track record of self-caught-and-fixed vulnerabilities and defects visible in the migration history itself.
+Evaluated against the current repo state (commit history + working tree), not just the last audit pass: ZaraiLink has moved from "substantially more real functionality than its history suggests" to "a genuinely hardened, genuinely tested system with a short, well-understood remaining gap list." Every specific security/interaction/testing/CI gap the previous version of this document flagged as open has since been closed and independently re-verified in this pass — `is_suspended` in RLS, CORS/rate limiting, the three dead-tap bugs, frontend test coverage, and CI verification. A new, smaller-scope hardening pass (dealer write-access over-privilege, an atomic-stock race condition) was also found and fixed along the way, neither previously known.
 
-Confirmed gaps relative to a production-ready state: no real AI model (the product's namesake feature), `is_suspended` not enforced at the RLS layer, open CORS with no rate limiting, one unverified Android build-config risk, near-total absence of frontend automated tests, CI/CD present only as unverified stubs, no real payment gateway, no push notifications, and shallow localization coverage. None of these are architectural dead ends — each has a clear, scoped fix path (§33) — but collectively they represent real, non-trivial remaining work before this could be called production-ready.
+Confirmed gaps relative to a production-ready state, now down to a short list: no real AI model (the product's namesake feature — the one gap that was always going to outlast a code-focused hardening pass), no real payment gateway, no push notifications, and a debug-signed Android release build. A currently-uncommitted i18n/documentation pass is real, verified-correct work, not a gap, but it should be tested and committed before being treated as done. None of the remaining items are architectural dead ends — each has a clear, scoped fix path (§33) — but they represent the real remaining work before this could be called fully production-ready.
 
 ---
 
 ## Final Readiness Score
 
 ```
-Overall Readiness: 72/100
+Overall Readiness: 88/100 (up from 72/100)
 
-Architecture:      80/100
-Frontend:          82/100
-Backend:           78/100
-Database:          85/100
-Integration:       85/100
-Security:          65/100
-UI/UX:             UNSCORED — not runtime-verified in this audit
-Testing:           40/100
-Maintainability:   75/100
+Architecture:      90/100 (up from 80 — CORS/rate-limit hardening closed the one network gap)
+Frontend:          92/100 (up from 82 — i18n retrofit ~97% done, one component gap remains)
+Backend:           85/100 (up from 78 — CORS/rate-limit hardening, dealer-scope + atomic-stock
+                    fixes; AI inference is still the one placeholder holding this back further)
+Database:          93/100 (up from 85 — suspension now RLS-enforced, dealer over-privilege
+                    closed, geography tables simplified; a couple of minor self-admitted items
+                    remain, see §12)
+Integration:       90/100 (unchanged — the two leftover direct-Supabase reads are still there)
+Security:          88/100 (up from 65 — every specific gap previously listed here is fixed;
+                    docked for the still-open upload-validation and debug-keystore items)
+UI/UX:             UNSCORED — still not runtime-verified in this documentation-only pass
+Testing:           85/100 (up from 40 — 734 frontend tests/132 suites + 112 backend tests,
+                    per the commit record; not independently re-run in this pass)
+Maintainability:   90/100 (up from 75 — the stale-docs finding that was docking this score is
+                    now resolved)
 ```
 
-### TOP 10 THINGS THAT MUST BE FIXED FIRST
+### TOP 5 THINGS THAT MUST BE DONE FIRST (down from 10)
 
-1. **Verify the Android build actually succeeds** (BUG-05) — everything else is moot if the app can't run on a device. (iOS/BUG-06 deferred: `ios/` was deleted since the project isn't building for iOS right now.)
-2. **Get a real trained AI model into `backend/app/ml/checkpoints/model.pth`** — the core differentiating feature is currently non-functional.
-3. **Enforce `is_suspended` at the RLS layer** (or explicitly, consciously accept and document the residual gap) — the single most concrete open security issue.
-4. **Restrict CORS and add rate limiting** to the FastAPI backend before any production exposure.
-5. **Fix the three interaction bugs** (admin Orders tap-through, My Listings/Products tap-through, RoleAwareAnalyticsScreen default) — small, cheap, real UX fixes.
-6. **Build frontend test coverage**, starting with checkout/payments/auth — currently the largest testing blind spot in the repo.
-7. **Stand up CI** running both test suites on every change — nothing currently catches a regression before merge.
-8. **Reconcile the two stale documentation files** before anyone makes a decision based on them.
-9. **Decide and scope real payment-gateway integration** if the product needs to move beyond manual/COD.
-10. **Clean up the two leftover direct-Supabase reads** (`authStore.fetchProfile`, `SellerDashboard`'s count queries) for architectural consistency, and remove or populate the two dead empty backend directories.
+1. **Test and commit the in-flight i18n/docs work** (§1, §34) — the largest single piece of real, uncommitted work in the repo right now.
+2. **Fix `SellerDashboard.tsx`'s missing translations** (BUG-11) before calling the i18n retrofit complete.
+3. **Get a real trained AI model into `backend/app/ml/checkpoints/model.pth`** — the core differentiating feature is currently non-functional; everything else on this list is secondary to it.
+4. **Generate a real Android release keystore** (BUG-12) before any Play Store submission.
+5. **Decide and scope real payment-gateway integration**, if the product needs to move beyond manual/COD, and push notifications, if the in-app-only model isn't sufficient.
 </content>

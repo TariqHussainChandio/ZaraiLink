@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { PlatformOrdersScreen } from './PlatformOrdersScreen';
 import { fetchAllOrders } from '../../services/modules/admin/adminService';
 import { ADMIN_HOME_ROUTES } from '../../constants/routes';

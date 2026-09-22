@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -17,35 +18,42 @@ import { ROLE_LABELS, ROLES, type Role } from '../../constants/roles';
 import { signUp, type AuthChannel } from '../../services/modules/auth/authService';
 import { useTheme, type Theme } from '../../theme';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
+import type { TFunction } from 'i18next';
 
 const REGISTRABLE_ROLES = ROLES.filter(role => role !== 'admin') as Exclude<Role, 'admin'>[];
 
-const registerSchema = z
-  .object({
-    channel: z.enum(['email', 'phone']),
-    fullName: z.string().min(2, 'Enter your full name'),
-    email: z.string().optional(),
-    phone: z.string().nullable().optional(),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    role: z.enum(REGISTRABLE_ROLES as [Role, ...Role[]], {
-      message: 'Select a role',
-    }),
-  })
-  .superRefine((data, ctx) => {
-    if (data.channel === 'email') {
-      if (!data.email || !z.string().email().safeParse(data.email).success) {
-        ctx.addIssue({ code: 'custom', path: ['email'], message: 'Enter a valid email' });
+// Built from `t` at render time (not module scope) so validation messages stay in sync when the
+// user switches language mid-session.
+function makeRegisterSchema(t: TFunction) {
+  return z
+    .object({
+      channel: z.enum(['email', 'phone']),
+      fullName: z.string().min(2, t('auth.register.fullNameError')),
+      email: z.string().optional(),
+      phone: z.string().nullable().optional(),
+      password: z.string().min(6, t('auth.register.passwordMinLengthError')),
+      role: z.enum(REGISTRABLE_ROLES as [Role, ...Role[]], {
+        message: t('auth.register.roleError'),
+      }),
+    })
+    .superRefine((data, ctx) => {
+      if (data.channel === 'email') {
+        if (!data.email || !z.string().email().safeParse(data.email).success) {
+          ctx.addIssue({ code: 'custom', path: ['email'], message: t('auth.register.invalidEmailError') });
+        }
+      } else if (!data.phone || !isValidE164(data.phone)) {
+        ctx.addIssue({ code: 'custom', path: ['phone'], message: t('auth.register.invalidPhoneError') });
       }
-    } else if (!data.phone || !isValidE164(data.phone)) {
-      ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Enter a valid phone number' });
-    }
-  });
+    });
+}
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type RegisterFormValues = z.infer<ReturnType<typeof makeRegisterSchema>>;
 
 export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useTranslation();
+  const registerSchema = useMemo(() => makeRegisterSchema(t), [t]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     control,
@@ -75,7 +83,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
         navigation.navigate(AUTH_ROUTES.VerifyOtp, { channel: values.channel, identifier });
       }
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to create account');
+      setSubmitError(error instanceof Error ? error.message : t('auth.register.defaultError'));
     }
   };
 
@@ -85,15 +93,15 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Join ZaraiLink as a farmer, buyer, dealer, or expert</Text>
+        <Text style={styles.title}>{t('auth.register.title')}</Text>
+        <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
 
         <Controller
           control={control}
           name="fullName"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Full name"
+              label={t('auth.register.fullNameLabel')}
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
@@ -102,7 +110,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           )}
         />
 
-        <Text style={styles.label}>Verify with</Text>
+        <Text style={styles.label}>{t('auth.register.verifyWithLabel')}</Text>
         <Controller
           control={control}
           name="channel"
@@ -117,7 +125,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
                   <Text
                     style={[styles.roleChipLabel, value === option && styles.roleChipLabelSelected]}
                   >
-                    {option === 'email' ? 'Email' : 'Phone number'}
+                    {option === 'email' ? t('auth.register.emailChannel') : t('auth.register.phoneChannel')}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -131,7 +139,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Email"
+                label={t('auth.register.emailLabel')}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 value={value ?? ''}
@@ -152,9 +160,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
         )}
 
         <Text style={styles.hint}>
-          {channel === 'email'
-            ? "We'll email you a 6-digit code to verify your account."
-            : "We'll text you a 6-digit code to verify your account."}
+          {channel === 'email' ? t('auth.register.emailHint') : t('auth.register.phoneHint')}
         </Text>
 
         <Controller
@@ -162,7 +168,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label="Password"
+              label={t('auth.register.passwordLabel')}
               secureTextEntry
               value={value}
               onChangeText={onChange}
@@ -172,7 +178,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           )}
         />
 
-        <Text style={styles.label}>I am a...</Text>
+        <Text style={styles.label}>{t('auth.register.roleLabel')}</Text>
         <Controller
           control={control}
           name="role"
@@ -202,16 +208,16 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
         {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
 
         <Button
-          label="Create account"
+          label={t('auth.register.submitButton')}
           loading={isSubmitting}
           onPress={handleSubmit(onSubmit)}
           style={styles.submit}
         />
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account?</Text>
+          <Text style={styles.footerText}>{t('auth.register.haveAccountText')}</Text>
           <TouchableOpacity onPress={() => navigation.navigate(AUTH_ROUTES.Login)}>
-            <Text style={styles.link}> Sign in</Text>
+            <Text style={styles.link}>{t('auth.register.signInLink')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

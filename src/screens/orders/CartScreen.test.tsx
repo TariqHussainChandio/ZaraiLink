@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { CartScreen } from './CartScreen';
 import { useCartStore, type CartItem } from '../../store/cartStore';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';

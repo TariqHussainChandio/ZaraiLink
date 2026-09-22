@@ -1,5 +1,6 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { OrderCard } from '../../components/features/orders/OrderCard';
@@ -11,6 +12,7 @@ import type { OrderWithItems } from '../../types/orders';
 
 /** Platform-wide order overview — every order, not scoped to a buyer/seller segment. */
 export function PlatformOrdersScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation<AdminHomeScreenProps<'Orders'>['navigation']>();
@@ -43,12 +45,18 @@ export function PlatformOrdersScreen() {
         renderItem={({ item }) => (
           <OrderCard
             order={item}
-            counterpartyName={`${item.buyer?.full_name ?? 'Unknown buyer'} → ${item.seller?.full_name ?? 'Unknown seller'}`}
+            counterpartyName={t('admin.platformOrders.counterpartyLine', {
+              buyer: item.buyer?.full_name ?? t('admin.platformOrders.unknownBuyer'),
+              seller: item.seller?.full_name ?? t('admin.platformOrders.unknownSeller'),
+            })}
             onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.OrderDetail, { orderId: item.id })}
           />
         )}
         ListEmptyComponent={
-          <EmptyState title="No orders yet" description="Platform orders will show up here once placed." />
+          <EmptyState
+            title={t('admin.platformOrders.emptyTitle')}
+            description={t('admin.platformOrders.emptyDescription')}
+          />
         }
       />
     </View>

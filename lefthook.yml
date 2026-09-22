@@ -1,0 +1,43 @@
+# Local git hooks, run by lefthook (https://lefthook.dev).
+#
+# INSTALLED AUTOMATICALLY by `npm ci` / `npm install` on a developer machine (lefthook's postinstall;
+# it is skipped in CI). Skip one commit with `LEFTHOOK=0 git commit ...`, remove the hooks with
+# `npx lefthook uninstall`, and put them back with `npm run hooks:install`.
+#
+# These are the FAST checks, run on staged files only, so a mistake fails before it is committed.
+# The full gates (type checks, the tool ratchets, tests, secret scan of all history, dependency
+# audit) run in CI regardless of whether the hooks are installed.
+
+pre-commit:
+  parallel: true
+  commands:
+    # The reality gate: no stubs, fake behaviour, swallowed errors, or growth in recorded debt.
+    reality:
+      glob: "*.{ts,tsx,js,jsx,py}"
+      run: |
+        py=$(command -v python || command -v python3)
+        "$py" scripts/check_reality.py --files {staged_files}
+
+    eslint:
+      glob: "*.{ts,tsx,js,jsx}"
+      # Only errors block a commit. Existing warnings are held by the ratchet in CI (check_reality.py
+      # --tools eslint), so touching an old file is not blocked by debt that was already there.
+      run: npx --no-install eslint {staged_files}
+
+    # Secrets never belong in a commit. gitleaks is a single Go binary; without it the hook says so
+    # and CI still scans, but installing it catches the mistake earlier.
+    #
+    # Keep double quotes out of `run` blocks: lefthook wraps them in `sh -c "..."` and Windows
+    # quoting truncates the script at the first inner double quote.
+    secrets:
+      run: |
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks git --pre-commit --staged --redact --no-banner
+        else
+          echo 'gitleaks is not installed, so secrets are only scanned in CI. Install: github.com/gitleaks/gitleaks'
+        fi
+
+commit-msg:
+  commands:
+    conventional-commit:
+      run: npx --no-install commitlint --edit {1}

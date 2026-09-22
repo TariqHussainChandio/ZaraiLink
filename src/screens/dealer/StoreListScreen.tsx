@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
@@ -10,6 +11,7 @@ import type { DealerStore } from '../../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function StoreListScreen({ navigation }: HomeScreenProps<'Stores'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -45,9 +47,9 @@ export function StoreListScreen({ navigation }: HomeScreenProps<'Stores'>) {
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load stores"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('dealer.storeList.couldntLoadTitle')}
+        description={t('dealer.shared.checkConnectionDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -68,19 +70,22 @@ export function StoreListScreen({ navigation }: HomeScreenProps<'Stores'>) {
                 <Text style={styles.name}>{item.name}</Text>
                 <Badge label={item.status} tone={item.status === 'active' ? 'success' : 'neutral'} />
               </View>
-              <Text style={styles.meta}>{item.address ?? 'No address set'}</Text>
+              <Text style={styles.meta}>{item.address ?? t('dealer.storeList.noAddressSet')}</Text>
             </Card>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <EmptyState title="No stores yet" description="Add your first store location to get started." />
+          <EmptyState
+            title={t('dealer.storeList.emptyTitle')}
+            description={t('dealer.storeList.emptyDescription')}
+          />
         }
       />
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.StoreDetail, {})}
       >
-        <Text style={styles.fabLabel}>+ New Store</Text>
+        <Text style={styles.fabLabel}>{t('dealer.storeList.newStoreFab')}</Text>
       </TouchableOpacity>
     </View>
   );

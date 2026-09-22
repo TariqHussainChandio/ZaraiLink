@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
@@ -9,6 +10,7 @@ import type { FarmCropWithCrop } from '../../types/farmer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function CropListScreen({ route, navigation }: HomeScreenProps<'CropList'>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { farmId } = route.params;
@@ -43,9 +45,9 @@ export function CropListScreen({ route, navigation }: HomeScreenProps<'CropList'
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load crops"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('farmer.cropList.loadErrorTitle', "Couldn't load crops")}
+        description={t('farmer.cropList.loadErrorDescription', 'Check your connection and try again.')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -62,25 +64,33 @@ export function CropListScreen({ route, navigation }: HomeScreenProps<'CropList'
             onPress={() => navigation.navigate(HOME_ROUTES.AddCrop, { farmId, cropId: item.id })}
           >
             <Card style={styles.card}>
-              <Text style={styles.name}>{item.crop?.name ?? 'Unspecified crop'}</Text>
+              <Text style={styles.name}>
+                {item.crop?.name ?? t('farmer.cropList.unspecifiedCrop', 'Unspecified crop')}
+              </Text>
               <Text style={styles.meta}>
-                {[item.variety, item.growth_stage].filter(Boolean).join(' · ') || 'No details yet'}
+                {[item.variety, item.growth_stage].filter(Boolean).join(' · ') ||
+                  t('farmer.cropList.noDetailsYet', 'No details yet')}
               </Text>
               {item.planting_date ? (
-                <Text style={styles.meta}>Planted {item.planting_date}</Text>
+                <Text style={styles.meta}>
+                  {t('farmer.cropList.plantedLabel', 'Planted {{date}}', { date: item.planting_date })}
+                </Text>
               ) : null}
             </Card>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <EmptyState title="No crops recorded" description="Add the crops growing on this farm." />
+          <EmptyState
+            title={t('farmer.cropList.emptyCropsTitle', 'No crops recorded')}
+            description={t('farmer.cropList.emptyCropsDescription', 'Add the crops growing on this farm.')}
+          />
         }
       />
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.AddCrop, { farmId })}
       >
-        <Text style={styles.fabLabel}>+ Add Crop</Text>
+        <Text style={styles.fabLabel}>{t('farmer.cropList.addCropFab', '+ Add Crop')}</Text>
       </TouchableOpacity>
     </View>
   );

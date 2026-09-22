@@ -1,4 +1,4 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { apiFetch } from '../../api/client';
 
 jest.mock('../../api/client');
@@ -33,10 +33,10 @@ describe('updateProfile', () => {
 });
 
 describe('uploadAvatar', () => {
-  const image: Asset = { uri: 'file:///tmp/photo.jpg', fileName: 'photo.jpg', type: 'image/jpeg' };
+  const image: PickedPhoto = { uri: 'file:///tmp/photo.jpg', fileName: 'photo.jpg', mimeType: 'image/jpeg' };
 
   it('throws when no image uri is provided', async () => {
-    await expect(uploadAvatar('user-1', {})).rejects.toThrow('No image selected');
+    await expect(uploadAvatar('user-1', { uri: '' })).rejects.toThrow('No image selected');
   });
 
   it('uploads to the avatars bucket under the user id and returns the public URL', async () => {

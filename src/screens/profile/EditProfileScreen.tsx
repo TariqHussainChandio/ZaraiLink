@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { launchImageLibrary } from 'react-native-image-picker';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Avatar, Button, Input, LocationPicker, PhoneInput, isValidE164 } from '../../components/ui';
@@ -10,35 +9,42 @@ import { fetchFarmerProfile, upsertFarmerProfile } from '../../services/modules/
 import { updateProfile, uploadAvatar } from '../../services/modules/profile/profileService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { pickFromLibrary, type PickedPhoto } from '../../utils/photoPicker';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+import type { TFunction } from 'i18next';
 
-const editProfileSchema = z.object({
-  fullName: z.string().min(2, 'Enter your full name'),
-  phone: z
-    .string()
-    .nullable()
-    .refine(value => !value || isValidE164(value), 'Enter a valid phone number'),
-  country: z.string(),
-  province: z.string(),
-  city: z.string(),
-  village: z.string(),
-  street: z.string(),
-  // Farmer-only (§8.1); left blank/unused for other roles and only persisted for farmers.
-  experience: z.string(),
-  agriculturalInfo: z.string(),
-});
+// Built from `t` at render time (not module scope) so validation messages stay in sync when the
+// user switches language mid-session.
+function makeEditProfileSchema(t: TFunction) {
+  return z.object({
+    fullName: z.string().min(2, t('profile.fullNameRequiredError')),
+    phone: z
+      .string()
+      .nullable()
+      .refine(value => !value || isValidE164(value), t('profile.invalidPhoneError')),
+    country: z.string(),
+    province: z.string(),
+    city: z.string(),
+    village: z.string(),
+    street: z.string(),
+    // Farmer-only (§8.1); left blank/unused for other roles and only persisted for farmers.
+    experience: z.string(),
+    agriculturalInfo: z.string(),
+  });
+}
 
-type EditProfileFormValues = z.infer<typeof editProfileSchema>;
+type EditProfileFormValues = z.infer<ReturnType<typeof makeEditProfileSchema>>;
 
 export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfile'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { t } = useTranslation();
+  const editProfileSchema = useMemo(() => makeEditProfileSchema(t), [t]);
   const userId = useAuthStore(state => state.user?.id);
   const profile = useAuthStore(state => state.profile);
   const refreshProfile = useAuthStore(state => state.refreshProfile);
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
-  const [pickedAvatar, setPickedAvatar] = useState<{ uri: string; type?: string; fileName?: string } | null>(null);
+  const [pickedAvatar, setPickedAvatar] = useState<PickedPhoto | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -83,11 +89,10 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   const city = watch('city');
 
   const pickAvatar = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1 });
-    const asset = result.assets?.[0];
-    if (asset?.uri) {
-      setAvatarUri(asset.uri);
-      setPickedAvatar({ uri: asset.uri, type: asset.type, fileName: asset.fileName });
+    const [photo] = await pickFromLibrary({ selectionLimit: 1 });
+    if (photo) {
+      setAvatarUri(photo.uri);
+      setPickedAvatar(photo);
     }
   };
 
@@ -124,7 +129,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
       await refreshProfile();
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Failed to update profile', error instanceof Error ? error.message : String(error));
+      Alert.alert(t('profile.editProfileFailedTitle'), error instanceof Error ? error.message : String(error));
     } finally {
       setSubmitting(false);
     }
@@ -197,8 +202,8 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
             name="experience"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Experience"
-                placeholder="e.g. 8 years growing wheat and cotton"
+                label={t('profile.experienceLabel')}
+                placeholder={t('profile.experiencePlaceholder')}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -210,8 +215,8 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
             name="agriculturalInfo"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label="Agricultural information"
-                placeholder="Practices, specialties, certifications, etc."
+                label={t('profile.agriculturalInfoLabel')}
+                placeholder={t('profile.agriculturalInfoPlaceholder')}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}

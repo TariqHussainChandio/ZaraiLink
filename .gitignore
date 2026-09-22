@@ -14,24 +14,13 @@ build/
 .expo-shared/
 coverage/
 
-# React Native
-android/.gradle/
-android/app/build/
-android/build/
-android/local.properties
-android/.idea/
-android/.cxx/
-android/app/.cxx/
+# Native projects are generated, not checked in: `npm run prebuild` writes android/ from
+# app.config.ts and package.json (Expo Continuous Native Generation). Edit those, never android/.
+/android/
+/ios/
 
 # Metro
 .metro-health-check*
-
-# iOS
-ios/Pods/
-ios/build/
-ios/DerivedData/
-*.xcworkspace
-*.xcuserstate
 
 # Environment variables
 .env
@@ -52,6 +41,7 @@ ENV/
 .mypy_cache/
 .ruff_cache/
 .coverage
+coverage.json
 htmlcov/
 
 # IDEs
@@ -87,7 +77,6 @@ pnpm-debug.log*
 *.key
 service-account*.json
 *.keystore
-!android/app/debug.keystore
 google-services.json
 GoogleService-Info.plist
 

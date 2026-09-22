@@ -1,7 +1,8 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchImageLibraryAsync } from 'expo-image-picker';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { RequestConsultationScreen } from './RequestConsultationScreen';
 import { fetchFarms } from '../../services/modules/farmer/farmService';
 import {
@@ -13,8 +14,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
 
-jest.mock('react-native-image-picker', () => ({
-  launchImageLibrary: jest.fn(),
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(),
 }));
 
 jest.mock('../../services/modules/farmer/farmService', () => ({
@@ -30,7 +31,7 @@ const mockFetchFarms = fetchFarms as jest.Mock;
 const mockCreateConsultationRequest = createConsultationRequest as jest.Mock;
 const mockUpdateConsultationImages = updateConsultationImages as jest.Mock;
 const mockUploadConsultationAttachments = uploadConsultationAttachments as jest.Mock;
-const mockLaunchImageLibrary = launchImageLibrary as jest.Mock;
+const mockLaunchImageLibrary = launchImageLibraryAsync as jest.Mock;
 
 function makeProps(prefill?: unknown) {
   return {
@@ -118,7 +119,7 @@ describe('RequestConsultationScreen', () => {
   });
 
   it('uploads picked photos and attaches them after creating the consultation', async () => {
-    mockLaunchImageLibrary.mockResolvedValue({ assets: [{ uri: 'file://photo1.jpg', fileName: 'photo1.jpg' }] });
+    mockLaunchImageLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file://photo1.jpg', fileName: 'photo1.jpg' }] });
     mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
     mockUploadConsultationAttachments.mockResolvedValue(['c1/u1/photo1.jpg']);
     const props = makeProps();

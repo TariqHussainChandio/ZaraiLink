@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { PaymentResultScreen } from './PaymentResultScreen';
 import { fetchPaymentById } from '../../services/modules/payments/paymentsService';
 import { ORDERS_ROUTES } from '../../constants/routes';

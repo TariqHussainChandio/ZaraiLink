@@ -1,0 +1,57 @@
+[
+  [
+    "A0 backend /health",
+    "PASS",
+    "200 {\"status\":\"ok\"}"
+  ],
+  [
+    "A0b /docs exposed",
+    "FINDING",
+    "GET /docs -> 200 (H4: docs open)"
+  ],
+  [
+    "A1 C1 forged-admin signup",
+    "CONFIRMED",
+    "signup HTTP 200; stored profile = {'id': 'd87f6bbe-26b6-4a03-8178-e4fe2e553b2e', 'role': 'admin', 'full_name': 'P0 Forged Admin', 'is_suspended': 'f'}"
+  ],
+  [
+    "A2 C3 signup email content",
+    "CONFIRMED",
+    "subject='Confirm your email address'; standalone 6-digit codes in body=[]; links=2 (VerifyOtpScreen needs a typed code)"
+  ],
+  [
+    "A3 confirm via link",
+    "PASS",
+    "HTTP 303; session in redirect fragment=True"
+  ],
+  [
+    "A3b C1 impact: forged admin hits admin API",
+    "CONFIRMED",
+    "/notifications/unread-count -> 200; /api/v1/admin/stats -> 200"
+  ],
+  [
+    "A4 phone sign-up",
+    "FAIL",
+    "HTTP 400 {\"code\":400,\"error_code\":\"phone_provider_disabled\",\"msg\":\"Phone signups are disabled\"}"
+  ],
+  [
+    "A5 password-reset email",
+    "PARTIAL",
+    "HTTP 200; email holds a link (redirect_to zarailink://... needs a device to prove); links=2"
+  ],
+  [
+    "A6 email sign-in (confirmed user)",
+    "PASS",
+    "HTTP 200"
+  ],
+  [
+    "A7 backend auth gate",
+    "PASS",
+    "no token=401, garbage token=401, valid token=200"
+  ],
+  [
+    "A8 third auth email within the hour",
+    "INFO",
+    "HTTP 200: the local stack does not enforce auth.rate_limit.email_sent (config.toml says it needs custom SMTP); the hosted default sender is capped at 2 messages/hour by the platform, and pushing config.toml with email_sent = 2 to a custom-SMTP project would cap real users at 2/hour"
+  ]
+]

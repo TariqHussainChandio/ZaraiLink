@@ -1,4 +1,4 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { apiFetch } from '../../api/client';
 import { supabase } from '../../supabase/client';
 import type {
@@ -46,7 +46,7 @@ export async function createConsultationRequest(input: ConsultationRequestInput)
 export async function uploadConsultationAttachments(
   consultationId: string,
   uploaderId: string,
-  images: Asset[],
+  images: PickedPhoto[],
 ): Promise<string[]> {
   const paths: string[] = [];
 
@@ -61,7 +61,7 @@ export async function uploadConsultationAttachments(
 
     const { error } = await supabase.storage
       .from(ATTACHMENTS_BUCKET)
-      .upload(path, arrayBuffer, { contentType: image.type ?? 'image/jpeg' });
+      .upload(path, arrayBuffer, { contentType: image.mimeType ?? 'image/jpeg' });
     if (error) throw error;
     paths.push(path);
   }

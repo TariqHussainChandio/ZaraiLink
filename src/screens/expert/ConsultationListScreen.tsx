@@ -1,5 +1,6 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ConsultationCard } from '../../components/features/expert/ConsultationCard';
@@ -13,6 +14,7 @@ import type { ConsultationWithRelations } from '../../types/expert';
 // ExpertNavigator's own consultations stack) with the same route names but different param
 // list types — untyped navigation here, matching NotificationListScreen's approach.
 export function ConsultationListScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -52,9 +54,9 @@ export function ConsultationListScreen() {
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load consultations"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('expert.consultationList.errorTitle')}
+        description={t('expert.consultationList.errorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -69,7 +71,10 @@ export function ConsultationListScreen() {
         renderItem={({ item }) => (
           <ConsultationCard
             consultation={item}
-            counterpartyName={(isExpert ? item.user?.full_name : item.expert?.full_name) ?? 'Unknown'}
+            counterpartyName={
+              (isExpert ? item.user?.full_name : item.expert?.full_name) ??
+              t('expert.consultationList.unknownCounterparty')
+            }
             onPress={() =>
               navigation.navigate(CONSULTATIONS_ROUTES.ConsultationDetail, { consultationId: item.id })
             }
@@ -77,11 +82,15 @@ export function ConsultationListScreen() {
         )}
         ListEmptyComponent={
           <EmptyState
-            title={isExpert ? 'No consultation requests yet' : 'No consultations yet'}
+            title={
+              isExpert
+                ? t('expert.consultationList.emptyTitleExpert')
+                : t('expert.consultationList.emptyTitleRequester')
+            }
             description={
               isExpert
-                ? 'Requests from farmers and buyers will show up here.'
-                : 'Browse verified experts to request a consultation.'
+                ? t('expert.consultationList.emptyDescriptionExpert')
+                : t('expert.consultationList.emptyDescriptionRequester')
             }
           />
         }

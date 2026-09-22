@@ -1,0 +1,25 @@
+# Line endings: LF in the repository AND in every working tree, on every OS. Without this, Windows
+# checkouts with core.autocrlf=true churn every file with CRLF/LF warnings and noisy diffs.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF to run.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never diff or normalise binaries.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.pth binary
+*.onnx binary
+*.keystore binary
+*.jar binary
+*.aab binary
+*.apk binary

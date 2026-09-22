@@ -1,8 +1,38 @@
+import json
+import logging
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APP_DIR = Path(__file__).resolve().parent.parent
+
+logger = logging.getLogger(__name__)
+
+_METADATA_PATH = APP_DIR / "ml" / "checkpoints" / "model_metadata.json"
+
+# Used only if model_metadata.json is missing/corrupt — matches the original placeholder-era
+# 5-class list so the app still boots. A real checkpoint's classifier head won't match this
+# length anyway, so this degrades the same way a missing/corrupt model.pth already does
+# (classifier.available -> False via ai_engine.py's own broad except), not a crash.
+_FALLBACK_CLASSES = ["healthy", "bacterial_blight", "leaf_rust", "powdery_mildew", "early_blight"]
+
+
+def _load_model_metadata() -> dict:
+    """Reads the trained model's own metadata file, dropped in alongside model.pth by the
+    training pipeline. This makes the checkpoint's own record of itself the single source of
+    truth for the class list and version string, instead of hand-transcribing ~38 long,
+    punctuation-heavy taxonomy strings into this file — a single typo there would silently
+    break the positional class mapping in ai_engine.py with no error, just a wrong label."""
+    try:
+        with open(_METADATA_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning("Could not load model_metadata.json (%s) — using placeholder class list.", exc)
+        return {}
+
+
+_metadata = _load_model_metadata()
 
 
 class Settings(BaseSettings):
@@ -29,20 +59,24 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
 
     model_path: Path = APP_DIR / "ml" / "checkpoints" / "model.pth"
-    # Recorded on every disease_predictions row so a prediction is traceable to the weights that
-    # produced it. Update this alongside dropping in a real model.pth — "placeholder" is accurate
-    # only for today's non-checkpoint file.
-    model_version: str = "placeholder"
 
-    # Provisional — replace with the real label list (same order as the trained classifier's
-    # output layer) once training data is finalized. See docs/architecture/ai-disease-advisory.md.
-    model_classes: list[str] = [
-        "healthy",
-        "bacterial_blight",
-        "leaf_rust",
-        "powdery_mildew",
-        "early_blight",
-    ]
+    # Recorded on every disease_predictions row so a prediction is traceable to the weights that
+    # produced it. Derived from model_metadata.json (model name + training timestamp + validation
+    # accuracy) rather than hardcoded, so it self-updates on every retrain without a code change.
+    model_version: str = Field(
+        default_factory=lambda: (
+            f"{_metadata['model_name']} (trained {_metadata['last_trained_on']}, "
+            f"val_acc={_metadata['final_test_accuracy']:.2%})"
+            if _metadata
+            else "placeholder"
+        )
+    )
+
+    # Loaded from model_metadata.json's class_names list (same order as the trained classifier's
+    # output layer, which ai_engine.py maps positionally) — see _load_model_metadata() above.
+    model_classes: list[str] = Field(
+        default_factory=lambda: _metadata.get("class_names") or _FALLBACK_CLASSES
+    )
 
 
 settings = Settings()

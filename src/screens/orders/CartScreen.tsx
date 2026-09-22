@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Button, EmptyState } from '../../components/ui';
 import { CartItemRow } from '../../components/features/orders/CartItemRow';
@@ -9,6 +10,7 @@ import type { MarketplaceScreenProps } from '../../navigation/stacks/Marketplace
 
 export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { items, updateQuantity, removeItem } = useCartStore();
   const total = cartTotal(items);
@@ -16,7 +18,10 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
   if (items.length === 0) {
     return (
       <View style={styles.empty}>
-        <EmptyState title="Your cart is empty" description="Browse the marketplace to add produce." />
+        <EmptyState
+          title={t('orders.cart.emptyTitle')}
+          description={t('orders.cart.emptyDescription')}
+        />
       </View>
     );
   }
@@ -38,10 +43,13 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
       />
       <View style={styles.footer}>
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>Rs. {total.toFixed(0)}</Text>
+          <Text style={styles.totalLabel}>{t('orders.cart.totalLabel')}</Text>
+          <Text style={styles.totalValue}>{t('orders.cart.totalValue', { amount: total.toFixed(0) })}</Text>
         </View>
-        <Button label="Checkout" onPress={() => navigation.navigate(MARKETPLACE_ROUTES.Checkout)} />
+        <Button
+          label={t('orders.cart.checkoutLabel')}
+          onPress={() => navigation.navigate(MARKETPLACE_ROUTES.Checkout)}
+        />
       </View>
     </View>
   );

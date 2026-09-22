@@ -1,11 +1,11 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { Asset } from 'react-native-image-picker';
+import { useTranslation } from 'react-i18next';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Button, SelectField } from '../../components/ui';
 import { useTheme, type Theme } from '../../theme';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
-import { pickPhotos } from '../../utils/photoPicker';
+import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 
 // Registered in the shared `HomeNavigator` (Buyer/Farmer/Dealer's Home stack), but farmer-only
 // in practice — only `SellerDashboard.tsx`'s farmer branch has a Quick Action leading here,
@@ -14,11 +14,12 @@ import { pickPhotos } from '../../utils/photoPicker';
 export function DiseaseUploadScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const crops = useMarketplaceStore(state => state.crops);
   const loadCrops = useMarketplaceStore(state => state.loadCrops);
   const [cropId, setCropId] = useState<string | null>(null);
-  const [image, setImage] = useState<Asset | null>(null);
+  const [image, setImage] = useState<PickedPhoto | null>(null);
 
   useEffect(() => {
     loadCrops();
@@ -34,38 +35,35 @@ export function DiseaseUploadScreen() {
     navigation.navigate('DiseaseProcessing', {
       imageUri: image.uri,
       imageFileName: image.fileName ?? null,
-      imageType: image.type ?? null,
+      imageType: image.mimeType ?? null,
       cropId,
     });
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Identify a Crop Disease</Text>
-      <Text style={styles.subtitle}>
-        Upload a clear photo of the affected leaf or plant. This is an AI advisory only — not a
-        replacement for professional consultation.
-      </Text>
+      <Text style={styles.title}>{t('disease.upload.title')}</Text>
+      <Text style={styles.subtitle}>{t('disease.upload.subtitle')}</Text>
 
       <SelectField
-        label="Crop (optional)"
+        label={t('disease.upload.cropLabel')}
         value={cropId}
         options={crops.map(c => ({ id: c.id, label: c.name }))}
         onSelect={setCropId}
       />
 
-      <Text style={styles.label}>Photo</Text>
+      <Text style={styles.label}>{t('disease.upload.photoLabel')}</Text>
       {image?.uri ? (
         <TouchableOpacity onPress={pickImage}>
           <Image source={{ uri: image.uri }} style={styles.preview} />
         </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.addImage} onPress={pickImage}>
-          <Text style={styles.addImageLabel}>+ Add Photo</Text>
+          <Text style={styles.addImageLabel}>{t('disease.upload.addPhotoButton')}</Text>
         </TouchableOpacity>
       )}
 
-      <Button label="Analyze" onPress={onAnalyze} disabled={!image?.uri} style={styles.submit} />
+      <Button label={t('disease.upload.analyzeButton')} onPress={onAnalyze} disabled={!image?.uri} style={styles.submit} />
     </ScrollView>
   );
 }

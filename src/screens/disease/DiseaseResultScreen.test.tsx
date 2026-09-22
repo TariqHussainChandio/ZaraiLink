@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { DiseaseResultScreen } from './DiseaseResultScreen';
 import { fetchDiseaseCaseWithPrediction } from '../../services/modules/ai/diseaseService';
 import { fetchListings } from '../../services/modules/marketplace/listingsService';

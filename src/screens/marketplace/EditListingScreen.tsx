@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import type { Asset } from 'react-native-image-picker';
+import { useTranslation } from 'react-i18next';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, EmptyState, Spinner } from '../../components/ui';
 import {
@@ -19,11 +19,12 @@ import {
 } from '../../services/modules/marketplace/listingsService';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
-import { pickPhotos } from '../../utils/photoPicker';
+import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
 
 export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<'EditListing'>) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
@@ -31,7 +32,7 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [newImages, setNewImages] = useState<Asset[]>([]);
+  const [newImages, setNewImages] = useState<PickedPhoto[]>([]);
 
   const {
     control,
@@ -96,17 +97,20 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
       });
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Failed to update listing', err instanceof Error ? err.message : String(err));
+      Alert.alert(
+        t('marketplace.editListing.failedTitle'),
+        err instanceof Error ? err.message : String(err),
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   const onDelete = () => {
-    Alert.alert('Delete listing', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('marketplace.editListing.deleteConfirmTitle'), t('marketplace.editListing.deleteConfirmMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('marketplace.editListing.deleteConfirmButton'),
         style: 'destructive',
         onPress: async () => {
           await deleteListing(listingId);
@@ -120,9 +124,9 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
   if (error) {
     return (
       <EmptyState
-        title="Couldn't load this listing"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('marketplace.editListing.loadErrorTitle')}
+        description={t('marketplace.editListing.loadErrorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -132,7 +136,7 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
 
-      <Text style={styles.label}>Photos</Text>
+      <Text style={styles.label}>{t('marketplace.editListing.photosLabel')}</Text>
       <View style={styles.imageRow}>
         {existingImages.map(uri => (
           <Image key={uri} source={{ uri }} style={styles.thumbnail} />
@@ -141,12 +145,22 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
           <Image key={image.uri ?? index} source={{ uri: image.uri }} style={styles.thumbnail} />
         ))}
         <TouchableOpacity style={styles.addImage} onPress={pickImages}>
-          <Text style={styles.addImageLabel}>+ Add</Text>
+          <Text style={styles.addImageLabel}>{t('marketplace.editListing.addImageLabel')}</Text>
         </TouchableOpacity>
       </View>
 
-      <Button label="Save Changes" loading={submitting} onPress={handleSubmit(onSubmit)} style={styles.submit} />
-      <Button label="Delete Listing" variant="destructive" onPress={onDelete} style={styles.delete} />
+      <Button
+        label={t('marketplace.editListing.saveChangesLabel')}
+        loading={submitting}
+        onPress={handleSubmit(onSubmit)}
+        style={styles.submit}
+      />
+      <Button
+        label={t('marketplace.editListing.deleteListingLabel')}
+        variant="destructive"
+        onPress={onDelete}
+        style={styles.delete}
+      />
     </ScrollView>
   );
 }

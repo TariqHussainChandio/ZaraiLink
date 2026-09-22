@@ -1,4 +1,4 @@
-import type { Asset } from 'react-native-image-picker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { apiFetch } from '../../api/client';
 import { supabase } from '../../supabase/client';
 import type {
@@ -120,7 +120,7 @@ export async function resolveExpertDocumentUrl(expertId: string): Promise<string
 
 // Storage-direct, unchanged — owner-scoped RLS on the private `expert-documents` bucket already
 // correctly restricts this to the uploading expert.
-export async function uploadExpertDocument(userId: string, file: Asset): Promise<string | null> {
+export async function uploadExpertDocument(userId: string, file: PickedPhoto): Promise<string | null> {
   if (!file.uri) return null;
 
   const extension = file.fileName?.split('.').pop() ?? 'pdf';
@@ -131,7 +131,7 @@ export async function uploadExpertDocument(userId: string, file: Asset): Promise
 
   const { error } = await supabase.storage
     .from('expert-documents')
-    .upload(path, arrayBuffer, { contentType: file.type ?? 'application/octet-stream' });
+    .upload(path, arrayBuffer, { contentType: file.mimeType ?? 'application/octet-stream' });
   if (error) throw error;
 
   return path;

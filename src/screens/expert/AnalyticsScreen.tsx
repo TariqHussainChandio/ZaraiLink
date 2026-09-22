@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { BarChart } from '../../components/features/dashboards/BarChart';
@@ -10,6 +11,7 @@ import { useTheme, type Theme } from '../../theme';
 import type { ExpertAnalytics } from '../../types/analytics';
 
 export function ExpertAnalyticsScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -44,9 +46,9 @@ export function ExpertAnalyticsScreen() {
   if (error || !analytics) {
     return (
       <EmptyState
-        title="Couldn't load analytics"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('expert.analytics.errorTitle')}
+        description={t('expert.analytics.errorDescription')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -55,20 +57,28 @@ export function ExpertAnalyticsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Total Consultations" value={analytics.totalConsultations} accent={theme.moduleAccents.consultation} />
-        <StatCard label="Completed" value={analytics.completedConsultations} accent={theme.moduleAccents.consultation} />
         <StatCard
-          label={`Avg Rating (${analytics.reviewCount})`}
+          label={t('expert.analytics.totalConsultations')}
+          value={analytics.totalConsultations}
+          accent={theme.moduleAccents.consultation}
+        />
+        <StatCard
+          label={t('expert.analytics.completed')}
+          value={analytics.completedConsultations}
+          accent={theme.moduleAccents.consultation}
+        />
+        <StatCard
+          label={t('expert.analytics.avgRating', { count: analytics.reviewCount })}
           value={analytics.reviewCount ? analytics.averageRating.toFixed(1) : '—'}
           accent={theme.moduleAccents.expert}
         />
       </View>
 
-      <Text style={styles.sectionTitle}>Consultations by Month</Text>
+      <Text style={styles.sectionTitle}>{t('expert.analytics.consultationsByMonth')}</Text>
       <BarChart
         data={analytics.consultationsByMonth.map(m => ({ label: m.month.slice(5), value: m.value }))}
         color={theme.roleColors.expert}
-        emptyMessage="No consultations yet"
+        emptyMessage={t('expert.analytics.noDataMessage')}
       />
     </ScrollView>
   );

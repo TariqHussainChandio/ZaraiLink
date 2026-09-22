@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { Button, EmptyState, FilterChips, Input, Sheet, Spinner } from '../../components/ui';
 import {
@@ -27,34 +28,8 @@ interface TableConfig {
   renderSubtitle?: (row: Row) => string;
 }
 
-const TABLE_CONFIG: Record<RefDataTable, TableConfig> = {
-  currencies: {
-    title: 'Currencies',
-    fields: [
-      { key: 'code', label: 'Code' },
-      { key: 'symbol', label: 'Symbol' },
-      { key: 'name', label: 'Name' },
-    ],
-    renderLabel: r => `${String(r.code)} — ${String(r.name)}`,
-  },
-  units: {
-    title: 'Units',
-    fields: [
-      { key: 'code', label: 'Code' },
-      { key: 'label', label: 'Label' },
-      { key: 'applies_to', label: 'Applies To' },
-    ],
-    renderLabel: r => String(r.label),
-    renderSubtitle: r => String(r.applies_to ?? ''),
-  },
-};
-
-const TABLE_OPTIONS: { value: RefDataTable; label: string }[] = [
-  { value: 'currencies', label: 'Currencies' },
-  { value: 'units', label: 'Units' },
-];
-
 export function ReferenceDataScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
@@ -68,7 +43,40 @@ export function ReferenceDataScreen() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
 
-  const config = TABLE_CONFIG[table];
+  const tableConfig: Record<RefDataTable, TableConfig> = useMemo(
+    () => ({
+      currencies: {
+        title: t('admin.referenceData.currenciesTitle'),
+        fields: [
+          { key: 'code', label: t('admin.referenceData.codeLabel') },
+          { key: 'symbol', label: t('admin.referenceData.symbolLabel') },
+          { key: 'name', label: t('admin.referenceData.nameLabel') },
+        ],
+        renderLabel: r => `${String(r.code)} — ${String(r.name)}`,
+      },
+      units: {
+        title: t('admin.referenceData.unitsTitle'),
+        fields: [
+          { key: 'code', label: t('admin.referenceData.codeLabel') },
+          { key: 'label', label: t('admin.referenceData.labelLabel') },
+          { key: 'applies_to', label: t('admin.referenceData.appliesToLabel') },
+        ],
+        renderLabel: r => String(r.label),
+        renderSubtitle: r => String(r.applies_to ?? ''),
+      },
+    }),
+    [t],
+  );
+
+  const tableOptions: { value: RefDataTable; label: string }[] = useMemo(
+    () => [
+      { value: 'currencies', label: t('admin.referenceData.currenciesTitle') },
+      { value: 'units', label: t('admin.referenceData.unitsTitle') },
+    ],
+    [t],
+  );
+
+  const config = tableConfig[table];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,28 +129,32 @@ export function ReferenceDataScreen() {
 
   const remove = (row: Row) => {
     if (!actorId) return;
-    Alert.alert('Delete row', `Delete "${config.renderLabel(row)}"? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setSavingId(row.id);
-          try {
-            await deleteRefDataRow(table, row.id);
-            invalidateAll();
-            await load();
-          } finally {
-            setSavingId(null);
-          }
+    Alert.alert(
+      t('admin.referenceData.deleteConfirmTitle'),
+      t('admin.referenceData.deleteConfirmMessage', { label: config.renderLabel(row) }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('admin.referenceData.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            setSavingId(row.id);
+            try {
+              await deleteRefDataRow(table, row.id);
+              invalidateAll();
+              await load();
+            } finally {
+              setSavingId(null);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   return (
     <View style={styles.container}>
-      <FilterChips options={TABLE_OPTIONS} value={table} onChange={setTable} />
+      <FilterChips options={tableOptions} value={table} onChange={setTable} />
 
       {loading ? (
         <Spinner fullscreen />
@@ -159,14 +171,14 @@ export function ReferenceDataScreen() {
               </View>
               <View style={styles.actions}>
                 <Button
-                  label="Edit"
+                  label={t('admin.referenceData.edit')}
                   variant="secondary"
                   fullWidth={false}
                   loading={savingId === item.id}
                   onPress={() => openEdit(item)}
                 />
                 <Button
-                  label="Delete"
+                  label={t('admin.referenceData.delete')}
                   variant="destructive"
                   fullWidth={false}
                   loading={savingId === item.id}
@@ -175,15 +187,29 @@ export function ReferenceDataScreen() {
               </View>
             </View>
           )}
-          ListEmptyComponent={<EmptyState title={`No ${config.title.toLowerCase()} yet`} description="Add the first one below." />}
+          ListEmptyComponent={
+            <EmptyState
+              title={t('admin.referenceData.emptyTitle', { table: config.title.toLowerCase() })}
+              description={t('admin.referenceData.emptyDescription')}
+            />
+          }
           ListFooterComponent={
-            <Button label={`+ Add ${config.title.slice(0, -1)}`} variant="secondary" onPress={openCreate} style={styles.addButton} />
+            <Button
+              label={t('admin.referenceData.addButton', { singular: config.title.slice(0, -1) })}
+              variant="secondary"
+              onPress={openCreate}
+              style={styles.addButton}
+            />
           }
         />
       )}
 
       <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)}>
-        <Text style={styles.sheetTitle}>{editing ? `Edit ${config.title.slice(0, -1)}` : `New ${config.title.slice(0, -1)}`}</Text>
+        <Text style={styles.sheetTitle}>
+          {editing
+            ? t('admin.referenceData.editRowTitle', { singular: config.title.slice(0, -1) })
+            : t('admin.referenceData.newRowTitle', { singular: config.title.slice(0, -1) })}
+        </Text>
         {config.fields.map(field => (
           <Input
             key={field.key}
@@ -192,7 +218,11 @@ export function ReferenceDataScreen() {
             onChangeText={text => setForm(prev => ({ ...prev, [field.key]: text }))}
           />
         ))}
-        <Button label={editing ? 'Save Changes' : 'Create'} loading={savingId === (editing?.id ?? 'new')} onPress={save} />
+        <Button
+          label={editing ? t('admin.referenceData.saveChangesButton') : t('admin.referenceData.createButton')}
+          loading={savingId === (editing?.id ?? 'new')}
+          onPress={save}
+        />
       </Sheet>
     </View>
   );

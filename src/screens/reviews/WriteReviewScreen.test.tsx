@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import '../../localization';
 import { WriteReviewScreen } from './WriteReviewScreen';
 import { createReview } from '../../services/modules/reviews/reviewsService';
 import { useAuthStore } from '../../store/authStore';

@@ -1,5 +1,6 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Button, Card, EmptyState, Spinner } from '../../components/ui';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
@@ -18,6 +19,7 @@ import { navigateToConsultExpert } from './expertHandoff';
 export function DiseaseResultScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t } = useTranslation();
   const { diseaseCaseId } = useRoute().params as { diseaseCaseId: string };
   const navigation = useNavigation<any>();
   const [diseaseCase, setDiseaseCase] = useState<DiseaseCaseWithPrediction | null>(null);
@@ -59,9 +61,9 @@ export function DiseaseResultScreen() {
   if (error || !diseaseCase) {
     return (
       <EmptyState
-        title="Couldn't load this result"
-        description="Check your connection and try again."
-        actionLabel="Retry"
+        title={t('disease.result.loadErrorTitle')}
+        description={t('common.checkConnectionRetry')}
+        actionLabel={t('common.retry')}
         onAction={load}
       />
     );
@@ -75,9 +77,7 @@ export function DiseaseResultScreen() {
       <Image source={{ uri: diseaseCase.image_url }} style={styles.image} />
 
       <Card style={styles.disclaimer}>
-        <Text style={styles.disclaimerText}>
-          This is an AI advisory only and not a replacement for professional consultation.
-        </Text>
+        <Text style={styles.disclaimerText}>{t('disease.result.disclaimerText')}</Text>
       </Card>
 
       {prediction ? (
@@ -94,7 +94,7 @@ export function DiseaseResultScreen() {
 
           {prediction.recommended_actions.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recommended Actions</Text>
+              <Text style={styles.sectionTitle}>{t('disease.result.recommendedActionsTitle')}</Text>
               {prediction.recommended_actions.map((action, index) => (
                 <Text key={index} style={styles.bullet}>
                   {'•'} {action}
@@ -104,11 +104,11 @@ export function DiseaseResultScreen() {
           ) : null}
         </>
       ) : (
-        <Text style={styles.description}>No prediction is available for this case.</Text>
+        <Text style={styles.description}>{t('disease.result.noPredictionFallback')}</Text>
       )}
 
       <Button
-        label="Consult an Expert"
+        label={t('disease.result.consultExpertButton')}
         variant={isLowConfidence ? 'primary' : 'secondary'}
         onPress={() =>
           navigateToConsultExpert(navigation, {
@@ -123,8 +123,8 @@ export function DiseaseResultScreen() {
 
       {relatedListings.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Related Products</Text>
-          <Text style={styles.sectionCaption}>These may help — not a guarantee.</Text>
+          <Text style={styles.sectionTitle}>{t('disease.result.relatedProductsTitle')}</Text>
+          <Text style={styles.sectionCaption}>{t('disease.result.relatedProductsCaption')}</Text>
           {relatedListings.map(listing => (
             <TouchableOpacity
               key={listing.id}
@@ -142,7 +142,7 @@ export function DiseaseResultScreen() {
                   {listing.title}
                 </Text>
                 <Text style={styles.listingPrice}>
-                  Rs. {listing.price.toFixed(0)}/{listing.unit}
+                  {t('disease.result.priceFormat', { price: listing.price.toFixed(0), unit: listing.unit })}
                 </Text>
               </Card>
             </TouchableOpacity>

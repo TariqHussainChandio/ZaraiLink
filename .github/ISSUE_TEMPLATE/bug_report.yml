@@ -1,0 +1,43 @@
+name: Bug report
+description: Something does not work as the feature register says it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problem? Do not file it here. Follow SECURITY.md instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps, the role you were signed in as, and the data involved. A request you can paste into curl is ideal.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      options:
+        - Mobile app
+        - Backend API
+        - Database or policies
+        - CI or tooling
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Backend log lines, HTTP status and body, `adb logcat` excerpts, screenshots. Remove any personal data and every key or token.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Local stack or which environment, Android version or emulator, commit hash.
