@@ -18,7 +18,7 @@ dependencies = [
   "slowapi==0.1.9",
   "torch==2.5.1",
   "torchvision==0.20.1",
-  "pillow==11.0.0",
+  "pillow==12.3.0",
 ]
 
 # Development-only tools. Kept out of the production image, unlike the old single requirements file.
