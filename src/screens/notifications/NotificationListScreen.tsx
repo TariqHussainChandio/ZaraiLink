@@ -1,55 +1,45 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { EmptyState, Spinner } from '../../components/ui';
 import { NotificationRow } from '../../components/features/notifications/NotificationRow';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
-import { fetchNotifications, markAllRead, markRead } from '../../services/modules/notifications/notificationsService';
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+} from '../../hooks/api/notifications';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { Notification } from '../../types/notifications';
+import { errorMessage } from '../../utils/errorMessage';
 
 const ORDER_TYPES = new Set(['order_new', 'order_status_changed', 'payment_status_changed']);
 
 export function NotificationListScreen() {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   // Untyped: this screen is mounted inside three different tab navigators (buyer/farmer/dealer,
   // expert, admin) with different param lists — deep-linking below is best-effort per type and
   // no-ops harmlessly if the current tab bar doesn't have the target route.
   const navigation = useNavigation<any>();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: notifications = [], isPending, error, refetch } = useNotifications(!!userId);
+  const markNotificationRead = useMarkNotificationRead();
+  const markEverythingRead = useMarkAllNotificationsRead();
 
-  const load = useCallback(() => {
-    if (!userId) return;
-    setLoading(true);
-    setError(false);
-    fetchNotifications().then(data => {
-      setNotifications(data);
-      setLoading(false);
-    }).catch(err => {
-      console.warn('[NotificationListScreen] failed to load notifications:', err);
-      setError(true);
-      setLoading(false);
-    });
-  }, [userId]);
-
+  // Coming back to the list shows notifications that arrived meanwhile.
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      if (userId) refetch();
+    }, [userId, refetch]),
   );
 
   const onPressNotification = async (notification: Notification) => {
     if (!notification.read) {
-      markRead(notification.id).then(load).catch(err => {
-        console.warn('[NotificationListScreen] failed to mark notification read:', err);
-      });
+      // Fire-and-forget: opening the notification must not wait for, or fail on, clearing its unread dot.
+      markNotificationRead.mutate(notification.id);
     }
 
     const tabNavigation = navigation.getParent?.() ?? navigation;
@@ -75,18 +65,21 @@ export function NotificationListScreen() {
 
   const onMarkAllRead = async () => {
     if (!userId) return;
-    await markAllRead();
-    load();
+    try {
+      await markEverythingRead.mutateAsync();
+    } catch (err) {
+      Alert.alert('Could not mark notifications as read', errorMessage(err));
+    }
   };
 
-  if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (isPending && userId) return <Spinner fullscreen />;
+  if (error && notifications.length === 0) {
     return (
       <EmptyState
-        title={t('notifications.notificationList.loadErrorTitle')}
-        description={t('notifications.notificationList.loadErrorDescription')}
-        actionLabel={t('common.retry')}
-        onAction={load}
+        title="Couldn't load notifications"
+        description={errorMessage(error)}
+        actionLabel="Retry"
+        onAction={() => refetch()}
       />
     );
   }
@@ -97,10 +90,10 @@ export function NotificationListScreen() {
     <View style={styles.container}>
       {hasUnread ? (
         <TouchableOpacity onPress={onMarkAllRead} style={styles.markAllRow}>
-          <Text style={styles.markAllLabel}>{t('notifications.notificationList.markAllReadLabel')}</Text>
+          <Text style={styles.markAllLabel}>Mark all as read</Text>
         </TouchableOpacity>
       ) : null}
-      <FlatList
+      <FlashList
         data={notifications}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
@@ -108,8 +101,8 @@ export function NotificationListScreen() {
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('notifications.notificationList.emptyTitle')}
-            description={t('notifications.notificationList.emptyDescription')}
+            title="No notifications yet"
+            description="Updates about your activity will show up here."
           />
         }
       />
@@ -129,7 +122,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     markAllLabel: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.brand.primary,
     },
   });

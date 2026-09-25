@@ -1,54 +1,34 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ExpertCard } from '../../components/features/expert/ExpertCard';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
-import { fetchExperts } from '../../services/modules/expert/expertService';
+import { useExperts } from '../../hooks/api/experts';
 import { useTheme, type Theme } from '../../theme';
-import type { ExpertWithProfile } from '../../types/expert';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
 
 export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps<'ExpertList'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { specialization, prefill } = route.params ?? {};
-  const [experts, setExperts] = useState<ExpertWithProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: experts = [], isPending: loading, error, refetch } = useExperts(specialization);
+  const load = () => refetch();
 
-  const load = useCallback(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchExperts({ specialization }).then(data => {
-      if (!cancelled) {
-        setExperts(data);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.warn('[ExpertListScreen] failed to load experts:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [specialization]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && experts.length === 0) {
     return (
       <EmptyState
-        title={t('expert.expertList.errorTitle')}
-        description={t('expert.expertList.errorDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load experts"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -56,7 +36,7 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={experts}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -68,8 +48,8 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('expert.expertList.emptyTitle')}
-            description={t('expert.expertList.emptyDescription')}
+            title="No verified experts yet"
+            description="Check back soon for available experts."
           />
         }
       />

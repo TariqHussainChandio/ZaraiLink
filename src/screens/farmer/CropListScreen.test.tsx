@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { CropListScreen } from './CropListScreen';
 import { fetchFarmCrops } from '../../services/modules/farmer/farmService';
 import { HOME_ROUTES } from '../../constants/routes';
@@ -47,7 +47,7 @@ describe('CropListScreen', () => {
         crop: { id: 'wheat', name: 'Wheat' },
       },
     ]);
-    await render(<CropListScreen {...makeProps()} />);
+    await renderWithQuery(<CropListScreen {...makeProps()} />);
 
     expect(await screen.findByText('Wheat')).toBeTruthy();
     expect(screen.getByText('HD-2967 · flowering')).toBeTruthy();
@@ -57,13 +57,13 @@ describe('CropListScreen', () => {
 
   it('shows the empty state when there are no crops', async () => {
     mockFetchFarmCrops.mockResolvedValue([]);
-    await render(<CropListScreen {...makeProps()} />);
+    await renderWithQuery(<CropListScreen {...makeProps()} />);
     expect(await screen.findByText('No crops recorded')).toBeTruthy();
   });
 
   it('shows a retry state when loading fails', async () => {
     mockFetchFarmCrops.mockRejectedValue(new Error('Network error'));
-    await render(<CropListScreen {...makeProps()} />);
+    await renderWithQuery(<CropListScreen {...makeProps()} />);
     expect(await screen.findByText("Couldn't load crops")).toBeTruthy();
 
     mockFetchFarmCrops.mockResolvedValue([]);
@@ -76,7 +76,7 @@ describe('CropListScreen', () => {
       { id: 'crop-1', variety: null, growth_stage: null, planting_date: null, crop: null },
     ]);
     const props = makeProps();
-    await render(<CropListScreen {...props} />);
+    await renderWithQuery(<CropListScreen {...props} />);
 
     await fireEvent.press(await screen.findByText('Unspecified crop'));
     expect(props.navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.AddCrop, {
@@ -88,7 +88,7 @@ describe('CropListScreen', () => {
   it('navigates to AddCrop with no crop id via the FAB', async () => {
     mockFetchFarmCrops.mockResolvedValue([]);
     const props = makeProps();
-    await render(<CropListScreen {...props} />);
+    await renderWithQuery(<CropListScreen {...props} />);
     await screen.findByText('No crops recorded');
 
     await fireEvent.press(screen.getByText('+ Add Crop'));

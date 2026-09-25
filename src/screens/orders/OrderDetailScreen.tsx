@@ -1,30 +1,21 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useMemo } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Spinner } from '../../components/ui';
 import { StatusBadge } from '../../components/features/orders/StatusBadge';
 import { PaymentStatusBadge } from '../../components/features/payments/PaymentStatusBadge';
 import { ReviewCard } from '../../components/features/reviews/ReviewCard';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
-import {
-  fetchOrderById,
-  fetchOrderStatusHistory,
-  updateOrderStatus,
-} from '../../services/modules/orders/ordersService';
-import { findOrCreateConversation } from '../../services/modules/messaging/messagingService';
-import {
-  fetchPaymentByOrderId,
-  markPaymentFailed,
-  markPaymentReceived,
-} from '../../services/modules/payments/paymentsService';
-import { fetchReviewByOrderId } from '../../services/modules/reviews/reviewsService';
+import { useOpenConversation } from '../../hooks/api/messaging';
+import { useOrderDetail, useUpdateOrderStatus } from '../../hooks/api/orders';
+import { useResolvePayment } from '../../hooks/api/payments';
 import { useAuthStore } from '../../store/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../theme';
 import type { OrderStatus } from '../../types/orders';
 import { hapticSuccess } from '../../utils/haptics';
+import { errorMessage } from '../../utils/errorMessage';
+import { ORDER_STATUS_LABELS } from '../../constants/labels';
 
 const TIMELINE: OrderStatus[] = ['pending', 'confirmed', 'processing', 'ready', 'completed'];
 const TERMINAL_SIDE_STATES: OrderStatus[] = [
@@ -36,9 +27,6 @@ const TERMINAL_SIDE_STATES: OrderStatus[] = [
   'expired',
 ];
 
-// Order status display strings live under orders.orderDetail.statusLabels.<status> in the
-// translation resources, keyed by the same OrderStatus values used throughout this screen.
-
 // Untyped navigation/route: this screen is mounted inside two different stacks (the buyer/
 // farmer/dealer Orders tab, and Admin's Home stack for platform-wide order oversight) with
 // different param lists — same pattern as NotificationListScreen. The two navigation.navigate
@@ -47,62 +35,38 @@ const TERMINAL_SIDE_STATES: OrderStatus[] = [
 // viewer, who is never the order's buyer.
 export function OrderDetailScreen() {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { orderId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const tabNavigation = useAppTabNavigation();
-  const queryClient = useQueryClient();
-  const [messaging, setMessaging] = useState(false);
+  const openConversation = useOpenConversation();
 
-  const queryKey = ['order-detail', orderId];
-  const { data, isLoading: loading } = useQuery({
-    queryKey,
-    queryFn: async () => {
-      const [order, history, payment, review] = await Promise.all([
-        fetchOrderById(orderId),
-        fetchOrderStatusHistory(orderId),
-        fetchPaymentByOrderId(orderId),
-        fetchReviewByOrderId(orderId),
-      ]);
-      return { order, history, payment, review };
-    },
-  });
+  const { data, isLoading: loading } = useOrderDetail(orderId);
   const { order, history = [], payment, review } = data ?? {};
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey });
-
-  const statusMutation = useMutation({
-    mutationFn: (to: OrderStatus) => updateOrderStatus(orderId, to),
-    onSuccess: invalidate,
-    onError: error =>
-      Alert.alert(
-        t('orders.orderDetail.couldNotUpdateOrderTitle'),
-        error instanceof Error ? error.message : String(error),
-      ),
-  });
+  const statusMutation = useUpdateOrderStatus(orderId);
   const advance = (to: OrderStatus) => {
     // The seller accepting an order is the one transition worth a stronger "something
     // completed" pulse — cancelling/rejecting isn't a moment to celebrate.
-    const options = to === 'confirmed' ? { onSuccess: hapticSuccess } : undefined;
-    statusMutation.mutate(to, options);
+    statusMutation.mutate(to, {
+      onSuccess: to === 'confirmed' ? hapticSuccess : undefined,
+      onError: error => Alert.alert('Could not update order', errorMessage(error)),
+    });
   };
   const updating = statusMutation.isPending;
 
-  const paymentMutation = useMutation({
-    mutationFn: (action: 'received' | 'failed') =>
-      action === 'received' ? markPaymentReceived(payment!.id) : markPaymentFailed(payment!.id, null),
-    onSuccess: invalidate,
-    onError: error =>
-      Alert.alert(
-        t('orders.orderDetail.couldNotUpdatePaymentTitle'),
-        error instanceof Error ? error.message : String(error),
-      ),
-  });
-  const onMarkPaymentReceived = () => paymentMutation.mutate('received');
-  const onMarkPaymentFailed = () => paymentMutation.mutate('failed');
+  const paymentMutation = useResolvePayment();
+  const resolvePayment = (action: 'received' | 'failed') => {
+    if (!payment) return;
+    paymentMutation.mutate(
+      { paymentId: payment.id, action },
+      { onError: error => Alert.alert('Could not update payment', errorMessage(error)) },
+    );
+  };
+  const onMarkPaymentReceived = () => resolvePayment('received');
+  const onMarkPaymentFailed = () => resolvePayment('failed');
   const payingAction = paymentMutation.isPending;
 
   if (loading || !order) return <Spinner fullscreen />;
@@ -124,26 +88,26 @@ export function OrderDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
-        <Text style={styles.total}>{t('orders.orderDetail.amountLine', { amount: order.total.toFixed(0) })}</Text>
+        <Text style={styles.total}>{`Rs. ${order.total.toFixed(0)}`}</Text>
         <StatusBadge status={order.status} />
       </View>
 
       {payment ? (
         <Card style={styles.paymentCard}>
           <View style={styles.paymentRow}>
-            <Text style={styles.sectionTitle}>{t('orders.orderDetail.paymentSectionTitle')}</Text>
+            <Text style={styles.sectionTitle}>Payment</Text>
             <PaymentStatusBadge status={payment.status} />
           </View>
           {isSeller && paymentPending ? (
             <View style={styles.paymentActions}>
               <Button
-                label={t('orders.orderDetail.markPaymentReceivedLabel')}
+                label="Mark Payment Received"
                 loading={payingAction}
                 onPress={onMarkPaymentReceived}
                 style={styles.paymentButton}
               />
               <Button
-                label={t('orders.orderDetail.markPaymentFailedLabel')}
+                label="Mark Payment Failed"
                 variant="destructive"
                 loading={payingAction}
                 onPress={onMarkPaymentFailed}
@@ -156,7 +120,7 @@ export function OrderDetailScreen() {
 
       {canPay ? (
         <Button
-          label={t('orders.orderDetail.payNowLabel')}
+          label="Pay Now"
           onPress={() => navigation.navigate(ORDERS_ROUTES.PaymentMethod, { orderId: order.id })}
           style={styles.action}
         />
@@ -170,7 +134,7 @@ export function OrderDetailScreen() {
               <View key={stage} style={styles.timelineStep}>
                 <View style={[styles.timelineDot, reached && styles.timelineDotActive]} />
                 <Text style={[styles.timelineLabel, reached && styles.timelineLabelActive]}>
-                  {t(`orders.orderDetail.statusLabels.${stage}`)}
+                  {ORDER_STATUS_LABELS[stage]}
                 </Text>
               </View>
             );
@@ -179,67 +143,62 @@ export function OrderDetailScreen() {
       ) : null}
 
       <Card style={styles.itemsCard}>
-        <Text style={styles.sectionTitle}>{t('orders.orderDetail.itemsSectionTitle')}</Text>
+        <Text style={styles.sectionTitle}>Items</Text>
         {order.order_items.map(item => (
           <View key={item.id} style={styles.itemRow}>
             <Text style={styles.itemLabel} numberOfLines={1}>
-              {t('orders.orderDetail.itemLine', {
-                quantity: item.quantity,
-                unit: item.listing?.unit ?? '',
-                title: item.listing?.title ?? t('orders.orderDetail.listingRemovedFallback'),
-              })}
+              {`${item.quantity} ${item.listing?.unit ?? ''} × ${item.listing?.title ?? 'Listing removed'}`}
             </Text>
             <Text style={styles.itemPrice}>
-              {t('orders.orderDetail.amountLine', { amount: (item.unit_price * item.quantity).toFixed(0) })}
+              {`Rs. ${(item.unit_price * item.quantity).toFixed(0)}`}
             </Text>
           </View>
         ))}
         <View style={styles.summaryDivider} />
         <View style={styles.itemRow}>
-          <Text style={styles.itemLabel}>{t('orders.orderDetail.subtotalLabel')}</Text>
+          <Text style={styles.itemLabel}>Subtotal</Text>
           <Text style={styles.itemPrice}>
-            {t('orders.orderDetail.amountLine', { amount: order.product_subtotal.toFixed(0) })}
+            {`Rs. ${order.product_subtotal.toFixed(0)}`}
           </Text>
         </View>
         <View style={styles.itemRow}>
-          <Text style={styles.itemLabel}>{t('orders.orderDetail.deliveryLabel')}</Text>
+          <Text style={styles.itemLabel}>Delivery</Text>
           <Text style={styles.itemPrice}>
-            {t('orders.orderDetail.amountLine', { amount: order.delivery_charge.toFixed(0) })}
+            {`Rs. ${order.delivery_charge.toFixed(0)}`}
           </Text>
         </View>
       </Card>
 
       <Card style={styles.partiesCard}>
-        <Text style={styles.sectionTitle}>{t('orders.orderDetail.buyerLabel')}</Text>
+        <Text style={styles.sectionTitle}>Buyer</Text>
         <Text style={styles.partyName}>
-          {order.buyer?.full_name ?? t('orders.orderDetail.unknownPartyFallback')}
+          {order.buyer?.full_name ?? 'Unknown'}
         </Text>
-        <Text style={[styles.sectionTitle, styles.sellerLabel]}>{t('orders.orderDetail.sellerLabel')}</Text>
+        <Text style={[styles.sectionTitle, styles.sellerLabel]}>Seller</Text>
         <Text style={styles.partyName}>
-          {order.seller?.full_name ?? t('orders.orderDetail.unknownPartyFallback')}
+          {order.seller?.full_name ?? 'Unknown'}
         </Text>
       </Card>
 
       {isBuyer || isSeller ? (
         <Button
-          label={isBuyer ? t('orders.orderDetail.messageSellerLabel') : t('orders.orderDetail.messageBuyerLabel')}
+          label={isBuyer ? 'Message Seller' : 'Message Buyer'}
           variant="secondary"
-          loading={messaging}
+          loading={openConversation.isPending}
           onPress={async () => {
             if (!userId) return;
             const otherPartyId = isBuyer ? order.seller_id : order.buyer_id;
             const otherPartyName =
               (isBuyer ? order.seller?.full_name : order.buyer?.full_name) ??
-              t('orders.orderDetail.unknownPartyFallback');
-            setMessaging(true);
+              'Unknown';
             try {
-              const conversation = await findOrCreateConversation(otherPartyId);
+              const conversation = await openConversation.mutateAsync(otherPartyId);
               tabNavigation?.navigate(APP_TABS.Messages, {
                 screen: MESSAGING_ROUTES.Chat,
                 params: { conversationId: conversation.id, otherUserName: otherPartyName },
               });
-            } finally {
-              setMessaging(false);
+            } catch (error) {
+              Alert.alert('Could not open the conversation', errorMessage(error));
             }
           }}
           style={styles.action}
@@ -248,7 +207,7 @@ export function OrderDetailScreen() {
 
       {canConfirm ? (
         <Button
-          label={t('orders.orderDetail.confirmOrderLabel')}
+          label="Confirm Order"
           loading={updating}
           onPress={() => advance('confirmed')}
           style={styles.action}
@@ -256,7 +215,7 @@ export function OrderDetailScreen() {
       ) : null}
       {canProcess ? (
         <Button
-          label={t('orders.orderDetail.startProcessingLabel')}
+          label="Start Processing"
           loading={updating}
           onPress={() => advance('processing')}
           style={styles.action}
@@ -264,7 +223,7 @@ export function OrderDetailScreen() {
       ) : null}
       {canMarkReady ? (
         <Button
-          label={t('orders.orderDetail.markReadyLabel')}
+          label="Mark Ready"
           loading={updating}
           onPress={() => advance('ready')}
           style={styles.action}
@@ -272,7 +231,7 @@ export function OrderDetailScreen() {
       ) : null}
       {canComplete ? (
         <Button
-          label={t('orders.orderDetail.markCompletedLabel')}
+          label="Mark Completed"
           loading={updating}
           onPress={() => advance('completed')}
           style={styles.action}
@@ -280,7 +239,7 @@ export function OrderDetailScreen() {
       ) : null}
       {canReject ? (
         <Button
-          label={t('orders.orderDetail.rejectOrderLabel')}
+          label="Reject Order"
           variant="destructive"
           loading={updating}
           onPress={() => advance('rejected')}
@@ -289,7 +248,7 @@ export function OrderDetailScreen() {
       ) : null}
       {canCancel ? (
         <Button
-          label={t('orders.orderDetail.cancelOrderLabel')}
+          label="Cancel Order"
           variant="destructive"
           loading={updating}
           onPress={() => advance('cancelled')}
@@ -298,7 +257,7 @@ export function OrderDetailScreen() {
       ) : null}
       {canDispute ? (
         <Button
-          label={t('orders.orderDetail.disputeOrderLabel')}
+          label="Dispute Order"
           variant="secondary"
           loading={updating}
           onPress={() => advance('disputed')}
@@ -307,7 +266,7 @@ export function OrderDetailScreen() {
       ) : null}
       {canReview ? (
         <Button
-          label={t('orders.orderDetail.writeReviewLabel')}
+          label="Write a Review"
           variant="secondary"
           onPress={() =>
             navigation.navigate(ORDERS_ROUTES.WriteReview, {
@@ -323,14 +282,14 @@ export function OrderDetailScreen() {
 
       {history.length > 0 ? (
         <Card style={styles.historyCard}>
-          <Text style={styles.sectionTitle}>{t('orders.orderDetail.statusHistoryTitle')}</Text>
+          <Text style={styles.sectionTitle}>Status History</Text>
           {history.map(entry => (
             <View key={entry.id} style={styles.historyRow}>
               <Text style={styles.historyLabel}>
                 {entry.from_status
-                  ? `${t(`orders.orderDetail.statusLabels.${entry.from_status}`)} → `
+                  ? `${ORDER_STATUS_LABELS[entry.from_status]} → `
                   : ''}
-                {t(`orders.orderDetail.statusLabels.${entry.to_status}`)}
+                {ORDER_STATUS_LABELS[entry.to_status]}
               </Text>
               <Text style={styles.historyDate}>{new Date(entry.created_at).toLocaleString()}</Text>
             </View>
@@ -358,7 +317,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     total: {
       fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     timeline: {
@@ -386,7 +345,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     timelineLabelActive: {
       color: colors.brand.primary,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
     paymentCard: {
       marginBottom: spacing.md,
@@ -436,7 +395,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sectionTitle: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },
@@ -459,7 +418,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     itemPrice: {
       color: colors.text.secondary,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
     },
     action: {
       marginTop: spacing.sm,

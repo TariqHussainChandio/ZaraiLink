@@ -1,20 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Button, Input } from '../../components/ui';
-import { resetPassword } from '../../services/modules/auth/authService';
+import { AUTH_ROUTES } from '../../constants/routes';
+import { useResetPassword } from '../../hooks/api/auth';
 import { useTheme, type Theme } from '../../theme';
+import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
-import type { TFunction } from 'i18next';
 
-// Built from `t` at render time (not module scope) so validation messages stay in sync when the
-// user switches language mid-session.
-function makeForgotPasswordSchema(t: TFunction) {
+function makeForgotPasswordSchema() {
   return z.object({
-    email: z.string().min(1, t('auth.forgotPassword.emailRequiredError')).email(t('auth.forgotPassword.invalidEmailError')),
+    email: z.string().min(1, 'Email is required').email('Enter a valid email'),
   });
 }
 
@@ -23,10 +21,9 @@ type ForgotPasswordFormValues = z.infer<ReturnType<typeof makeForgotPasswordSche
 export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPassword'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
-  const forgotPasswordSchema = useMemo(() => makeForgotPasswordSchema(t), [t]);
+  const { mutateAsync: resetPassword } = useResetPassword();
+  const forgotPasswordSchema = useMemo(() => makeForgotPasswordSchema(), []);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
   const {
     control,
     handleSubmit,
@@ -36,54 +33,50 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
     defaultValues: { email: '' },
   });
 
+  // P4 (4B.4): a numeric code (VerifyOtpScreen), not a link — resetPassword() no longer takes a
+  // redirectTo, so there's nothing to wait for here; move straight to entering the code.
   const onSubmit = async (values: ForgotPasswordFormValues) => {
     setSubmitError(null);
     try {
       await resetPassword(values.email);
-      setSent(true);
+      navigation.navigate(AUTH_ROUTES.VerifyOtp, { purpose: 'recovery', identifier: values.email });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : t('auth.forgotPassword.defaultError'));
+      setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to send reset email'));
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
-      <Text style={styles.subtitle}>{t('auth.forgotPassword.subtitle')}</Text>
+      <Text style={styles.title}>Reset your password</Text>
+      <Text style={styles.subtitle}>{"Enter your account email and we'll send you a reset code."}</Text>
 
-      {sent ? (
-        <Text style={styles.success}>{t('auth.forgotPassword.successMessage')}</Text>
-      ) : (
-        <>
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label={t('auth.forgotPassword.emailLabel')}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={errors.email?.message}
-              />
-            )}
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input
+            label="Email"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            error={errors.email?.message}
           />
+        )}
+      />
 
-          {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
+      {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
 
-          <Button
-            label={t('auth.forgotPassword.submitButton')}
-            loading={isSubmitting}
-            onPress={handleSubmit(onSubmit)}
-            style={styles.submit}
-          />
-        </>
-      )}
+      <Button
+        label="Send code"
+        loading={isSubmitting}
+        onPress={handleSubmit(onSubmit)}
+        style={styles.submit}
+      />
 
       <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.link}>{t('auth.forgotPassword.backLink')}</Text>
+        <Text style={styles.link}>Back to sign in</Text>
       </TouchableOpacity>
     </View>
   );
@@ -98,17 +91,13 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes['3xl'],
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     subtitle: {
       fontSize: typography.sizes.base,
       color: colors.text.secondary,
       marginTop: spacing.xs,
-      marginBottom: spacing.xl,
-    },
-    success: {
-      color: colors.semantic.success,
       marginBottom: spacing.xl,
     },
     submit: {
@@ -120,7 +109,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     link: {
       color: colors.brand.primary,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       marginTop: spacing.xl,
       textAlign: 'center',
     },

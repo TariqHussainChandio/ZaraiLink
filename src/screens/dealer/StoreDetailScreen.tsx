@@ -1,23 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
 import { Button, EmptyState, Input, LocationPicker, SelectField, Spinner } from '../../components/ui';
-import {
-  createStore,
-  deleteStore,
-  fetchStoreById,
-  updateStore,
-} from '../../services/modules/dealer/storeService';
+import { useDeleteStore, useSaveStore, useStore } from '../../hooks/api/dealer';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
+import { errorMessage } from '../../utils/errorMessage';
 
-function makeStoreSchema(t: (key: string) => string) {
+function makeStoreSchema() {
   return z.object({
-    name: z.string().min(2, t('dealer.storeDetail.nameRequired')),
+    name: z.string().min(2, 'Enter a store name'),
     address: z.string(),
     contact: z.string(),
     openingInfo: z.string(),
@@ -31,23 +26,20 @@ function makeStoreSchema(t: (key: string) => string) {
 type StoreFormValues = z.infer<ReturnType<typeof makeStoreSchema>>;
 
 export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreDetail'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const storeId = route.params?.storeId;
-  const storeSchema = useMemo(() => makeStoreSchema(t), [t]);
+  const storeSchema = useMemo(() => makeStoreSchema(), []);
   const STATUS_OPTIONS = useMemo(
     () => [
-      { id: 'active', label: t('dealer.shared.statusActive') },
-      { id: 'inactive', label: t('dealer.shared.statusInactive') },
+      { id: 'active', label: 'Active' },
+      { id: 'inactive', label: 'Inactive' },
     ],
-    [t],
+    [],
   );
   const userId = useAuthStore(state => state.user?.id);
-  const [loading, setLoading] = useState(!!storeId);
-  const [error, setError] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
+  const saveStore = useSaveStore();
+  const removeStore = useDeleteStore();
   const {
     control,
     handleSubmit,
@@ -69,37 +61,28 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
     },
   });
 
-  const load = useCallback(() => {
-    if (!storeId) return;
-    setLoading(true);
-    setError(false);
-    fetchStoreById(storeId)
-      .then(store => {
-        reset({
-          name: store.name,
-          address: store.address ?? '',
-          contact: store.contact ?? '',
-          openingInfo: store.opening_info ?? '',
-          status: store.status,
-          country: store.location?.country ?? null,
-          province: store.location?.province ?? null,
-          city: store.location?.city ?? null,
-        });
-      })
-      .catch(err => {
-        console.warn('[StoreDetailScreen] failed to load store:', err);
-        setError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [storeId, reset]);
+  const { data: store, isLoading: loading, error, refetch } = useStore(storeId);
+  const load = () => refetch();
 
+  // Fill the form once, from the first copy of the store; a later background refetch must not overwrite edits.
+  const filled = useRef(false);
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!store || filled.current) return;
+    filled.current = true;
+    reset({
+      name: store.name,
+      address: store.address ?? '',
+      contact: store.contact ?? '',
+      openingInfo: store.opening_info ?? '',
+      status: store.status,
+      country: store.location?.country ?? null,
+      province: store.location?.province ?? null,
+      city: store.location?.city ?? null,
+    });
+  }, [store, reset]);
 
   const onSubmit = async (values: StoreFormValues) => {
     if (!userId) return;
-    setSubmitting(true);
     try {
       const input = {
         name: values.name,
@@ -111,41 +94,39 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         province: values.province,
         city: values.city,
       };
-      if (storeId) {
-        await updateStore(storeId, input);
-      } else {
-        await createStore(input);
-      }
+      await saveStore.mutateAsync({ id: storeId, input });
       navigation.goBack();
     } catch (err) {
-      Alert.alert(t('dealer.storeDetail.saveFailedTitle'), err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
+      Alert.alert('Failed to save store', errorMessage(err));
     }
   };
 
   const onDelete = () => {
     if (!storeId) return;
-    Alert.alert(t('dealer.storeDetail.deleteConfirmTitle'), t('dealer.shared.cannotBeUndone'), [
-      { text: t('common.cancel'), style: 'cancel' },
+    Alert.alert('Delete store', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: t('dealer.shared.deleteAction'),
+        text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteStore(storeId);
-          navigation.goBack();
+          try {
+            await removeStore.mutateAsync(storeId);
+            navigation.goBack();
+          } catch (err) {
+            Alert.alert('Could not delete the store', errorMessage(err));
+          }
         },
       },
     ]);
   };
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && !store) {
     return (
       <EmptyState
-        title={t('dealer.storeDetail.couldntLoadTitle')}
-        description={t('dealer.shared.checkConnectionDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load this store"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -158,7 +139,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         name="name"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('dealer.storeDetail.storeNameLabel')}
+            label="Store name"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -180,7 +161,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         control={control}
         name="address"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label={t('dealer.storeDetail.addressLabel')} value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input label="Address" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
 
@@ -189,7 +170,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         name="contact"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('dealer.storeDetail.contactLabel')}
+            label="Contact"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -203,7 +184,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         name="openingInfo"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('dealer.storeDetail.openingInfoLabel')}
+            label="Opening hours / info"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -218,7 +199,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         name="status"
         render={({ field: { onChange, value } }) => (
           <SelectField
-            label={t('dealer.storeDetail.statusLabel')}
+            label="Status"
             value={value}
             options={STATUS_OPTIONS}
             onSelect={onChange}
@@ -227,9 +208,9 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         )}
       />
 
-      <Button label={t('dealer.storeDetail.saveButton')} loading={submitting} onPress={handleSubmit(onSubmit)} style={styles.action} />
+      <Button label="Save Store" loading={saveStore.isPending} onPress={handleSubmit(onSubmit)} style={styles.action} />
       {storeId ? (
-        <Button label={t('dealer.storeDetail.deleteButton')} variant="destructive" onPress={onDelete} style={styles.delete} />
+        <Button label="Delete Store" variant="destructive" onPress={onDelete} style={styles.delete} />
       ) : null}
     </ScrollView>
   );

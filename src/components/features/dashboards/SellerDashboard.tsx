@@ -1,120 +1,47 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '../../../components/ui';
 import { APP_TABS, HOME_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../../constants/routes';
-import { fetchConsultationsForUser } from '../../../services/modules/expert/consultationService';
-import { fetchFarmCrops, fetchFarms } from '../../../services/modules/farmer/farmService';
-import { fetchInventory } from '../../../services/modules/dealer/inventoryService';
-import { fetchStores } from '../../../services/modules/dealer/storeService';
-import { fetchSuppliers } from '../../../services/modules/dealer/supplierService';
-import { fetchOrdersForUser } from '../../../services/modules/orders/ordersService';
-import { supabase } from '../../../services/supabase/client';
+import { useDealerAnalytics, useFarmerAnalytics } from '../../../hooks/api/analytics';
+import { useOrders } from '../../../hooks/api/orders';
 import { useAuthStore } from '../../../store/authStore';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import type { HomeStackParamList } from '../../../navigation/stacks/HomeNavigator';
 import { useTheme, type Theme } from '../../../theme';
-import type { OrderWithItems } from '../../../types/orders';
 import { ActivityFeed } from './ActivityFeed';
 import { QuickActions } from './QuickActions';
 import { StatCard } from './StatCard';
 
-interface FarmerExtra {
-  farmCount: number;
-  cropCount: number;
-  openConsultations: number;
-  resolvedConsultations: number;
-}
-
-interface DealerExtra {
-  lowStockCount: number;
-  storeCount: number;
-  supplierCount: number;
-}
-
 export function SellerDashboard() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const userId = useAuthStore(state => state.user?.id);
   const role = useAuthStore(state => state.role);
   const tabNavigation = useAppTabNavigation();
   const homeNavigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
-  const [activeListings, setActiveListings] = useState(0);
-  const [pendingOrders, setPendingOrders] = useState(0);
-  const [recentSales, setRecentSales] = useState<OrderWithItems[]>([]);
-  const [farmerExtra, setFarmerExtra] = useState<FarmerExtra | null>(null);
-  const [dealerExtra, setDealerExtra] = useState<DealerExtra | null>(null);
-  const [loading, setLoading] = useState(true);
+  const sales = useOrders('seller');
+  const farmer = useFarmerAnalytics(role === 'farmer');
+  const dealer = useDealerAnalytics(role === 'dealer');
+  const stats = role === 'farmer' ? farmer : dealer;
+  const recentSales = useMemo(() => (sales.data ?? []).slice(0, 5), [sales.data]);
 
+  // The dashboard is a summary of what changed elsewhere, so it refreshes every time it comes back into view.
+  const { refetch: refetchSales } = sales;
+  const { refetch: refetchStats } = stats;
   useFocusEffect(
     useCallback(() => {
-      if (!userId) return;
-      let cancelled = false;
-
-      (async () => {
-        setLoading(true);
-        const [{ count: listingsCount }, { count: pendingCount }, sales] = await Promise.all([
-          supabase
-            .from('listings')
-            .select('*', { count: 'exact', head: true })
-            .eq('owner_id', userId)
-            .eq('status', 'active'),
-          supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true })
-            .eq('seller_id', userId)
-            .eq('status', 'pending'),
-          fetchOrdersForUser('seller'),
-        ]);
-
-        if (role === 'farmer') {
-          const [farms, consultations] = await Promise.all([
-            fetchFarms(),
-            fetchConsultationsForUser(),
-          ]);
-          const cropCounts = await Promise.all(farms.map(f => fetchFarmCrops(f.id)));
-          if (!cancelled) {
-            setFarmerExtra({
-              farmCount: farms.length,
-              cropCount: cropCounts.reduce((sum, crops) => sum + crops.length, 0),
-              openConsultations: consultations.filter(c =>
-                ['requested', 'accepted', 'in_progress'].includes(c.status),
-              ).length,
-              resolvedConsultations: consultations.filter(c =>
-                ['resolved', 'closed'].includes(c.status),
-              ).length,
-            });
-          }
-        } else if (role === 'dealer') {
-          const [inventory, stores, suppliers] = await Promise.all([
-            fetchInventory(),
-            fetchStores(),
-            fetchSuppliers(),
-          ]);
-          if (!cancelled) {
-            setDealerExtra({
-              lowStockCount: inventory.filter(i => i.stock_quantity <= i.min_stock_threshold).length,
-              storeCount: stores.length,
-              supplierCount: suppliers.length,
-            });
-          }
-        }
-
-        if (cancelled) return;
-        setActiveListings(listingsCount ?? 0);
-        setPendingOrders(pendingCount ?? 0);
-        setRecentSales(sales.slice(0, 5));
-        setLoading(false);
-      })();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [userId, role]),
+      refetchSales();
+      // `refetch` ignores `enabled`, so a role without seller analytics (403) must not be refetched.
+      if (role === 'farmer' || role === 'dealer') refetchStats();
+    }, [role, refetchSales, refetchStats]),
   );
 
-  if (loading) return <Spinner fullscreen />;
+  if (sales.isLoading || stats.isLoading) return <Spinner fullscreen />;
+  const activeListings = stats.data?.activeListings ?? 0;
+  const pendingOrders = stats.data?.pendingOrders ?? 0;
+  const farmerExtra = role === 'farmer' ? farmer.data : undefined;
+  const dealerExtra = role === 'dealer' ? dealer.data : undefined;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -228,7 +155,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sectionTitle: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.sm,
     },

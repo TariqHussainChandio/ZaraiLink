@@ -1,18 +1,17 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Button, EmptyState, FilterChips, Input, Sheet, Spinner } from '../../components/ui';
 import {
-  createRefDataRow,
-  deleteRefDataRow,
-  fetchRefDataRows,
-  updateRefDataRow,
+  useDeleteRefDataRow,
+  useRefDataRows,
+  useSaveRefDataRow,
   type RefDataTable,
-} from '../../services/modules/reference-data/referenceDataService';
-import { useReferenceDataStore } from '../../store/referenceDataStore';
+} from '../../hooks/api/referenceData';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { errorMessage } from '../../utils/errorMessage';
 
 type Row = Record<string, unknown> & { id: string };
 
@@ -29,15 +28,14 @@ interface TableConfig {
 }
 
 export function ReferenceDataScreen() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
-  const invalidateAll = useReferenceDataStore(state => state.invalidateAll);
-
   const [table, setTable] = useState<RefDataTable>('currencies');
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rowData = [], isPending: loading, refetch } = useRefDataRows(table);
+  const rows = rowData as Row[];
+  const saveRow = useSaveRefDataRow(table);
+  const removeRow = useDeleteRefDataRow(table);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
@@ -46,54 +44,43 @@ export function ReferenceDataScreen() {
   const tableConfig: Record<RefDataTable, TableConfig> = useMemo(
     () => ({
       currencies: {
-        title: t('admin.referenceData.currenciesTitle'),
+        title: 'Currencies',
         fields: [
-          { key: 'code', label: t('admin.referenceData.codeLabel') },
-          { key: 'symbol', label: t('admin.referenceData.symbolLabel') },
-          { key: 'name', label: t('admin.referenceData.nameLabel') },
+          { key: 'code', label: 'Code' },
+          { key: 'symbol', label: 'Symbol' },
+          { key: 'name', label: 'Name' },
         ],
         renderLabel: r => `${String(r.code)} — ${String(r.name)}`,
       },
       units: {
-        title: t('admin.referenceData.unitsTitle'),
+        title: 'Units',
         fields: [
-          { key: 'code', label: t('admin.referenceData.codeLabel') },
-          { key: 'label', label: t('admin.referenceData.labelLabel') },
-          { key: 'applies_to', label: t('admin.referenceData.appliesToLabel') },
+          { key: 'code', label: 'Code' },
+          { key: 'label', label: 'Label' },
+          { key: 'applies_to', label: 'Applies To' },
         ],
         renderLabel: r => String(r.label),
         renderSubtitle: r => String(r.applies_to ?? ''),
       },
     }),
-    [t],
+    [],
   );
 
   const tableOptions: { value: RefDataTable; label: string }[] = useMemo(
     () => [
-      { value: 'currencies', label: t('admin.referenceData.currenciesTitle') },
-      { value: 'units', label: t('admin.referenceData.unitsTitle') },
+      { value: 'currencies', label: 'Currencies' },
+      { value: 'units', label: 'Units' },
     ],
-    [t],
+    [],
   );
 
   const config = tableConfig[table];
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const data = await fetchRefDataRows(table);
-    setRows(data as Row[]);
-    setLoading(false);
-  }, [table]);
-
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      refetch();
+    }, [refetch]),
   );
-
-  useEffect(() => {
-    setForm({});
-  }, [table]);
 
   const openCreate = () => {
     setEditing(null);
@@ -114,14 +101,10 @@ export function ReferenceDataScreen() {
     setSavingId(editing?.id ?? 'new');
     try {
       const payload: Record<string, unknown> = { ...form };
-      if (editing) {
-        await updateRefDataRow(table, editing.id, payload);
-      } else {
-        await createRefDataRow(table, payload);
-      }
-      invalidateAll();
+      await saveRow.mutateAsync({ id: editing?.id, row: payload });
       setSheetOpen(false);
-      await load();
+    } catch (error) {
+      Alert.alert('Could not save the entry', errorMessage(error));
     } finally {
       setSavingId(null);
     }
@@ -130,19 +113,19 @@ export function ReferenceDataScreen() {
   const remove = (row: Row) => {
     if (!actorId) return;
     Alert.alert(
-      t('admin.referenceData.deleteConfirmTitle'),
-      t('admin.referenceData.deleteConfirmMessage', { label: config.renderLabel(row) }),
+      'Delete row',
+      `Delete "${config.renderLabel(row)}"? This cannot be undone.`,
       [
-        { text: t('common.cancel'), style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: t('admin.referenceData.delete'),
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             setSavingId(row.id);
             try {
-              await deleteRefDataRow(table, row.id);
-              invalidateAll();
-              await load();
+              await removeRow.mutateAsync(row.id);
+            } catch (error) {
+              Alert.alert('Could not delete the entry', errorMessage(error));
             } finally {
               setSavingId(null);
             }
@@ -154,12 +137,17 @@ export function ReferenceDataScreen() {
 
   return (
     <View style={styles.container}>
-      <FilterChips options={tableOptions} value={table} onChange={setTable} />
+      <FilterChips options={tableOptions} value={table}
+        onChange={next => {
+          setTable(next);
+          setForm({});
+        }}
+      />
 
       {loading ? (
         <Spinner fullscreen />
       ) : (
-        <FlatList
+        <FlashList
           contentContainerStyle={styles.list}
           data={rows}
           keyExtractor={item => item.id}
@@ -171,14 +159,14 @@ export function ReferenceDataScreen() {
               </View>
               <View style={styles.actions}>
                 <Button
-                  label={t('admin.referenceData.edit')}
+                  label="Edit"
                   variant="secondary"
                   fullWidth={false}
                   loading={savingId === item.id}
                   onPress={() => openEdit(item)}
                 />
                 <Button
-                  label={t('admin.referenceData.delete')}
+                  label="Delete"
                   variant="destructive"
                   fullWidth={false}
                   loading={savingId === item.id}
@@ -189,13 +177,13 @@ export function ReferenceDataScreen() {
           )}
           ListEmptyComponent={
             <EmptyState
-              title={t('admin.referenceData.emptyTitle', { table: config.title.toLowerCase() })}
-              description={t('admin.referenceData.emptyDescription')}
+              title={`No ${config.title.toLowerCase()} yet`}
+              description="Add the first one below."
             />
           }
           ListFooterComponent={
             <Button
-              label={t('admin.referenceData.addButton', { singular: config.title.slice(0, -1) })}
+              label={`+ Add ${config.title.slice(0, -1)}`}
               variant="secondary"
               onPress={openCreate}
               style={styles.addButton}
@@ -207,8 +195,8 @@ export function ReferenceDataScreen() {
       <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)}>
         <Text style={styles.sheetTitle}>
           {editing
-            ? t('admin.referenceData.editRowTitle', { singular: config.title.slice(0, -1) })
-            : t('admin.referenceData.newRowTitle', { singular: config.title.slice(0, -1) })}
+            ? `Edit ${config.title.slice(0, -1)}`
+            : `New ${config.title.slice(0, -1)}`}
         </Text>
         {config.fields.map(field => (
           <Input
@@ -219,7 +207,7 @@ export function ReferenceDataScreen() {
           />
         ))}
         <Button
-          label={editing ? t('admin.referenceData.saveChangesButton') : t('admin.referenceData.createButton')}
+          label={editing ? 'Save Changes' : 'Create'}
           loading={savingId === (editing?.id ?? 'new')}
           onPress={save}
         />
@@ -249,7 +237,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     subtitle: {
@@ -266,7 +254,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sheetTitle: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
       marginBottom: spacing.lg,
     },

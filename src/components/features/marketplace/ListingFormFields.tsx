@@ -1,10 +1,9 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Controller, type Control, type FieldErrors, type UseFormSetValue, type UseFormWatch } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { Input, LocationPicker } from '../../../components/ui';
-import { useMarketplaceStore } from '../../../store/marketplaceStore';
+import { useCategories, useCrops } from '../../../hooks/api/marketplace';
 import { useTheme, type Theme } from '../../../theme';
 import { CategoryChip } from './CategoryChip';
 
@@ -57,14 +56,9 @@ export interface ListingFormFieldsProps {
  * newly-picked) differs. */
 export function ListingFormFields({ control, errors, setValue, watch }: ListingFormFieldsProps) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { categories, loadCategories, crops, loadCrops } = useMarketplaceStore();
-
-  useEffect(() => {
-    loadCategories();
-    loadCrops();
-  }, [loadCategories, loadCrops]);
+  const { data: categories = [] } = useCategories();
+  const { data: crops = [] } = useCrops();
 
   const country = watch('country');
   const province = watch('province');
@@ -78,7 +72,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         name="title"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('marketplace.listingForm.titleLabel')}
+            label="Title"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -92,7 +86,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         name="description"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('marketplace.listingForm.descriptionLabel')}
+            label="Description"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -102,7 +96,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         )}
       />
 
-      <Text style={styles.label}>{t('marketplace.listingForm.categoryLabel')}</Text>
+      <Text style={styles.label}>Category</Text>
       <Controller
         control={control}
         name="categoryId"
@@ -127,7 +121,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             name="price"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label={t('marketplace.listingForm.priceLabel')}
+                label="Price"
                 keyboardType="numeric"
                 value={String(value)}
                 onChangeText={onChange}
@@ -143,7 +137,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             name="unit"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label={t('marketplace.listingForm.unitLabel')}
+                label="Unit"
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -159,7 +153,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         name="quantity"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('marketplace.listingForm.quantityLabel')}
+            label="Quantity available"
             keyboardType="numeric"
             value={String(value)}
             onChangeText={onChange}
@@ -176,7 +170,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             name="brand"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label={t('marketplace.listingForm.brandLabel')}
+                label="Brand (optional)"
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -190,7 +184,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             name="condition"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label={t('marketplace.listingForm.conditionLabel')}
+                label="Condition (optional)"
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -202,7 +196,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
 
       {crops.length > 0 ? (
         <>
-          <Text style={styles.label}>{t('marketplace.listingForm.cropCompatibilityLabel')}</Text>
+          <Text style={styles.label}>Crop compatibility</Text>
           <View style={styles.chipRow}>
             {crops.map(crop => {
               const selected = cropCompatibility.includes(crop.name);
@@ -226,7 +220,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         </>
       ) : null}
 
-      <Text style={styles.label}>{t('marketplace.listingForm.locationLabel')}</Text>
+      <Text style={styles.label}>Location (optional)</Text>
       <LocationPicker
         country={country}
         province={province}
@@ -243,7 +237,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
   return StyleSheet.create({
     label: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },

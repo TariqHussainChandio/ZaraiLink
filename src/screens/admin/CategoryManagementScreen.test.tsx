@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { CategoryManagementScreen } from './CategoryManagementScreen';
 import {
   createCategory,
@@ -62,13 +62,13 @@ afterEach(() => {
 describe('CategoryManagementScreen', () => {
   it('shows an empty state when there are no categories', async () => {
     mockFetchCategories.mockResolvedValue([]);
-    await render(<CategoryManagementScreen />);
+    await renderWithQuery(<CategoryManagementScreen />);
     expect(await screen.findByText('No categories yet')).toBeTruthy();
   });
 
   it('lists categories with their slug', async () => {
     mockFetchCategories.mockResolvedValue([category()]);
-    await render(<CategoryManagementScreen />);
+    await renderWithQuery(<CategoryManagementScreen />);
     expect(await screen.findByText('Seeds')).toBeTruthy();
     expect(screen.getByText('seeds')).toBeTruthy();
   });
@@ -76,7 +76,7 @@ describe('CategoryManagementScreen', () => {
   it('creates a new category through the sheet', async () => {
     mockFetchCategories.mockResolvedValue([]);
     mockCreateCategory.mockResolvedValue(category());
-    await render(<CategoryManagementScreen />);
+    await renderWithQuery(<CategoryManagementScreen />);
     await screen.findByText('No categories yet');
 
     await fireEvent.press(screen.getByText('+ Add Category'));
@@ -92,7 +92,7 @@ describe('CategoryManagementScreen', () => {
   it('edits an existing category, prefilling the sheet', async () => {
     mockFetchCategories.mockResolvedValue([category()]);
     mockUpdateCategory.mockResolvedValue(category({ name: 'Seeds & Saplings' }));
-    await render(<CategoryManagementScreen />);
+    await renderWithQuery(<CategoryManagementScreen />);
     await screen.findByText('Seeds');
 
     await fireEvent.press(screen.getByText('Edit'));
@@ -114,7 +114,7 @@ describe('CategoryManagementScreen', () => {
     (Alert.alert as jest.Mock).mockImplementation((_title, _msg, buttons) => {
       buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
     });
-    await render(<CategoryManagementScreen />);
+    await renderWithQuery(<CategoryManagementScreen />);
     await screen.findByText('Seeds');
 
     await fireEvent.press(screen.getByText('Delete'));

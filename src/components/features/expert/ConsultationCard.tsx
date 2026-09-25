@@ -49,7 +49,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
       flex: 1,
       marginRight: spacing.sm,
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     meta: {

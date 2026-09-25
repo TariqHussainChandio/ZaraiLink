@@ -50,7 +50,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     counterparty: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     meta: {

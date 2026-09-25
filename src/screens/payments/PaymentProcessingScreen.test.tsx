@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { PaymentProcessingScreen } from './PaymentProcessingScreen';
 import { fetchPaymentById } from '../../services/modules/payments/paymentsService';
 import { ORDERS_ROUTES } from '../../constants/routes';
@@ -47,7 +47,7 @@ describe('PaymentProcessingScreen', () => {
       method: 'cod',
       status: 'pending',
     });
-    await render(<PaymentProcessingScreen {...makeProps()} />);
+    await renderWithQuery(<PaymentProcessingScreen {...makeProps()} />);
 
     expect(await screen.findByText('Rs. 1500')).toBeTruthy();
     expect(screen.getByText('Cash on Delivery')).toBeTruthy();
@@ -62,7 +62,7 @@ describe('PaymentProcessingScreen', () => {
       status: 'successful',
     });
     const props = makeProps();
-    await render(<PaymentProcessingScreen {...props} />);
+    await renderWithQuery(<PaymentProcessingScreen {...props} />);
 
     await waitFor(() =>
       expect(props.navigation.replace).toHaveBeenCalledWith(ORDERS_ROUTES.PaymentResult, {
@@ -79,7 +79,7 @@ describe('PaymentProcessingScreen', () => {
       method: 'bank_transfer',
       status: 'pending',
     });
-    await render(<PaymentProcessingScreen {...makeProps()} />);
+    await renderWithQuery(<PaymentProcessingScreen {...makeProps()} />);
     await screen.findByText('Rs. 1500');
 
     await fireEvent.press(screen.getByText('Check Status'));
@@ -95,7 +95,7 @@ describe('PaymentProcessingScreen', () => {
       status: 'pending',
     });
     const props = makeProps();
-    await render(<PaymentProcessingScreen {...props} />);
+    await renderWithQuery(<PaymentProcessingScreen {...props} />);
     await screen.findByText('Rs. 1500');
 
     await fireEvent.press(screen.getByText('Back to Order'));

@@ -1,54 +1,34 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Spinner } from '../../components/ui';
 import { QuickActions } from '../../components/features/dashboards/QuickActions';
 import { StatCard } from '../../components/features/dashboards/StatCard';
 import { ADMIN_HOME_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS, ROLES } from '../../constants/roles';
-import { fetchPlatformStats, type PlatformStats } from '../../services/modules/admin/adminService';
+import { usePlatformStats } from '../../hooks/api/admin';
 import { useTheme, type Theme } from '../../theme';
 import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
 
 export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashboard'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const [stats, setStats] = useState<PlatformStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: stats, isPending: loading, error, refetch } = usePlatformStats();
+  const load = () => refetch();
 
-  const load = useCallback(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchPlatformStats().then(data => {
-      if (!cancelled) {
-        setStats(data);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.warn('[AdminDashboardScreen] failed to load platform stats:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   if (loading) return <Spinner fullscreen />;
   if (error || !stats) {
     return (
       <EmptyState
-        title={t('admin.dashboard.loadErrorTitle')}
-        description={t('admin.dashboard.loadErrorDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load the dashboard"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -57,53 +37,53 @@ export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashb
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label={t('admin.dashboard.totalUsers')} value={stats.totalUsers} accent={theme.moduleAccents.admin} />
-        <StatCard label={t('admin.dashboard.listings')} value={stats.totalListings} accent={theme.moduleAccents.marketplace} />
-        <StatCard label={t('admin.dashboard.orders')} value={stats.totalOrders} accent={theme.moduleAccents.orders} />
+        <StatCard label="Total Users" value={stats.totalUsers} accent={theme.moduleAccents.admin} />
+        <StatCard label="Listings" value={stats.totalListings} accent={theme.moduleAccents.marketplace} />
+        <StatCard label="Orders" value={stats.totalOrders} accent={theme.moduleAccents.orders} />
       </View>
 
-      <Text style={styles.sectionTitle}>{t('admin.dashboard.usersByRole')}</Text>
+      <Text style={styles.sectionTitle}>Users by Role</Text>
       <View style={styles.statsRow}>
         {ROLES.filter(role => role !== 'admin').map(role => (
           <StatCard key={role} label={ROLE_LABELS[role]} value={stats.usersByRole[role] ?? 0} accent={theme.roleColors[role]} />
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>{t('admin.dashboard.manage')}</Text>
+      <Text style={styles.sectionTitle}>Manage</Text>
       <QuickActions
         actions={[
           {
-            label: t('admin.dashboard.analytics'),
+            label: 'Analytics',
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Analytics),
           },
           {
-            label: t('admin.dashboard.manageUsers'),
+            label: 'Manage Users',
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.UserManagement),
           },
           {
-            label: t('admin.dashboard.moderateListings'),
+            label: 'Moderate Listings',
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ListingModeration),
           },
           {
-            label: t('admin.dashboard.expertVerification'),
+            label: 'Expert Verification',
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ExpertVerification),
           },
-          { label: t('admin.dashboard.orders'), onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Orders) },
-          { label: t('admin.dashboard.reports'), onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Reports) },
+          { label: 'Orders', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Orders) },
+          { label: 'Reports', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Reports) },
           {
-            label: t('admin.dashboard.categories'),
+            label: 'Categories',
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Categories),
           },
           {
-            label: t('admin.dashboard.referenceData'),
+            label: 'Reference Data',
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ReferenceData),
           },
           {
-            label: t('admin.dashboard.auditLogs'),
+            label: 'Audit Logs',
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.AuditLogs),
           },
           {
-            label: t('admin.dashboard.notifications'),
+            label: 'Notifications',
             onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Notifications),
           },
         ]}
@@ -129,7 +109,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sectionTitle: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.sm,
     },

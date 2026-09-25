@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { NotificationBellButton } from './NotificationBellButton';
 import { useAuthStore } from '../../../store/authStore';
 import { fetchUnreadCount } from '../../../services/modules/notifications/notificationsService';
@@ -23,27 +24,27 @@ describe('NotificationBellButton', () => {
 
   it('renders without a badge when there are no unread notifications', async () => {
     mockFetchUnreadCount.mockResolvedValue(0);
-    await render(<NotificationBellButton onPress={() => {}} />);
+    await renderWithQuery(<NotificationBellButton onPress={() => {}} />);
     expect(await screen.findByLabelText('Notifications')).toBeTruthy();
   });
 
   it('shows the unread count in the badge and accessibility label', async () => {
     mockFetchUnreadCount.mockResolvedValue(3);
-    await render(<NotificationBellButton onPress={() => {}} />);
+    await renderWithQuery(<NotificationBellButton onPress={() => {}} />);
     expect(await screen.findByLabelText('Notifications, 3 unread')).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();
   });
 
   it('caps the displayed badge at "9+"', async () => {
     mockFetchUnreadCount.mockResolvedValue(15);
-    await render(<NotificationBellButton onPress={() => {}} />);
+    await renderWithQuery(<NotificationBellButton onPress={() => {}} />);
     expect(await screen.findByText('9+')).toBeTruthy();
   });
 
   it('calls onPress when tapped', async () => {
     mockFetchUnreadCount.mockResolvedValue(0);
     const onPress = jest.fn();
-    await render(<NotificationBellButton onPress={onPress} />);
+    await renderWithQuery(<NotificationBellButton onPress={onPress} />);
     await screen.findByLabelText('Notifications');
     fireEvent.press(screen.getByLabelText('Notifications'));
     expect(onPress).toHaveBeenCalledTimes(1);

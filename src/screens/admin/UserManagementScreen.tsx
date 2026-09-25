@@ -1,42 +1,38 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Badge, Button, EmptyState, Sheet, Spinner } from '../../components/ui';
 import { ROLES, ROLE_LABELS } from '../../constants/roles';
-import { fetchAllProfiles, setProfileSuspended, updateUserRole } from '../../services/modules/admin/adminService';
+import { useProfiles, useSetProfileSuspended, useUpdateUserRole } from '../../hooks/api/admin';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { errorMessage } from '../../utils/errorMessage';
 import type { Profile } from '../../types/profile';
 
 export function UserManagementScreen() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const currentUserId = useAuthStore(state => state.user?.id);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: profiles = [], isPending: loading, refetch } = useProfiles();
+  const suspend = useSetProfileSuspended();
+  const updateRole = useUpdateUserRole();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [roleSheetFor, setRoleSheetFor] = useState<Profile | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setProfiles(await fetchAllProfiles());
-    setLoading(false);
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      refetch();
+    }, [refetch]),
   );
 
   const toggleSuspend = async (profile: Profile) => {
     if (!currentUserId) return;
     setUpdatingId(profile.id);
     try {
-      await setProfileSuspended(profile.id, !profile.is_suspended);
-      await load();
+      await suspend.mutateAsync({ id: profile.id, suspended: !profile.is_suspended });
+    } catch (error) {
+      Alert.alert('Could not update the user', errorMessage(error));
     } finally {
       setUpdatingId(null);
     }
@@ -47,8 +43,9 @@ export function UserManagementScreen() {
     setRoleSheetFor(null);
     setUpdatingId(profile.id);
     try {
-      await updateUserRole(profile.id, newRole);
-      await load();
+      await updateRole.mutateAsync({ id: profile.id, role: newRole });
+    } catch (error) {
+      Alert.alert('Could not update the user', errorMessage(error));
     } finally {
       setUpdatingId(null);
     }
@@ -58,7 +55,7 @@ export function UserManagementScreen() {
 
   return (
     <>
-      <FlatList
+      <FlashList
         style={styles.container}
         contentContainerStyle={styles.list}
         data={profiles}
@@ -71,20 +68,20 @@ export function UserManagementScreen() {
               </Text>
               <View style={styles.badgeRow}>
                 <Badge label={ROLE_LABELS[item.role]} tone="info" />
-                {item.is_suspended ? <Badge label={t('admin.userManagement.suspended')} tone="error" /> : null}
+                {item.is_suspended ? <Badge label="Suspended" tone="error" /> : null}
               </View>
             </View>
             {item.id !== currentUserId ? (
               <View style={styles.actions}>
                 <Button
-                  label={t('admin.userManagement.changeRole')}
+                  label="Change Role"
                   variant="secondary"
                   fullWidth={false}
                   loading={updatingId === item.id}
                   onPress={() => setRoleSheetFor(item)}
                 />
                 <Button
-                  label={item.is_suspended ? t('admin.userManagement.unsuspend') : t('admin.userManagement.suspend')}
+                  label={item.is_suspended ? 'Unsuspend' : 'Suspend'}
                   variant={item.is_suspended ? 'secondary' : 'destructive'}
                   fullWidth={false}
                   loading={updatingId === item.id}
@@ -94,12 +91,12 @@ export function UserManagementScreen() {
             ) : null}
           </View>
         )}
-        ListEmptyComponent={<EmptyState title={t('admin.userManagement.emptyTitle')} />}
+        ListEmptyComponent={<EmptyState title="No users found" />}
       />
 
       <Sheet visible={!!roleSheetFor} onClose={() => setRoleSheetFor(null)}>
         <Text style={styles.sheetTitle}>
-          {t('admin.userManagement.changeRoleForTitle', { name: roleSheetFor?.full_name })}
+          {`Change role for ${roleSheetFor?.full_name}`}
         </Text>
         {ROLES.filter(role => role !== roleSheetFor?.role).map(role => (
           <TouchableOpacity
@@ -138,7 +135,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.xs,
     },
@@ -152,7 +149,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sheetTitle: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
       marginBottom: spacing.lg,
     },

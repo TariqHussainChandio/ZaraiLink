@@ -63,7 +63,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.sm,
     },
@@ -81,13 +81,13 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     itemTitle: {
       flex: 1,
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.primary,
     },
     itemValue: {
       flex: 0,
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     itemSubtitle: {

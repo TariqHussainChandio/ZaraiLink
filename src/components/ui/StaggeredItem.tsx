@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, ViewStyle } from 'react-native';
 import { motion } from '../../theme/motion';
 
@@ -20,10 +20,10 @@ export interface StaggeredItemProps {
 /** Fade + rise entrance for list/grid items, staggered by `index` — used on mount for a
  * FlatList's `renderItem` so the first screenful of results animates in together instead of
  * appearing as a flat cut. Re-renders after the initial mount (e.g. a re-fetch) don't
- * re-trigger it, since the animated values are created once via `useRef`. */
+ * re-trigger it, since the animated values are created once via `useState`. */
 export function StaggeredItem({ index, style, children }: StaggeredItemProps) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(RISE_DISTANCE)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
+  const [translateY] = useState(() => new Animated.Value(RISE_DISTANCE));
 
   useEffect(() => {
     const delay = Math.min(index, MAX_STAGGERED_INDEX) * STAGGER_STEP_MS;

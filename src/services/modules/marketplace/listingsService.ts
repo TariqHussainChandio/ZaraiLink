@@ -1,4 +1,5 @@
 import type { PickedPhoto } from '../../../utils/photoPicker';
+import { extensionFromMimeType } from '../../../utils/mimeExtension';
 import { apiFetch } from '../../api/client';
 import { supabase } from '../../supabase/client';
 import type {
@@ -162,7 +163,7 @@ export async function uploadListingImages(userId: string, images: PickedPhoto[])
   for (const image of images) {
     if (!image.uri) continue;
 
-    const extension = image.fileName?.split('.').pop() ?? 'jpg';
+    const extension = extensionFromMimeType(image.mimeType);
     const path = `${userId}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${extension}`;
 
     const response = await fetch(image.uri);

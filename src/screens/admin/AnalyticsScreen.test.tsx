@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AdminAnalyticsScreen } from './AnalyticsScreen';
 import { fetchAdminAnalytics } from '../../services/modules/analytics/analyticsService';
 import type { AdminAnalytics } from '../../types/analytics';
@@ -47,7 +47,7 @@ beforeEach(() => {
 describe('AdminAnalyticsScreen', () => {
   it('loads and renders the platform stats', async () => {
     mockFetchAnalytics.mockResolvedValue(analytics());
-    await render(<AdminAnalyticsScreen />);
+    await renderWithQuery(<AdminAnalyticsScreen />);
 
     expect(await screen.findByText('Total Listings')).toBeTruthy();
     expect(screen.getByText('10')).toBeTruthy();
@@ -60,7 +60,7 @@ describe('AdminAnalyticsScreen', () => {
 
   it('renders payments and reports broken down by status', async () => {
     mockFetchAnalytics.mockResolvedValue(analytics());
-    await render(<AdminAnalyticsScreen />);
+    await renderWithQuery(<AdminAnalyticsScreen />);
 
     await screen.findByText('Total Listings');
     expect(screen.getByText('Successful')).toBeTruthy();
@@ -73,7 +73,7 @@ describe('AdminAnalyticsScreen', () => {
 
   it('shows an empty message for charts with no data points', async () => {
     mockFetchAnalytics.mockResolvedValue(analytics({ userGrowth: [], orderVolume: [] }));
-    await render(<AdminAnalyticsScreen />);
+    await renderWithQuery(<AdminAnalyticsScreen />);
 
     await screen.findByText('Total Listings');
     expect(screen.getByText('No signups yet')).toBeTruthy();
@@ -82,7 +82,7 @@ describe('AdminAnalyticsScreen', () => {
 
   it("shows a retry state when loading fails, and retries on demand", async () => {
     mockFetchAnalytics.mockRejectedValueOnce(new Error('network down'));
-    await render(<AdminAnalyticsScreen />);
+    await renderWithQuery(<AdminAnalyticsScreen />);
 
     expect(await screen.findByText("Couldn't load analytics")).toBeTruthy();
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ConsultationDetailScreen } from './ConsultationDetailScreen';
 import {
   fetchConsultationById,
@@ -109,7 +109,7 @@ describe('ConsultationDetailScreen', () => {
   it('renders the consultation details and expert accept/reject actions for a pending request', async () => {
     setup();
     useAuthStore.setState({ user: { id: 'expert1' } as never });
-    await render(<ConsultationDetailScreen />);
+    await renderWithQuery(<ConsultationDetailScreen />);
 
     expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
     expect(screen.getByText('With Ali Raza')).toBeTruthy();
@@ -122,7 +122,7 @@ describe('ConsultationDetailScreen', () => {
     setup();
     mockUpdateConsultationStatus.mockResolvedValue(undefined);
     useAuthStore.setState({ user: { id: 'expert1' } as never });
-    await render(<ConsultationDetailScreen />);
+    await renderWithQuery(<ConsultationDetailScreen />);
 
     await fireEvent.press(await screen.findByText('Accept'));
     expect(mockUpdateConsultationStatus).toHaveBeenCalledWith('c1', 'accepted');
@@ -132,7 +132,7 @@ describe('ConsultationDetailScreen', () => {
     setup();
     mockUpdateConsultationStatus.mockRejectedValue(new Error('Server unavailable'));
     useAuthStore.setState({ user: { id: 'expert1' } as never });
-    await render(<ConsultationDetailScreen />);
+    await renderWithQuery(<ConsultationDetailScreen />);
 
     await fireEvent.press(await screen.findByText('Accept'));
     expect(Alert.alert).toHaveBeenCalledWith('Could not update consultation', 'Server unavailable');
@@ -142,7 +142,7 @@ describe('ConsultationDetailScreen', () => {
     setup();
     mockUpdateConsultationStatus.mockResolvedValue(undefined);
     useAuthStore.setState({ user: { id: 'requester1' } as never });
-    await render(<ConsultationDetailScreen />);
+    await renderWithQuery(<ConsultationDetailScreen />);
 
     await fireEvent.press(await screen.findByText('Cancel Request'));
     expect(mockUpdateConsultationStatus).toHaveBeenCalledWith('c1', 'cancelled');
@@ -161,7 +161,7 @@ describe('ConsultationDetailScreen', () => {
       created_at: '2026-08-20T11:00:00.000Z',
     });
     useAuthStore.setState({ user: { id: 'expert1' } as never });
-    await render(<ConsultationDetailScreen />);
+    await renderWithQuery(<ConsultationDetailScreen />);
     await screen.findByText('Yellowing wheat leaves');
 
     await fireEvent.changeText(screen.getByPlaceholderText('Type a message...'), 'Please share a close-up photo');
@@ -185,7 +185,7 @@ describe('ConsultationDetailScreen', () => {
       created_at: '2026-08-21T00:00:00.000Z',
     });
     useAuthStore.setState({ user: { id: 'requester1' } as never });
-    await render(<ConsultationDetailScreen />);
+    await renderWithQuery(<ConsultationDetailScreen />);
 
     await fireEvent.press(await screen.findByText('Write a Review'));
     await fireEvent.press(screen.getByText('Submit Review'));
@@ -207,7 +207,7 @@ describe('ConsultationDetailScreen', () => {
       created_at: '2026-08-20T12:00:00.000Z',
     });
     useAuthStore.setState({ user: { id: 'expert1' } as never });
-    await render(<ConsultationDetailScreen />);
+    await renderWithQuery(<ConsultationDetailScreen />);
 
     await fireEvent.press(await screen.findByText('Recommend a Product'));
     expect(mockFetchListings).toHaveBeenCalledWith({});
@@ -233,7 +233,7 @@ describe('ConsultationDetailScreen', () => {
     const mockTabNavigate = jest.fn();
     mockGetParent.mockReturnValue({ navigate: mockTabNavigate });
     useAuthStore.setState({ user: { id: 'requester1' } as never });
-    await render(<ConsultationDetailScreen />);
+    await renderWithQuery(<ConsultationDetailScreen />);
 
     await fireEvent.press(
       await screen.findByLabelText('Recommended listing: Copper Fungicide, Rs. 850 per bottle'),

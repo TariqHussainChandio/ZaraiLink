@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ViewProfileScreen } from './ViewProfileScreen';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../store/authStore';
@@ -34,7 +34,7 @@ function makeNavigation() {
 describe('ViewProfileScreen', () => {
   it('renders nothing while the profile has not loaded', async () => {
     useAuthStore.setState({ profile: null, user: null });
-    const { toJSON } = await render(
+    const { toJSON } = await renderWithQuery(
       <ViewProfileScreen navigation={makeNavigation()} route={{} as never} />,
     );
     expect(toJSON()).toBeNull();
@@ -42,7 +42,7 @@ describe('ViewProfileScreen', () => {
 
   it("renders the user's name, role, and contact details", async () => {
     useAuthStore.setState({ profile: profile(), user: { email: 'ahmed@example.com' } as never });
-    await render(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(screen.getByText('Ahmed Khan')).toBeTruthy();
     expect(screen.getByText('Farmer')).toBeTruthy();
@@ -56,14 +56,14 @@ describe('ViewProfileScreen', () => {
       profile: profile({ phone: null, location: null }),
       user: { email: 'ahmed@example.com' } as never,
     });
-    await render(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getAllByText('—').length).toBe(2);
   });
 
   it('navigates to EditProfile and Settings', async () => {
     useAuthStore.setState({ profile: profile(), user: { email: 'ahmed@example.com' } as never });
     const navigation = makeNavigation();
-    await render(<ViewProfileScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<ViewProfileScreen navigation={navigation} route={{} as never} />);
 
     await fireEvent.press(screen.getByText('Edit Profile'));
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.EditProfile);

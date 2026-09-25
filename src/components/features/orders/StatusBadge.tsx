@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge, type BadgeTone } from '../../../components/ui';
 import type { OrderStatus } from '../../../types/orders';
+import { ORDER_STATUS_LABELS } from '../../../constants/labels';
 
 const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   pending: 'warning',
@@ -16,20 +17,6 @@ const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   expired: 'neutral',
 };
 
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  processing: 'Processing',
-  ready: 'Ready',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-  rejected: 'Rejected',
-  payment_failed: 'Payment Failed',
-  disputed: 'Disputed',
-  refunded: 'Refunded',
-  expired: 'Expired',
-};
-
 export function StatusBadge({ status }: { status: OrderStatus }) {
-  return <Badge label={STATUS_LABEL[status]} tone={STATUS_TONE[status]} />;
+  return <Badge label={ORDER_STATUS_LABELS[status]} tone={STATUS_TONE[status]} />;
 }

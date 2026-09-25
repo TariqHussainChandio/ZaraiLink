@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/ui';
 import {
@@ -11,19 +10,19 @@ import {
   type ListingFormInput,
   type ListingFormValues,
 } from '../../components/features/marketplace/ListingFormFields';
-import { createListing, uploadListingImages } from '../../services/modules/marketplace/listingsService';
+import { useCreateListing } from '../../hooks/api/marketplace';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import { errorMessage } from '../../utils/errorMessage';
 
 export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'CreateListing'>) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [images, setImages] = useState<PickedPhoto[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const createListing = useCreateListing();
 
   const {
     control,
@@ -44,28 +43,24 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
   const onSubmit = async (values: ListingFormValues) => {
     if (!userId) return;
     if (images.length === 0) {
-      Alert.alert(t('marketplace.createListing.addPhotoTitle'), t('marketplace.createListing.addPhotoMessage'));
+      Alert.alert('Add a photo', 'Please add at least one image of your produce.');
       return;
     }
 
-    setSubmitting(true);
     try {
-      const imageUrls = await uploadListingImages(userId, images);
-      await createListing({
-        ...values,
-        description: values.description ?? '',
-        brand: values.brand || null,
-        condition: values.condition || null,
-        images: imageUrls,
+      await createListing.mutateAsync({
+        userId,
+        images,
+        input: {
+          ...values,
+          description: values.description ?? '',
+          brand: values.brand || null,
+          condition: values.condition || null,
+        },
       });
       navigation.goBack();
     } catch (error) {
-      Alert.alert(
-        t('marketplace.createListing.failedTitle'),
-        error instanceof Error ? error.message : String(error),
-      );
-    } finally {
-      setSubmitting(false);
+      Alert.alert('Failed to create listing', errorMessage(error));
     }
   };
 
@@ -73,19 +68,19 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
 
-      <Text style={styles.label}>{t('marketplace.createListing.photosLabel')}</Text>
+      <Text style={styles.label}>Photos</Text>
       <View style={styles.imageRow}>
         {images.map((image, index) => (
           <Image key={image.uri ?? index} source={{ uri: image.uri }} style={styles.thumbnail} />
         ))}
         <TouchableOpacity style={styles.addImage} onPress={pickImages}>
-          <Text style={styles.addImageLabel}>{t('marketplace.createListing.addImageLabel')}</Text>
+          <Text style={styles.addImageLabel}>+ Add</Text>
         </TouchableOpacity>
       </View>
 
       <Button
-        label={t('marketplace.createListing.publishLabel')}
-        loading={submitting}
+        label="Publish Listing"
+        loading={createListing.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
       />
@@ -104,7 +99,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },

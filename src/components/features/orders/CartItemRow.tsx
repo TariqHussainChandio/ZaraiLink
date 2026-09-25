@@ -67,7 +67,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     price: {
@@ -96,7 +96,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     quantity: {
       marginHorizontal: spacing.sm,
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.primary,
     },
     remove: {

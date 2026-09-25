@@ -2,7 +2,7 @@ module.exports = {
   // Android is the only platform this app ships, so tests run with Platform.OS === 'android'.
   // jest-expo also mocks Expo's native modules, which do not exist under Jest.
   preset: 'jest-expo/android',
-  setupFiles: ['react-native-gesture-handler/jestSetup', '<rootDir>/jest.env.js'],
+  setupFiles: ['react-native-gesture-handler/jestSetup', '<rootDir>/jest.flashlist.js', '<rootDir>/jest.env.js'],
   // GitHub Actions' runners are markedly slower than local dev machines (the full suite takes
   // ~85s there vs ~20s locally) — the 5s Jest default occasionally times out a heavy screen
   // test's cold start there even though it's not actually hung. 15s gives real headroom without
@@ -26,6 +26,6 @@ module.exports = {
   // Packages that ship untranspiled source (Flow, TypeScript, or ES modules) must go through Babel.
   // This is jest-expo's own list plus the libraries this app adds.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|expo-.*|@expo(nent)?/.*|@react-navigation|react-native-.*|@supabase/.*|isows|lucide-react-native)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|expo-.*|@expo(nent)?/.*|@react-navigation|react-native-.*|@shopify/flash-list|@supabase/.*|isows|lucide-react-native)/)',
   ],
 };

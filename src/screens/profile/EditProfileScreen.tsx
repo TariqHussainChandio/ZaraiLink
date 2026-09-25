@@ -1,27 +1,23 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Avatar, Button, Input, LocationPicker, PhoneInput, isValidE164 } from '../../components/ui';
-import { fetchFarmerProfile, upsertFarmerProfile } from '../../services/modules/farmer/farmService';
-import { updateProfile, uploadAvatar } from '../../services/modules/profile/profileService';
+import { useFarmerProfile, useUpdateProfile, useUploadAvatar, useUpsertFarmerProfile } from '../../hooks/api/profile';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { pickFromLibrary, type PickedPhoto } from '../../utils/photoPicker';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
-import type { TFunction } from 'i18next';
+import { errorMessage } from '../../utils/errorMessage';
 
-// Built from `t` at render time (not module scope) so validation messages stay in sync when the
-// user switches language mid-session.
-function makeEditProfileSchema(t: TFunction) {
+function makeEditProfileSchema() {
   return z.object({
-    fullName: z.string().min(2, t('profile.fullNameRequiredError')),
+    fullName: z.string().min(2, 'Enter your full name'),
     phone: z
       .string()
       .nullable()
-      .refine(value => !value || isValidE164(value), t('profile.invalidPhoneError')),
+      .refine(value => !value || isValidE164(value), 'Enter a valid phone number'),
     country: z.string(),
     province: z.string(),
     city: z.string(),
@@ -38,8 +34,10 @@ type EditProfileFormValues = z.infer<ReturnType<typeof makeEditProfileSchema>>;
 export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfile'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
-  const editProfileSchema = useMemo(() => makeEditProfileSchema(t), [t]);
+  const { mutateAsync: updateProfile } = useUpdateProfile();
+  const { mutateAsync: uploadAvatar } = useUploadAvatar();
+  const { mutateAsync: upsertFarmerProfile } = useUpsertFarmerProfile();
+  const editProfileSchema = useMemo(() => makeEditProfileSchema(), []);
   const userId = useAuthStore(state => state.user?.id);
   const profile = useAuthStore(state => state.profile);
   const refreshProfile = useAuthStore(state => state.refreshProfile);
@@ -69,20 +67,18 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
     },
   });
 
+  // The farmer-only fields arrive after the rest of the form; fill them once, without touching what was typed.
+  const { data: farmerProfile } = useFarmerProfile(!!userId && profile?.role === 'farmer');
+  const farmerFieldsFilled = useRef(false);
   useEffect(() => {
-    if (!userId || profile?.role !== 'farmer') return;
-    fetchFarmerProfile().then(farmerProfile => {
-      if (farmerProfile) {
-        reset(current => ({
-          ...current,
-          experience: farmerProfile.experience ?? '',
-          agriculturalInfo: farmerProfile.agricultural_info ?? '',
-        }));
-      }
-    }).catch(err => {
-      console.warn('[EditProfileScreen] failed to load farmer profile:', err);
-    });
-  }, [userId, profile?.role, reset]);
+    if (!farmerProfile || farmerFieldsFilled.current) return;
+    farmerFieldsFilled.current = true;
+    reset(current => ({
+      ...current,
+      experience: farmerProfile.experience ?? '',
+      agriculturalInfo: farmerProfile.agricultural_info ?? '',
+    }));
+  }, [farmerProfile, reset]);
 
   const country = watch('country');
   const province = watch('province');
@@ -102,7 +98,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
     try {
       let avatarUrl = profile?.avatar_url ?? null;
       if (pickedAvatar) {
-        avatarUrl = await uploadAvatar(userId, pickedAvatar);
+        avatarUrl = await uploadAvatar({ userId, image: pickedAvatar });
       }
 
       const location = [values.village, values.city, values.province, values.country].filter(Boolean).join(', ') || null;
@@ -129,7 +125,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
       await refreshProfile();
       navigation.goBack();
     } catch (error) {
-      Alert.alert(t('profile.editProfileFailedTitle'), error instanceof Error ? error.message : String(error));
+      Alert.alert('Failed to update profile', errorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -151,7 +147,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         name="fullName"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('profile.fullName')}
+            label="Full name"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -164,7 +160,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         name="phone"
         render={({ field: { onChange, value } }) => (
           <PhoneInput
-            label={t('profile.phone')}
+            label="Phone"
             value={value}
             onChange={onChange}
             error={errors.phone?.message}
@@ -178,20 +174,20 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         onCountryChange={value => setValue('country', value ?? '')}
         onProvinceChange={value => setValue('province', value ?? '')}
         onCityChange={value => setValue('city', value ?? '')}
-        labels={{ country: t('profile.country'), province: t('profile.province'), city: t('profile.city') }}
+        labels={{ country: 'Country', province: 'Province', city: 'City' }}
       />
       <Controller
         control={control}
         name="village"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label={t('profile.village')} value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input label="Village" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
       <Controller
         control={control}
         name="street"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label={t('profile.street')} value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input label="Street / address" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
 
@@ -202,8 +198,8 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
             name="experience"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label={t('profile.experienceLabel')}
-                placeholder={t('profile.experiencePlaceholder')}
+                label="Experience"
+                placeholder="e.g. 8 years growing wheat and cotton"
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -215,8 +211,8 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
             name="agriculturalInfo"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label={t('profile.agriculturalInfoLabel')}
-                placeholder={t('profile.agriculturalInfoPlaceholder')}
+                label="Agricultural information"
+                placeholder="Practices, specialties, certifications, etc."
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -229,7 +225,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
       ) : null}
 
       <Button
-        label={t('profile.saveChanges')}
+        label="Save Changes"
         loading={submitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}

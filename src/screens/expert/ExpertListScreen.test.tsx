@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertListScreen } from './ExpertListScreen';
 import { fetchExperts } from '../../services/modules/expert/expertService';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
@@ -55,7 +55,7 @@ describe('ExpertListScreen', () => {
 
   it('renders the list of verified experts', async () => {
     mockFetchExperts.mockResolvedValue([expert]);
-    await render(<ExpertListScreen {...makeProps()} />);
+    await renderWithQuery(<ExpertListScreen {...makeProps()} />);
 
     expect(await screen.findByText('Dr. Ahsan')).toBeTruthy();
     expect(screen.getByText('PhD')).toBeTruthy();
@@ -64,7 +64,7 @@ describe('ExpertListScreen', () => {
 
   it('passes the specialization filter through to fetchExperts', async () => {
     mockFetchExperts.mockResolvedValue([]);
-    await render(<ExpertListScreen {...makeProps({ specialization: 'plant_diseases' })} />);
+    await renderWithQuery(<ExpertListScreen {...makeProps({ specialization: 'plant_diseases' })} />);
 
     await screen.findByText('No verified experts yet');
     expect(mockFetchExperts).toHaveBeenCalledWith({ specialization: 'plant_diseases' });
@@ -74,7 +74,7 @@ describe('ExpertListScreen', () => {
     mockFetchExperts.mockResolvedValue([expert]);
     const prefill = { subject: 'Yellow leaves', problemDescription: '', cropId: null, imageUrl: null };
     const props = makeProps({ prefill: prefill as never });
-    await render(<ExpertListScreen {...props} />);
+    await renderWithQuery(<ExpertListScreen {...props} />);
 
     await fireEvent.press(await screen.findByText('Dr. Ahsan'));
     expect(props.navigation.navigate).toHaveBeenCalledWith(CONSULTATIONS_ROUTES.ExpertProfile, {
@@ -85,13 +85,13 @@ describe('ExpertListScreen', () => {
 
   it('shows the empty state when there are no experts', async () => {
     mockFetchExperts.mockResolvedValue([]);
-    await render(<ExpertListScreen {...makeProps()} />);
+    await renderWithQuery(<ExpertListScreen {...makeProps()} />);
     expect(await screen.findByText('No verified experts yet')).toBeTruthy();
   });
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchExperts.mockRejectedValue(new Error('network down'));
-    await render(<ExpertListScreen {...makeProps()} />);
+    await renderWithQuery(<ExpertListScreen {...makeProps()} />);
 
     expect(await screen.findByText("Couldn't load experts")).toBeTruthy();
 

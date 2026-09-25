@@ -1,66 +1,51 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
 import { StockAdjustModal } from '../../components/features/dealer/StockAdjustModal';
-import {
-  fetchInventoryById,
-  fetchInventoryTransactions,
-} from '../../services/modules/dealer/inventoryService';
+import { useInventoryItem, useInventoryTransactions } from '../../hooks/api/dealer';
 import { useTheme, type Theme } from '../../theme';
-import type { InventoryItemWithListing, InventoryTransaction } from '../../types/dealer';
+import type { InventoryTransaction } from '../../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
-const TYPE_LABEL_KEYS: Record<InventoryTransaction['type'], string> = {
-  addition: 'dealer.inventoryTransaction.types.addition',
-  restock: 'dealer.inventoryTransaction.types.restock',
-  reduction: 'dealer.inventoryTransaction.types.reduction',
-  sale: 'dealer.inventoryTransaction.types.sale',
-  adjustment: 'dealer.inventoryTransaction.types.adjustment',
-  correction: 'dealer.inventoryTransaction.types.correction',
+const TYPE_LABELS: Record<InventoryTransaction['type'], string> = {
+  addition: 'Addition',
+  restock: 'Restock',
+  reduction: 'Reduction',
+  sale: 'Sale',
+  adjustment: 'Adjustment',
+  correction: 'Correction',
 };
 
 export function InventoryTransactionScreen({ route }: HomeScreenProps<'InventoryTransactions'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { inventoryId } = route.params;
-  const [item, setItem] = useState<InventoryItemWithListing | null>(null);
-  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const itemQuery = useInventoryItem(inventoryId);
+  const transactionsQuery = useInventoryTransactions(inventoryId);
+  const item = itemQuery.data;
+  const transactions = transactionsQuery.data ?? [];
+  const loading = itemQuery.isPending || transactionsQuery.isPending;
+  const error = itemQuery.error ?? transactionsQuery.error;
   const [adjustVisible, setAdjustVisible] = useState(false);
 
+  const { refetch: refetchItem } = itemQuery;
+  const { refetch: refetchTransactions } = transactionsQuery;
   const load = useCallback(() => {
-    setLoading(true);
-    setError(false);
-    Promise.all([fetchInventoryById(inventoryId), fetchInventoryTransactions(inventoryId)]).then(
-      ([inv, txs]) => {
-        setItem(inv);
-        setTransactions(txs);
-        setLoading(false);
-      },
-    ).catch(err => {
-      console.warn('[InventoryTransactionScreen] failed to load inventory transactions:', err);
-      setError(true);
-      setLoading(false);
-    });
-  }, [inventoryId]);
+    refetchItem();
+    refetchTransactions();
+  }, [refetchItem, refetchTransactions]);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  useFocusEffect(load);
 
   if (loading) return <Spinner fullscreen />;
   if (error || !item) {
     return (
       <EmptyState
-        title={t('dealer.inventoryTransaction.couldntLoadTitle')}
-        description={t('dealer.shared.checkConnectionDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load stock history"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -70,27 +55,24 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
     <View style={styles.container}>
       <Card style={styles.summary}>
         <Text style={styles.title}>
-          {item.listing?.title ?? t('dealer.inventoryTransaction.unlinkedStockItem')}
+          {item.listing?.title ?? 'Unlinked stock item'}
         </Text>
         <Text style={styles.stock}>
-          {t('dealer.inventoryTransaction.currentlyInStock', {
-            quantity: item.stock_quantity,
-            unit: item.unit,
-          })}
+          {`${item.stock_quantity} ${item.unit} currently in stock`}
         </Text>
         <TouchableOpacity style={styles.adjustButton} onPress={() => setAdjustVisible(true)}>
-          <Text style={styles.adjustLabel}>{t('dealer.inventoryTransaction.recordStockMovement')}</Text>
+          <Text style={styles.adjustLabel}>Record Stock Movement</Text>
         </TouchableOpacity>
       </Card>
 
-      <FlatList
+      <FlashList
         data={transactions}
         keyExtractor={tx => tx.id}
         contentContainerStyle={styles.list}
         renderItem={({ item: tx }) => (
           <Card style={styles.txCard}>
             <View style={styles.txRow}>
-              <Badge label={t(TYPE_LABEL_KEYS[tx.type])} tone={tx.quantity >= 0 ? 'success' : 'error'} />
+              <Badge label={TYPE_LABELS[tx.type]} tone={tx.quantity >= 0 ? 'success' : 'error'} />
               <Text style={styles.txQuantity}>
                 {tx.quantity >= 0 ? '+' : ''}
                 {tx.quantity} {item.unit}
@@ -100,7 +82,7 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
             {tx.notes ? <Text style={styles.txNotes}>{tx.notes}</Text> : null}
           </Card>
         )}
-        ListEmptyComponent={<EmptyState title={t('dealer.inventoryTransaction.emptyTitle')} />}
+        ListEmptyComponent={<EmptyState title="No stock movements yet" />}
       />
 
       <StockAdjustModal
@@ -108,7 +90,6 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
         onClose={() => setAdjustVisible(false)}
         inventoryId={inventoryId}
         unit={item.unit}
-        onAdjusted={load}
       />
     </View>
   );
@@ -126,7 +107,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     stock: {
@@ -161,7 +142,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     txQuantity: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     txDate: {

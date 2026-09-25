@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,34 +14,32 @@ import { z } from 'zod';
 import { Button, Input, PhoneInput, isValidE164 } from '../../components/ui';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS, ROLES, type Role } from '../../constants/roles';
-import { signUp, type AuthChannel } from '../../services/modules/auth/authService';
+import { useSignUp, type AuthChannel } from '../../hooks/api/auth';
 import { useTheme, type Theme } from '../../theme';
+import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
-import type { TFunction } from 'i18next';
 
 const REGISTRABLE_ROLES = ROLES.filter(role => role !== 'admin') as Exclude<Role, 'admin'>[];
 
-// Built from `t` at render time (not module scope) so validation messages stay in sync when the
-// user switches language mid-session.
-function makeRegisterSchema(t: TFunction) {
+function makeRegisterSchema() {
   return z
     .object({
       channel: z.enum(['email', 'phone']),
-      fullName: z.string().min(2, t('auth.register.fullNameError')),
+      fullName: z.string().min(2, 'Enter your full name'),
       email: z.string().optional(),
       phone: z.string().nullable().optional(),
-      password: z.string().min(6, t('auth.register.passwordMinLengthError')),
+      password: z.string().min(6, 'Password must be at least 6 characters'),
       role: z.enum(REGISTRABLE_ROLES as [Role, ...Role[]], {
-        message: t('auth.register.roleError'),
+        message: 'Select a role',
       }),
     })
     .superRefine((data, ctx) => {
       if (data.channel === 'email') {
         if (!data.email || !z.string().email().safeParse(data.email).success) {
-          ctx.addIssue({ code: 'custom', path: ['email'], message: t('auth.register.invalidEmailError') });
+          ctx.addIssue({ code: 'custom', path: ['email'], message: 'Enter a valid email' });
         }
       } else if (!data.phone || !isValidE164(data.phone)) {
-        ctx.addIssue({ code: 'custom', path: ['phone'], message: t('auth.register.invalidPhoneError') });
+        ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Enter a valid phone number' });
       }
     });
 }
@@ -52,8 +49,8 @@ type RegisterFormValues = z.infer<ReturnType<typeof makeRegisterSchema>>;
 export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
-  const registerSchema = useMemo(() => makeRegisterSchema(t), [t]);
+  const { mutateAsync: signUp } = useSignUp();
+  const registerSchema = useMemo(() => makeRegisterSchema(), []);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     control,
@@ -80,10 +77,10 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
       // No session back means the OTP must be confirmed before sign-in; authStore's
       // onAuthStateChange picks up the session automatically once verifyOtp succeeds.
       if (!session) {
-        navigation.navigate(AUTH_ROUTES.VerifyOtp, { channel: values.channel, identifier });
+        navigation.navigate(AUTH_ROUTES.VerifyOtp, { purpose: 'signup', channel: values.channel, identifier });
       }
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : t('auth.register.defaultError'));
+      setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to create account'));
     }
   };
 
@@ -93,15 +90,15 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{t('auth.register.title')}</Text>
-        <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
+        <Text style={styles.title}>Create your account</Text>
+        <Text style={styles.subtitle}>Join ZaraiLink as a farmer, buyer, dealer, or expert</Text>
 
         <Controller
           control={control}
           name="fullName"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label={t('auth.register.fullNameLabel')}
+              label="Full name"
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
@@ -110,7 +107,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           )}
         />
 
-        <Text style={styles.label}>{t('auth.register.verifyWithLabel')}</Text>
+        <Text style={styles.label}>Verify with</Text>
         <Controller
           control={control}
           name="channel"
@@ -125,7 +122,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
                   <Text
                     style={[styles.roleChipLabel, value === option && styles.roleChipLabelSelected]}
                   >
-                    {option === 'email' ? t('auth.register.emailChannel') : t('auth.register.phoneChannel')}
+                    {option === 'email' ? 'Email' : 'Phone number'}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -139,7 +136,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                label={t('auth.register.emailLabel')}
+                label="Email"
                 autoCapitalize="none"
                 keyboardType="email-address"
                 value={value ?? ''}
@@ -160,7 +157,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
         )}
 
         <Text style={styles.hint}>
-          {channel === 'email' ? t('auth.register.emailHint') : t('auth.register.phoneHint')}
+          {channel === 'email' ? "We'll email you a 6-digit code to verify your account." : "We'll text you a 6-digit code to verify your account."}
         </Text>
 
         <Controller
@@ -168,7 +165,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
-              label={t('auth.register.passwordLabel')}
+              label="Password"
               secureTextEntry
               value={value}
               onChangeText={onChange}
@@ -178,7 +175,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           )}
         />
 
-        <Text style={styles.label}>{t('auth.register.roleLabel')}</Text>
+        <Text style={styles.label}>I am a...</Text>
         <Controller
           control={control}
           name="role"
@@ -208,16 +205,16 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
         {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
 
         <Button
-          label={t('auth.register.submitButton')}
+          label="Create account"
           loading={isSubmitting}
           onPress={handleSubmit(onSubmit)}
           style={styles.submit}
         />
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>{t('auth.register.haveAccountText')}</Text>
+          <Text style={styles.footerText}>Already have an account?</Text>
           <TouchableOpacity onPress={() => navigation.navigate(AUTH_ROUTES.Login)}>
-            <Text style={styles.link}>{t('auth.register.signInLink')}</Text>
+            <Text style={styles.link}>{' Sign in'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -235,7 +232,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes['3xl'],
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     subtitle: {
@@ -246,7 +243,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },
@@ -275,7 +272,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     roleChipLabel: {
       color: colors.text.secondary,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
     },
     roleChipLabelSelected: {
       color: colors.neutral.white,
@@ -302,7 +299,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     link: {
       color: colors.brand.primary,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
   });
 }

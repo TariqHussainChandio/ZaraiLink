@@ -1,0 +1,156 @@
+/**
+ * P7 (7D) real-stack test: the farmer and dealer hooks against the real FastAPI and the real local Supabase, for real
+ * users of different roles: what an owner can do, and what another farmer or the wrong role is refused.
+ * Setup and how to run it: see src/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
+ */
+import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
+import React from 'react';
+import { API_URL, installNodeFetch, realStackEnabled, signUp } from '../../testUtils/realStack';
+import { useAuthStore } from '../../store/authStore';
+import { createTestQueryClient } from '../../testUtils/renderWithProviders';
+
+installNodeFetch();
+
+let mockToken: string | null = null;
+jest.mock('../../services/supabase/client', () => ({
+  supabase: {
+    auth: {
+      getSession: async () => ({ data: { session: mockToken ? { access_token: mockToken } : null } }),
+      refreshSession: async () => ({ data: { session: null }, error: new Error('no refresh in this test') }),
+      signOut: async () => ({ error: null }),
+    },
+  },
+}));
+
+const describeReal = realStackEnabled ? describe : describe.skip;
+
+const idOf = (token: string) => JSON.parse(atob((token.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/'))).sub as string;
+const refused = expect.objectContaining({ kind: expect.stringMatching(/forbidden|notFound/) });
+
+describeReal('farmer and dealer hooks against the real backend', () => {
+  let farmerToken = '';
+  let otherFarmerToken = '';
+  let dealerToken = '';
+  let farmer: typeof import('./farmer');
+  let dealer: typeof import('./dealer');
+  let analytics: typeof import('./analytics');
+  let market: typeof import('./marketplace');
+  let queryClient: QueryClient;
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  // Each user gets their own cache, as in the app, where the cache is emptied when the signed-in user changes.
+  function signInAs(token: string) {
+    mockToken = token;
+    useAuthStore.setState({ user: { id: idOf(token) } as never });
+    queryClient = createTestQueryClient();
+  }
+
+  beforeAll(async () => {
+    process.env.EXPO_PUBLIC_API_BASE_URL = API_URL;
+    farmerToken = await signUp('farmer');
+    otherFarmerToken = await signUp('farmer');
+    dealerToken = await signUp('dealer');
+    farmer = require('./farmer');
+    dealer = require('./dealer');
+    analytics = require('./analytics');
+    market = require('./marketplace');
+  }, 60_000);
+
+  afterEach(() => queryClient.clear());
+
+  it('lets a farmer keep farms and crops, refuses another farmer, and keeps the dashboard count in step', async () => {
+    signInAs(farmerToken);
+    const crops = await renderHook(() => market.useCrops(), { wrapper });
+    await waitFor(() => expect(crops.result.current.data?.length).toBeGreaterThan(0));
+    const cropId = crops.result.current.data?.[0]?.id ?? null;
+
+    const owner = await renderHook(
+      () => ({ farms: farmer.useFarms(true), create: farmer.useCreateFarm(), remove: farmer.useDeleteFarm(), stats: analytics.useFarmerAnalytics(true) }),
+      { wrapper },
+    );
+    await waitFor(() => expect(owner.result.current.farms.data).toEqual([]));
+    await waitFor(() => expect(owner.result.current.stats.data?.farmCount).toBe(0));
+
+    let farm!: { id: string };
+    await act(async () => {
+      farm = await owner.result.current.create.mutateAsync({ name: 'Realstack farm', area: 5, landUnit: 'acre', notes: null, country: null, province: null, city: null });
+    });
+    await waitFor(() => expect(owner.result.current.farms.data?.map(f => f.id)).toEqual([farm.id]));
+    // The dashboard figure is refetched by the same invalidation.
+    await waitFor(() => expect(owner.result.current.stats.data?.farmCount).toBe(1));
+
+    const crop = await renderHook(() => ({ save: farmer.useSaveFarmCrop(farm.id), list: farmer.useFarmCrops(farm.id) }), { wrapper });
+    await act(async () => {
+      await crop.result.current.save.mutateAsync({ input: { cropId, variety: 'Sona', plantingDate: null, area: null, expectedHarvestDate: null, growthStage: null, notes: null } });
+    });
+    await waitFor(() => expect(crop.result.current.list.data?.map(c => c.variety)).toEqual(['Sona']));
+
+    // --- another farmer can neither read nor change it
+    signInAs(otherFarmerToken);
+    const other = await renderHook(() => ({ read: farmer.useFarm(farm.id), update: farmer.useUpdateFarm(farm.id), list: farmer.useFarms(true) }), { wrapper });
+    await waitFor(() => expect(other.result.current.read.error).toMatchObject({ kind: expect.stringMatching(/forbidden|notFound/) }));
+    const denied = await act(async () => other.result.current.update.mutateAsync({ name: 'hijack' }).catch((e: unknown) => e));
+    expect(denied).toEqual(refused);
+    await waitFor(() => expect(other.result.current.list.data).toEqual([]));
+
+    // --- the owner deletes it and the list, the crops and the count follow
+    signInAs(farmerToken);
+    const cleanup = await renderHook(() => ({ remove: farmer.useDeleteFarm(), farms: farmer.useFarms(true) }), { wrapper });
+    await waitFor(() => expect(cleanup.result.current.farms.data?.length).toBe(1));
+    await act(async () => {
+      await cleanup.result.current.remove.mutateAsync(farm.id);
+    });
+    await waitFor(() => expect(cleanup.result.current.farms.data).toEqual([]));
+  }, 90_000);
+
+  it('lets a dealer keep stores, suppliers and stock, and refuses every other role', async () => {
+    signInAs(dealerToken);
+    const owner = await renderHook(
+      () => ({
+        stores: dealer.useStores(true),
+        saveStore: dealer.useSaveStore(),
+        suppliers: dealer.useSuppliers(true),
+        saveSupplier: dealer.useSaveSupplier(),
+        inventory: dealer.useInventory(true),
+        saveItem: dealer.useSaveInventoryItem(),
+        stats: analytics.useDealerAnalytics(true),
+      }),
+      { wrapper },
+    );
+    await waitFor(() => expect(owner.result.current.stores.data).toEqual([]));
+
+    let store!: { id: string };
+    await act(async () => {
+      store = await owner.result.current.saveStore.mutateAsync({ input: { name: 'Realstack store', address: null, contact: null, openingInfo: null, status: 'active', country: null, province: null, city: null } });
+      await owner.result.current.saveSupplier.mutateAsync({ input: { name: 'Realstack supplier', contact: null, productsSupplied: null, notes: null, status: 'active' } });
+    });
+    await waitFor(() => expect(owner.result.current.stores.data?.map(s => s.id)).toEqual([store.id]));
+    await waitFor(() => expect(owner.result.current.suppliers.data?.map(s => s.name)).toEqual(['Realstack supplier']));
+    await waitFor(() => expect(owner.result.current.stats.data?.storeCount).toBe(1));
+
+    // --- stock: create, adjust, and the movement shows in the item's history
+    let item!: { id: string };
+    await act(async () => {
+      item = await owner.result.current.saveItem.mutateAsync({ input: { listingId: null, stockQuantity: 10, unit: 'bag', purchaseCost: null, sellingPrice: null, minStockThreshold: 2 } });
+    });
+    const stock = await renderHook(() => ({ adjust: dealer.useAdjustStock(item.id), txs: dealer.useInventoryTransactions(item.id), one: dealer.useInventoryItem(item.id) }), { wrapper });
+    await waitFor(() => expect(stock.result.current.one.data?.stock_quantity).toBe(10));
+    await act(async () => {
+      await stock.result.current.adjust.mutateAsync({ type: 'restock', quantity: 5, notes: 'delivery' });
+    });
+    await waitFor(() => expect(stock.result.current.one.data?.stock_quantity).toBe(15));
+    await waitFor(() => expect(stock.result.current.txs.data?.some(t => t.notes === 'delivery')).toBe(true));
+
+    // --- a farmer (wrong role) and the dealer's own data from another dealer are refused
+    signInAs(farmerToken);
+    const wrongRole = await renderHook(() => ({ stores: dealer.useStores(true), inventory: dealer.useInventory(true), item: dealer.useInventoryItem(item.id) }), { wrapper });
+    await waitFor(() => expect(wrongRole.result.current.stores.error).toMatchObject({ status: 403, code: 'insufficient_role' }));
+    await waitFor(() => expect(wrongRole.result.current.inventory.error).toMatchObject({ status: 403 }));
+    await waitFor(() => expect(wrongRole.result.current.item.error).toEqual(refused));
+    expect(wrongRole.result.current.stores.data).toBeUndefined();
+  }, 90_000);
+});

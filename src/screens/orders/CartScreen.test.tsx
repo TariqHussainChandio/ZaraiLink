@@ -1,6 +1,5 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
 import { CartScreen } from './CartScreen';
 import { useCartStore, type CartItem } from '../../store/cartStore';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
@@ -46,10 +45,10 @@ describe('CartScreen', () => {
     await render(<CartScreen navigation={makeNavigation()} route={{} as never} />);
 
     await fireEvent.press(screen.getByText('+'));
-    expect(useCartStore.getState().items[0].quantity).toBe(3);
+    expect(useCartStore.getState().items[0]?.quantity).toBe(3);
 
     await fireEvent.press(screen.getByText('−'));
-    expect(useCartStore.getState().items[0].quantity).toBe(2);
+    expect(useCartStore.getState().items[0]?.quantity).toBe(2);
 
     await fireEvent.press(screen.getByText('Remove'));
     expect(useCartStore.getState().items).toHaveLength(0);

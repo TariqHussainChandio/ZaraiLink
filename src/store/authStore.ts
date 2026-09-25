@@ -1,9 +1,10 @@
 import type { Session, User } from '@supabase/supabase-js';
-import { Alert, Linking } from 'react-native';
 import { create } from 'zustand';
 import type { Role } from '../constants/roles';
+import { fetchOwnProfile } from '../services/modules/auth/profileLoader';
 import { supabase } from '../services/supabase/client';
 import type { Profile } from '../types/profile';
+import { logger } from '../utils/logger';
 
 // 'passwordRecovery': the user tapped a password-reset email link. A real session now exists
 // (via exchangeCodeForSession below) but they haven't set a new password yet — RootNavigator
@@ -23,24 +24,13 @@ interface AuthState {
   refreshProfile: () => Promise<void>;
 }
 
-async function fetchProfile(userId: string): Promise<Profile | null> {
+async function loadProfile(userId: string): Promise<Profile | null> {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.warn('[authStore] failed to load profile:', error.message);
-      return null;
-    }
-
-    return data as Profile;
+    return await fetchOwnProfile(userId);
   } catch (err) {
-    // Network failure (e.g. device offline, unreachable host) throws instead of
-    // resolving to { error }, so it needs its own catch to avoid an unhandled rejection.
-    console.warn('[authStore] network error while loading profile:', err);
+    // A failed read (row missing, or a network failure that throws instead of resolving to { error }) leaves the
+    // user signed in without a profile rather than crashing the session bootstrap.
+    logger.warn('authStore: failed to load profile', err);
     return null;
   }
 }
@@ -63,7 +53,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      const profile = await fetchProfile(session.user.id);
+      const profile = await loadProfile(session.user.id);
       if (cancelled) return;
 
       set({
@@ -82,16 +72,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .getSession()
       .then(({ data }) => applySession(data.session))
       .catch(err => {
-        console.warn('[authStore] failed to restore session:', err);
+        logger.warn('authStore: failed to restore session', err);
         if (!cancelled) {
           set({ session: null, user: null, profile: null, role: null, status: 'unauthenticated' });
         }
       });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      // A password-reset link was just exchanged (handleDeepLink below) — route to
-      // ResetPasswordScreen instead of applySession, which would otherwise grant full app
-      // access via the recovery session before the user has actually set a new password.
+      // P4 (4B.4): a password-reset code is now verified via VerifyOtpScreen
+      // (verifyOtp({ type: 'recovery' })), not a deep link — that call itself fires this same
+      // PASSWORD_RECOVERY event once Supabase issues the recovery session, so this branch needs
+      // no change; only the deep-link plumbing that used to be the other way of reaching it is
+      // gone. Route to ResetPasswordScreen instead of applySession, which would otherwise grant
+      // full app access via the recovery session before the user has actually set a new password.
       if (event === 'PASSWORD_RECOVERY' && session) {
         if (!cancelled) {
           set({ session, user: session.user, status: 'passwordRecovery' });
@@ -99,35 +92,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
       applySession(session).catch(err => {
-        console.warn('[authStore] failed to apply auth state change:', err);
+        logger.warn('authStore: failed to apply auth state change', err);
       });
     });
-
-    // Password-reset emails link to zarailink://reset-password?code=... (authService.ts's
-    // resetPassword, registered natively from `scheme` in app.config.ts). PKCE's `code` isn't a session
-    // by itself — exchanging it is what actually triggers the PASSWORD_RECOVERY event above.
-    const handleDeepLink = (url: string | null) => {
-      if (!url) return;
-      const code = new URL(url).searchParams.get('code');
-      if (!code) return;
-      supabase.auth.exchangeCodeForSession(code).catch(err => {
-        console.warn('[authStore] failed to exchange recovery code:', err);
-        Alert.alert(
-          'Link expired or invalid',
-          'This password reset link is no longer valid. Please request a new one.',
-        );
-      });
-    };
-
-    // Cold start (app opened by tapping the link) and warm start (app already running) are two
-    // separate APIs on React Native's Linking module — both are needed to catch every case.
-    Linking.getInitialURL().then(handleDeepLink);
-    const urlSubscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
 
     return () => {
       cancelled = true;
       listener.subscription.unsubscribe();
-      urlSubscription.remove();
     };
   },
 
@@ -139,7 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshProfile: async () => {
     const userId = get().user?.id;
     if (!userId) return;
-    const profile = await fetchProfile(userId);
+    const profile = await loadProfile(userId);
     set({ profile, role: profile?.role ?? null });
   },
 }));

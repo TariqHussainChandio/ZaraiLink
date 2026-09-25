@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ConsultationListScreen } from './ConsultationListScreen';
 import { fetchConsultationsForExpert, fetchConsultationsForUser } from '../../services/modules/expert/consultationService';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
@@ -59,7 +59,7 @@ describe('ConsultationListScreen', () => {
 
   it('loads the requester’s own consultations and shows the expert as the counterparty', async () => {
     mockFetchForUser.mockResolvedValue([consultation]);
-    await render(<ConsultationListScreen />);
+    await renderWithQuery(<ConsultationListScreen />);
 
     expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
     expect(screen.getByText('Dr. Ahsan')).toBeTruthy();
@@ -70,7 +70,7 @@ describe('ConsultationListScreen', () => {
   it('loads assigned consultations and shows the requester as the counterparty for an expert', async () => {
     useAuthStore.setState({ user: { id: 'e1' } as never, role: 'expert' as never });
     mockFetchForExpert.mockResolvedValue([consultation]);
-    await render(<ConsultationListScreen />);
+    await renderWithQuery(<ConsultationListScreen />);
 
     expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
     expect(screen.getByText('Ali Raza')).toBeTruthy();
@@ -80,7 +80,7 @@ describe('ConsultationListScreen', () => {
 
   it('navigates to the consultation detail screen when a card is tapped', async () => {
     mockFetchForUser.mockResolvedValue([consultation]);
-    await render(<ConsultationListScreen />);
+    await renderWithQuery(<ConsultationListScreen />);
 
     await fireEvent.press(await screen.findByText('Yellowing wheat leaves'));
     expect(mockNavigate).toHaveBeenCalledWith(CONSULTATIONS_ROUTES.ConsultationDetail, { consultationId: 'c1' });
@@ -88,20 +88,20 @@ describe('ConsultationListScreen', () => {
 
   it('shows the requester empty state when there are no consultations', async () => {
     mockFetchForUser.mockResolvedValue([]);
-    await render(<ConsultationListScreen />);
+    await renderWithQuery(<ConsultationListScreen />);
     expect(await screen.findByText('No consultations yet')).toBeTruthy();
   });
 
   it('shows the expert empty state when there are no assigned requests', async () => {
     useAuthStore.setState({ user: { id: 'e1' } as never, role: 'expert' as never });
     mockFetchForExpert.mockResolvedValue([]);
-    await render(<ConsultationListScreen />);
+    await renderWithQuery(<ConsultationListScreen />);
     expect(await screen.findByText('No consultation requests yet')).toBeTruthy();
   });
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchForUser.mockRejectedValue(new Error('network down'));
-    await render(<ConsultationListScreen />);
+    await renderWithQuery(<ConsultationListScreen />);
 
     expect(await screen.findByText("Couldn't load consultations")).toBeTruthy();
 

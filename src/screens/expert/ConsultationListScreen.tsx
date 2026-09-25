@@ -1,62 +1,41 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ConsultationCard } from '../../components/features/expert/ConsultationCard';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
-import { fetchConsultationsForExpert, fetchConsultationsForUser } from '../../services/modules/expert/consultationService';
+import { useConsultations } from '../../hooks/api/consultations';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { ConsultationWithRelations } from '../../types/expert';
 
 // Registered in two different navigators (the requester-side ConsultationsNavigator and
 // ExpertNavigator's own consultations stack) with the same route names but different param
 // list types — untyped navigation here, matching NotificationListScreen's approach.
 export function ConsultationListScreen() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const role = useAuthStore(state => state.role);
   const navigation = useNavigation<any>();
   const isExpert = role === 'expert';
-  const [consultations, setConsultations] = useState<ConsultationWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: consultations = [], isPending, error, refetch } = useConsultations(isExpert, !!userId);
+  const loading = isPending && !!userId;
+  const load = () => refetch();
 
-  const load = useCallback(() => {
-    if (!userId) return () => {};
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    const fetcher = isExpert ? fetchConsultationsForExpert : fetchConsultationsForUser;
-    fetcher().then(data => {
-      if (!cancelled) {
-        setConsultations(data);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.warn('[ConsultationListScreen] failed to load consultations:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, isExpert]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) refetch();
+    }, [userId, refetch]),
+  );
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && consultations.length === 0) {
     return (
       <EmptyState
-        title={t('expert.consultationList.errorTitle')}
-        description={t('expert.consultationList.errorDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load consultations"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -64,7 +43,7 @@ export function ConsultationListScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={consultations}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -73,7 +52,7 @@ export function ConsultationListScreen() {
             consultation={item}
             counterpartyName={
               (isExpert ? item.user?.full_name : item.expert?.full_name) ??
-              t('expert.consultationList.unknownCounterparty')
+              'Unknown'
             }
             onPress={() =>
               navigation.navigate(CONSULTATIONS_ROUTES.ConsultationDetail, { consultationId: item.id })
@@ -84,13 +63,13 @@ export function ConsultationListScreen() {
           <EmptyState
             title={
               isExpert
-                ? t('expert.consultationList.emptyTitleExpert')
-                : t('expert.consultationList.emptyTitleRequester')
+                ? 'No consultation requests yet'
+                : 'No consultations yet'
             }
             description={
               isExpert
-                ? t('expert.consultationList.emptyDescriptionExpert')
-                : t('expert.consultationList.emptyDescriptionRequester')
+                ? 'Requests from farmers and buyers will show up here.'
+                : 'Browse verified experts to request a consultation.'
             }
           />
         }

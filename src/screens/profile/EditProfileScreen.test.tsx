@@ -1,11 +1,9 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { launchImageLibraryAsync } from 'expo-image-picker';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-// EditProfileScreen calls useTranslation() but never imports '../../localization' itself —
-// in the real app, App.tsx's own import of it runs the i18next init once at startup. A test
-// that renders this screen in isolation needs the same side-effect import first.
-import '../../localization';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
+import { queryKeys } from '../../hooks/api/keys';
 import { EditProfileScreen } from './EditProfileScreen';
 import { fetchFarmerProfile, upsertFarmerProfile } from '../../services/modules/farmer/farmService';
 import { updateProfile, uploadAvatar } from '../../services/modules/profile/profileService';
@@ -73,7 +71,7 @@ afterEach(() => {
 describe('EditProfileScreen', () => {
   it('pre-fills the form from the current profile', async () => {
     useAuthStore.setState({ user: { id: 'user-1' } as never, profile: profile() });
-    await render(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(screen.getByDisplayValue('Ahmed Khan')).toBeTruthy();
     expect(screen.getByDisplayValue('+923001234567')).toBeTruthy();
@@ -82,7 +80,7 @@ describe('EditProfileScreen', () => {
 
   it('does not show farmer-only fields or fetch the farmer profile for a buyer', async () => {
     useAuthStore.setState({ user: { id: 'user-1' } as never, profile: profile({ role: 'buyer' }) });
-    await render(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(screen.queryByLabelText('Experience')).toBeNull();
     expect(mockFetchFarmerProfile).not.toHaveBeenCalled();
@@ -94,10 +92,27 @@ describe('EditProfileScreen', () => {
       experience: '8 years',
       agricultural_info: 'Organic wheat farming',
     });
-    await render(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(await screen.findByDisplayValue('8 years')).toBeTruthy();
     expect(screen.getByDisplayValue('Organic wheat farming')).toBeTruthy();
+  });
+
+  it('does not overwrite what the farmer has typed when the farmer profile is refetched', async () => {
+    const queryClient = createTestQueryClient();
+    useAuthStore.setState({ user: { id: 'user-1' } as never, profile: profile({ role: 'farmer' }) });
+    mockFetchFarmerProfile.mockResolvedValue({ experience: '8 years', agricultural_info: 'Organic wheat farming' });
+    await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />, queryClient);
+    await screen.findByDisplayValue('8 years');
+
+    await fireEvent.changeText(screen.getByLabelText('Experience'), '12 years');
+    mockFetchFarmerProfile.mockResolvedValue({ experience: '9 years', agricultural_info: 'Changed elsewhere' });
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.profile.farmer() });
+    });
+
+    expect(screen.getByDisplayValue('12 years')).toBeTruthy();
+    expect(screen.queryByDisplayValue('9 years')).toBeNull();
   });
 
   it('saves the profile and navigates back on success', async () => {
@@ -107,7 +122,7 @@ describe('EditProfileScreen', () => {
       refreshProfile: jest.fn().mockResolvedValue(undefined),
     });
     const navigation = makeNavigation();
-    await render(<EditProfileScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<EditProfileScreen navigation={navigation} route={{} as never} />);
 
     await fireEvent.changeText(screen.getByLabelText('Full name'), 'Ahmed Ali Khan');
     await fireEvent.press(screen.getByText('Save Changes'));
@@ -126,7 +141,7 @@ describe('EditProfileScreen', () => {
       profile: profile({ role: 'farmer' }),
       refreshProfile: jest.fn().mockResolvedValue(undefined),
     });
-    await render(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
     await screen.findByText('Experience');
 
     await fireEvent.changeText(screen.getByLabelText('Experience'), '10 years');
@@ -148,7 +163,7 @@ describe('EditProfileScreen', () => {
       profile: profile(),
       refreshProfile: jest.fn().mockResolvedValue(undefined),
     });
-    await render(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
     await fireEvent.press(screen.getByText('AK'));
     await fireEvent.press(screen.getByText('Save Changes'));
@@ -169,7 +184,7 @@ describe('EditProfileScreen', () => {
     mockUpdateProfile.mockRejectedValue(new Error('Network error'));
     useAuthStore.setState({ user: { id: 'user-1' } as never, profile: profile() });
     const navigation = makeNavigation();
-    await render(<EditProfileScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<EditProfileScreen navigation={navigation} route={{} as never} />);
 
     await fireEvent.press(screen.getByText('Save Changes'));
 

@@ -1,97 +1,39 @@
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useMemo } from 'react';
 import type { PickedPhoto } from '../../utils/photoPicker';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ChatInput } from '../../components/features/messaging/ChatInput';
 import { MessageBubble } from '../../components/features/messaging/MessageBubble';
-import { useRealtimeMessages } from '../../hooks/realtime/useRealtimeMessages';
-import {
-  fetchMessages,
-  markConversationRead,
-  resolveAttachmentUrls,
-  sendMessage,
-  uploadMessageAttachments,
-} from '../../services/modules/messaging/messagingService';
+import { useAttachmentUrls, useConversationMessages, useSendMessage } from '../../hooks/api/messaging';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { Message } from '../../types/messaging';
+import { errorMessage } from '../../utils/errorMessage';
 import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavigator';
 
 export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
   const { conversationId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [sending, setSending] = useState(false);
-
-  // Re-resolving an already-signed path is harmless (just an extra cheap call) — doing that
-  // beats tracking "already resolved" in a dep array, which would either go stale (reading
-  // `attachmentUrls` from a stale closure) or re-create this callback, and therefore the
-  // `useFocusEffect`/`useRealtimeMessages` effects that call it, on every resolve.
-  const resolveNewAttachments = useCallback(async (list: Message[]) => {
-    const paths = list.flatMap(m => m.attachments);
-    if (paths.length === 0) return;
-    const resolved = await resolveAttachmentUrls(paths);
-    setAttachmentUrls(current => ({ ...current, ...resolved }));
-  }, []);
-
-  const load = useCallback(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchMessages(conversationId).then(data => {
-      if (cancelled) return;
-      setMessages(data);
-      setLoading(false);
-      resolveNewAttachments(data);
-    }).catch(err => {
-      console.warn('[ChatScreen] failed to load messages:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    if (userId) markConversationRead(conversationId);
-    return () => {
-      cancelled = true;
-    };
-  }, [conversationId, userId, resolveNewAttachments]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
-
-  useRealtimeMessages(conversationId, incoming => {
-    setMessages(prev => (prev.some(m => m.id === incoming.id) ? prev : [...prev, incoming]));
-    resolveNewAttachments([incoming]);
-  });
+  const { data: messages = [], isPending, error, refetch } = useConversationMessages(conversationId, userId);
+  const send = useSendMessage(conversationId, userId);
+  const attachmentPaths = useMemo(() => messages.flatMap(m => m.attachments), [messages]);
+  const { data: attachmentUrls = {} } = useAttachmentUrls(attachmentPaths);
 
   const onSend = async (body: string, images: PickedPhoto[]) => {
     if (!userId) return;
-    setSending(true);
-    try {
-      const attachments = images.length > 0 ? await uploadMessageAttachments(conversationId, userId, images) : [];
-      const message = await sendMessage(conversationId, body, attachments);
-      setMessages(prev => (prev.some(m => m.id === message.id) ? prev : [...prev, message]));
-      resolveNewAttachments([message]);
-    } finally {
-      setSending(false);
-    }
+    await send.mutateAsync({ body, images });
   };
 
-  if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (isPending) return <Spinner fullscreen />;
+  if (error && messages.length === 0) {
     return (
       <EmptyState
-        title={t('messaging.chat.loadErrorTitle')}
-        description={t('common.checkConnectionRetry')}
-        actionLabel={t('common.retry')}
-        onAction={load}
+        title="Couldn't load messages"
+        description={errorMessage(error)}
+        actionLabel="Retry"
+        onAction={() => refetch()}
       />
     );
   }
@@ -103,16 +45,17 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
       keyboardVerticalOffset={90}
     >
       <View style={styles.flex}>
-        <FlatList
-          data={[...messages].reverse()}
-          inverted
+        <FlashList
+          data={messages}
+          // FlashList v2 has no `inverted`: the newest message is at the bottom and the list starts and follows there.
+          maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <MessageBubble message={item} isOwn={item.sender_id === userId} attachmentUrls={attachmentUrls} />
           )}
         />
-        <ChatInput onSend={onSend} sending={sending} />
+        <ChatInput onSend={onSend} sending={send.isPending} />
       </View>
     </KeyboardAvoidingView>
   );

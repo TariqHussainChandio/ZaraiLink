@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button, Input, SelectField, Sheet } from '../../ui';
-import { adjustStock } from '../../../services/modules/dealer/inventoryService';
+import { useAdjustStock } from '../../../hooks/api/dealer';
 import { useAuthStore } from '../../../store/authStore';
 import { useTheme, type Theme } from '../../../theme';
 import type { InventoryTransactionType } from '../../../types/dealer';
@@ -11,7 +11,6 @@ export interface StockAdjustModalProps {
   onClose: () => void;
   inventoryId: string;
   unit: string;
-  onAdjusted: () => void;
 }
 
 const TYPE_OPTIONS: { id: InventoryTransactionType; label: string }[] = [
@@ -23,14 +22,14 @@ const TYPE_OPTIONS: { id: InventoryTransactionType; label: string }[] = [
   { id: 'correction', label: 'Correction (set exact quantity)' },
 ];
 
-export function StockAdjustModal({ visible, onClose, inventoryId, unit, onAdjusted }: StockAdjustModalProps) {
+export function StockAdjustModal({ visible, onClose, inventoryId, unit }: StockAdjustModalProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
   const [type, setType] = useState<InventoryTransactionType>('addition');
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const adjust = useAdjustStock(inventoryId);
 
   const reset = () => {
     setType('addition');
@@ -45,16 +44,12 @@ export function StockAdjustModal({ visible, onClose, inventoryId, unit, onAdjust
       Alert.alert('Enter a valid quantity');
       return;
     }
-    setSubmitting(true);
     try {
-      await adjustStock(inventoryId, type, parsed, notes || null);
+      await adjust.mutateAsync({ type, quantity: parsed, notes: notes || null });
       reset();
-      onAdjusted();
       onClose();
     } catch (error) {
       Alert.alert('Failed to adjust stock', error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -79,7 +74,7 @@ export function StockAdjustModal({ visible, onClose, inventoryId, unit, onAdjust
       />
       <View style={styles.actions}>
         <Button label="Cancel" variant="secondary" onPress={onClose} style={styles.button} />
-        <Button label="Save" loading={submitting} onPress={onSubmit} style={styles.button} />
+        <Button label="Save" loading={adjust.isPending} onPress={onSubmit} style={styles.button} />
       </View>
     </Sheet>
   );
@@ -89,7 +84,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
   return StyleSheet.create({
     title: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.md,
     },

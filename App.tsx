@@ -1,16 +1,19 @@
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { initLanguage } from './src/localization';
+import { ErrorBoundary, OfflineBanner } from './src/components/ui';
+import { connectQueryManagers, persistOptions, queryClient } from './src/hooks/api/queryClient';
 import { linking } from './src/navigation/linking';
 import { RootNavigator } from './src/navigation/stacks/RootNavigator';
+import { configureGeneratedClient } from './src/services/api/client';
 import { useAuthStore } from './src/store/authStore';
 import { colors, darkColors, ThemeProvider, useIsDarkMode } from './src/theme';
 
-const queryClient = new QueryClient();
+// P7: the generated API client (src/api/generated) shares the app's request pipeline: session token, timeouts, retries, ApiError.
+configureGeneratedClient();
 
 // React Navigation styles its own native chrome (native-stack headers, the bottom tab bar) from
 // this `theme` prop, not from `useTheme()` — screen content and the surrounding navigation
@@ -37,6 +40,7 @@ function AppShell() {
 
   return (
     <NavigationContainer linking={linking} theme={buildNavigationTheme(isDark)}>
+      <OfflineBanner />
       <RootNavigator />
     </NavigationContainer>
   );
@@ -45,18 +49,23 @@ function AppShell() {
 function App() {
   useEffect(() => {
     const unsubscribe = useAuthStore.getState().initialize();
-    initLanguage();
-    return unsubscribe;
+    const disconnectQueryManagers = connectQueryManagers();
+    return () => {
+      unsubscribe();
+      disconnectQueryManagers();
+    };
   }, []);
 
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
           <ThemeProvider>
-            <AppShell />
+            <ErrorBoundary name="root">
+              <AppShell />
+            </ErrorBoundary>
           </ThemeProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

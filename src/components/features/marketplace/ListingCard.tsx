@@ -86,14 +86,14 @@ function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
     },
     title: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     price: {
       marginTop: spacing.xs / 2,
       fontSize: typography.sizes.sm,
       color: colors.brand.primary,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
     category: {
       marginTop: spacing.xs / 2,

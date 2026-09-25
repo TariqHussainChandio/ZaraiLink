@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { UserManagementScreen } from './UserManagementScreen';
 import { fetchAllProfiles, setProfileSuspended, updateUserRole } from '../../services/modules/admin/adminService';
 import { useAuthStore } from '../../store/authStore';
@@ -58,26 +58,26 @@ beforeEach(() => {
 describe('UserManagementScreen', () => {
   it('shows an empty state when there are no users', async () => {
     mockFetchAllProfiles.mockResolvedValue([]);
-    await render(<UserManagementScreen />);
+    await renderWithQuery(<UserManagementScreen />);
     expect(await screen.findByText('No users found')).toBeTruthy();
   });
 
   it('lists users with their role', async () => {
     mockFetchAllProfiles.mockResolvedValue([profile()]);
-    await render(<UserManagementScreen />);
+    await renderWithQuery(<UserManagementScreen />);
     expect(await screen.findByText('Farmer Sana')).toBeTruthy();
     expect(screen.getByText('Farmer')).toBeTruthy();
   });
 
   it('shows a Suspended badge for suspended users', async () => {
     mockFetchAllProfiles.mockResolvedValue([profile({ is_suspended: true })]);
-    await render(<UserManagementScreen />);
+    await renderWithQuery(<UserManagementScreen />);
     expect(await screen.findByText('Suspended')).toBeTruthy();
   });
 
   it('hides row actions for the currently signed-in admin', async () => {
     mockFetchAllProfiles.mockResolvedValue([profile({ id: 'admin-1', full_name: 'Me, Admin' })]);
-    await render(<UserManagementScreen />);
+    await renderWithQuery(<UserManagementScreen />);
     await screen.findByText('Me, Admin');
     expect(screen.queryByText('Suspend')).toBeNull();
     expect(screen.queryByText('Change Role')).toBeNull();
@@ -86,7 +86,7 @@ describe('UserManagementScreen', () => {
   it('suspends and unsuspends a user', async () => {
     mockFetchAllProfiles.mockResolvedValue([profile()]);
     mockSetProfileSuspended.mockResolvedValue(undefined);
-    await render(<UserManagementScreen />);
+    await renderWithQuery(<UserManagementScreen />);
     await screen.findByText('Farmer Sana');
 
     await fireEvent.press(screen.getByText('Suspend'));
@@ -97,7 +97,7 @@ describe('UserManagementScreen', () => {
   it('unsuspends an already-suspended user', async () => {
     mockFetchAllProfiles.mockResolvedValue([profile({ is_suspended: true })]);
     mockSetProfileSuspended.mockResolvedValue(undefined);
-    await render(<UserManagementScreen />);
+    await renderWithQuery(<UserManagementScreen />);
     await screen.findByText('Farmer Sana');
 
     await fireEvent.press(screen.getByText('Unsuspend'));
@@ -108,7 +108,7 @@ describe('UserManagementScreen', () => {
   it('changes a user role through the sheet', async () => {
     mockFetchAllProfiles.mockResolvedValue([profile()]);
     mockUpdateUserRole.mockResolvedValue(undefined);
-    await render(<UserManagementScreen />);
+    await renderWithQuery(<UserManagementScreen />);
     await screen.findByText('Farmer Sana');
 
     await fireEvent.press(screen.getByText('Change Role'));

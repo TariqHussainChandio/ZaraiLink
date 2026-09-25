@@ -1,10 +1,8 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import type { PickedPhoto } from '../../utils/photoPicker';
 import {
   Alert,
-  FlatList,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Button, Card, Input, SelectField, Sheet, Spinner } from '../../components/ui';
 import { ConsultationStatusBadge } from '../../components/features/expert/ConsultationStatusBadge';
 import { ConsultationMessageBubble } from '../../components/features/expert/ConsultationMessageBubble';
@@ -19,75 +18,65 @@ import { ChatInput } from '../../components/features/messaging/ChatInput';
 import { RatingStars } from '../../components/features/reviews/RatingStars';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
 import {
-  fetchConsultationById,
-  fetchConsultationMessages,
-  resolveConsultationAttachmentUrls,
-  sendConsultationMessage,
-  updateConsultationStatus,
-  uploadConsultationAttachments,
-} from '../../services/modules/expert/consultationService';
-import { fetchListings } from '../../services/modules/marketplace/listingsService';
-import { createConsultationReview, fetchReviewByConsultationId } from '../../services/modules/reviews/reviewsService';
+  useConsultation,
+  useConsultationAttachmentUrls,
+  useConsultationMessages,
+  useConsultationReview,
+  useCreateConsultationReview,
+  useSendConsultationMessage,
+  useUpdateConsultationStatus,
+} from '../../hooks/api/consultations';
+import { useListingOptions } from '../../hooks/api/marketplace';
 import { useAuthStore } from '../../store/authStore';
-import { useRealtimeConsultationMessages } from '../../hooks/realtime/useRealtimeConsultationMessages';
 import { useTheme, type Theme } from '../../theme';
-import type { ConsultationMessageWithListing, ConsultationStatus, ConsultationWithRelations } from '../../types/expert';
-import type { ReviewWithBuyer } from '../../types/reviews';
+import type { ConsultationStatus } from '../../types/expert';
+import { errorMessage } from '../../utils/errorMessage';
 
 export function ConsultationDetailScreen() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { consultationId } = useRoute().params as { consultationId: string };
   const navigation = useNavigation<any>();
   const userId = useAuthStore(state => state.user?.id);
 
-  const [consultation, setConsultation] = useState<ConsultationWithRelations | null>(null);
-  const [messages, setMessages] = useState<ConsultationMessageWithListing[]>([]);
-  const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
-  const [review, setReview] = useState<ReviewWithBuyer | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
-  const [sending, setSending] = useState(false);
+  const consultationQuery = useConsultation(consultationId);
+  const messagesQuery = useConsultationMessages(consultationId);
+  const reviewQuery = useConsultationReview(consultationId);
+  const consultation = consultationQuery.data;
+  const messages = useMemo(() => messagesQuery.data ?? [], [messagesQuery.data]);
+  const review = reviewQuery.data ?? null;
+  const loading = consultationQuery.isPending || messagesQuery.isPending;
+  const attachmentPaths = useMemo(
+    () => [...(consultation?.images ?? []), ...messages.flatMap(m => m.attachments)],
+    [consultation, messages],
+  );
+  const { data: attachmentUrls = {} } = useConsultationAttachmentUrls(attachmentPaths);
+
+  const statusMutation = useUpdateConsultationStatus(consultationId);
+  const send = useSendConsultationMessage(consultationId, userId);
+  const reviewMutation = useCreateConsultationReview(consultationId);
+  const updating = statusMutation.isPending;
+  const sending = send.isPending;
+  const submittingReview = reviewMutation.isPending;
 
   const [recommendVisible, setRecommendVisible] = useState(false);
-  const [listingOptions, setListingOptions] = useState<{ id: string; title: string }[]>([]);
+  const { data: listingOptions = [] } = useListingOptions(recommendVisible);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
-
   const [reviewVisible, setReviewVisible] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
-  const [submittingReview, setSubmittingReview] = useState(false);
 
-  const resolveUrls = useCallback(async (paths: string[]) => {
-    if (paths.length === 0) return;
-    const resolved = await resolveConsultationAttachmentUrls(paths);
-    setAttachmentUrls(current => ({ ...current, ...resolved }));
-  }, []);
-
-  const load = useCallback(async () => {
-    const [data, messageData, reviewData] = await Promise.all([
-      fetchConsultationById(consultationId),
-      fetchConsultationMessages(consultationId),
-      fetchReviewByConsultationId(consultationId),
-    ]);
-    setConsultation(data);
-    setMessages(messageData);
-    setReview(reviewData);
-    setLoading(false);
-    resolveUrls([...data.images, ...messageData.flatMap(m => m.attachments)]);
-  }, [consultationId, resolveUrls]);
-
+  // Coming back to the consultation shows a status change or messages that arrived meanwhile.
+  const { refetch: refetchConsultation } = consultationQuery;
+  const { refetch: refetchMessages } = messagesQuery;
+  const { refetch: refetchReview } = reviewQuery;
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      refetchConsultation();
+      refetchMessages();
+      refetchReview();
+    }, [refetchConsultation, refetchMessages, refetchReview]),
   );
-
-  useRealtimeConsultationMessages(consultationId, incoming => {
-    setMessages(prev => (prev.some(m => m.id === incoming.id) ? prev : [...prev, incoming as ConsultationMessageWithListing]));
-    resolveUrls(incoming.attachments);
-  });
 
   if (loading || !consultation) return <Spinner fullscreen />;
 
@@ -95,78 +84,46 @@ export function ConsultationDetailScreen() {
   const isExpert = consultation.expert_id === userId;
   const counterpartyName =
     (isRequester ? consultation.expert?.full_name : consultation.user?.full_name) ??
-    t('expert.consultationDetail.unknownCounterparty');
+    'Unknown';
 
   const advance = async (to: ConsultationStatus) => {
-    setUpdating(true);
     try {
-      await updateConsultationStatus(consultation.id, to);
-      await load();
+      await statusMutation.mutateAsync(to);
     } catch (error) {
-      Alert.alert(
-        t('expert.consultationDetail.updateStatusError'),
-        error instanceof Error ? error.message : String(error),
-      );
-    } finally {
-      setUpdating(false);
+      Alert.alert('Could not update consultation', errorMessage(error));
     }
   };
 
   const onSend = async (body: string, images: PickedPhoto[]) => {
     if (!userId) return;
-    setSending(true);
-    try {
-      const attachments = images.length > 0 ? await uploadConsultationAttachments(consultationId, userId, images) : [];
-      const message = await sendConsultationMessage(consultationId, body, attachments);
-      setMessages(prev => (prev.some(m => m.id === message.id) ? prev : [...prev, message]));
-      resolveUrls(attachments);
-    } finally {
-      setSending(false);
-    }
+    await send.mutateAsync({ body, images });
   };
 
-  const openRecommend = async () => {
-    if (listingOptions.length === 0) {
-      const listings = await fetchListings({});
-      setListingOptions(listings.map(l => ({ id: l.id, title: l.title })));
-    }
-    setRecommendVisible(true);
-  };
+  const openRecommend = () => setRecommendVisible(true);
 
   const onSendRecommendation = async () => {
     if (!userId || !selectedListingId) return;
-    setSending(true);
+    const title =
+      listingOptions.find(l => l.id === selectedListingId)?.title ?? 'this product';
     try {
-      const title =
-        listingOptions.find(l => l.id === selectedListingId)?.title ?? t('expert.consultationDetail.thisProduct');
-      const message = await sendConsultationMessage(
-        consultationId,
-        t('expert.consultationDetail.recommendedMessage', { title }),
-        [],
-        selectedListingId,
-      );
-      setMessages(prev => [...prev, message]);
+      await send.mutateAsync({
+        body: `Recommended: ${title}`,
+        recommendedListingId: selectedListingId,
+      });
       setRecommendVisible(false);
       setSelectedListingId(null);
-    } finally {
-      setSending(false);
+    } catch (error) {
+      Alert.alert('Could not send the recommendation', errorMessage(error));
     }
   };
 
   const onSubmitReview = async () => {
     if (!userId || !consultation.expert_id) return;
-    setSubmittingReview(true);
     try {
-      const created = await createConsultationReview(consultation.id, reviewRating, reviewComment || null);
-      setReview({ ...created, buyer: null });
+      await reviewMutation.mutateAsync({ rating: reviewRating, comment: reviewComment || null });
       setReviewVisible(false);
     } catch (error) {
-      Alert.alert(
-        t('expert.consultationDetail.submitReviewError'),
-        error instanceof Error ? error.message : String(error),
-      );
-    } finally {
-      setSubmittingReview(false);
+      Alert.alert('Could not submit review', errorMessage(error));
     }
   };
 
@@ -185,9 +142,10 @@ export function ConsultationDetailScreen() {
       keyboardVerticalOffset={90}
     >
       <View style={styles.flex}>
-        <FlatList
-          data={[...messages].reverse()}
-          inverted
+        <FlashList
+          data={messages}
+          // FlashList v2 has no `inverted`: the newest message is at the bottom and the list starts and follows there.
+          maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
@@ -202,22 +160,22 @@ export function ConsultationDetailScreen() {
               }
             />
           )}
-          ListFooterComponent={
+          ListHeaderComponent={
             <View style={styles.details}>
               <View style={styles.headerRow}>
                 <Text style={styles.subject}>{consultation.subject}</Text>
                 <ConsultationStatusBadge status={consultation.status} />
               </View>
               <Text style={styles.meta}>
-                {t('expert.consultationDetail.withCounterparty', { name: counterpartyName })}
+                {`With ${counterpartyName}`}
               </Text>
               {consultation.crop ? (
                 <Text style={styles.meta}>
-                  {t('expert.consultationDetail.cropLabel', { name: consultation.crop.name })}
+                  {`Crop: ${consultation.crop.name}`}
                 </Text>
               ) : null}
               <Text style={styles.meta}>
-                {t('expert.consultationDetail.priorityLabel', { priority: consultation.priority })}
+                {`Priority: ${consultation.priority}`}
               </Text>
               {consultation.problem_description ? (
                 <Card style={styles.descriptionCard}>
@@ -236,7 +194,7 @@ export function ConsultationDetailScreen() {
 
               {review ? (
                 <Card style={styles.reviewCard}>
-                  <Text style={styles.reviewTitle}>{t('expert.consultationDetail.yourReview')}</Text>
+                  <Text style={styles.reviewTitle}>Your Review</Text>
                   <RatingStars value={review.rating} />
                   {review.comment ? <Text style={styles.description}>{review.comment}</Text> : null}
                 </Card>
@@ -245,7 +203,7 @@ export function ConsultationDetailScreen() {
               <View style={styles.actions}>
                 {canAccept ? (
                   <Button
-                    label={t('expert.consultationDetail.accept')}
+                    label="Accept"
                     loading={updating}
                     onPress={() => advance('accepted')}
                     style={styles.action}
@@ -253,7 +211,7 @@ export function ConsultationDetailScreen() {
                 ) : null}
                 {canReject ? (
                   <Button
-                    label={t('expert.consultationDetail.reject')}
+                    label="Reject"
                     variant="destructive"
                     loading={updating}
                     onPress={() => advance('rejected')}
@@ -262,7 +220,7 @@ export function ConsultationDetailScreen() {
                 ) : null}
                 {canStart ? (
                   <Button
-                    label={t('expert.consultationDetail.startWorking')}
+                    label="Start Working"
                     loading={updating}
                     onPress={() => advance('in_progress')}
                     style={styles.action}
@@ -270,7 +228,7 @@ export function ConsultationDetailScreen() {
                 ) : null}
                 {canResolve ? (
                   <Button
-                    label={t('expert.consultationDetail.markResolved')}
+                    label="Mark Resolved"
                     loading={updating}
                     onPress={() => advance('resolved')}
                     style={styles.action}
@@ -278,7 +236,7 @@ export function ConsultationDetailScreen() {
                 ) : null}
                 {canCancel ? (
                   <Button
-                    label={t('expert.consultationDetail.cancelRequest')}
+                    label="Cancel Request"
                     variant="destructive"
                     loading={updating}
                     onPress={() => advance('cancelled')}
@@ -287,7 +245,7 @@ export function ConsultationDetailScreen() {
                 ) : null}
                 {canClose ? (
                   <Button
-                    label={t('expert.consultationDetail.closeConsultation')}
+                    label="Close Consultation"
                     loading={updating}
                     onPress={() => advance('closed')}
                     style={styles.action}
@@ -295,7 +253,7 @@ export function ConsultationDetailScreen() {
                 ) : null}
                 {canReview ? (
                   <Button
-                    label={t('expert.consultationDetail.writeReview')}
+                    label="Write a Review"
                     variant="secondary"
                     onPress={() => setReviewVisible(true)}
                     style={styles.action}
@@ -303,7 +261,7 @@ export function ConsultationDetailScreen() {
                 ) : null}
                 {isExpert ? (
                   <Button
-                    label={t('expert.consultationDetail.recommendProduct')}
+                    label="Recommend a Product"
                     variant="secondary"
                     onPress={openRecommend}
                     style={styles.action}
@@ -317,29 +275,29 @@ export function ConsultationDetailScreen() {
       </View>
 
       <Sheet visible={recommendVisible} onClose={() => setRecommendVisible(false)}>
-        <Text style={styles.sheetTitle}>{t('expert.consultationDetail.recommendProduct')}</Text>
+        <Text style={styles.sheetTitle}>Recommend a Product</Text>
         <SelectField
-          label={t('expert.consultationDetail.listingLabel')}
+          label="Listing"
           value={selectedListingId}
           options={listingOptions.map(l => ({ id: l.id, label: l.title }))}
           onSelect={setSelectedListingId}
         />
-        <Button label={t('expert.consultationDetail.sendRecommendation')} loading={sending} onPress={onSendRecommendation} />
+        <Button label="Send Recommendation" loading={sending} onPress={onSendRecommendation} />
       </Sheet>
 
       <Sheet visible={reviewVisible} onClose={() => setReviewVisible(false)}>
-        <Text style={styles.sheetTitle}>{t('expert.consultationDetail.rateConsultation')}</Text>
+        <Text style={styles.sheetTitle}>Rate this Consultation</Text>
         <View style={styles.starsRow}>
           <RatingStars value={reviewRating} size={28} onChange={setReviewRating} />
         </View>
         <Input
-          label={t('expert.consultationDetail.commentOptional')}
+          label="Comment (optional)"
           value={reviewComment}
           onChangeText={setReviewComment}
           multiline
           numberOfLines={3}
         />
-        <Button label={t('expert.consultationDetail.submitReview')} loading={submittingReview} onPress={onSubmitReview} />
+        <Button label="Submit Review" loading={submittingReview} onPress={onSubmitReview} />
       </Sheet>
     </KeyboardAvoidingView>
   );
@@ -369,7 +327,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
       flex: 1,
       marginRight: spacing.sm,
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     meta: {
@@ -402,7 +360,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     reviewTitle: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },
@@ -414,7 +372,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     sheetTitle: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.md,
     },

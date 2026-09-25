@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { StoreDetailScreen } from './StoreDetailScreen';
 import {
   createStore,
@@ -62,7 +62,7 @@ describe('StoreDetailScreen', () => {
   it('creates a new store from the form', async () => {
     mockCreateStore.mockResolvedValue(store);
     const props = makeProps();
-    await render(<StoreDetailScreen {...props} />);
+    await renderWithQuery(<StoreDetailScreen {...props} />);
 
     await fireEvent.changeText(screen.getByLabelText('Store name'), 'Main Branch');
     await fireEvent.press(screen.getByText('Save Store'));
@@ -82,7 +82,7 @@ describe('StoreDetailScreen', () => {
 
   it('shows a validation error when the name is missing', async () => {
     const props = makeProps();
-    await render(<StoreDetailScreen {...props} />);
+    await renderWithQuery(<StoreDetailScreen {...props} />);
     await fireEvent.press(screen.getByText('Save Store'));
     expect(await screen.findByText('Enter a store name')).toBeTruthy();
     expect(mockCreateStore).not.toHaveBeenCalled();
@@ -92,7 +92,7 @@ describe('StoreDetailScreen', () => {
     mockFetchStoreById.mockResolvedValue(store);
     mockUpdateStore.mockResolvedValue(store);
     const props = makeProps('store-1');
-    await render(<StoreDetailScreen {...props} />);
+    await renderWithQuery(<StoreDetailScreen {...props} />);
 
     expect(await screen.findByLabelText('Store name')).toBeTruthy();
     expect(screen.getByLabelText('Store name').props.value).toBe('Main Branch');
@@ -114,7 +114,7 @@ describe('StoreDetailScreen', () => {
   it('shows an error state with retry when the store fails to load', async () => {
     mockFetchStoreById.mockRejectedValueOnce(new Error('network down')).mockResolvedValue(store);
     const props = makeProps('store-1');
-    await render(<StoreDetailScreen {...props} />);
+    await renderWithQuery(<StoreDetailScreen {...props} />);
     expect(await screen.findByText("Couldn't load this store")).toBeTruthy();
 
     await fireEvent.press(screen.getByText('Retry'));
@@ -128,7 +128,7 @@ describe('StoreDetailScreen', () => {
       buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
     });
     const props = makeProps('store-1');
-    await render(<StoreDetailScreen {...props} />);
+    await renderWithQuery(<StoreDetailScreen {...props} />);
     await screen.findByLabelText('Store name');
 
     await fireEvent.press(screen.getByText('Delete Store'));
@@ -139,7 +139,7 @@ describe('StoreDetailScreen', () => {
   it('shows a failure alert when saving rejects', async () => {
     mockCreateStore.mockRejectedValue(new Error('Name already taken'));
     const props = makeProps();
-    await render(<StoreDetailScreen {...props} />);
+    await renderWithQuery(<StoreDetailScreen {...props} />);
     await fireEvent.changeText(screen.getByLabelText('Store name'), 'Main Branch');
     await fireEvent.press(screen.getByText('Save Store'));
 

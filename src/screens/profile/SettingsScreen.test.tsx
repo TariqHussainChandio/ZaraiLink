@@ -1,9 +1,9 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { SettingsScreen } from './SettingsScreen';
 import { updateProfile } from '../../services/modules/profile/profileService';
-import { i18n } from '../../localization';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
@@ -31,23 +31,23 @@ beforeEach(() => {
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
-afterEach(async () => {
+afterEach(() => {
   jest.restoreAllMocks();
-  await i18n.changeLanguage('en');
 });
 
 describe('SettingsScreen', () => {
   it('renders the settings sections', async () => {
-    await render(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByText('Notifications')).toBeTruthy();
     expect(screen.getByText('Appearance')).toBeTruthy();
-    expect(screen.getByText('Language')).toBeTruthy();
+    // The app is English only: there is no language setting.
+    expect(screen.queryByText('Language')).toBeNull();
   });
 
   it('toggles notifications and refreshes the profile', async () => {
     const refreshProfile = jest.fn().mockResolvedValue(undefined);
     useAuthStore.setState({ refreshProfile });
-    await render(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
 
     const notificationsSwitch = screen.getByRole('switch', { name: 'Notifications' });
     await fireEvent(notificationsSwitch, 'valueChange', false);
@@ -58,7 +58,7 @@ describe('SettingsScreen', () => {
 
   it('shows an alert when updating the notification setting fails', async () => {
     mockUpdateProfile.mockRejectedValue(new Error('offline'));
-    await render(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
 
     const notificationsSwitch = screen.getByRole('switch', { name: 'Notifications' });
     await fireEvent(notificationsSwitch, 'valueChange', false);
@@ -69,20 +69,14 @@ describe('SettingsScreen', () => {
   });
 
   it('switches the appearance mode', async () => {
-    await render(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.press(screen.getByText('Dark'));
     expect(useThemeStore.getState().mode).toBe('dark');
   });
 
-  it('switches the language', async () => {
-    await render(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
-    await fireEvent.press(screen.getByText('اردو'));
-    await waitFor(() => expect(i18n.language).toBe('ur'));
-  });
-
   it('navigates to Change Password', async () => {
     const navigation = makeNavigation();
-    await render(<SettingsScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<SettingsScreen navigation={navigation} route={{} as never} />);
     await fireEvent.press(screen.getByText('Change Password'));
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.ChangePassword);
   });
@@ -90,7 +84,7 @@ describe('SettingsScreen', () => {
   it('signs out when Sign Out is pressed', async () => {
     const signOut = jest.fn();
     useAuthStore.setState({ signOut });
-    await render(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.press(screen.getByText('Sign Out'));
     expect(signOut).toHaveBeenCalledTimes(1);
   });

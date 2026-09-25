@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { SupplierListScreen } from './SupplierListScreen';
 import { fetchSuppliers } from '../../services/modules/dealer/supplierService';
 import { useAuthStore } from '../../store/authStore';
@@ -52,7 +52,7 @@ beforeEach(() => {
 describe('SupplierListScreen', () => {
   it('shows an empty state when there are no suppliers', async () => {
     mockFetchSuppliers.mockResolvedValue([]);
-    await render(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText('No suppliers yet')).toBeTruthy();
   });
 
@@ -61,7 +61,7 @@ describe('SupplierListScreen', () => {
       supplier(),
       supplier({ id: 'sup-2', name: 'Green Fields', products_supplied: null }),
     ]);
-    await render(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText('AgriChem Traders')).toBeTruthy();
     expect(screen.getByText('Fertilizers, Pesticides')).toBeTruthy();
     expect(screen.getByText('Green Fields')).toBeTruthy();
@@ -70,7 +70,7 @@ describe('SupplierListScreen', () => {
 
   it('shows an error state with retry when suppliers fail to load', async () => {
     mockFetchSuppliers.mockRejectedValue(new Error('network down'));
-    await render(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText("Couldn't load suppliers")).toBeTruthy();
 
     mockFetchSuppliers.mockResolvedValue([]);
@@ -81,7 +81,7 @@ describe('SupplierListScreen', () => {
   it('navigates to a supplier detail on row press and to a new supplier on FAB press', async () => {
     mockFetchSuppliers.mockResolvedValue([supplier()]);
     const navigation = makeNavigation();
-    await render(<SupplierListScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<SupplierListScreen navigation={navigation} route={{} as never} />);
     await screen.findByText('AgriChem Traders');
 
     await fireEvent.press(screen.getByText('AgriChem Traders'));

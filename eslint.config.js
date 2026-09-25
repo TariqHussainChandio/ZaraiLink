@@ -65,7 +65,24 @@ module.exports = [
     // Generated output, dependencies, and the Python backend (its virtualenv ships JavaScript that is
     // not ours) are never linted. Replaces the old .eslintignore, and covers the dot-folders that
     // ESLint 8 skipped on its own and ESLint 9 does not.
-    ignores: ['coverage/', 'android/', 'ios/', '.expo/', 'dist/', 'backend/', '**/.venv/', '.claude/', '.idea/'],
+    ignores: [
+      'coverage/',
+      'android/',
+      'ios/',
+      '.expo/',
+      'dist/',
+      'backend/',
+      // P7: the API client generated from backend/openapi.json (npm run api:generate); never edited by hand.
+      'src/api/generated/',
+      '**/.venv/',
+      '.claude/',
+      '.idea/',
+      // `supabase start` writes a Deno/edge-runtime bundle here — generated, not project source.
+      // `*.temp` in .gitignore matches files named literally that, not this directory, so it
+      // isn't excluded there either; excluded from lint here since ESLint 9 doesn't consult
+      // .gitignore on its own.
+      'supabase/.temp/',
+    ],
   },
   {
     plugins: { 'react-native': reactNative, '@react-native': reactNativeCore },
@@ -82,13 +99,14 @@ module.exports = [
       // Kept from the previous React Native config: a component defined inside another component
       // remounts on every render and loses its state.
       'react/no-unstable-nested-components': 'warn',
-      // i18next documents `i18n.use(...)` on its default export, so this warning is noise.
-      'import/no-named-as-default-member': 'off',
-      // React Compiler rules from eslint-plugin-react-hooks 7, beyond the two hook rules the
-      // app has always enforced. They flag fetching inside useEffect, the pattern 57 screens
-      // use and that plan phase P7 replaces with React Query. P7 turns them on.
-      'react-hooks/refs': 'off',
-      'react-hooks/set-state-in-effect': 'off',
+      // React Compiler rules from eslint-plugin-react-hooks 7, beyond the two hook rules the app has
+      // always enforced. P7 moved every screen off fetching inside useEffect, so these two are on: state is
+      // derived from queries and handlers, not copied in from an effect, and a ref is not read while rendering.
+      'react-hooks/refs': 'error',
+      'react-hooks/set-state-in-effect': 'error',
+      // Stays off on purpose: it only warns that react-hook-form's `watch()` cannot be memoized by the React
+      // Compiler. The app does not use the compiler, and `watch` is the library's documented way to read a
+      // field while rendering.
       'react-hooks/incompatible-library': 'off',
     },
   },
@@ -99,7 +117,7 @@ module.exports = [
   },
   {
     // Tests and manual mocks run under Jest, which provides describe, it, expect, jest, and so on.
-    files: ['**/*.test.{ts,tsx,js}', '__mocks__/**/*.js', 'jest.env.js'],
+    files: ['**/*.test.{ts,tsx,js}', '__mocks__/**/*.js', 'jest.env.js', 'jest.flashlist.js'],
     plugins: { jest },
     languageOptions: { globals: { ...globals.jest, ...globals.node } },
     rules: {

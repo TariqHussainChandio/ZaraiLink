@@ -4,5 +4,10 @@
   // scripts/check_reality.py: what exists today is recorded, anything new fails CI, and each
   // cleanup lowers the recorded count.
   // jest.config.js names babel-jest as a transform string; jest-expo provides it.
+  // backend/k6/ scripts run inside the grafana/k6 container (ADR 0001) and import k6's built-in modules, which are not npm packages.
+  "entry": ["backend/k6/*.js", "src/api/generated/index.ts"],  // the generated API client is a public entry: its exports are the contract
+  // Machine output (npm run api:generate): unused helper exports inside it are not project debt.
+  "ignore": ["src/api/generated/**"],
+  "ignoreDependencies": ["k6"],
   "ignoreUnresolved": ["babel-jest"]
 }

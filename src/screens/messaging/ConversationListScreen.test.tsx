@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ConversationListScreen } from './ConversationListScreen';
 import { fetchConversations } from '../../services/modules/messaging/messagingService';
 import { MESSAGING_ROUTES } from '../../constants/routes';
@@ -64,7 +64,7 @@ describe('ConversationListScreen', () => {
     let resolveFetch: (value: ConversationWithPreview[]) => void = () => {};
     mockFetchConversations.mockReturnValue(new Promise(resolve => { resolveFetch = resolve; }));
 
-    await render(<ConversationListScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<ConversationListScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByTestId('spinner')).toBeTruthy();
 
     resolveFetch([conversation()]);
@@ -74,14 +74,14 @@ describe('ConversationListScreen', () => {
 
   it('shows an empty state when there are no conversations', async () => {
     mockFetchConversations.mockResolvedValue([]);
-    await render(<ConversationListScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<ConversationListScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText('No conversations yet')).toBeTruthy();
   });
 
   it('navigates to Chat with the conversation id and other participant name', async () => {
     mockFetchConversations.mockResolvedValue([conversation()]);
     const navigation = makeNavigation();
-    await render(<ConversationListScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<ConversationListScreen navigation={navigation} route={{} as never} />);
 
     await fireEvent.press(await screen.findByText('Green Farms'));
     expect(navigation.navigate).toHaveBeenCalledWith(MESSAGING_ROUTES.Chat, {
@@ -93,7 +93,7 @@ describe('ConversationListScreen', () => {
   it("falls back to 'Unknown' when the other participant is missing", async () => {
     mockFetchConversations.mockResolvedValue([conversation({ otherParticipant: null })]);
     const navigation = makeNavigation();
-    await render(<ConversationListScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<ConversationListScreen navigation={navigation} route={{} as never} />);
 
     await fireEvent.press(await screen.findByText('Unknown'));
     expect(navigation.navigate).toHaveBeenCalledWith(MESSAGING_ROUTES.Chat, {

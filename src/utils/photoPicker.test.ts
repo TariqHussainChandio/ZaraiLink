@@ -1,11 +1,17 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, type AlertButton } from 'react-native';
+import { compressPhoto } from './photoCompression';
 import { pickFromLibrary, pickPhotos } from './photoPicker';
+
+jest.mock('./photoCompression');
+const mockCompress = compressPhoto as jest.Mock;
 
 const mockLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
 const mockCamera = ImagePicker.launchCameraAsync as jest.Mock;
 
 const asset = { uri: 'file:///cache/leaf.jpg', mimeType: 'image/jpeg', fileName: 'leaf.jpg', fileSize: 1234, width: 800, height: 600 };
+// What the picker hands on: the compressed copy, always a JPEG.
+const photo = { uri: 'file:///cache/leaf-small.jpg', mimeType: 'image/jpeg', fileName: 'leaf.jpg', width: 400, height: 300 };
 
 // pickPhotos shows a native alert; this presses one of its buttons the way a user would.
 function pressAlertButton(text: string) {
@@ -16,6 +22,7 @@ function pressAlertButton(text: string) {
 const mockRequestCamera = ImagePicker.requestCameraPermissionsAsync as jest.Mock;
 
 beforeEach(() => {
+  mockCompress.mockReset().mockResolvedValue({ uri: photo.uri, width: photo.width, height: photo.height });
   mockRequestCamera.mockReset().mockResolvedValue({ granted: true, canAskAgain: true, status: 'granted' });
   mockLibrary.mockReset().mockResolvedValue({ canceled: true, assets: null });
   mockCamera.mockReset().mockResolvedValue({ canceled: true, assets: null });
@@ -32,7 +39,17 @@ describe('pickFromLibrary', () => {
 
     const photos = await pickFromLibrary();
 
-    expect(photos).toEqual([{ ...asset, fileName: undefined }]);
+    expect(photos).toEqual([{ ...photo, fileName: undefined }]);
+    expect(mockCompress).toHaveBeenCalledWith(asset.uri, 800, 600);
+  });
+
+  it('hands on the compressed JPEG, named and typed as one, whatever the original was', async () => {
+    mockLibrary.mockResolvedValue({
+      canceled: false,
+      assets: [{ ...asset, mimeType: 'image/png', fileName: 'field.photo.PNG' }],
+    });
+
+    expect(await pickFromLibrary()).toEqual([{ ...photo, fileName: 'field.photo.jpg' }]);
   });
 
   it('returns nothing when the user backs out', async () => {
@@ -64,7 +81,7 @@ describe('pickPhotos', () => {
     const result = pickPhotos();
     pressAlertButton('Take Photo');
 
-    await expect(result).resolves.toEqual([asset]);
+    await expect(result).resolves.toEqual([photo]);
   });
 
   it('opens the gallery with the requested limit', async () => {
@@ -73,7 +90,7 @@ describe('pickPhotos', () => {
     const result = pickPhotos({ selectionLimit: 3 });
     pressAlertButton('Choose from Gallery');
 
-    await expect(result).resolves.toEqual([asset]);
+    await expect(result).resolves.toEqual([photo]);
     expect(mockLibrary).toHaveBeenCalledWith(expect.objectContaining({ selectionLimit: 3 }));
   });
 

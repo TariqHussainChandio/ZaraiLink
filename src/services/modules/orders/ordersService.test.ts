@@ -35,7 +35,20 @@ describe('checkout', () => {
         ],
         delivery_charge_by_seller: { 'seller-1': 50 },
       },
+      idempotencyKey: expect.stringMatching(/^zl-/),
     });
+  });
+
+  it('a retry of the same cart reuses the Idempotency-Key, a different cart or a later order gets a new one', async () => {
+    mockApiFetch.mockRejectedValueOnce(new Error('lost')).mockResolvedValue([]);
+    await expect(checkout(cartItems)).rejects.toThrow('lost');
+    await checkout(cartItems); // the retry: same key as the lost attempt
+    await checkout(cartItems); // the key was released on success, so this is a new order
+    await checkout(cartItems.slice(0, 1)); // a different cart
+    const keys = mockApiFetch.mock.calls.map(call => call[1]?.idempotencyKey);
+    expect(keys[0]).toBe(keys[1]);
+    expect(keys[2]).not.toBe(keys[1]);
+    expect(keys[3]).not.toBe(keys[2]);
   });
 
   it('defaults delivery_charge_by_seller to an empty object', async () => {

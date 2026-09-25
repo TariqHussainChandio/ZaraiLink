@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { InventoryTransactionScreen } from './InventoryTransactionScreen';
 import {
   fetchInventoryById,
@@ -79,7 +79,7 @@ describe('InventoryTransactionScreen', () => {
   it('renders the stock summary and transaction history', async () => {
     mockFetchInventoryById.mockResolvedValue(invItem);
     mockFetchInventoryTransactions.mockResolvedValue([tx({ notes: 'Weekly restock' })]);
-    await render(<InventoryTransactionScreen {...makeProps()} />);
+    await renderWithQuery(<InventoryTransactionScreen {...makeProps()} />);
 
     expect(await screen.findByText('DAP Fertilizer')).toBeTruthy();
     expect(screen.getByText('20 bag currently in stock')).toBeTruthy();
@@ -91,14 +91,14 @@ describe('InventoryTransactionScreen', () => {
   it('shows an empty state when there are no transactions', async () => {
     mockFetchInventoryById.mockResolvedValue(invItem);
     mockFetchInventoryTransactions.mockResolvedValue([]);
-    await render(<InventoryTransactionScreen {...makeProps()} />);
+    await renderWithQuery(<InventoryTransactionScreen {...makeProps()} />);
     expect(await screen.findByText('No stock movements yet')).toBeTruthy();
   });
 
   it('shows an error state with retry when loading fails', async () => {
     mockFetchInventoryById.mockRejectedValueOnce(new Error('network down')).mockResolvedValue(invItem);
     mockFetchInventoryTransactions.mockResolvedValue([]);
-    await render(<InventoryTransactionScreen {...makeProps()} />);
+    await renderWithQuery(<InventoryTransactionScreen {...makeProps()} />);
     expect(await screen.findByText("Couldn't load stock history")).toBeTruthy();
 
     await fireEvent.press(screen.getByText('Retry'));
@@ -109,7 +109,7 @@ describe('InventoryTransactionScreen', () => {
     mockFetchInventoryById.mockResolvedValue(invItem);
     mockFetchInventoryTransactions.mockResolvedValue([]);
     mockAdjustStock.mockResolvedValue(invItem);
-    await render(<InventoryTransactionScreen {...makeProps()} />);
+    await renderWithQuery(<InventoryTransactionScreen {...makeProps()} />);
     await screen.findByText('DAP Fertilizer');
 
     await fireEvent.press(screen.getByText('Record Stock Movement'));

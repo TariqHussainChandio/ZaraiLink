@@ -1,12 +1,12 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, Spinner } from '../../components/ui';
-import { createDiseaseCase, predictDisease, uploadDiseaseImage } from '../../services/modules/ai/diseaseService';
+import { useRunDiseaseAnalysis } from '../../hooks/api/disease';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { navigateToConsultExpert } from './expertHandoff';
+import { errorMessage } from '../../utils/errorMessage';
 
 interface RouteParams {
   imageUri: string;
@@ -21,31 +21,30 @@ interface RouteParams {
 export function DiseaseProcessingScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
   const { imageUri, imageFileName, imageType, cropId } = useRoute().params as RouteParams;
   const navigation = useNavigation<any>();
   const userId = useAuthStore(state => state.user?.id);
-  const [error, setError] = useState<string | null>(null);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const analysis = useRunDiseaseAnalysis();
+  const { mutate: analyze } = analysis;
+  const error = analysis.error ? errorMessage(analysis.error) : null;
 
-  const run = useCallback(async () => {
+  // The photo is uploaded to the private bucket and analysed; the "Talk to an Expert" fallback below uses the
+  // original local `imageUri` route param instead, which stays valid whatever happens to the upload.
+  const start = useCallback(() => {
     if (!userId) return;
-    setError(null);
-    try {
-      const imageUrl = uploadedImageUrl ?? (await uploadDiseaseImage(userId, { uri: imageUri, fileName: imageFileName ?? undefined, mimeType: imageType ?? undefined }));
-      setUploadedImageUrl(imageUrl);
-
-      const diseaseCase = await createDiseaseCase(cropId, imageUrl);
-      await predictDisease(diseaseCase.id);
-
-      navigation.replace('DiseaseResult', { diseaseCaseId: diseaseCase.id });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, [userId, imageUri, imageFileName, imageType, cropId, uploadedImageUrl, navigation]);
+    analyze(
+      {
+        userId,
+        image: { uri: imageUri, fileName: imageFileName ?? undefined, mimeType: imageType ?? undefined },
+        cropId,
+      },
+      { onSuccess: diseaseCase => navigation.replace('DiseaseResult', { diseaseCaseId: diseaseCase.id }) },
+    );
+  }, [userId, imageUri, imageFileName, imageType, cropId, navigation, analyze]);
 
   useEffect(() => {
-    run();
+    start();
+    // Mount-only: the analysis starts once when the screen opens; a retry is the button below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -53,21 +52,21 @@ export function DiseaseProcessingScreen() {
     return (
       <View style={styles.container}>
         <Spinner />
-        <Text style={styles.status}>{t('disease.processing.analyzingStatus')}</Text>
+        <Text style={styles.status}>Analyzing your photo...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.errorTitle}>{t('disease.processing.errorTitle')}</Text>
+      <Text style={styles.errorTitle}>{"AI analysis isn't available right now"}</Text>
       <Text style={styles.errorText}>{error}</Text>
 
-      <Button label={t('common.retry')} onPress={run} style={styles.action} />
+      <Button label="Retry" onPress={start} style={styles.action} />
       <Button
-        label={t('disease.processing.talkToExpertButton')}
+        label="Talk to an Expert"
         variant="secondary"
-        onPress={() => navigateToConsultExpert(navigation, { cropId, imageUrl: uploadedImageUrl })}
+        onPress={() => navigateToConsultExpert(navigation, { cropId, imageUrl: imageUri })}
         style={styles.action}
       />
     </View>
@@ -90,7 +89,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     errorTitle: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       textAlign: 'center',
       marginBottom: spacing.xs,

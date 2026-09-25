@@ -1,7 +1,8 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
+import { queryKeys } from '../../hooks/api/keys';
 import { AddCropScreen } from './AddCropScreen';
 import {
   createFarmCrop,
@@ -9,8 +10,9 @@ import {
   fetchFarmCropById,
   updateFarmCrop,
 } from '../../services/modules/farmer/farmService';
-import { useMarketplaceStore } from '../../store/marketplaceStore';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
+
+const queryClient = createTestQueryClient();
 
 jest.mock('../../services/modules/farmer/farmService', () => ({
   createFarmCrop: jest.fn(),
@@ -39,10 +41,8 @@ beforeEach(() => {
   mockUpdateFarmCrop.mockReset();
   mockDeleteFarmCrop.mockReset();
   mockFetchFarmCropById.mockReset();
-  useMarketplaceStore.setState({
-    crops: [{ id: 'wheat', name: 'Wheat', category: null }],
-    cropsLoaded: true,
-  });
+  queryClient.clear();
+  queryClient.setQueryData(queryKeys.marketplace.crops(), [{ id: 'wheat', name: 'Wheat', category: null }]);
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
@@ -52,7 +52,7 @@ afterEach(() => {
 
 describe('AddCropScreen — create mode', () => {
   it('renders the Add Crop form with no crop preloaded', async () => {
-    await render(<AddCropScreen {...makeProps({ farmId: 'farm-1' })} />);
+    await renderWithQuery(<AddCropScreen {...makeProps({ farmId: 'farm-1' })} />, queryClient);
     expect(screen.getByText('Add Crop')).toBeTruthy();
     expect(screen.queryByText('Remove Crop')).toBeNull();
   });
@@ -60,7 +60,7 @@ describe('AddCropScreen — create mode', () => {
   it('submits the filled fields and creates the crop', async () => {
     mockCreateFarmCrop.mockResolvedValue({ id: 'new-crop' });
     const props = makeProps({ farmId: 'farm-1' });
-    await render(<AddCropScreen {...props} />);
+    await renderWithQuery(<AddCropScreen {...props} />, queryClient);
 
     await fireEvent.press(screen.getByText('Select...'));
     await fireEvent.press(screen.getByText('Wheat'));
@@ -83,7 +83,7 @@ describe('AddCropScreen — create mode', () => {
   it('shows an alert when creating the crop fails', async () => {
     mockCreateFarmCrop.mockRejectedValue(new Error('Server unavailable'));
     const props = makeProps({ farmId: 'farm-1' });
-    await render(<AddCropScreen {...props} />);
+    await renderWithQuery(<AddCropScreen {...props} />, queryClient);
     await fireEvent.press(screen.getByText('Add Crop'));
 
     expect(Alert.alert).toHaveBeenCalledWith('Failed to save crop', 'Server unavailable');
@@ -94,7 +94,7 @@ describe('AddCropScreen — create mode', () => {
 describe('AddCropScreen — edit mode', () => {
   it('loads and prefills an existing crop', async () => {
     mockFetchFarmCropById.mockResolvedValue(crop);
-    await render(<AddCropScreen {...makeProps({ farmId: 'farm-1', cropId: 'crop-1' })} />);
+    await renderWithQuery(<AddCropScreen {...makeProps({ farmId: 'farm-1', cropId: 'crop-1' })} />, queryClient);
 
     expect(await screen.findByDisplayValue('HD-2967')).toBeTruthy();
     expect(screen.getByDisplayValue('5')).toBeTruthy();
@@ -104,7 +104,7 @@ describe('AddCropScreen — edit mode', () => {
 
   it('shows a retry state when loading the crop fails', async () => {
     mockFetchFarmCropById.mockRejectedValue(new Error('Not found'));
-    await render(<AddCropScreen {...makeProps({ farmId: 'farm-1', cropId: 'crop-1' })} />);
+    await renderWithQuery(<AddCropScreen {...makeProps({ farmId: 'farm-1', cropId: 'crop-1' })} />, queryClient);
 
     expect(await screen.findByText("Couldn't load this crop")).toBeTruthy();
 
@@ -117,7 +117,7 @@ describe('AddCropScreen — edit mode', () => {
     mockFetchFarmCropById.mockResolvedValue(crop);
     mockUpdateFarmCrop.mockResolvedValue({ id: 'crop-1' });
     const props = makeProps({ farmId: 'farm-1', cropId: 'crop-1' });
-    await render(<AddCropScreen {...props} />);
+    await renderWithQuery(<AddCropScreen {...props} />, queryClient);
     await screen.findByDisplayValue('HD-2967');
 
     await fireEvent.changeText(screen.getByLabelText('Variety'), 'HD-3086');
@@ -134,7 +134,7 @@ describe('AddCropScreen — edit mode', () => {
       buttons?.find((b: { text: string }) => b.text === 'Remove')?.onPress?.();
     });
     const props = makeProps({ farmId: 'farm-1', cropId: 'crop-1' });
-    await render(<AddCropScreen {...props} />);
+    await renderWithQuery(<AddCropScreen {...props} />, queryClient);
     await screen.findByDisplayValue('HD-2967');
 
     await fireEvent.press(screen.getByText('Remove Crop'));

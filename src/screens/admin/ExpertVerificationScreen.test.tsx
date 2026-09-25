@@ -1,7 +1,7 @@
 import React from 'react';
 import { Linking } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertVerificationScreen } from './ExpertVerificationScreen';
 import {
   fetchExpertsForAdmin,
@@ -76,7 +76,7 @@ afterEach(() => {
 describe('ExpertVerificationScreen', () => {
   it('defaults to the pending filter and loads pending experts', async () => {
     mockFetchExperts.mockResolvedValue([expert()]);
-    await render(<ExpertVerificationScreen />);
+    await renderWithQuery(<ExpertVerificationScreen />);
 
     expect(await screen.findByText('Dr. Ali')).toBeTruthy();
     expect(mockFetchExperts).toHaveBeenCalledWith('pending');
@@ -85,13 +85,13 @@ describe('ExpertVerificationScreen', () => {
 
   it('shows an empty state when there are no experts in the current status', async () => {
     mockFetchExperts.mockResolvedValue([]);
-    await render(<ExpertVerificationScreen />);
+    await renderWithQuery(<ExpertVerificationScreen />);
     expect(await screen.findByText('No experts in this status')).toBeTruthy();
   });
 
   it('switches filters and reloads with the new status', async () => {
     mockFetchExperts.mockResolvedValue([expert({ verification_status: 'approved' })]);
-    await render(<ExpertVerificationScreen />);
+    await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
     await fireEvent.press(screen.getByText('Approved'));
@@ -102,7 +102,7 @@ describe('ExpertVerificationScreen', () => {
   it('approves a pending expert with the decision note', async () => {
     mockFetchExperts.mockResolvedValue([expert()]);
     mockReviewVerification.mockResolvedValue(undefined);
-    await render(<ExpertVerificationScreen />);
+    await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
     await fireEvent.changeText(screen.getByPlaceholderText('Decision note (optional)'), 'Looks good');
@@ -114,7 +114,7 @@ describe('ExpertVerificationScreen', () => {
   it('rejects a pending expert', async () => {
     mockFetchExperts.mockResolvedValue([expert()]);
     mockReviewVerification.mockResolvedValue(undefined);
-    await render(<ExpertVerificationScreen />);
+    await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
     await fireEvent.press(screen.getByText('Reject'));
@@ -125,7 +125,7 @@ describe('ExpertVerificationScreen', () => {
   it('suspends an approved expert and can reactivate a suspended one', async () => {
     mockFetchExperts.mockResolvedValue([expert({ verification_status: 'approved' })]);
     mockReviewVerification.mockResolvedValue(undefined);
-    await render(<ExpertVerificationScreen />);
+    await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
     await fireEvent.press(screen.getByText('Suspend'));
@@ -135,7 +135,7 @@ describe('ExpertVerificationScreen', () => {
   it('opens the verification document via resolved URL', async () => {
     mockFetchExperts.mockResolvedValue([expert()]);
     mockResolveDocumentUrl.mockResolvedValue('https://storage.example.com/expert-1.pdf');
-    await render(<ExpertVerificationScreen />);
+    await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
     await fireEvent.press(screen.getByText('View Document'));

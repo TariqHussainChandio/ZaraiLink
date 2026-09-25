@@ -82,7 +82,9 @@ describe('LocationPicker', () => {
     );
     // Country, province, city render in that fixed order — the third empty field is the city input.
     const fields = screen.getAllByDisplayValue('');
-    fireEvent.changeText(fields[2], 'Multan');
+    const cityField = fields[2];
+    if (!cityField) throw new Error('the city input was not rendered');
+    fireEvent.changeText(cityField, 'Multan');
     expect(onCityChange).toHaveBeenCalledWith('Multan');
   });
 });

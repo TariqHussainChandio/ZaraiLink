@@ -1,21 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { TFunction } from 'i18next';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { Button, EmptyState, Input, LocationPicker, Spinner } from '../../components/ui';
-import {
-  fetchExpertProfile,
-  submitExpertApplication,
-  updateExpertProfile,
-  uploadExpertDocument,
-} from '../../services/modules/expert/expertService';
+import { useOwnExpertProfile, useSaveExpertProfile } from '../../hooks/api/experts';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { ExpertSpecialization } from '../../types/expert';
 import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
+import { errorMessage } from '../../utils/errorMessage';
+import { SPECIALIZATION_LABELS } from '../../constants/labels';
 
 const SPECIALIZATION_IDS: ExpertSpecialization[] = [
   'crop_management',
@@ -27,23 +22,11 @@ const SPECIALIZATION_IDS: ExpertSpecialization[] = [
   'crop_nutrition',
   'general_agriculture',
 ];
+const SPECIALIZATION_OPTIONS = SPECIALIZATION_IDS.map(id => ({ id, label: SPECIALIZATION_LABELS[id] }));
 
-// Maps each specialization id to its translation key suffix under `expert.specializations` —
-// shared verbatim with ExpertProfileScreen's own copy of this map.
-const SPECIALIZATION_KEY_MAP: Record<ExpertSpecialization, string> = {
-  crop_management: 'cropManagement',
-  plant_diseases: 'plantDiseases',
-  pest_management: 'pestManagement',
-  fertilizer_management: 'fertilizerManagement',
-  irrigation: 'irrigation',
-  soil_management: 'soilManagement',
-  crop_nutrition: 'cropNutrition',
-  general_agriculture: 'generalAgriculture',
-};
-
-function buildApplicationSchema(t: TFunction) {
+function buildApplicationSchema() {
   return z.object({
-    qualifications: z.string().min(2, t('expert.expertApplication.qualificationsRequiredError')),
+    qualifications: z.string().min(2, 'Enter your qualifications'),
     degree: z.string(),
     experience: z.string(),
     professionalDescription: z.string(),
@@ -57,26 +40,16 @@ function buildApplicationSchema(t: TFunction) {
 type ApplicationFormValues = z.infer<ReturnType<typeof buildApplicationSchema>>;
 
 export function ExpertApplicationScreen() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const { data: ownProfile, isLoading: loading, error, refetch } = useOwnExpertProfile(!!userId);
+  const saveProfile = useSaveExpertProfile(userId);
   const [isEditing, setIsEditing] = useState(false);
   const [specializations, setSpecializations] = useState<ExpertSpecialization[]>([]);
   const [document, setDocument] = useState<PickedPhoto | null>(null);
-
-  const applicationSchema = useMemo(() => buildApplicationSchema(t), [t]);
-  const specializationOptions = useMemo(
-    () =>
-      SPECIALIZATION_IDS.map(id => ({
-        id,
-        label: t(`expert.specializations.${SPECIALIZATION_KEY_MAP[id]}`),
-      })),
-    [t],
-  );
+  const load = () => refetch();
+  const applicationSchema = useMemo(() => buildApplicationSchema(), []);
 
   const {
     control,
@@ -99,37 +72,24 @@ export function ExpertApplicationScreen() {
     },
   });
 
-  const load = useCallback(() => {
-    if (!userId) return;
-    setLoading(true);
-    setError(false);
-    fetchExpertProfile()
-      .then(profile => {
-        if (profile) {
-          setIsEditing(true);
-          setSpecializations(profile.expert_specializations.map(s => s.specialization));
-          reset({
-            qualifications: profile.qualifications ?? '',
-            degree: profile.degree ?? '',
-            experience: profile.experience ?? '',
-            professionalDescription: profile.professional_description ?? '',
-            contact: profile.contact ?? '',
-            country: profile.location?.country ?? null,
-            province: profile.location?.province ?? null,
-            city: profile.location?.city ?? null,
-          });
-        }
-      })
-      .catch(err => {
-        console.warn('[ExpertApplicationScreen] failed to load expert profile:', err);
-        setError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [userId, reset]);
-
+  // Fill the form once, from the first copy of the profile; a later background refetch must not overwrite edits.
+  const filled = useRef(false);
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!ownProfile || filled.current) return;
+    filled.current = true;
+    setIsEditing(true);
+    setSpecializations(ownProfile.expert_specializations.map(s => s.specialization));
+    reset({
+      qualifications: ownProfile.qualifications ?? '',
+      degree: ownProfile.degree ?? '',
+      experience: ownProfile.experience ?? '',
+      professionalDescription: ownProfile.professional_description ?? '',
+      contact: ownProfile.contact ?? '',
+      country: ownProfile.location?.country ?? null,
+      province: ownProfile.location?.province ?? null,
+      city: ownProfile.location?.city ?? null,
+    });
+  }, [ownProfile, reset]);
 
   const toggleSpecialization = (specialization: ExpertSpecialization) => {
     setSpecializations(current =>
@@ -149,39 +109,31 @@ export function ExpertApplicationScreen() {
   const onSubmit = async (values: ApplicationFormValues) => {
     if (!userId) return;
     if (specializations.length === 0) {
-      Alert.alert(t('expert.expertApplication.selectSpecializationError'));
+      Alert.alert('Select at least one specialization');
       return;
     }
-    setSubmitting(true);
     try {
       const input = { ...values, specializations };
-      if (isEditing) {
-        await updateExpertProfile(input);
-      } else {
-        const documentPath = document ? await uploadExpertDocument(userId, document) : null;
-        await submitExpertApplication(input, documentPath);
-        setIsEditing(true);
-      }
+      await saveProfile.mutateAsync({ input, isEditing, document });
+      setIsEditing(true);
       Alert.alert(
         isEditing
-          ? t('expert.expertApplication.profileUpdatedTitle')
-          : t('expert.expertApplication.applicationSubmittedTitle'),
-        t('expert.expertApplication.reviewMessage'),
+          ? 'Profile updated'
+          : 'Application submitted',
+        'An admin will review your application.',
       );
     } catch (err) {
-      Alert.alert(t('expert.expertApplication.saveErrorTitle'), err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
+      Alert.alert('Could not save', errorMessage(err));
     }
   };
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && !ownProfile) {
     return (
       <EmptyState
-        title={t('expert.expertApplication.loadErrorTitle')}
-        description={t('expert.expertApplication.loadErrorDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load your application"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -194,8 +146,8 @@ export function ExpertApplicationScreen() {
         name="qualifications"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('expert.expertApplication.qualificationsLabel')}
-            placeholder={t('expert.expertApplication.qualificationsPlaceholder')}
+            label="Qualifications"
+            placeholder="e.g. PhD Agronomy, 10 years extension work"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -207,14 +159,14 @@ export function ExpertApplicationScreen() {
         control={control}
         name="degree"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label={t('expert.expertApplication.degreeLabel')} value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input label="Degree / Certification" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
       <Controller
         control={control}
         name="experience"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label={t('expert.expertApplication.experienceLabel')} value={value} onChangeText={onChange} onBlur={onBlur} />
+          <Input label="Experience" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
       <Controller
@@ -222,7 +174,7 @@ export function ExpertApplicationScreen() {
         name="professionalDescription"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('expert.expertApplication.aboutYouLabel')}
+            label="About you"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -236,7 +188,7 @@ export function ExpertApplicationScreen() {
         name="contact"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('expert.expertApplication.contactLabel')}
+            label="Contact"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -254,9 +206,9 @@ export function ExpertApplicationScreen() {
         onCityChange={value => setValue('city', value)}
       />
 
-      <Text style={styles.label}>{t('expert.expertApplication.specializationsLabel')}</Text>
+      <Text style={styles.label}>Specializations</Text>
       <View style={styles.chipsRow}>
-        {specializationOptions.map(option => {
+        {SPECIALIZATION_OPTIONS.map(option => {
           const selected = specializations.includes(option.id);
           return (
             <TouchableOpacity
@@ -272,12 +224,12 @@ export function ExpertApplicationScreen() {
 
       {!isEditing ? (
         <>
-          <Text style={styles.label}>{t('expert.expertApplication.documentLabel')}</Text>
+          <Text style={styles.label}>Qualification Document (optional)</Text>
           {document ? (
             <Image source={{ uri: document.uri }} style={styles.documentPreview} />
           ) : (
             <TouchableOpacity style={styles.documentPicker} onPress={pickDocument}>
-              <Text style={styles.documentPickerLabel}>{t('expert.expertApplication.addDocumentPhoto')}</Text>
+              <Text style={styles.documentPickerLabel}>+ Add a photo of your certificate</Text>
             </TouchableOpacity>
           )}
         </>
@@ -286,10 +238,10 @@ export function ExpertApplicationScreen() {
       <Button
         label={
           isEditing
-            ? t('expert.expertApplication.saveChanges')
-            : t('expert.expertApplication.submitApplication')
+            ? 'Save Changes'
+            : 'Submit Application'
         }
-        loading={submitting}
+        loading={saveProfile.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
       />
@@ -308,7 +260,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.secondary,
       marginBottom: spacing.sm,
     },
@@ -335,7 +287,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     chipLabelSelected: {
       color: colors.brand.primary,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
     documentPreview: {
       width: 120,

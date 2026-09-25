@@ -42,7 +42,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     label: {
       color: colors.neutral.white,
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
   });
 }

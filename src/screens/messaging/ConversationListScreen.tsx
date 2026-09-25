@@ -1,45 +1,33 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { EmptyState, Spinner } from '../../components/ui';
 import { ConversationListItem } from '../../components/features/messaging/ConversationListItem';
 import { MESSAGING_ROUTES } from '../../constants/routes';
-import { fetchConversations } from '../../services/modules/messaging/messagingService';
+import { useConversations } from '../../hooks/api/messaging';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { ConversationWithPreview } from '../../types/messaging';
 import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavigator';
 
 export function ConversationListScreen({ navigation }: MessagingScreenProps<'ConversationList'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
   const userId = useAuthStore(state => state.user?.id);
-  const [conversations, setConversations] = useState<ConversationWithPreview[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: conversations = [], isPending, refetch } = useConversations(!!userId);
 
-  const load = useCallback(async () => {
-    if (!userId) return;
-    setLoading(true);
-    try {
-      setConversations(await fetchConversations());
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
+  // Coming back to the inbox shows messages that arrived while a chat was open.
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      if (userId) refetch();
+    }, [userId, refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
+  if (isPending && userId) return <Spinner fullscreen />;
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={conversations}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
@@ -48,15 +36,15 @@ export function ConversationListScreen({ navigation }: MessagingScreenProps<'Con
             onPress={() =>
               navigation.navigate(MESSAGING_ROUTES.Chat, {
                 conversationId: item.id,
-                otherUserName: item.otherParticipant?.full_name ?? t('messaging.conversationList.unknownParticipant'),
+                otherUserName: item.otherParticipant?.full_name ?? 'Unknown',
               })
             }
           />
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('messaging.conversationList.emptyTitle')}
-            description={t('messaging.conversationList.emptyDescription')}
+            title="No conversations yet"
+            description="Message a seller from a listing or an order to start chatting."
           />
         }
       />

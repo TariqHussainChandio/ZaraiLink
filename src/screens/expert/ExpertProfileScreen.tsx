@@ -1,142 +1,103 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar, Button, EmptyState, Spinner } from '../../components/ui';
 import { RatingSummary } from '../../components/features/reviews/RatingSummary';
 import { ReviewCard } from '../../components/features/reviews/ReviewCard';
 import { APP_TABS, CONSULTATIONS_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
-import { fetchExpertById } from '../../services/modules/expert/expertService';
-import { findOrCreateConversation } from '../../services/modules/messaging/messagingService';
-import { fetchReviewsForExpert } from '../../services/modules/reviews/reviewsService';
+import { useExpertProfile } from '../../hooks/api/experts';
+import { useOpenConversation } from '../../hooks/api/messaging';
 import { useAuthStore } from '../../store/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../theme';
-import type { ExpertWithProfile } from '../../types/expert';
-import type { ReviewWithBuyer } from '../../types/reviews';
+import { errorMessage } from '../../utils/errorMessage';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
-
-// Maps each specialization id to its translation key suffix under `expert.specializations` —
-// shared verbatim with ExpertApplicationScreen's own copy of this map.
-const SPECIALIZATION_KEY_MAP: Record<string, string> = {
-  crop_management: 'cropManagement',
-  plant_diseases: 'plantDiseases',
-  pest_management: 'pestManagement',
-  fertilizer_management: 'fertilizerManagement',
-  irrigation: 'irrigation',
-  soil_management: 'soilManagement',
-  crop_nutrition: 'cropNutrition',
-  general_agriculture: 'generalAgriculture',
-};
+import { SPECIALIZATION_LABELS } from '../../constants/labels';
 
 export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenProps<'ExpertProfile'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { expertId, prefill } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const tabNavigation = useAppTabNavigation();
-  const [expert, setExpert] = useState<ExpertWithProfile | null>(null);
-  const [reviews, setReviews] = useState<ReviewWithBuyer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [messaging, setMessaging] = useState(false);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(false);
-    Promise.all([fetchExpertById(expertId), fetchReviewsForExpert(expertId)])
-      .then(([expertData, reviewsData]) => {
-        setExpert(expertData);
-        setReviews(reviewsData);
-      })
-      .catch(err => {
-        console.warn('[ExpertProfileScreen] failed to load expert profile:', err);
-        setError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [expertId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data, isPending: loading, error, refetch } = useExpertProfile(expertId);
+  const openConversation = useOpenConversation();
+  const expert = data?.expert;
+  const reviews = data?.reviews ?? [];
+  const load = () => refetch();
 
   if (loading) return <Spinner fullscreen />;
   if (error || !expert) {
     return (
       <EmptyState
-        title={t('expert.expertProfile.errorTitle')}
-        description={t('expert.expertProfile.errorDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load this expert"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
   }
 
-  const specializations = expert.expert_specializations.map(s => {
-    const key = SPECIALIZATION_KEY_MAP[s.specialization];
-    return key ? t(`expert.specializations.${key}`) : s.specialization;
-  });
+  const specializations = expert.expert_specializations.map(s => SPECIALIZATION_LABELS[s.specialization]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={72} />
-        <Text style={styles.name}>{expert.profile?.full_name ?? t('expert.expertProfile.defaultName')}</Text>
+        <Text style={styles.name}>{expert.profile?.full_name ?? 'Expert'}</Text>
         {expert.degree ? <Text style={styles.degree}>{expert.degree}</Text> : null}
         <RatingSummary reviews={reviews} />
       </View>
 
       {specializations.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('expert.expertProfile.specializationsTitle')}</Text>
+          <Text style={styles.sectionTitle}>Specializations</Text>
           <Text style={styles.sectionText}>{specializations.join(', ')}</Text>
         </View>
       ) : null}
 
       {expert.qualifications ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('expert.expertProfile.qualificationsTitle')}</Text>
+          <Text style={styles.sectionTitle}>Qualifications</Text>
           <Text style={styles.sectionText}>{expert.qualifications}</Text>
         </View>
       ) : null}
 
       {expert.experience ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('expert.expertProfile.experienceTitle')}</Text>
+          <Text style={styles.sectionTitle}>Experience</Text>
           <Text style={styles.sectionText}>{expert.experience}</Text>
         </View>
       ) : null}
 
       {expert.professional_description ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('expert.expertProfile.aboutTitle')}</Text>
+          <Text style={styles.sectionTitle}>About</Text>
           <Text style={styles.sectionText}>{expert.professional_description}</Text>
         </View>
       ) : null}
 
       <Button
-        label={t('expert.expertProfile.requestConsultation')}
+        label="Request Consultation"
         onPress={() => navigation.navigate(CONSULTATIONS_ROUTES.RequestConsultation, { expertId, prefill })}
         style={styles.action}
       />
       <Button
-        label={t('expert.expertProfile.messageExpert')}
+        label="Message Expert"
         variant="secondary"
-        loading={messaging}
+        loading={openConversation.isPending}
         onPress={async () => {
           if (!userId) return;
-          setMessaging(true);
           try {
-            const conversation = await findOrCreateConversation(expertId);
+            const conversation = await openConversation.mutateAsync(expertId);
             tabNavigation?.navigate(APP_TABS.Messages, {
               screen: MESSAGING_ROUTES.Chat,
               params: {
                 conversationId: conversation.id,
-                otherUserName: expert.profile?.full_name ?? t('expert.expertProfile.defaultName'),
+                otherUserName: expert.profile?.full_name ?? 'Expert',
               },
             });
-          } finally {
-            setMessaging(false);
+          } catch (err) {
+            Alert.alert('Could not open the conversation', errorMessage(err));
           }
         }}
         style={styles.action}
@@ -144,7 +105,7 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
 
       {reviews.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('expert.expertProfile.reviewsTitle')}</Text>
+          <Text style={styles.sectionTitle}>Reviews</Text>
           {reviews.map(review => (
             <ReviewCard key={review.id} review={review} />
           ))}
@@ -170,7 +131,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     name: {
       marginTop: spacing.sm,
       fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     degree: {
@@ -183,7 +144,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sectionTitle: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },

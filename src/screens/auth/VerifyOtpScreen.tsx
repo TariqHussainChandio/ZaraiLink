@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,8 +8,14 @@ import {
   View,
 } from 'react-native';
 import { Button, Input } from '../../components/ui';
-import { resendSignupOtp, verifySignupOtp } from '../../services/modules/auth/authService';
+import {
+  useResendRecoveryOtp,
+  useResendSignupOtp,
+  useVerifyRecoveryOtp,
+  useVerifySignupOtp,
+} from '../../hooks/api/auth';
 import { useTheme, type Theme } from '../../theme';
+import { mapAuthErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
 
 const RESEND_COOLDOWN_SECONDS = 30;
@@ -18,23 +23,41 @@ const RESEND_COOLDOWN_SECONDS = 30;
 export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOtp'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
-  const { channel, identifier } = route.params;
+  const { mutateAsync: verifyRecoveryOtp } = useVerifyRecoveryOtp();
+  const { mutateAsync: verifySignupOtp } = useVerifySignupOtp();
+  const { mutateAsync: resendRecoveryOtp } = useResendRecoveryOtp();
+  const { mutateAsync: resendSignupOtp } = useResendSignupOtp();
+  const { purpose, identifier } = route.params;
+  const channel = purpose === 'signup' ? route.params.channel : 'email';
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const cooldownInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // P4 (4B.3): the previous version leaked this interval on unmount — verifying successfully (or
+  // navigating back) mid-cooldown left a setInterval ticking against an unmounted component.
+  useEffect(() => {
+    return () => {
+      if (cooldownInterval.current) clearInterval(cooldownInterval.current);
+    };
+  }, []);
 
   const onVerify = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      // On success this signs the user in; authStore's onAuthStateChange listener picks up
-      // the new session and RootNavigator swaps to the app shell automatically.
-      await verifySignupOtp(channel, identifier, code);
+      // On success this signs the user in (or, for recovery, starts a password-recovery
+      // session); authStore's onAuthStateChange listener picks up the result automatically and
+      // RootNavigator swaps screens with no further action needed here.
+      if (purpose === 'recovery') {
+        await verifyRecoveryOtp({ email: identifier, token: code });
+      } else {
+        await verifySignupOtp({ channel, identifier, token: code });
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('auth.verifyOtp.defaultVerifyError'));
+      setError(mapAuthErrorMessage(err, 'Invalid or expired code'));
     } finally {
       setSubmitting(false);
     }
@@ -44,23 +67,46 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
     setError(null);
     setResending(true);
     try {
-      await resendSignupOtp(channel, identifier);
+      if (purpose === 'recovery') {
+        await resendRecoveryOtp(identifier);
+      } else {
+        await resendSignupOtp({ channel, identifier });
+      }
       setCooldown(RESEND_COOLDOWN_SECONDS);
-      const interval = setInterval(() => {
+      cooldownInterval.current = setInterval(() => {
         setCooldown(prev => {
           if (prev <= 1) {
-            clearInterval(interval);
+            if (cooldownInterval.current) clearInterval(cooldownInterval.current);
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('auth.verifyOtp.resendDefaultError'));
+      setError(mapAuthErrorMessage(err, 'Failed to resend code'));
     } finally {
       setResending(false);
     }
   };
+
+  const onChangeCode = (value: string) => {
+    // Accepts a paste of the full code even if it carries extra characters (e.g. copied along
+    // with surrounding text like "Your code is: 123456") — strip anything that isn't a digit,
+    // then cap at 6.
+    setCode(value.replace(/\D/g, '').slice(0, 6));
+  };
+
+  const title =
+    purpose === 'recovery'
+      ? 'Enter your reset code'
+      : channel === 'email'
+        ? 'Verify your email'
+        : 'Verify your phone';
+  const subtitle =
+    purpose === 'recovery'
+      ? `We sent a password reset code to ${identifier}. Enter it below to continue.`
+      : `We sent a verification code to ${identifier}. Enter it below to activate your account.`;
+  const backLabel = purpose === 'recovery' ? 'Back' : 'Back to sign up';
 
   return (
     <KeyboardAvoidingView
@@ -68,36 +114,42 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.container}>
-        <Text style={styles.title}>
-          {channel === 'email' ? t('auth.verifyOtp.titleEmail') : t('auth.verifyOtp.titlePhone')}
-        </Text>
-        <Text style={styles.subtitle}>{t('auth.verifyOtp.subtitle', { identifier })}</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
 
         <Input
-          label={t('auth.verifyOtp.codeLabel')}
+          label="Verification code"
+          accessibilityHint="6-digit code sent to your email or phone"
           keyboardType="number-pad"
           maxLength={6}
           value={code}
-          onChangeText={setCode}
+          onChangeText={onChangeCode}
           error={error ?? undefined}
+          textContentType="oneTimeCode"
+          autoComplete={channel === 'phone' ? 'sms-otp' : 'email-otp'}
         />
 
         <Button
-          label={t('auth.verifyOtp.verifyButton')}
+          label="Verify"
           loading={submitting}
-          disabled={code.length === 0}
+          disabled={code.length !== 6}
           onPress={onVerify}
           style={styles.submit}
         />
 
-        <TouchableOpacity onPress={onResend} disabled={resending || cooldown > 0}>
+        <TouchableOpacity
+          onPress={onResend}
+          disabled={resending || cooldown > 0}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: resending || cooldown > 0 }}
+        >
           <Text style={[styles.link, (resending || cooldown > 0) && styles.linkDisabled]}>
-            {cooldown > 0 ? t('auth.verifyOtp.resendCooldown', { seconds: cooldown }) : t('auth.verifyOtp.resendButton')}
+            {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>{t('auth.verifyOtp.backLink')}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button">
+          <Text style={styles.back}>{backLabel}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -114,7 +166,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes['3xl'],
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     subtitle: {
@@ -128,7 +180,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     link: {
       color: colors.brand.primary,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       marginTop: spacing.xl,
       textAlign: 'center',
     },

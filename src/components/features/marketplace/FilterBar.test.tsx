@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { FilterBar } from './FilterBar';
 import type { Category } from '../../../types/marketplace';
 
@@ -28,7 +29,7 @@ const baseProps = {
 
 describe('FilterBar', () => {
   it('renders the search input and all category chips including "All"', async () => {
-    await render(<FilterBar {...baseProps} />);
+    await renderWithQuery(<FilterBar {...baseProps} />);
     expect(screen.getByPlaceholderText('Search listings...')).toBeTruthy();
     expect(screen.getByText('All')).toBeTruthy();
     expect(screen.getByText('Seeds')).toBeTruthy();
@@ -37,26 +38,26 @@ describe('FilterBar', () => {
 
   it('calls onSearchChange as the user types', async () => {
     const onSearchChange = jest.fn();
-    await render(<FilterBar {...baseProps} onSearchChange={onSearchChange} />);
+    await renderWithQuery(<FilterBar {...baseProps} onSearchChange={onSearchChange} />);
     fireEvent.changeText(screen.getByPlaceholderText('Search listings...'), 'urea');
     expect(onSearchChange).toHaveBeenCalledWith('urea');
   });
 
   it('calls onSelectCategory when a category chip is tapped', async () => {
     const onSelectCategory = jest.fn();
-    await render(<FilterBar {...baseProps} onSelectCategory={onSelectCategory} />);
+    await renderWithQuery(<FilterBar {...baseProps} onSelectCategory={onSelectCategory} />);
     fireEvent.press(screen.getByText('Seeds'));
     expect(onSelectCategory).toHaveBeenCalledWith('c1');
   });
 
   it('shows the active filter count badge when more filters are applied', async () => {
-    await render(<FilterBar {...baseProps} minPrice={100} city="Lahore" />);
+    await renderWithQuery(<FilterBar {...baseProps} minPrice={100} city="Lahore" />);
     expect(screen.getByText('2')).toBeTruthy();
   });
 
   it('opens the filter sheet and applies price filters', async () => {
     const onApplyMoreFilters = jest.fn();
-    await render(<FilterBar {...baseProps} onApplyMoreFilters={onApplyMoreFilters} />);
+    await renderWithQuery(<FilterBar {...baseProps} onApplyMoreFilters={onApplyMoreFilters} />);
     await fireEvent.press(screen.getByLabelText('Filters'));
     expect(await screen.findByText('Filters')).toBeTruthy();
     await fireEvent.changeText(screen.getByTestId('filter-min-price'), '100');
@@ -67,7 +68,7 @@ describe('FilterBar', () => {
 
   it('clears all filters when Clear Filters is pressed', async () => {
     const onApplyMoreFilters = jest.fn();
-    await render(
+    await renderWithQuery(
       <FilterBar {...baseProps} minPrice={100} maxPrice={500} onApplyMoreFilters={onApplyMoreFilters} />,
     );
     await fireEvent.press(screen.getByLabelText('Filters, 2 active'));

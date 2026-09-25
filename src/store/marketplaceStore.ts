@@ -1,7 +1,9 @@
 import { create } from 'zustand';
-import { fetchCategories, fetchCrops } from '../services/modules/marketplace/listingsService';
-import type { Category, Crop } from '../types/marketplace';
 
+/**
+ * The marketplace filters the buyer has set: client state, so it lives in a store. Categories, crops and listings are
+ * server data and are read through the query hooks in `src/hooks/api/marketplace.ts`.
+ */
 export interface MarketplaceFilters {
   categoryId: string | null;
   search: string;
@@ -13,14 +15,8 @@ export interface MarketplaceFilters {
 
 interface MarketplaceState {
   filters: MarketplaceFilters;
-  categories: Category[];
-  categoriesLoaded: boolean;
-  crops: Crop[];
-  cropsLoaded: boolean;
   setFilters: (filters: Partial<MarketplaceFilters>) => void;
   resetFilters: () => void;
-  loadCategories: () => Promise<void>;
-  loadCrops: () => Promise<void>;
 }
 
 const defaultFilters: MarketplaceFilters = {
@@ -32,25 +28,9 @@ const defaultFilters: MarketplaceFilters = {
   cropName: null,
 };
 
-export const useMarketplaceStore = create<MarketplaceState>((set, get) => ({
+export const useMarketplaceStore = create<MarketplaceState>(set => ({
   filters: defaultFilters,
-  categories: [],
-  categoriesLoaded: false,
-  crops: [],
-  cropsLoaded: false,
 
   setFilters: filters => set(state => ({ filters: { ...state.filters, ...filters } })),
   resetFilters: () => set({ filters: defaultFilters }),
-
-  loadCategories: async () => {
-    if (get().categoriesLoaded) return;
-    const categories = await fetchCategories();
-    set({ categories, categoriesLoaded: true });
-  },
-
-  loadCrops: async () => {
-    if (get().cropsLoaded) return;
-    const crops = await fetchCrops();
-    set({ crops, cropsLoaded: true });
-  },
 }));

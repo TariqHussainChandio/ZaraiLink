@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Animated, StyleSheet, TouchableWithoutFeedback, View, ViewProps } from 'react-native';
 import { useTheme, type Theme } from '../../theme';
 
@@ -13,7 +13,7 @@ export interface CardProps extends ViewProps {
 export function Card({ style, children, onPress, ...rest }: CardProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
 
   if (!onPress) {
     return (

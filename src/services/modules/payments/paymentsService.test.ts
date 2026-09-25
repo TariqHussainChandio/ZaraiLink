@@ -23,7 +23,18 @@ describe('initiatePayment', () => {
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/payments', {
       method: 'POST',
       body: { order_id: 'order-1', method: 'bank_transfer' },
+      idempotencyKey: expect.stringMatching(/^zl-/),
     });
+  });
+
+  it('a retry of the same payment reuses the key, so a lost response cannot start two payments; a new one is new', async () => {
+    mockApiFetch.mockRejectedValueOnce(new Error('lost')).mockResolvedValue({});
+    await expect(initiatePayment('order-2', 'cod')).rejects.toThrow('lost');
+    await initiatePayment('order-2', 'cod');
+    await initiatePayment('order-2', 'cod');
+    const keys = mockApiFetch.mock.calls.map(call => call[1]?.idempotencyKey);
+    expect(keys[0]).toBe(keys[1]);
+    expect(keys[2]).not.toBe(keys[1]);
   });
 });
 

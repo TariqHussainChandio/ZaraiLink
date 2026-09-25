@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -39,7 +39,7 @@ export function Button({
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const variantStyle = useMemo(() => variantStyles(theme)[variant], [theme, variant]);
   const isDisabled = disabled || loading;
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
 
   const animateTo = (toValue: number) =>
     Animated.timing(scale, {

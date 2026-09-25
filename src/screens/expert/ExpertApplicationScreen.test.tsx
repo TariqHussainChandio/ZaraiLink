@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertApplicationScreen } from './ExpertApplicationScreen';
 import {
   fetchExpertProfile,
@@ -61,7 +61,7 @@ describe('ExpertApplicationScreen', () => {
 
   it('shows a blank form for a first-time applicant', async () => {
     mockFetchExpertProfile.mockResolvedValue(null);
-    await render(<ExpertApplicationScreen />);
+    await renderWithQuery(<ExpertApplicationScreen />);
 
     expect(await screen.findByLabelText('Qualifications')).toBeTruthy();
     expect(screen.getByLabelText('Qualifications').props.value).toBe('');
@@ -71,7 +71,7 @@ describe('ExpertApplicationScreen', () => {
 
   it('pre-fills the form and switches to edit mode when a profile already exists', async () => {
     mockFetchExpertProfile.mockResolvedValue(existingProfile);
-    await render(<ExpertApplicationScreen />);
+    await renderWithQuery(<ExpertApplicationScreen />);
 
     expect(await screen.findByLabelText('Qualifications')).toBeTruthy();
     expect(screen.getByLabelText('Qualifications').props.value).toBe('PhD Agronomy');
@@ -82,7 +82,7 @@ describe('ExpertApplicationScreen', () => {
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchExpertProfile.mockRejectedValue(new Error('network down'));
-    await render(<ExpertApplicationScreen />);
+    await renderWithQuery(<ExpertApplicationScreen />);
 
     expect(await screen.findByText("Couldn't load your application")).toBeTruthy();
 
@@ -93,7 +93,7 @@ describe('ExpertApplicationScreen', () => {
 
   it('shows a validation error when qualifications is left empty', async () => {
     mockFetchExpertProfile.mockResolvedValue(null);
-    await render(<ExpertApplicationScreen />);
+    await renderWithQuery(<ExpertApplicationScreen />);
     await screen.findByLabelText('Qualifications');
 
     await fireEvent.press(screen.getByText('Submit Application'));
@@ -103,7 +103,7 @@ describe('ExpertApplicationScreen', () => {
 
   it('requires at least one specialization before submitting', async () => {
     mockFetchExpertProfile.mockResolvedValue(null);
-    await render(<ExpertApplicationScreen />);
+    await renderWithQuery(<ExpertApplicationScreen />);
     await fireEvent.changeText(await screen.findByLabelText('Qualifications'), 'PhD Agronomy, extension work');
 
     await fireEvent.press(screen.getByText('Submit Application'));
@@ -117,7 +117,7 @@ describe('ExpertApplicationScreen', () => {
     mockUploadExpertDocument.mockResolvedValue('expert1/cert.jpg');
     mockSubmitExpertApplication.mockResolvedValue({ id: 'expert1' });
 
-    await render(<ExpertApplicationScreen />);
+    await renderWithQuery(<ExpertApplicationScreen />);
     await fireEvent.changeText(await screen.findByLabelText('Qualifications'), 'PhD Agronomy, extension work');
     await fireEvent.press(screen.getByText('Crop Management'));
     await fireEvent.press(screen.getByText('+ Add a photo of your certificate'));
@@ -150,7 +150,7 @@ describe('ExpertApplicationScreen', () => {
   it('updates an existing profile without touching document upload', async () => {
     mockFetchExpertProfile.mockResolvedValue(existingProfile);
     mockUpdateExpertProfile.mockResolvedValue(existingProfile);
-    await render(<ExpertApplicationScreen />);
+    await renderWithQuery(<ExpertApplicationScreen />);
 
     await fireEvent.press(await screen.findByText('Save Changes'));
 
@@ -172,7 +172,7 @@ describe('ExpertApplicationScreen', () => {
   it('shows an error alert when saving fails', async () => {
     mockFetchExpertProfile.mockResolvedValue(existingProfile);
     mockUpdateExpertProfile.mockRejectedValue(new Error('Server unavailable'));
-    await render(<ExpertApplicationScreen />);
+    await renderWithQuery(<ExpertApplicationScreen />);
 
     await fireEvent.press(await screen.findByText('Save Changes'));
     expect(Alert.alert).toHaveBeenCalledWith('Could not save', 'Server unavailable');

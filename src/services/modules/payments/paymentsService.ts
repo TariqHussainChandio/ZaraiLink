@@ -1,4 +1,5 @@
 import { apiFetch } from '../../api/client';
+import { idempotencyKeyFor, releaseIdempotencyKey } from '../../api/idempotency';
 import type { Payment, PaymentMethod, PaymentTransaction } from '../../../types/payments';
 
 /**
@@ -8,7 +9,14 @@ import type { Payment, PaymentMethod, PaymentTransaction } from '../../../types/
  * client-supplied `amount` outright.
  */
 export async function initiatePayment(orderId: string, method: PaymentMethod): Promise<Payment> {
-  return apiFetch('/api/v1/payments', { method: 'POST', body: { order_id: orderId, method } });
+  const body = { order_id: orderId, method };
+  const payment = await apiFetch<Payment>('/api/v1/payments', {
+    method: 'POST',
+    body,
+    idempotencyKey: idempotencyKeyFor('initiate-payment', body),
+  });
+  releaseIdempotencyKey('initiate-payment', body);
+  return payment;
 }
 
 export async function fetchPaymentById(paymentId: string): Promise<Payment> {

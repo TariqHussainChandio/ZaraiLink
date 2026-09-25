@@ -1,15 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
 import { Button, EmptyState, Input, LocationPicker, SelectField, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
-import { deleteFarm, fetchFarmById, updateFarm } from '../../services/modules/farmer/farmService';
-import { useReferenceDataStore } from '../../store/referenceDataStore';
+import { useDeleteFarm, useFarm, useUpdateFarm } from '../../hooks/api/farmer';
+import { useUnits } from '../../hooks/api/referenceData';
 import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
+import { errorMessage } from '../../utils/errorMessage';
 
 function buildFarmSchema(nameRequiredMessage: string) {
   return z.object({
@@ -26,26 +26,19 @@ function buildFarmSchema(nameRequiredMessage: string) {
 type FarmFormValues = z.infer<ReturnType<typeof buildFarmSchema>>;
 
 export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDetail'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { farmId } = route.params;
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const units = useReferenceDataStore(state => state.units);
-  const loadUnits = useReferenceDataStore(state => state.loadUnits);
-
-  useEffect(() => {
-    loadUnits();
-  }, [loadUnits]);
-
+  const { data: units = [] } = useUnits();
+  const { data: farm, isPending: loading, error, refetch } = useFarm(farmId);
+  const updateFarm = useUpdateFarm(farmId);
+  const removeFarm = useDeleteFarm();
+  const load = () => refetch();
   const areaUnits = useMemo(() => units.filter(u => u.applies_to === 'area'), [units]);
 
   const farmSchema = useMemo(
-    () => buildFarmSchema(t('farmer.farmDetail.nameRequiredError', 'Enter a farm name')),
-    [t],
+    () => buildFarmSchema('Enter a farm name'),
+    [],
   );
 
   const {
@@ -68,36 +61,25 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
     },
   });
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(false);
-    fetchFarmById(farmId)
-      .then(farm => {
-        reset({
-          name: farm.name,
-          area: farm.area !== null ? String(farm.area) : '',
-          landUnit: farm.land_unit,
-          notes: farm.notes ?? '',
-          country: farm.location?.country ?? null,
-          province: farm.location?.province ?? null,
-          city: farm.location?.city ?? null,
-        });
-      })
-      .catch(err => {
-        console.warn('[FarmDetailScreen] failed to load farm:', err);
-        setError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [farmId, reset]);
-
+  // Fill the form once, from the first copy of the farm; a later background refetch must not overwrite edits.
+  const filled = useRef(false);
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!farm || filled.current) return;
+    filled.current = true;
+    reset({
+      name: farm.name,
+      area: farm.area !== null ? String(farm.area) : '',
+      landUnit: farm.land_unit,
+      notes: farm.notes ?? '',
+      country: farm.location?.country ?? null,
+      province: farm.location?.province ?? null,
+      city: farm.location?.city ?? null,
+    });
+  }, [farm, reset]);
 
   const onSubmit = async (values: FarmFormValues) => {
-    setSubmitting(true);
     try {
-      await updateFarm(farmId, {
+      await updateFarm.mutateAsync({
         name: values.name,
         area: values.area ? Number(values.area) : null,
         landUnit: values.landUnit,
@@ -109,29 +91,28 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
       navigation.goBack();
     } catch (err) {
       Alert.alert(
-        t('farmer.farmDetail.updateFailedTitle', 'Failed to update farm'),
-        err instanceof Error ? err.message : String(err),
+        'Failed to update farm',
+        errorMessage(err),
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const onDelete = () => {
     Alert.alert(
-      t('farmer.farmDetail.deleteFarmAlertTitle', 'Delete farm'),
-      t(
-        'farmer.farmDetail.deleteFarmAlertMessage',
-        'This will also remove its recorded crops. This cannot be undone.',
-      ),
+      'Delete farm',
+      'This will also remove its recorded crops. This cannot be undone.',
       [
-        { text: t('common.cancel'), style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: t('farmer.farmDetail.deleteButton', 'Delete'),
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await deleteFarm(farmId);
-            navigation.popToTop();
+            try {
+              await removeFarm.mutateAsync(farmId);
+              navigation.popToTop();
+            } catch (err) {
+              Alert.alert('Failed to delete farm', errorMessage(err));
+            }
           },
         },
       ],
@@ -139,12 +120,12 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
   };
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && !farm) {
     return (
       <EmptyState
-        title={t('farmer.farmDetail.loadErrorTitle', "Couldn't load this farm")}
-        description={t('farmer.farmDetail.loadErrorDescription', 'Check your connection and try again.')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load this farm"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -157,7 +138,7 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
         name="name"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('farmer.farmDetail.farmNameLabel', 'Farm name')}
+            label="Farm name"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -180,7 +161,7 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
         name="area"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('farmer.farmDetail.areaLabel', 'Area')}
+            label="Area"
             keyboardType="numeric"
             value={value}
             onChangeText={onChange}
@@ -194,7 +175,7 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
         name="landUnit"
         render={({ field: { onChange, value } }) => (
           <SelectField
-            label={t('farmer.farmDetail.landUnitLabel', 'Land unit')}
+            label="Land unit"
             value={value}
             options={areaUnits.map(u => ({ id: u.code, label: u.label }))}
             onSelect={onChange}
@@ -207,7 +188,7 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
         name="notes"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('farmer.farmDetail.notesLabel', 'Notes')}
+            label="Notes"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -218,19 +199,19 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
       />
 
       <Button
-        label={t('farmer.farmDetail.cropsOnThisFarmButton', 'Crops on this Farm')}
+        label="Crops on this Farm"
         variant="secondary"
         onPress={() => navigation.navigate(HOME_ROUTES.CropList, { farmId })}
         style={styles.action}
       />
       <Button
-        label={t('farmer.farmDetail.saveChangesButton', 'Save Changes')}
-        loading={submitting}
+        label="Save Changes"
+        loading={updateFarm.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.action}
       />
       <Button
-        label={t('farmer.farmDetail.deleteFarmButton', 'Delete Farm')}
+        label="Delete Farm"
         variant="destructive"
         onPress={onDelete}
         style={styles.delete}

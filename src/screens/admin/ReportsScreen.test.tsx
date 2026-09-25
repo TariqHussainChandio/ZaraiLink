@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ReportsScreen } from './ReportsScreen';
 import {
   dismissReport,
@@ -105,7 +105,7 @@ describe('ReportsScreen', () => {
   it('defaults to the open filter and loads open reports', async () => {
     mockFetchReports.mockResolvedValue([report()]);
     mockFetchListingById.mockResolvedValue({ id: 'listing-1', title: 'Suspicious Tractor' });
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
 
     expect(mockFetchReports).toHaveBeenCalledWith('open');
     expect(await screen.findByText('Suspicious Tractor')).toBeTruthy();
@@ -115,13 +115,13 @@ describe('ReportsScreen', () => {
 
   it('shows an empty state when there are no reports', async () => {
     mockFetchReports.mockResolvedValue([]);
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
     expect(await screen.findByText('No reports in this status')).toBeTruthy();
   });
 
   it("shows a retry state when loading fails", async () => {
     mockFetchReports.mockRejectedValueOnce(new Error('offline'));
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
     expect(await screen.findByText("Couldn't load reports")).toBeTruthy();
 
     mockFetchReports.mockResolvedValueOnce([]);
@@ -131,7 +131,7 @@ describe('ReportsScreen', () => {
 
   it('switches filters and reloads with the new status', async () => {
     mockFetchReports.mockResolvedValue([]);
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
     await screen.findByText('No reports in this status');
 
     await fireEvent.press(screen.getByText('Resolved'));
@@ -144,7 +144,7 @@ describe('ReportsScreen', () => {
     mockFetchListingById.mockResolvedValue({ id: 'listing-1', title: 'Suspicious Tractor' });
     mockUpdateListingStatus.mockResolvedValue(undefined);
     mockResolveReport.mockResolvedValue(undefined);
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
     await screen.findByText('Suspicious Tractor');
 
     await fireEvent.press(screen.getByText('Remove Listing'));
@@ -158,7 +158,7 @@ describe('ReportsScreen', () => {
     mockFetchAllProfiles.mockResolvedValue([{ id: 'user-9', full_name: 'Unruly Umar' }]);
     mockSetProfileSuspended.mockResolvedValue(undefined);
     mockResolveReport.mockResolvedValue(undefined);
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
     await screen.findByText('Unruly Umar');
 
     await fireEvent.press(screen.getByText('Suspend User'));
@@ -172,7 +172,7 @@ describe('ReportsScreen', () => {
     mockFetchReviewById.mockResolvedValue({ id: 'review-1', comment: 'Terrible seller' });
     mockDeleteReview.mockResolvedValue(undefined);
     mockResolveReport.mockResolvedValue(undefined);
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
     await screen.findByText('Terrible seller');
 
     await fireEvent.press(screen.getByText('Delete Review'));
@@ -185,7 +185,7 @@ describe('ReportsScreen', () => {
     mockFetchReports.mockResolvedValue([report()]);
     mockFetchListingById.mockResolvedValue({ id: 'listing-1', title: 'Suspicious Tractor' });
     mockDismissReport.mockResolvedValue(undefined);
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
     await screen.findByText('Suspicious Tractor');
 
     await fireEvent.press(screen.getByText('Dismiss'));
@@ -196,7 +196,7 @@ describe('ReportsScreen', () => {
   it('falls back to a content-unavailable preview when the target lookup fails', async () => {
     mockFetchReports.mockResolvedValue([report()]);
     mockFetchListingById.mockRejectedValue(new Error('not found'));
-    await render(<ReportsScreen />);
+    await renderWithQuery(<ReportsScreen />);
 
     expect(await screen.findByText('(content unavailable — may have been removed)')).toBeTruthy();
   });
