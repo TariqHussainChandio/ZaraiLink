@@ -1,0 +1,962 @@
+{
+ "GET /api/v1/admin/audit-logs": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/orders": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/reports": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/admin/reports/{report_id}/dismiss": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/admin/reports/{report_id}/resolve": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/stats": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/users": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/admin/users/{profile_id}/role": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/admin/users/{profile_id}/suspend": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/analytics/admin": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/analytics/dealer": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/analytics/expert": {
+  "kind": "roles",
+  "roles": [
+   "expert"
+  ]
+ },
+ "GET /api/v1/analytics/farmer": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "POST /api/v1/consultations": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/consultations/assigned": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/consultations/mine": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/consultations/{consultation_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/consultations/{consultation_id}/images": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/consultations/{consultation_id}/messages": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/consultations/{consultation_id}/messages": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/consultations/{consultation_id}/status": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/dealer/inventory": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/dealer/inventory": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/dealer/inventory/listings": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "DELETE /api/v1/dealer/inventory/{inventory_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/dealer/inventory/{inventory_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "PATCH /api/v1/dealer/inventory/{inventory_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/dealer/inventory/{inventory_id}/adjust": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/dealer/inventory/{inventory_id}/transactions": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/dealer/stores": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/dealer/stores": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "DELETE /api/v1/dealer/stores/{store_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/dealer/stores/{store_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "PATCH /api/v1/dealer/stores/{store_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/dealer/suppliers": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/dealer/suppliers": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "DELETE /api/v1/dealer/suppliers/{supplier_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/dealer/suppliers/{supplier_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "PATCH /api/v1/dealer/suppliers/{supplier_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/disease/cases": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/disease/cases/{disease_case_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/disease/predict": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/expert": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/expert/admin": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/expert/admin/{expert_id}": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/expert/admin/{expert_id}/document-url": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/expert/admin/{expert_id}/verification": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/expert/application": {
+  "kind": "roles",
+  "roles": [
+   "expert"
+  ]
+ },
+ "POST /api/v1/expert/application": {
+  "kind": "roles",
+  "roles": [
+   "expert"
+  ]
+ },
+ "GET /api/v1/expert/me": {
+  "kind": "roles",
+  "roles": [
+   "expert"
+  ]
+ },
+ "GET /api/v1/expert/{expert_id}": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "DELETE /api/v1/farmer/crops/{farm_crop_id}": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "GET /api/v1/farmer/crops/{farm_crop_id}": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/farmer/crops/{farm_crop_id}": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "GET /api/v1/farmer/farms": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "POST /api/v1/farmer/farms": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "DELETE /api/v1/farmer/farms/{farm_id}": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "GET /api/v1/farmer/farms/{farm_id}": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/farmer/farms/{farm_id}": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "GET /api/v1/farmer/farms/{farm_id}/crops": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "POST /api/v1/farmer/farms/{farm_id}/crops": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "GET /api/v1/farmer/profile": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "PUT /api/v1/farmer/profile": {
+  "kind": "roles",
+  "roles": [
+   "farmer"
+  ]
+ },
+ "GET /api/v1/marketplace/categories": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/marketplace/categories": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "DELETE /api/v1/marketplace/categories/{category_id}": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/marketplace/categories/{category_id}": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/marketplace/crops": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/marketplace/listings": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/marketplace/listings": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/marketplace/listings/moderation": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "POST /api/v1/marketplace/listings/view-counts": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "DELETE /api/v1/marketplace/listings/{listing_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/marketplace/listings/{listing_id}": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/marketplace/listings/{listing_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/marketplace/listings/{listing_id}/status": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "POST /api/v1/marketplace/listings/{listing_id}/views": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/messaging/conversations": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/messaging/conversations": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/messaging/conversations/{conversation_id}/messages": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/messaging/conversations/{conversation_id}/messages": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/messaging/conversations/{conversation_id}/read": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/messaging/messages/{message_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/messaging/messages/{message_id}/redact": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/notifications": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/notifications/read-all": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/notifications/unread-count": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/notifications/{notification_id}/read": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/orders": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/orders/checkout": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/orders/{order_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/orders/{order_id}/status": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/orders/{order_id}/status-history": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/payments": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/payments/by-order/{order_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/payments/{payment_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/payments/{payment_id}/failed": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/payments/{payment_id}/received": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/payments/{payment_id}/transactions": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "PATCH /api/v1/profile": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "DELETE /api/v1/profile/me": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/reference-data/currencies": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/reference-data/units": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/reference-data/{table}/rows": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/reference-data/{table}/rows": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "DELETE /api/v1/reference-data/{table}/rows/{row_id}": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/reference-data/{table}/rows/{row_id}": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "POST /api/v1/reviews": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/reviews/by-consultation/{consultation_id}": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/reviews/by-expert/{expert_id}": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/reviews/by-listing/{listing_id}": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/reviews/by-order/{order_id}": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/reviews/by-seller/{seller_id}": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/reviews/consultation": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "DELETE /api/v1/reviews/{review_id}": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/reviews/{review_id}": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /health": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /health/live": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /health/ready": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /version": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ }
+}

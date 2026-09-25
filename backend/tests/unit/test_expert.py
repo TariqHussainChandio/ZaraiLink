@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.auth import AuthenticatedUser
@@ -11,15 +12,17 @@ client = TestClient(app)
 ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok")
 
 
-def test_document_url_returns_none_when_no_verification_exists():
+@pytest.mark.asyncio
+async def test_document_url_returns_none_when_no_verification_exists():
     with patch(
         "app.services.expert_service.fetch_expert_for_admin_by_id",
         return_value={"expert_verifications": []},
     ):
-        assert service.get_document_url(ADMIN, "expert-1") is None
+        assert await service.get_document_url(ADMIN, "expert-1") is None
 
 
-def test_document_url_uses_newest_verifications_document_path_not_a_client_supplied_one():
+@pytest.mark.asyncio
+async def test_document_url_uses_newest_verifications_document_path_not_a_client_supplied_one():
     expert = {
         "expert_verifications": [
             {"document_url": "expert-1/newest.pdf", "created_at": "2026-02-01T00:00:00Z"},
@@ -29,7 +32,7 @@ def test_document_url_uses_newest_verifications_document_path_not_a_client_suppl
         with patch(
             "app.services.expert_service.repo.create_document_signed_url", return_value="https://signed/newest.pdf"
         ) as mock_sign:
-            url = service.get_document_url(ADMIN, "expert-1")
+            url = await service.get_document_url(ADMIN, "expert-1")
 
     mock_sign.assert_called_once_with(ADMIN.access_token, "expert-1/newest.pdf")
     assert url == "https://signed/newest.pdf"

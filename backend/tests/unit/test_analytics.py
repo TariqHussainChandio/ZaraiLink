@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.auth import AuthenticatedUser, get_current_user
@@ -12,7 +13,8 @@ FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access
 DEALER = AuthenticatedUser(id="dealer-1", email="d@x.com", role="dealer", access_token="tok2")
 
 
-def test_farmer_analytics_counts_only_completed_orders_as_sales():
+@pytest.mark.asyncio
+async def test_farmer_analytics_counts_only_completed_orders_as_sales():
     orders = [
         {"status": "completed", "total": 100, "order_items": []},
         {"status": "pending", "total": 999, "order_items": []},  # must NOT count toward sales
@@ -20,27 +22,64 @@ def test_farmer_analytics_counts_only_completed_orders_as_sales():
     with patch("app.services.analytics_service.farmer_repository.fetch_farms", return_value=[]):
         with patch("app.services.analytics_service.orders_repo.fetch_orders_for_user", return_value=orders):
             with patch("app.services.analytics_service.consultations_repo.fetch_for_user", return_value=[]):
-                with patch("app.services.analytics_service.repo.fetch_own_listing_ids", return_value=[]):
+                with patch("app.services.analytics_service.repo.fetch_own_listings", return_value=[]):
                     with patch(
                         "app.services.analytics_service.marketplace_repository.fetch_listing_view_counts",
                         return_value={},
                     ):
-                        result = service.fetch_farmer_analytics(FARMER)
+                        result = await service.fetch_farmer_analytics(FARMER)
 
     assert result["totalSales"] == 100
     assert result["totalOrders"] == 2
+    assert result["pendingOrders"] == 1
+    assert result["activeListings"] == 0
 
 
-def test_dealer_analytics_takes_absolute_value_of_signed_sale_transactions():
-    sale_tx = [{"quantity": -4, "created_at": "2026-01-15T00:00:00Z"}, {"quantity": -2, "created_at": "2026-01-20T00:00:00Z"}]
+@pytest.mark.asyncio
+async def test_farmer_analytics_counts_only_active_listings_and_pending_orders():
+    listings = [
+        {"id": "l1", "status": "active"},
+        {"id": "l2", "status": "inactive"},
+        {"id": "l3", "status": "sold"},
+        {"id": "l4", "status": "active"},
+    ]
+    orders = [
+        {"status": "pending", "total": 1, "order_items": []},
+        {"status": "accepted", "total": 1, "order_items": []},
+    ]
+    with (
+        patch("app.services.analytics_service.farmer_repository.fetch_farms", return_value=[]),
+        patch("app.services.analytics_service.orders_repo.fetch_orders_for_user", return_value=orders),
+        patch("app.services.analytics_service.consultations_repo.fetch_for_user", return_value=[]),
+        patch("app.services.analytics_service.repo.fetch_own_listings", return_value=listings),
+        patch(
+            "app.services.analytics_service.marketplace_repository.fetch_listing_view_counts", return_value={}
+        ) as views,
+    ):
+        result = await service.fetch_farmer_analytics(FARMER)
+
+    assert result["activeListings"] == 2
+    assert result["pendingOrders"] == 1
+    views.assert_awaited_once_with("tok", ["l1", "l2", "l3", "l4"])
+
+
+@pytest.mark.asyncio
+async def test_dealer_analytics_takes_absolute_value_of_signed_sale_transactions():
+    sale_tx = [
+        {"quantity": -4, "created_at": "2026-01-15T00:00:00Z"},
+        {"quantity": -2, "created_at": "2026-01-20T00:00:00Z"},
+    ]
     with patch("app.services.analytics_service.orders_repo.fetch_orders_for_user", return_value=[]):
         with patch("app.services.analytics_service.dealer_repository.fetch_inventory", return_value=[]):
             with patch("app.services.analytics_service.dealer_repository.fetch_stores", return_value=[]):
                 with patch("app.services.analytics_service.dealer_repository.fetch_suppliers", return_value=[]):
-                    with patch(
-                        "app.services.analytics_service.repo.fetch_dealer_sale_transactions", return_value=sale_tx
+                    with (
+                        patch(
+                            "app.services.analytics_service.repo.fetch_dealer_sale_transactions", return_value=sale_tx
+                        ),
+                        patch("app.services.analytics_service.repo.fetch_own_listings", return_value=[]),
                     ):
-                        result = service.fetch_dealer_analytics(DEALER)
+                        result = await service.fetch_dealer_analytics(DEALER)
 
     assert result["inventoryMovement"] == [{"month": "2026-01", "value": 6}]
 

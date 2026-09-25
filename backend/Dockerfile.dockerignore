@@ -1,0 +1,8 @@
+# Picked up by BuildKit next to backend/Dockerfile because the build context is the repo root.
+**
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/app
+!scripts/fetch_model_weights.py
+**/__pycache__
+**/*.pyc

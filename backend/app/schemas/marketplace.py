@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from .common import Location
+
 ListingStatus = Literal["active", "inactive", "sold"]
 
 
@@ -55,3 +57,60 @@ class UpdateListingStatusRequest(BaseModel):
 
 class ViewCountsRequest(BaseModel):
     listing_ids: list[str]
+
+
+# ---- response models (P7 7A)
+
+
+class Category(BaseModel):
+    id: str
+    name: str
+    slug: str
+    icon: str | None = None
+    created_at: str
+
+
+class CategoryRef(BaseModel):
+    id: str
+    name: str
+    slug: str
+
+
+class OwnerRef(BaseModel):
+    id: str
+    full_name: str
+    avatar_url: str | None = None
+
+
+class Crop(BaseModel):
+    id: str
+    name: str
+    category: str | None = None
+    created_at: str
+
+
+class Listing(BaseModel):
+    id: str
+    owner_id: str
+    category_id: str | None = None
+    title: str
+    description: str | None = None
+    price: float
+    unit: str
+    quantity: float
+    images: list[str]
+    status: ListingStatus
+    created_at: str
+    updated_at: str
+    crop_compatibility: list[str]
+    brand: str | None = None
+    condition: str | None = None
+    location: Location | None = None
+    seller_role: str | None = None
+
+
+class ListingWithRelations(Listing):
+    """Browse, detail and moderation reads embed the category and the owner; create and update do not."""
+
+    category: CategoryRef | None = None
+    owner: OwnerRef | None = None

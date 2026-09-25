@@ -45,5 +45,7 @@
     "final_test_accuracy": 0.9981,
     "training_history_stage1_best_val_acc": 0.9752,
     "training_history_stage2_best_val_acc": 0.9981,
-    "last_trained_on": "2026-09-19 18:07:03"
+    "last_trained_on": "2026-09-19 18:07:03",
+    "weights_source_url": "https://github.com/TariqHussainChandio/ZaraiLink/releases/download/model-weights-v1/model.pth",
+    "weights_sha256": "255cd33ae109bb763e462bff3c52321b67d5bcdbabce952f1f21ce9eb0270dd0"
 }

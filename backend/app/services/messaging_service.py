@@ -1,48 +1,58 @@
-from postgrest.exceptions import APIError
-
 from fastapi import HTTPException
+from postgrest.exceptions import APIError
 
 from ..core.auth import AuthenticatedUser
 from ..repositories import messaging_repository as repo
 from .audit_log_service import log_admin_action
 
 
-def fetch_conversations(user: AuthenticatedUser) -> list[dict]:
-    return repo.fetch_conversations(user.access_token, user.id)
+async def fetch_conversations(user: AuthenticatedUser) -> list[dict]:
+    return await repo.fetch_conversations(user.access_token, user.id)
 
 
-def fetch_messages(user: AuthenticatedUser, conversation_id: str) -> list[dict]:
-    return repo.fetch_messages(user.access_token, conversation_id)
+async def fetch_messages(user: AuthenticatedUser, conversation_id: str) -> list[dict]:
+    return await repo.fetch_messages(user.access_token, conversation_id)
 
 
-def send_message(user: AuthenticatedUser, conversation_id: str, body: str, attachments: list[str]) -> dict:
-    return repo.send_message(user.access_token, conversation_id, user.id, body, attachments)
+async def send_message(user: AuthenticatedUser, conversation_id: str, body: str, attachments: list[str]) -> dict:
+    # RLS (`messages_insert_participant`, see repo.send_message's comment) rejects a
+    # non-participant's insert at the database as a 42501 (insufficient_privilege), which
+    # postgrest-py raises as an APIError — left uncaught, that's an unhandled exception, so
+    # FastAPI's default handler turns it into a 500 instead of the 403 a non-participant should
+    # see. Found by the real-stack smoke matrix (P5a), which is the first test to call this as a
+    # genuine non-participant rather than mocking the repository layer.
+    try:
+        return await repo.send_message(user.access_token, conversation_id, user.id, body, attachments)
+    except APIError as exc:
+        if exc.code == "42501":
+            raise HTTPException(status_code=403, detail="You are not a participant in this conversation.") from exc
+        raise
 
 
-def find_or_create_conversation(user: AuthenticatedUser, other_user_id: str) -> dict:
-    existing = repo.find_conversation(user.access_token, user.id, other_user_id)
+async def find_or_create_conversation(user: AuthenticatedUser, other_user_id: str) -> dict:
+    existing = await repo.find_conversation(user.access_token, user.id, other_user_id)
     if existing:
         return existing
 
     try:
-        return repo.create_conversation(user.access_token, user.id, other_user_id)
+        return await repo.create_conversation(user.access_token, user.id, other_user_id)
     except APIError as exc:
         if exc.code == "23505":  # unique-index race: someone else created the same pair first
-            return find_or_create_conversation(user, other_user_id)
+            return await find_or_create_conversation(user, other_user_id)
         raise
 
 
-def fetch_message_by_id(user: AuthenticatedUser, message_id: str) -> dict:
-    message = repo.fetch_message_by_id(user.access_token, message_id)
+async def fetch_message_by_id(user: AuthenticatedUser, message_id: str) -> dict:
+    message = await repo.fetch_message_by_id(user.access_token, message_id)
     if message is None:
         raise HTTPException(status_code=404, detail="Message not found")
     return message
 
 
-def redact_message(user: AuthenticatedUser, message_id: str) -> None:
-    repo.redact_message(user.access_token, message_id)
-    log_admin_action(user, "redact_message", "messages", message_id)
+async def redact_message(user: AuthenticatedUser, message_id: str) -> None:
+    await repo.redact_message(user.access_token, message_id)
+    await log_admin_action(user, "redact_message", "messages", message_id)
 
 
-def mark_conversation_read(user: AuthenticatedUser, conversation_id: str) -> None:
-    repo.mark_conversation_read(user.access_token, conversation_id, user.id)
+async def mark_conversation_read(user: AuthenticatedUser, conversation_id: str) -> None:
+    await repo.mark_conversation_read(user.access_token, conversation_id, user.id)

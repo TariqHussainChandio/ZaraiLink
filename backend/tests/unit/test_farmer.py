@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.auth import AuthenticatedUser, get_current_user
@@ -13,17 +14,19 @@ FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access
 BUYER = AuthenticatedUser(id="buyer-1", email="b@x.com", role="buyer", access_token="tok2")
 
 
-def test_update_farm_only_touches_location_when_a_location_field_was_provided():
+@pytest.mark.asyncio
+async def test_update_farm_only_touches_location_when_a_location_field_was_provided():
     with patch("app.services.farmer_service.repo.update_farm", return_value={"id": "farm-1"}) as mock_update:
-        service.update_farm(FARMER, "farm-1", FarmUpdateInput(name="New Name"))
+        await service.update_farm(FARMER, "farm-1", FarmUpdateInput(name="New Name"))
     fields = mock_update.call_args[0][2]
     assert "location" not in fields
     assert fields == {"name": "New Name"}
 
 
-def test_update_farm_rebuilds_location_when_any_location_field_provided():
+@pytest.mark.asyncio
+async def test_update_farm_rebuilds_location_when_any_location_field_provided():
     with patch("app.services.farmer_service.repo.update_farm", return_value={"id": "farm-1"}) as mock_update:
-        service.update_farm(FARMER, "farm-1", FarmUpdateInput(city="City Nine"))
+        await service.update_farm(FARMER, "farm-1", FarmUpdateInput(city="City Nine"))
     fields = mock_update.call_args[0][2]
     assert fields["location"] == {"country": None, "province": None, "city": "City Nine"}
 

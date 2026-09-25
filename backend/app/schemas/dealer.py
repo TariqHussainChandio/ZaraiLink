@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from .common import Location
+
 DealerEntityStatus = Literal["active", "inactive"]
 InventoryTransactionType = Literal["addition", "reduction", "adjustment", "sale", "restock", "correction"]
 
@@ -65,3 +67,65 @@ class SupplierUpdateInput(BaseModel):
     products_supplied: str | None = None
     notes: str | None = None
     status: DealerEntityStatus | None = None
+
+
+# ---- response models (P7 7A): shapes proven against the real API, see tests/integration/smoke/test_smoke_contract.py
+
+
+class ListingSummary(BaseModel):
+    id: str
+    title: str
+
+
+class InventoryItem(BaseModel):
+    id: str
+    dealer_id: str
+    listing_id: str | None = None
+    stock_quantity: float
+    unit: str
+    purchase_cost: float | None = None
+    selling_price: float | None = None
+    min_stock_threshold: float
+    created_at: str
+    updated_at: str
+
+
+class InventoryItemWithListing(InventoryItem):
+    """The list and detail reads embed the linked listing; create, update and adjust return the bare row."""
+
+    listing: ListingSummary | None = None
+
+
+class InventoryTransaction(BaseModel):
+    id: str
+    inventory_id: str
+    type: InventoryTransactionType
+    quantity: float
+    actor: str | None = None
+    notes: str | None = None
+    created_at: str
+
+
+class DealerStore(BaseModel):
+    id: str
+    dealer_id: str
+    name: str
+    address: str | None = None
+    location: Location | None = None
+    contact: str | None = None
+    opening_info: str | None = None
+    status: DealerEntityStatus
+    created_at: str
+    updated_at: str
+
+
+class Supplier(BaseModel):
+    id: str
+    dealer_id: str
+    name: str
+    contact: str | None = None
+    products_supplied: str | None = None
+    notes: str | None = None
+    status: DealerEntityStatus
+    created_at: str
+    updated_at: str

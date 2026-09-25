@@ -1,9 +1,9 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from postgrest.exceptions import APIError
-import pytest
 
 from app.core.auth import AuthenticatedUser, get_current_user
 from app.main import app
@@ -17,33 +17,36 @@ FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access
 ITEM = {"id": "inv-1", "dealer_id": DEALER.id, "stock_quantity": 10}
 
 
-def test_adjust_stock_delegates_to_the_atomic_rpc():
+@pytest.mark.asyncio
+async def test_adjust_stock_delegates_to_the_atomic_rpc():
     # The read-check-write itself happens inside `public.adjust_stock` (a Postgres function,
     # validated separately against a real local database — not provable via a mock); this only
     # checks the service passes the call through with the right arguments and returns its result.
     with patch("app.services.dealer_service.repo.adjust_stock", return_value={"stock_quantity": 15}) as mock_rpc:
-        result = service.adjust_stock(DEALER.access_token, "inv-1", "addition", 5, DEALER.id, None)
+        result = await service.adjust_stock(DEALER.access_token, "inv-1", "addition", 5, DEALER.id, None)
 
     mock_rpc.assert_called_once_with(DEALER.access_token, "inv-1", "addition", 5, DEALER.id, None)
     assert result == {"stock_quantity": 15}
 
 
-def test_adjust_stock_rejects_going_negative():
+@pytest.mark.asyncio
+async def test_adjust_stock_rejects_going_negative():
     # `public.adjust_stock` raises with SQLSTATE P0001 when the requested change would take
     # stock below zero — the service must translate that into a 422, not an unhandled 500.
     negative_stock_error = APIError({"message": "Stock quantity cannot go below zero", "code": "P0001"})
     with patch("app.services.dealer_service.repo.adjust_stock", side_effect=negative_stock_error):
         with pytest.raises(HTTPException) as exc_info:
-            service.adjust_stock(DEALER.access_token, "inv-1", "sale", 999, DEALER.id, None)
+            await service.adjust_stock(DEALER.access_token, "inv-1", "sale", 999, DEALER.id, None)
     assert exc_info.value.status_code == 422
 
 
-def test_adjust_stock_rejects_missing_inventory_item():
+@pytest.mark.asyncio
+async def test_adjust_stock_rejects_missing_inventory_item():
     # `public.adjust_stock` raises with SQLSTATE P0002 when no such inventory row exists.
     not_found_error = APIError({"message": "Inventory item not found", "code": "P0002"})
     with patch("app.services.dealer_service.repo.adjust_stock", side_effect=not_found_error):
         with pytest.raises(HTTPException) as exc_info:
-            service.adjust_stock(DEALER.access_token, "missing", "sale", 1, DEALER.id, None)
+            await service.adjust_stock(DEALER.access_token, "missing", "sale", 1, DEALER.id, None)
     assert exc_info.value.status_code == 404
 
 

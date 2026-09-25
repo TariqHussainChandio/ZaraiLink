@@ -27,7 +27,9 @@ def test_list_listings_passes_owner_id_filter_through_to_the_service():
 def test_moderation_route_matched_before_generic_listing_id_route():
     app.dependency_overrides[get_current_user] = lambda: ADMIN
     try:
-        with patch("app.api.v1.endpoints.marketplace.service.fetch_all_listings_for_moderation", return_value=[]) as mock_fetch:
+        with patch(
+            "app.api.v1.endpoints.marketplace.service.fetch_all_listings_for_moderation", return_value=[]
+        ) as mock_fetch:
             response = client.get("/api/v1/marketplace/listings/moderation")
     finally:
         app.dependency_overrides.pop(get_current_user, None)

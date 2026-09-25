@@ -19,7 +19,7 @@ async def create_case(
     request: CreateCaseRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> DiseaseCaseResponse:
-    case = disease_service.create_case(user, request.crop_id, request.image_url)
+    case = await disease_service.create_case(user, request.crop_id, request.storage_path)
     return DiseaseCaseResponse(**case)
 
 
@@ -28,7 +28,7 @@ async def get_case(
     disease_case_id: str,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> DiseaseCaseWithPredictionResponse:
-    case = disease_service.get_case_for_user(user, disease_case_id)
+    case = await disease_service.get_case_for_user(user, disease_case_id)
     return DiseaseCaseWithPredictionResponse(**case)
 
 

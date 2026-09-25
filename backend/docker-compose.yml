@@ -1,0 +1,26 @@
+# P5 (item 9): runs the API in a container on the local Supabase stack's own Docker network, so it
+# reaches Auth/PostgREST through the Kong gateway by container name (inside a container `localhost`
+# is the container itself). Start the stack first: `npx supabase start`.
+#   cd backend && docker compose up --build
+# Keys come from your shell or backend/.env (SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY); the URL is
+# set here on purpose, because backend/.env holds the host-side http://127.0.0.1:54321.
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      SUPABASE_URL: http://supabase_kong_ZaraiLink_V1:8000
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY (npx supabase status -o env)}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY}
+      ENVIRONMENT: development
+    networks:
+      - supabase
+
+networks:
+  supabase:
+    # Created and owned by `supabase start` (project_id in supabase/config.toml), not by this file.
+    name: supabase_network_ZaraiLink_V1
+    external: true

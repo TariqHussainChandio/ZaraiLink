@@ -62,6 +62,13 @@ class DiseaseClassifier:
         from PIL import Image
         from torchvision import transforms
 
+        # Security fix H2/C2: reject decompression bombs (a small file that decodes to an
+        # enormous pixel grid) before Pillow allocates for it. 40M pixels is generous for a phone
+        # photo (a 20MP camera shot is ~20M) but well under what a bomb tries to allocate. Raises
+        # `Image.DecompressionBombError`, caught alongside `UnidentifiedImageError` by the one
+        # caller of this method (services/disease_service.py:predict).
+        Image.MAX_IMAGE_PIXELS = 40_000_000
+
         transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
@@ -81,9 +88,27 @@ class DiseaseClassifier:
         return settings.model_classes[int(index.item())], float(confidence.item())
 
 
-# Lazy singleton, loaded once per process — a real fine-tuned MobileNetV2 (PlantVillage, 38
-# classes, ~99.8% validation accuracy) now lives at model.pth; class_names/model_version are
-# read from model_metadata.json via core/config.py, not hardcoded here. Retraining the model
-# only requires dropping in new checkpoint/metadata files and restarting the process — no code
-# change needed, same as before.
-classifier = DiseaseClassifier()
+# P5 (item 3): loading used to happen at *import time* (a bare `classifier = DiseaseClassifier()`
+# here), which meant importing this module — which every disease-related import chain does,
+# transitively including plenty of tests that never touch a classifier — paid the full checkpoint
+# load cost (and, before the real weights existed, built a MobileNetV2 graph) before the app even
+# started serving. Loading now happens on first actual use instead: `get_classifier()` is
+# idempotent, so it's safe to call from the FastAPI lifespan (the normal path, paying the cost once
+# at startup rather than on the first request) or lazily from anywhere else (a standalone test
+# importing this module directly, never having run the lifespan) without loading twice.
+_classifier: DiseaseClassifier | None = None
+
+
+def load_classifier() -> DiseaseClassifier:
+    global _classifier
+    if _classifier is None:
+        # A real fine-tuned MobileNetV2 (PlantVillage, 38 classes, ~99.8% validation accuracy) now
+        # lives at model.pth; class_names/model_version are read from model_metadata.json via
+        # core/config.py, not hardcoded here. Retraining only requires dropping in new
+        # checkpoint/metadata files and restarting the process — no code change needed.
+        _classifier = DiseaseClassifier()
+    return _classifier
+
+
+def get_classifier() -> DiseaseClassifier:
+    return load_classifier()

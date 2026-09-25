@@ -8,8 +8,9 @@ province/city/phone_codes were dropped in Phase 0.5b for free-text fields). Two 
    documented), and admin-write routes reject an unauthenticated caller.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.auth import AuthenticatedUser
@@ -24,12 +25,15 @@ ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_to
 # --- service layer -----------------------------------------------------------------------
 
 
-def test_create_row_logs_admin_action_with_new_state():
+@pytest.mark.asyncio
+async def test_create_row_logs_admin_action_with_new_state():
     with patch(
         "app.services.reference_data_service.repo.create_row", return_value={"id": "row-1", "code": "PKR"}
     ) as mock_create:
         with patch("app.services.reference_data_service.log_admin_action") as mock_log:
-            result = service.create_row(ADMIN, "currencies", {"code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"})
+            result = await service.create_row(
+                ADMIN, "currencies", {"code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"}
+            )
 
     mock_create.assert_called_once_with(
         ADMIN.access_token, "currencies", {"code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"}
@@ -44,10 +48,11 @@ def test_create_row_logs_admin_action_with_new_state():
     assert result == {"id": "row-1", "code": "PKR"}
 
 
-def test_delete_row_logs_admin_action():
+@pytest.mark.asyncio
+async def test_delete_row_logs_admin_action():
     with patch("app.services.reference_data_service.repo.delete_row") as mock_delete:
         with patch("app.services.reference_data_service.log_admin_action") as mock_log:
-            service.delete_row(ADMIN, "units", "unit-1")
+            await service.delete_row(ADMIN, "units", "unit-1")
 
     mock_delete.assert_called_once_with(ADMIN.access_token, "units", "unit-1")
     mock_log.assert_called_once_with(ADMIN, "delete_reference_data", "units", "unit-1")
@@ -73,6 +78,9 @@ def test_create_row_without_authorization_header_is_rejected():
 
 
 def test_generic_rows_read_is_public_too():
-    with patch("app.api.v1.endpoints.reference_data.service.fetch_rows", return_value=[{"id": "1"}]):
+    with patch(
+        "app.api.v1.endpoints.reference_data.service.fetch_rows",
+        return_value=[{"id": "1", "code": "kg", "label": "Kilogram", "applies_to": None}],
+    ):
         response = client.get("/api/v1/reference-data/units/rows")
     assert response.status_code == 200

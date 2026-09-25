@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.auth import AuthenticatedUser
@@ -11,9 +12,10 @@ client = TestClient(app)
 USER = AuthenticatedUser(id="user-1", email="u@x.com", role="farmer", access_token="tok")
 
 
-def test_update_profile_writes_only_to_callers_own_row():
+@pytest.mark.asyncio
+async def test_update_profile_writes_only_to_callers_own_row():
     with patch("app.services.profile_service.repo.update_profile") as mock_update:
-        service.update_profile(USER, {"full_name": "New Name"})
+        await service.update_profile(USER, {"full_name": "New Name"})
     mock_update.assert_called_once_with(USER.access_token, USER.id, {"full_name": "New Name"})
 
 
