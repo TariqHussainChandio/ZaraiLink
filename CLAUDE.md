@@ -25,6 +25,6 @@ work and a different agent using a verifier skill to sign it off (rule 5).
 - Prefer the dedicated file tools over shell equivalents; use the Context7 and Supabase MCP servers for current
   library docs and schema inspection.
 - Plan mode for anything touching auth, RLS, payments, or migrations; the plan is approved before code changes.
-- Keep the plan of record current: after a phase or a decision, update `docs/process/standardization-plan.md`
+- Keep the plan of record current: after a phase or a decision, update `docs/plan.md` (built from `docs/srds.md`)
   and the published Field Manual artifact.
 - Run long scans (Semgrep, a full `supabase start`) in the background and keep working.

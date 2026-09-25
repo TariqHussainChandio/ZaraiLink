@@ -55,10 +55,7 @@ Status legend: `[ ]` not started · `[~]` partially covered by existing scaffold
   and frontend test coverage going from one smoke test to **734 tests across 132 suites**
   (backend: 112, up from 106). CI is now proven against real merged PRs, not just configured. A
   separate, currently **uncommitted** pass in the working tree right now reconciles 6
-  documentation files against this new state (Module 23) and retrofits localization across 62
-  of 64 screens (Module 5) — one real, newly-found gap survived that retrofit:
-  `SellerDashboard.tsx` (the shared component Farmer's and Dealer's dashboards delegate to) has
-  no translation calls at all.
+  documentation files against this new state (Module 23).
 
 ---
 
@@ -66,7 +63,7 @@ Status legend: `[ ]` not started · `[~]` partially covered by existing scaffold
 
 | Phase | Modules | Goal |
 |---|---|---|
-| 1 — Foundation | 1. Design System · 2. Navigation & App Shell · 3. Auth · 4. Database Schema · 5. Reference Data & Localization | App boots, users can sign up/in, role-based shell renders, geography/units come from data not hardcoding |
+| 1 — Foundation | 1. Design System · 2. Navigation & App Shell · 3. Auth · 4. Database Schema · 5. Reference Data | App boots, users can sign up/in, role-based shell renders, geography/units come from data not hardcoding |
 | 2 — Marketplace & Sellers | 6. Marketplace · 7. Farmer Module · 8. Dealer Module | Farmers/dealers can list and manage agricultural products; buyers can browse |
 | 3 — Commerce | 9. Orders & Cart · 10. Payments · 11. Reviews & Ratings | Buyers can order, pay (no escrow), and review completed purchases |
 | 4 — Engagement | 12. Messaging · 13. Notifications · 16. Role Dashboards & Analytics · 17. Profile & Settings | Users can talk to each other, stay informed, and manage their account |
@@ -241,11 +238,10 @@ with RLS policies. Grouped by domain; existing tables are marked done, everythin
 
 Table count is now **32** (down from 36) and migration count is now **35** (up from 28) after these additions and the geography-table drop. All 7 were Docker-validated per the standing workflow before being described as done here; not independently re-validated again in this specific documentation-update pass (this pass re-read the migration SQL and cross-checked it against current code, but did not spin up a fresh local Postgres container).
 
-## Module 5 — Reference Data & Localization
-**Folders:** `src/services/modules/reference-data/` (new), `src/store/` (`referenceDataStore.ts`, new), `src/localization/` (new), `src/components/ui/` (SelectField, PhoneInput), `src/screens/admin/`
+## Module 5 — Reference Data
+**Folders:** `src/services/modules/reference-data/` (new), `src/store/` (`referenceDataStore.ts`, new), `src/components/ui/` (SelectField, PhoneInput), `src/screens/admin/`
 **Depends on:** Module 4 (reference-data tables)
-**Goal:** stop hardcoding geography/units/currencies in the app (§22), and support English +
-Urdu with a language switch (§23) without touching backend business logic.
+**Goal:** stop hardcoding geography/units/currencies in the app (§22) without touching backend business logic.
 
 - [x] `src/services/modules/reference-data/referenceDataService.ts` — `fetchCountries`, `fetchProvinces(countryId)`, `fetchCities(provinceId)`, `fetchPhoneCodes`, `fetchCurrencies`, `fetchUnits`
 - [x] `src/store/referenceDataStore.ts` — cache reference lists client-side (they change rarely); countries/phone-codes/currencies/units cached once each, provinces/cities cached per parent id
@@ -255,18 +251,12 @@ Urdu with a language switch (§23) without touching backend business logic.
 - [~] `RegisterScreen` intentionally **not** wired to the location pickers — it only ever collected name/email/password/role (no free-text location field existed there to replace), and SRDS doesn't mandate collecting full address at signup. Address entry happens once via Edit Profile, consistent with the existing minimal-signup UX
 - [ ] Farm/store forms — Modules 7/8 haven't been built yet, so there's nothing to wire yet; those modules should reuse `SelectField`/the reference-data store when they land
 - [x] Phone number input formatted/stored as E.164 using `phone_codes` data (§6.2) — `PhoneInput` composes `+<calling_code><digits>`, validated against a standard E.164 regex; wired into `EditProfileScreen`. Only one calling code exists today (`+92`, from Module 4's seed), but the picker is built generically for when Module 18 adds more
-- [x] `src/localization/` — i18n setup (`i18next` + `react-i18next`, newly installed), `en.json` and `ur.json` string bundles, language persisted to `AsyncStorage` and restored on app boot (`initLanguage()` called from `App.tsx`)
-- [x] Language-selection control in `SettingsScreen.tsx` — real English/اردو toggle wired to `setLanguage()`, no longer a static "English" label
-- [~] Translation coverage is infrastructure-complete but **not retrofitted across every existing screen** — only the screens touched in this module (`SettingsScreen`, `EditProfileScreen`'s new fields) use `useTranslation()`/translation keys. Retrofitting the ~30 other screens' hardcoded strings is real but unbounded work; do it incrementally as those screens are next touched by their owning module, not as a one-shot pass here
 - [ ] Admin-side reference-data management screens live in Module 18 (Admin), not here — this module only consumes the data
-- Known limitation, not fixed here: i18next v4 JSON format relies on `Intl.PluralRules` for pluralization; none of the current keys use plurals so it's untested on-device. Revisit if/when a translation key needs plural forms (add `@formatjs/intl-pluralrules` polyfill if Hermes's build lacks it)
 
 **Validation:** the new migration was applied end-to-end in a throwaway local Docker Postgres container alongside the full existing migration history (per the standing workflow in memory), then a real profile-update was exercised as a simulated authenticated user (own-row write with `country_id`/`province_id`/`city_id` resolved via FK joins, phone stored as E.164) before pushing. **Pushed to the live linked Supabase project** — confirmed via `supabase db query --linked` that all 3 real existing profiles are untouched (new columns present and `null`, no dummy/demo data written).
 
 **Post-hoc note #2 additions:**
 - [x] **Scope reduction, user-directed**: `countries`/`provinces`/`cities`/`phone_codes` were dropped entirely (`20260901100000_freetext_location_and_phone.sql`, Module 4) — the geography reference-data approach this module built was seeded with only Pakistan, the literal "hardcoded" complaint it was meant to solve. `referenceDataService.ts` now only exposes `fetchCurrencies`/`fetchUnits`; `LocationPicker.tsx` became three plain free-text inputs (country/province/city, no cascading FK lookups) and `PhoneInput.tsx` dropped its calling-code dropdown for a single free-text field. This is a real, deliberate simplification of this module's original design, not an incomplete implementation of it.
-- [x] **Translation coverage — no longer just infrastructure-complete-but-unused**: a full i18n retrofit pass brought coverage from 2 screens (`SettingsScreen`, `EditProfileScreen`) to **62 of 64** screen files, with `en.json`/`ur.json` growing from 27 keys to 800+ lines each. This is currently **uncommitted**, sitting in the working tree. One real gap survived the retrofit: `SellerDashboard.tsx` (a shared component, not a screen file, so it fell outside the pass's own screen-by-screen scope check) still has zero `useTranslation()` calls, despite being what Farmer's and Dealer's `DashboardScreen.tsx` files actually render.
-- [x] The `i18next`/`Intl.PluralRules` limitation noted below was never hit in practice — none of the 800+ new keys needed plural forms either.
 
 ## Module 6 — Marketplace
 **Folders:** `src/screens/marketplace/`, `src/services/modules/marketplace/`, `src/store/` (`marketplaceStore.ts`), `src/components/features/marketplace/`, `src/components/ui/` (LocationPicker)
@@ -468,15 +458,14 @@ analytics from §38.
 
 ## Module 17 — Profile & Settings
 **Folders:** `src/screens/profile/`
-**Depends on:** Module 3, Module 5 (reference-data pickers, language)
+**Depends on:** Module 3, Module 5 (reference-data pickers)
 **Goal:** users can view/edit their own profile and account settings.
 
 - [x] `src/screens/profile/ViewProfileScreen.tsx`
 - [x] `src/screens/profile/EditProfileScreen.tsx` (name, phone, location, avatar upload)
-- [x] `src/screens/profile/SettingsScreen.tsx` (notifications, appearance, language, logout) — notification toggle now persists for real (`profiles.notifications_enabled`, Module 4 post-hoc addition, `20260901150000`), not the local-only stub this line originally described; a 3-way light/dark/system appearance selector was added on top of the language toggle, backed by a new persisted `themeStore` (not originally scoped in this module, but the natural home for it)
+- [x] `src/screens/profile/SettingsScreen.tsx` (notifications, appearance, logout) — notification toggle now persists for real (`profiles.notifications_enabled`, Module 4 post-hoc addition, `20260901150000`), not the local-only stub this line originally described; a 3-way light/dark/system appearance selector was added on top of the language toggle, backed by a new persisted `themeStore` (not originally scoped in this module, but the natural home for it)
 - [x] `src/screens/profile/ChangePasswordScreen.tsx`
 - [x] `EditProfileScreen.tsx` uses `<LocationPicker>` — originally country/province/city cascading `SelectField`s, now three plain free-text inputs after Module 5's post-hoc geography simplification — composing the display `location` string from whatever the user typed
-- [x] `SettingsScreen.tsx` language toggle wired to `react-i18next`'s `useTranslation`/`setLanguage()`
 - [ ] Role-specific profile extension fields surfaced here where they don't warrant their own screen (e.g. farmer experience blurb) — most role-specific data (farms, stores, expert credentials) stays in its owning module
 
 ## Module 18 — Admin Module

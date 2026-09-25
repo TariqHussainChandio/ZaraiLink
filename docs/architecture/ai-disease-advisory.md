@@ -61,22 +61,34 @@ presented as a specific cure for the predicted disease.
 
 ## Data flow
 
-1. Mobile uploads the photo directly to the public `disease-images` Storage bucket
-   (`supabase/migrations/20260901080000_disease_images_bucket.sql`), then calls
-   `POST /api/v1/disease/cases` (`diseaseService.createDiseaseCase`) with the resulting public URL.
-   The row itself is written backend-side via `disease_repository.create_case`, which uses the
-   service-role client — the original Module 4 migration's `disease_cases_insert_owner` RLS
-   policy still exists and would allow a direct client insert, but the app doesn't take that path;
-   the backend is the sole writer today (see the "Model integration" section of
-   [backend-architecture.md](backend-architecture.md) for why this domain is the one place
-   service-role is used).
+1. Mobile uploads the photo to the **private** `disease-images` Storage bucket
+   (`supabase/migrations/20260901080000_disease_images_bucket.sql`, made private by
+   `20260922080100_disease_images_private.sql` — security fix C2), then calls
+   `POST /api/v1/disease/cases` (`diseaseService.createDiseaseCase`) with the object's storage
+   **path**, never a URL. `CreateCaseRequest.storage_path` (`backend/app/schemas/disease.py`) is
+   regex-validated to a single `<folder>/<filename>` shape, and `disease_service.create_case`
+   additionally checks the folder segment equals the caller's own id — a client can never point a
+   case at another user's uploaded object. Previously the client sent the bucket's *public* URL
+   directly and predict() fetched it server-side; P0 proved that was a blind SSRF (the server
+   could be made to fetch its own gateway/itself). The row itself is written backend-side via
+   `disease_repository.create_case`, which uses the service-role client — the original Module 4
+   migration's `disease_cases_insert_owner` RLS policy still exists and would allow a direct
+   client insert, but the app doesn't take that path; the backend is the sole writer today (see
+   the "Model integration" section of [backend-architecture.md](backend-architecture.md) for why
+   this domain is the one place service-role is used). Every response (`DiseaseCaseResponse`)
+   carries `image_signed_url` — a short-lived signed URL minted fresh by
+   `disease_repository.create_signed_url`, never the stored path — matching the pattern already
+   used for `expert-documents` (`expert_repository.create_document_signed_url`).
 2. Mobile calls `POST /api/v1/disease/predict` with `{ disease_case_id }` (rate-limited to
    10/minute per IP — tighter than every other endpoint's 200/minute default, since this is the
    one call that actually runs model inference; see backend-architecture.md's
    "Request-level middleware" section).
-3. The backend (service-role) fetches the case, downloads the image by its public URL, runs
-   inference, and inserts the `disease_predictions` row — the mobile client never inserts
-   predictions directly (`disease_predictions` only grants `select` to `authenticated`, per the
+3. The backend (service-role) fetches the case, downloads the image through the Storage API by
+   its `storage_path` (`disease_repository.download_case_image` — never an outbound HTTP fetch of
+   a client-supplied value), rejects it before decoding if it's over 8 MB or exceeds Pillow's
+   decompression-bomb pixel limit, runs inference, and inserts the `disease_predictions` row — the
+   mobile client never inserts predictions directly (`disease_predictions` only grants `select` to
+   `authenticated`, per the
    original Module 4 migration's own comment).
 4. Mobile reads the joined case+prediction back via `GET /api/v1/disease/cases/{id}`
    (`diseaseService.fetchDiseaseCaseWithPrediction`) — backend-mediated like the other two calls,

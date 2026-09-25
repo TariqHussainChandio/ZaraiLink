@@ -6,11 +6,11 @@
 
 *Post-audit update #1: after this document was written, two further changes were made to the repository and this document was updated to track them (path references only — the underlying functional findings below were not re-audited beyond what's explicitly noted): (1) the `ios/` folder was deleted (the project isn't building for iOS right now — confirmed no other file depended on it first); (2) a full directory restructure was applied — `backend/app/api/*.py` → `api/v1/endpoints/*.py` behind a new aggregating `api/v1/router.py`, `ml/model.pth` → `ml/checkpoints/model.pth`, `services/disease_inference.py` → `services/ai_engine.py`, a new unused `repositories/base_repository.py` stub, backend tests moved to `tests/unit/` with a new `tests/conftest.py` stub, two new `.github/workflows/*.yml` CI stubs, and on the frontend: `components/{9 domains}` → `components/features/{9 domains}`, `services/{14 domains}` → `services/modules/{14 domains}`, `store/{4 subfolders}` flattened to `store/*.ts`, `hooks/` split into `hooks/{realtime,api}/`, and `navigation/*Navigator.tsx` → `navigation/stacks/`. The restructure was verified afterward: 106/106 backend `pytest` passing, 0 TypeScript errors, 0 ESLint errors, Jest passing — so the functional claims throughout this document (which predate the restructure) remain accurate; only file paths changed.*
 
-*Post-audit update #2 (this pass): a large amount of real, substantive work landed since update #1 — most of it in commit `e25772f` ("security hardening, business-logic fixes, UI/UX richness pass, and full frontend test coverage"), already on `main`, plus a separate CI-verification pass (`phase-6-ci-verification`, two merged PRs) and a currently-**uncommitted** documentation-reconciliation + localization retrofit sitting in the working tree right now. This update corrects every section below against the actual current repo (`git log`, `git diff`, live file contents) rather than re-running the original five-pass audit from scratch — the deep per-domain descriptions in §5–§20 were spot-checked and remain accurate; the numbers, statuses, and findings that changed are called out explicitly at each section. Headline changes, all independently verified in this pass:*
+*Post-audit update #2 (this pass): a large amount of real, substantive work landed since update #1 — most of it in commit `e25772f` ("security hardening, business-logic fixes, UI/UX richness pass, and full frontend test coverage"), already on `main`, plus a separate CI-verification pass (`phase-6-ci-verification`, two merged PRs) and a currently-**uncommitted** documentation-reconciliation pass sitting in the working tree right now. This update corrects every section below against the actual current repo (`git log`, `git diff`, live file contents) rather than re-running the original five-pass audit from scratch — the deep per-domain descriptions in §5–§20 were spot-checked and remain accurate; the numbers, statuses, and findings that changed are called out explicitly at each section. Headline changes, all independently verified in this pass:*
 - *Committed and confirmed live: `is_suspended` now enforced in RLS (`public.is_suspended()` gated into 24 tables' write policies), CORS now reads an `ALLOWED_ORIGINS` allowlist, rate limiting added (`slowapi`, 200/min default + 10/min override on `/disease/predict`), the `listing_views` self-inflation gap and `guard_messages_updates()` `search_path` gap are both closed, admin's write access to dealer inventory/stores/suppliers was closed to read-only oversight, the `AndroidManifest.xml` cleartext-traffic placeholder now has matching `manifestPlaceholders` in `build.gradle`, the three dead-tap interaction bugs (admin Orders, My Listings/Products, `RoleAwareAnalyticsScreen`) are all fixed, the Settings notification toggle now persists to a real `profiles.notifications_enabled` column, dark mode (light/dark/system) and camera capture (`utils/photoPicker.ts`) both now exist, `countries`/`provinces`/`cities`/`phone_codes` were deliberately dropped in favor of free-text fields (table count is now 32, not 36), and frontend test coverage went from one smoke test to **734 tests across 132 suites** (backend: 112 tests, up from 106) — `tsc`/`eslint`/`jest`/`pytest` all confirmed clean.
 - *Committed and confirmed live: CI is no longer an unverified stub — `gh run list` shows real GitHub Actions runs on `frontend-ci.yml`/`backend-ci.yml`/`migration-lint.yml` (a third workflow, new), including a deliberate break-then-fix round (lint, typecheck, and jest each independently broken and confirmed to fail CI, then fixed and confirmed green) before merging to `main`. Branch protection itself is not enabled — this repo's GitHub plan returns 403 on the branch-protection API — a plan-tier limit, not unfinished work.*
-- *Uncommitted, in the working tree right now: a full i18n retrofit (62 of 64 screen files now call `useTranslation()`, up from 2 of ~70; `en.json`/`ur.json` grew from 27 keys to 800+ lines each) and a documentation-reconciliation pass across 6 files (`docs/architecture/{authorization-model,backend-architecture,notifications,ai-disease-advisory}.md`, `docs/database/schema.md`, `docs/setup/DEVELOPMENT_SETUP.md`) that closes every doc-staleness finding this document previously flagged (§26/§27/BUG-10) — and in the process found and fixed a live cross-doc contradiction (a service-role-usage count) plus one independently stale `reviews` schema row that predated even the last audit.*
-- *Still open, unchanged from before: no real trained AI model (`model.pth` is still a 540-byte placeholder, still 503s), no real payment gateway, no push notifications, the Android release build still signs with the debug keystore, and the two leftover direct-Supabase reads (`authStore.fetchProfile`, `SellerDashboard`'s count queries) are both still present. One new, genuinely uncovered gap found this pass: `SellerDashboard.tsx` — the shared component Farmer's and Dealer's dashboards both delegate to — has zero `useTranslation()` calls despite being the highest-traffic screen for those two roles; it slipped through the otherwise-thorough i18n retrofit because it's a component, not a screen file.*
+- *Uncommitted, in the working tree right now: a documentation-reconciliation pass across 6 files (`docs/architecture/{authorization-model,backend-architecture,notifications,ai-disease-advisory}.md`, `docs/database/schema.md`, `docs/setup/DEVELOPMENT_SETUP.md`) that closes every doc-staleness finding this document previously flagged (§26/§27/BUG-10) — and in the process found and fixed a live cross-doc contradiction (a service-role-usage count) plus one independently stale `reviews` schema row that predated even the last audit.*
+- *Still open, unchanged from before: no real trained AI model (`model.pth` is still a 540-byte placeholder, still 503s), no real payment gateway, no push notifications, the Android release build still signs with the debug keystore, and the two leftover direct-Supabase reads (`authStore.fetchProfile`, `SellerDashboard`'s count queries) are both still present.*
 
 ---
 
@@ -20,8 +20,7 @@
 
 ```
 Overall Completion:   ~88%
-Frontend:             ~92%   (screens/navigation complete; i18n retrofit 62/64 screens done
-                               but uncommitted, one component-level gap remains — SellerDashboard)
+Frontend:             ~92%   (screens/navigation complete)
 Backend:               ~82%   (broad, well-tested REST API, CORS/rate-limiting hardened;
                                AI inference is still a placeholder)
 Database:              ~93%   (comprehensive RLS/migrations, suspension now enforced at the
@@ -56,7 +55,6 @@ These percentages are estimates derived from the evidence in this document, not 
 
 - **AI Disease Advisory**: the entire upload→case→predict→result pipeline is real end-to-end plumbing (frontend upload, backend endpoint, ownership checks, database rows) but `backend/app/ml/checkpoints/model.pth` is still a ~540-byte placeholder text file, not a real checkpoint; `torch.load()` on it is designed to fail, so `/api/v1/disease/predict` always returns HTTP 503 today — unchanged since the previous pass. Only 1 of 5 declared disease classes (`healthy`) has description/recommendation copy.
 - **Payments**: a complete manual/COD + bank-transfer attestation flow exists (buyer initiates, seller confirms), fully migrated to backend-mediated writes with server-derived amounts — but there is still no real payment-gateway/PSP integration (no such package in `requirements.txt`, no `provider` values beyond a free-text field).
-- **Localization**: massively advanced but not yet committed. The i18n mechanism (`react-i18next`, persisted language choice, working Settings toggle) is real, and as of the working tree right now 62 of 64 screen files call `useTranslation()` (up from 2 of ~70), with `en.json`/`ur.json` grown to 800+ lines each. The 2 remaining untranslated screens are thin role-dispatch wrappers with no strings of their own (`HomeDashboardScreen`, and the farmer/dealer dashboard screens that just render a shared component) — but that shared component, `SellerDashboard.tsx`, itself has zero `useTranslation()` calls, so Farmer's and Dealer's actual dashboard UI is still fully hardcoded English regardless of language setting. None of this retrofit is committed yet.
 - **Admin platform order oversight**: now fixed — `PlatformOrdersScreen` rows navigate to a real `OrderDetail` route.
 - **Farmer "My Listings" / Dealer "Products"**: now fixed — rows navigate cross-tab into `ListingDetail`.
 
@@ -66,7 +64,6 @@ These percentages are estimates derived from the evidence in this document, not 
 
 ### What is broken
 
-- `SellerDashboard.tsx` — untranslated despite the otherwise-thorough i18n retrofit (see "What is partially working" above); a real, newly-found gap, not previously flagged.
 - (Historical, now moot) iOS `Info.plist` had no `NSPhotoLibraryUsageDescription` key despite 8 files calling `launchImageLibrary` — this would have failed/crashed the image picker on a real iOS device. The `ios/` folder was subsequently deleted (the project isn't building for iOS right now); this will need re-fixing whenever iOS support returns.
 - All previously-listed "broken" items (admin Orders tap-through, My Listings/Products tap-through, `RoleAwareAnalyticsScreen`'s bad default, the undefined `usesCleartextTraffic` Gradle placeholder) are now **fixed** — see the corresponding items above and in §30's bug report.
 
@@ -90,13 +87,13 @@ All four items previously listed here are **fixed**: CORS now reads an allowlist
 
 ### Biggest UI/UX problems
 
-Cannot be fully assessed — this audit is static (source-code reading only); no emulator/simulator was run and no screenshots were reviewed (§20) beyond the on-device verification independently claimed for the Android build and dark-mode work (not re-confirmed in this pass). The confirmed remaining *interaction* gap is the `SellerDashboard.tsx` translation miss above; the three previously-confirmed dead-tap/toggle bugs are now fixed.
+Cannot be fully assessed — this audit is static (source-code reading only); no emulator/simulator was run and no screenshots were reviewed (§20) beyond the on-device verification independently claimed for the Android build and dark-mode work (not re-confirmed in this pass). The three previously-confirmed dead-tap/toggle bugs are now fixed.
 
 ### Biggest technical debt
 
 - `@tanstack/react-query` is installed but used in only 2 of ~70 screens — most of the app fetches per-screen without a caching layer. Unchanged.
 - The two leftover direct-Supabase reads noted above.
-- The i18n retrofit and doc-reconciliation work described throughout this update sits uncommitted in the working tree — real, verified-correct work, but not yet locked in by a commit.
+- The doc-reconciliation work described throughout this update sits uncommitted in the working tree — real, verified-correct work, but not yet locked in by a commit.
 
 ### Biggest blockers
 
@@ -123,14 +120,13 @@ d:/FYP/ZaraiLink/
 │   │   ├── linking.ts                deep-linking stub (empty config) — still unchanged
 │   │   └── stacks/     (11 files)    Root/Auth/App/Admin/Expert/Home/Marketplace/Messaging/
 │   │                                 Orders/Profile/Consultations navigators + useAppTabNavigation.ts
-│   ├── screens/     (64 files)       62/64 now call useTranslation() (uncommitted); admin(8)
+│   ├── screens/     (64 files)       admin(8)
 │   │                                 auth(4) buyer(1) common(2) dealer(7) disease(3+1) expert(8)
 │   │                                 farmer(7) marketplace(5) messaging(2) notifications(1)
 │   │                                 orders(4) payments(3) profile(4) reviews(1)
 │   ├── components/
 │   │   ├── common/  ui/ (15+ primitives, incl. new Skeleton/StaggeredItem for motion)
-│   │   └── features/                 dashboards (SellerDashboard.tsx — NOT yet translated,
-│   │                                 see §1), dealer, expert, marketplace, messaging,
+│   │   └── features/                 dashboards, dealer, expert, marketplace, messaging,
 │   │                                 notifications, orders, payments, reviews
 │   ├── hooks/
 │   │   ├── realtime/  (3 files)      Supabase Realtime subscription hooks
@@ -143,7 +139,7 @@ d:/FYP/ZaraiLink/
 │   │                                 referenceDataStore, themeStore (new — dark mode) (Zustand)
 │   ├── types/       (15 files)       snake_case, mirrors backend Pydantic schema field names
 │   ├── utils/                        photoPicker.ts (new — camera-or-gallery picker)
-│   ├── constants/  config/  localization/  theme/  assets/
+│   ├── constants/  config/  theme/  assets/
 ├── backend/
 │   ├── requirements.txt (fully pinned, + slowapi for rate limiting), pytest.ini, .env.example
 │   └── app/
@@ -181,8 +177,8 @@ d:/FYP/ZaraiLink/
 | Directory | Purpose | Actively used | Legacy | Incomplete | Duplicates another |
 |---|---|---|---|---|---|
 | `src/navigation/` | React Navigation trees, all 5 roles | Yes | No | No | No |
-| `src/screens/` | 64 real, data-connected screens | Yes | No | 2 (`HomeDashboardScreen`, and the farmer/dealer wrapper screens) have no strings of their own to translate; the component they delegate to (`SellerDashboard.tsx`) does and isn't yet (§7) | `MyListingsScreen` intentionally reused by both Farmer "My Listings" and Dealer "Products" routes — deliberate reuse, not duplication |
-| `src/components/` | Shared UI primitives + domain components | Yes | No | `SellerDashboard.tsx` not yet translated (§1) | No |
+| `src/screens/` | 64 real, data-connected screens | Yes | No | No | `MyListingsScreen` intentionally reused by both Farmer "My Listings" and Dealer "Products" routes — deliberate reuse, not duplication |
+| `src/components/` | Shared UI primitives + domain components | Yes | No | No | No |
 | `src/services/` | 15 domain service folders under `services/modules/`, `apiFetch`-backed | Yes | No | No | No |
 | `src/store/` | 5 Zustand stores, flat (added `themeStore` for dark mode) | Yes | No | No | No |
 | `backend/app/api,repositories,services,schemas/` | Full FastAPI implementation, 15 domains | Yes | No | AI inference domain only (§19) | No |
@@ -202,7 +198,6 @@ No duplicate screens, duplicate services, duplicate API clients, duplicate navig
 **State**: `zustand ^5.0.14` (5 real stores, including the new persisted `themeStore` for dark mode). `@tanstack/react-query ^5.101.4` is installed but used in only 2 of ~70 screens (`OrderDetailScreen`, `OrderHistoryScreen`) — unchanged, most screens still fetch manually.
 **Forms**: `react-hook-form ^7.85.0`, `@hookform/resolvers` (upgraded to `^5.9.1` during the testing pass, after the previous `^3.10.0` was found incompatible with zod v4 and crashing every form's validation-error display), `zod ^4.4.3`.
 **Data client**: `@supabase/supabase-js ^2.112.2` (Auth, Storage, Realtime) + a custom `apiFetch` HTTP client (`src/services/api/client.ts`) for the FastAPI backend.
-**i18n**: `i18next ^26.4.0`, `react-i18next ^17.0.12` — real mechanism, 800+ keys/language (up from 27), 62/64 screens wired (up from 2/70) — **uncommitted**.
 **Native**: `react-native-image-picker ^8.2.1` (now offered through a camera-or-gallery chooser, `utils/photoPicker.ts`, rather than gallery-only), `react-native-config ^1.6.1`, `@react-native-async-storage/async-storage`, `react-native-url-polyfill ^4.0.0`, `lucide-react-native ^1.31.0`, `react-native-haptic-feedback` (new — motion/feedback pass).
 **Backend**: FastAPI `0.115.6`, `uvicorn[standard] 0.34.0`, `pydantic 2.10.4`, `pydantic-settings 2.7.1`, `python-dotenv 1.0.1`, `supabase 2.11.0` (Python client), `httpx 0.28.1`, `torch 2.5.1`, `torchvision 0.20.1`, `pillow 11.0.0`, `pytest 8.3.4`, `pytest-asyncio 0.25.2`, `slowapi` (new — rate limiting) — all fully pinned.
 **Database**: Supabase/PostgreSQL, 35 migrations, RLS on all 32 tables (down from 36 — `countries`/`provinces`/`cities`/`phone_codes` were dropped for free-text fields).
@@ -597,7 +592,7 @@ A real, previously-undiscovered defect was found and fixed during the database's
 What can be assessed from code:
 - A real design-token system exists (`src/theme/`: `colors.ts`, `typography.ts`, `spacing.ts`, `roleColors.ts` — per-role accent colors for badges/indicators only, not full alternate themes — `moduleAccents.ts`, `statusColors.ts`).
 - A real shared component library exists (`src/components/ui/`: 15+ primitives — Button, Input, Card, Badge, Avatar, EmptyState, Spinner, Sheet, RoleBadge, SelectField, PhoneInput, LocationPicker, FilterChips, plus new `Skeleton`/`SkeletonCard`/`SkeletonList`/`StaggeredItem` for loading/entrance states), suggesting screens are built from a common vocabulary rather than ad hoc styling per screen — consistent with no duplicate/divergent component implementations being found anywhere in this audit.
-- **The three previously-confirmed interaction bugs are now fixed**: `PlatformOrdersScreen` and `MyListingsScreen` rows are tappable, and the `SettingsScreen` notification `Switch` now persists to `profiles.notifications_enabled`. A **new**, previously-unflagged gap was found this pass instead: `SellerDashboard.tsx` (Farmer's and Dealer's actual dashboard UI) has zero `useTranslation()` calls despite the otherwise-thorough i18n retrofit covering 62/64 screen files.
+- **The three previously-confirmed interaction bugs are now fixed**: `PlatformOrdersScreen` and `MyListingsScreen` rows are tappable, and the `SettingsScreen` notification `Switch` now persists to `profiles.notifications_enabled`.
 - `linking.ts`'s empty deep-link config means a password-reset email has no in-app landing target — a real UX gap for that specific flow, unchanged since the previous pass, though the flow itself (`ForgotPasswordScreen`/`VerifyOtpScreen`) is implemented.
 - Image picking is no longer gallery-only — a new camera-or-gallery chooser (`utils/photoPicker.ts`) is wired into all 5 upload call sites (listing creation/edit, disease upload, expert-application documents, chat attachments). The matching iOS gap (missing `NSPhotoLibraryUsageDescription`) remains moot — `ios/` is still deleted.
 - Dark mode (light/dark/system, persisted via a new `themeStore`) now exists, resolved against the device's system setting when set to "system."
@@ -743,7 +738,6 @@ Everything else — every screen, service, navigator, backend module, migration,
 | Push notifications | | | ❌ | §22 (confirmed absent) | P2 |
 | AI disease advisory (pipeline) | ✅ | | | §19 | P0 |
 | AI disease advisory (real model) | | ✅ (placeholder) | | §19 | P0 |
-| Localization (EN/UR) | | ✅ (62/64 screens, uncommitted) | | §1, §20 | P3 |
 | Automated test coverage (backend) | ✅ | | | §25 (112 tests) | P1 |
 | Automated test coverage (frontend) | ✅ | | | §25 (734 tests/132 suites) | P1 |
 | CI/CD | ✅ | | | §25 (real merged PRs; branch protection blocked by plan tier) | P2 |
@@ -888,21 +882,6 @@ Fix confirmed: all five reconciled against the current migrations/code (§26). O
 ```
 
 ```
-BUG-11 — NEW, found this pass — STATUS: OPEN
-Title: SellerDashboard.tsx has zero translation calls despite the i18n retrofit
-Severity: Minor (P3) — a real, user-visible gap, not a crash or data-integrity issue
-File: src/components/features/dashboards/SellerDashboard.tsx
-Location: entire file — grep confirms 0 occurrences of `useTranslation`
-Problem: Farmer's and Dealer's `DashboardScreen.tsx` files are both thin wrappers that render
-        this shared component; the component itself renders every label as hardcoded English.
-Root Cause: the i18n retrofit pass (Phase 8) covered every screen file (62/64) but this is a
-        component, not a screen file, so it fell outside the pass's own scope check.
-Impact: Farmer and Dealer's actual, highest-traffic dashboard UI ignores the language setting
-        entirely, even though 62 other screens now respect it.
-Dependencies: none blocking; a small, isolated fix once picked up.
-```
-
-```
 BUG-12 — previously mentioned only in prose, now tracked — STATUS: OPEN
 Title: Android release build signs with the debug keystore
 Severity: Major (P2) for a real Play Store submission; not a blocker for further development
@@ -952,7 +931,7 @@ Of the six risks this section previously listed, four are now fixed (`is_suspend
 Two new, smaller risks surfaced this pass:
 
 3. **Android release build still signs with the debug keystore** (BUG-12) — a real blocker specifically for a Play Store submission.
-4. **The current i18n retrofit + doc-reconciliation work is uncommitted** — real, verified-correct, but a hard-to-reverse loss risk (working-tree changes, not yet locked in by a commit) until it's tested and committed.
+4. **The current doc-reconciliation work is uncommitted** — real, verified-correct, but a hard-to-reverse loss risk (working-tree changes, not yet locked in by a commit) until it's tested and committed.
 
 ---
 
@@ -986,11 +965,9 @@ PHASE 4/5 — Frontend Test Coverage + CI/CD                                  ST
   Confirmed: 734 frontend tests / 132 suites (up from 1 smoke test); CI proven against real
   merged PRs including a deliberate break-then-fix verification round; migration-lint added.
 
-PHASE 6/7 — Documentation Sync + Localization Coverage                      STATUS: DONE THIS
+PHASE 6/7 — Documentation Sync                                              STATUS: DONE THIS
                                                                                     PASS
-  Confirmed: 5 docs reconciled (BUG-10 fixed, plus 2 more found and fixed mid-pass); 62/64
-  screens now call useTranslation() (up from 2/70). Both uncommitted — see §1.
-  Remaining gap: SellerDashboard.tsx untranslated (BUG-11, new).
+  Confirmed: 5 docs reconciled (BUG-10 fixed, plus 2 more found and fixed mid-pass); uncommitted — see §1.
 
 PHASE 8 — Payment Gateway Integration                                       STATUS: NOT STARTED
   Task: unchanged from before — integrate a real payment provider behind payments_service.py.
@@ -1014,11 +991,10 @@ PHASE 10 — Production Readiness                                             ST
 
 Of the five steps this section previously listed, four are done (Android build-config fix, the three interaction bugs, frontend test coverage, doc reconciliation). Remaining, in order:
 
-1. **Test and commit the in-flight work** — the i18n retrofit and doc-reconciliation pass sitting in the working tree right now (§1) should be reviewed and committed before anything else lands on top of it, per the standing rule that the user tests before anything is committed.
-2. **Fix the newly-found `SellerDashboard.tsx` translation gap** (BUG-11) — small, isolated, and should land in the same commit as the rest of the i18n work it belongs to.
-3. **Decide the AI model training timeline** (Phase 3) — still the single biggest gap in the app's core value proposition, and still external work this document cannot do or estimate precisely.
-4. **Generate a real Android release keystore** (BUG-12) before any Play Store submission.
-5. **Decide and scope real payment-gateway integration**, if the product needs to move beyond manual/COD.
+1. **Test and commit the in-flight work** — the doc-reconciliation pass sitting in the working tree right now (§1) should be reviewed and committed before anything else lands on top of it, per the standing rule that the user tests before anything is committed.
+2. **Decide the AI model training timeline** (Phase 3) — still the single biggest gap in the app's core value proposition, and still external work this document cannot do or estimate precisely.
+3. **Generate a real Android release keystore** (BUG-12) before any Play Store submission.
+4. **Decide and scope real payment-gateway integration**, if the product needs to move beyond manual/COD.
 
 ---
 
@@ -1026,7 +1002,7 @@ Of the five steps this section previously listed, four are done (Android build-c
 
 Evaluated against the current repo state (commit history + working tree), not just the last audit pass: ZaraiLink has moved from "substantially more real functionality than its history suggests" to "a genuinely hardened, genuinely tested system with a short, well-understood remaining gap list." Every specific security/interaction/testing/CI gap the previous version of this document flagged as open has since been closed and independently re-verified in this pass — `is_suspended` in RLS, CORS/rate limiting, the three dead-tap bugs, frontend test coverage, and CI verification. A new, smaller-scope hardening pass (dealer write-access over-privilege, an atomic-stock race condition) was also found and fixed along the way, neither previously known.
 
-Confirmed gaps relative to a production-ready state, now down to a short list: no real AI model (the product's namesake feature — the one gap that was always going to outlast a code-focused hardening pass), no real payment gateway, no push notifications, and a debug-signed Android release build. A currently-uncommitted i18n/documentation pass is real, verified-correct work, not a gap, but it should be tested and committed before being treated as done. None of the remaining items are architectural dead ends — each has a clear, scoped fix path (§33) — but they represent the real remaining work before this could be called fully production-ready.
+Confirmed gaps relative to a production-ready state, now down to a short list: no real AI model (the product's namesake feature — the one gap that was always going to outlast a code-focused hardening pass), no real payment gateway, no push notifications, and a debug-signed Android release build. A currently-uncommitted documentation pass is real, verified-correct work, not a gap, but it should be tested and committed before being treated as done. None of the remaining items are architectural dead ends — each has a clear, scoped fix path (§33) — but they represent the real remaining work before this could be called fully production-ready.
 
 ---
 
@@ -1036,7 +1012,7 @@ Confirmed gaps relative to a production-ready state, now down to a short list: n
 Overall Readiness: 88/100 (up from 72/100)
 
 Architecture:      90/100 (up from 80 — CORS/rate-limit hardening closed the one network gap)
-Frontend:          92/100 (up from 82 — i18n retrofit ~97% done, one component gap remains)
+Frontend:          92/100 (up from 82)
 Backend:           85/100 (up from 78 — CORS/rate-limit hardening, dealer-scope + atomic-stock
                     fixes; AI inference is still the one placeholder holding this back further)
 Database:          93/100 (up from 85 — suspension now RLS-enforced, dealer over-privilege
@@ -1052,11 +1028,10 @@ Maintainability:   90/100 (up from 75 — the stale-docs finding that was dockin
                     now resolved)
 ```
 
-### TOP 5 THINGS THAT MUST BE DONE FIRST (down from 10)
+### TOP 4 THINGS THAT MUST BE DONE FIRST (down from 10)
 
-1. **Test and commit the in-flight i18n/docs work** (§1, §34) — the largest single piece of real, uncommitted work in the repo right now.
-2. **Fix `SellerDashboard.tsx`'s missing translations** (BUG-11) before calling the i18n retrofit complete.
-3. **Get a real trained AI model into `backend/app/ml/checkpoints/model.pth`** — the core differentiating feature is currently non-functional; everything else on this list is secondary to it.
-4. **Generate a real Android release keystore** (BUG-12) before any Play Store submission.
-5. **Decide and scope real payment-gateway integration**, if the product needs to move beyond manual/COD, and push notifications, if the in-app-only model isn't sufficient.
+1. **Test and commit the in-flight docs work** (§1, §34) — the largest single piece of real, uncommitted work in the repo right now.
+2. **Get a real trained AI model into `backend/app/ml/checkpoints/model.pth`** — the core differentiating feature is currently non-functional; everything else on this list is secondary to it.
+3. **Generate a real Android release keystore** (BUG-12) before any Play Store submission.
+4. **Decide and scope real payment-gateway integration**, if the product needs to move beyond manual/COD, and push notifications, if the in-app-only model isn't sufficient.
 </content>

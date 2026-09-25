@@ -22,12 +22,22 @@ redesigned.
 
 ```
 backend/app/
-├── main.py            mounts one aggregated router (api/v1/router.py) exposing every domain
-│                       under /api/v1/<domain>
+├── main.py            lifespan (logging, Sentry, model, shared Supabase clients), middleware, error handlers,
+│                       health/version routes; mounts one aggregated router (api/v1/router.py)
 ├── core/
-│   ├── config.py       pydantic-settings: Supabase URL/keys, MODEL_PATH/VERSION/CLASSES
-│   ├── auth.py          the auth/authorization gate (below)
-│   └── supabase_client.py   the three client modes (below)
+│   ├── config.py       pydantic-settings, fails at boot on an empty Supabase URL/key; ENVIRONMENT, rate limit,
+│   │                    Sentry DSN, model settings
+│   ├── auth.py          the auth/authorization gate (below); `declared_roles` registry of require_role routes
+│   ├── jwt_verifier.py  local JWKS verification of the Supabase access token
+│   ├── supabase_client.py   the three async client modes (below)
+│   ├── rows.py          typed access to PostgREST rows (as_rows, first_row, maybe_row, rpc_row)
+│   ├── middleware.py    pure ASGI: request id, security headers, body-size cap
+│   ├── rate_limit.py    per-caller default limit (route-aware middleware over slowapi)
+│   ├── problem_details.py   RFC 9457 error responses
+│   ├── logging_config.py, request_context.py   JSON logs carrying the request id
+│   ├── pagination.py    limit/offset and the Link header
+│   ├── idempotency.py   Idempotency-Key support for checkout and payment initiation
+│   └── observability.py Sentry, off unless SENTRY_DSN is set, with PII scrubbing
 ├── api/v1/
 │   ├── router.py        aggregates all 15 domain routers into one; the only thing main.py imports
 │   └── endpoints/       HTTP only — request parsing, dependency wiring, response_model. No DB
@@ -49,28 +59,42 @@ confirm, `payments_service` calling `orders_service.update_order_status`, severa
 calling the shared `audit_log_service.log_admin_action`) are direct in-process Python calls —
 this is one FastAPI monolith, not a set of services, so there's no HTTP hop between domains.
 
-## Request-level middleware (`main.py`)
+## Request pipeline (`main.py`, `core/`)
 
-Two cross-cutting concerns are wired at the app level, before any route runs — neither is a
-per-domain concern, so neither lives in `services/`:
+Cross-cutting concerns are wired at the app level, before any route runs. Ours are pure ASGI middleware, not
+`BaseHTTPMiddleware`: each of those layers re-wraps the request and response streams, and the four of them cost
+about 15% of throughput on public reads (ADR 0001).
 
-- **CORS**: `CORSMiddleware` reads an `ALLOWED_ORIGINS` allowlist (env-driven, defaults to local
-  dev origins) instead of `allow_origins=["*"]`. This only matters for browser callers (Swagger
-  UI, a future admin web surface) — the mobile app itself isn't subject to CORS.
-- **Rate limiting**: `slowapi`'s `limiter` (`core/rate_limit.py`) applies a 200/minute-per-IP
-  default to every route automatically via `SlowAPIMiddleware`, with a tighter 10/minute override
-  on `/api/v1/disease/predict` specifically — the one genuinely expensive, model-inference
-  endpoint. Both have permanent regression tests in `backend/tests/unit/test_main.py`.
+- **Request id** (`RequestIDMiddleware`): trusts an inbound `X-Request-ID` or mints one, echoes it on the response,
+  puts it on every JSON log line and on Sentry events.
+- **Security headers**: `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, a default-deny CSP, and HSTS over https.
+- **Body cap**: 10 MB. A declared `Content-Length` over the cap is refused up front, and received bytes are counted,
+  so a chunked body is cut off too (413 problem+json).
+- **CORS**: `ALLOWED_ORIGINS` allowlist, `GET/POST/PATCH/DELETE`, `Authorization` and `Content-Type` only, no
+  credentials (bearer tokens, never cookies). Only browsers care; the mobile app is not subject to CORS.
+- **Rate limiting** (`core/rate_limit.py`): `RATE_LIMIT_DEFAULT` (200/minute) per caller on every route, keyed by
+  user id when a bearer token is present (read without verifying the signature, only to pick a bucket) and otherwise
+  by client IP, with a tighter 10/minute on `/api/v1/disease/predict`. slowapi's own middleware cannot find handlers
+  behind FastAPI 0.141's lazy included routers and silently stopped limiting, so `RateLimitMiddleware` does the route
+  lookup through `iter_route_contexts`. Behind a load balancer set `FORWARDED_ALLOW_IPS` to its address, or every
+  caller shares one bucket; never trust more than the real proxy.
+- **Errors**: every `HTTPException`, validation error and unhandled exception is `application/problem+json`; the
+  client never sees a stack trace.
+- **Docs**: `/docs`, `/redoc` and `/openapi.json` exist only when `ENVIRONMENT=development`.
+
+Health: `/health/live` (process up), `/health/ready` (a real query through the anon client; 503 when Supabase is
+unreachable), `/health` (deprecated alias of live) and `/version`. The container healthcheck uses `/health/ready`.
 
 ## Authentication flow (`core/auth.py`)
 
 ```
 Authorization: Bearer <supabase_access_token>
-    → GET {SUPABASE_URL}/auth/v1/user   (verifies the token against Supabase Auth itself —
-                                          no JWT signature/JWKS verification reimplemented here)
+    → verified locally against Supabase's JWKS (core/jwt_verifier.py: signature, expiry, audience);
+      a JWKS outage is a 503, not a 401
     → authenticated user id
     → profiles.role / profiles.is_suspended, read via a client scoped to that SAME token
-      (get_user_scoped_client — RLS-respecting "read your own profile", not a separate trust path)
+      (get_user_scoped_client — RLS-respecting "read your own profile", not a separate trust path),
+      cached for 10 s per user (so a suspension takes up to 10 s to bite)
     → AuthenticatedUser(id, email, role, access_token)   or a 401/403 rejection
 ```
 
@@ -113,13 +137,28 @@ Supabase Auth itself (`supabase.auth.signUp/signIn/signOut/...`) stays entirely 
 | `get_service_role_client()` | service-role key, bypasses RLS | only the narrow, documented cases below |
 | `get_public_client()` | anon key, no user identity | only reads a table's RLS/grants already expose to `anon` (e.g. reference-data lookups, marketplace browsing) |
 
-Service-role is used in exactly one place today: disease inference
-(`repositories/disease_repository.py`, `disease_cases`/`disease_predictions` reads and writes) —
-confirmed by grepping every repository for `get_service_role_client`. It derives its filtering
-identifier from the verified `AuthenticatedUser`, never from a request value; ownership
-(`case.user_id == caller.id`, or admin) is checked in `services/disease_service.py` before
-trusting anything the repository returns — a service-role client bypasses RLS entirely, so that
-discipline is the only thing standing in for it.
+All three modes return an async client. The service-role and anon clients are shared singletons built once
+in the FastAPI lifespan (`init_shared_clients()`); the user-scoped client is built per call, because each
+caller has a different token and `postgrest.auth(token)` mutates shared state.
+
+Service-role is used in two files today (P5 audit, verified against the code and both grant migrations):
+
+- `repositories/disease_repository.py` (every function: `disease_cases`/`disease_predictions` reads and
+  writes, plus signed URLs and downloads from the private `disease-images` bucket). It derives its
+  filtering identifier from the verified `AuthenticatedUser`, never from a request value; ownership
+  (`case.user_id == caller.id`, or admin) is checked in `services/disease_service.py` before trusting
+  anything the repository returns. A service-role client bypasses RLS entirely, so that discipline is the
+  only thing standing in for it. Kept: the storage path is deliberately never handed to a client-scoped
+  storage credential.
+- `repositories/profile_repository.py`, three sites in the account-deletion flow: `soft_delete_auth_user`
+  (the GoTrue admin API has no user-token equivalent), `log_self_deletion` (`audit_logs`' only insert
+  policy is admin-only by design, BR-15, and a self-deleting user is not an admin), and
+  `delete_owned_storage_objects`. That last one could run under the user's own token, since the
+  owner-scoped storage policies would allow it; it stays service-role because the token must still be
+  valid mid-flow at that exact step and nothing re-authenticates it, and the caller owns those objects
+  either way. The same file's `update_profile` and `anonymize_profile` use the user-scoped client.
+
+No repository other than these two calls `get_service_role_client`.
 
 Three domains that might look like service-role candidates deliberately don't reach for it,
 each with its own reason documented at the call site:
@@ -141,14 +180,22 @@ each with its own reason documented at the call site:
 
 ## Storage
 
-All 6 buckets stay direct-to-Storage from the mobile client (owner/participant-scoped RLS on
-`storage.objects` already correct for `avatars`, `listing-images`, `disease-images`,
-`message-attachments`, `consultation-attachments`). FastAPI mediates only the resulting domain
-record (e.g. `POST /api/v1/marketplace/listings` referencing already-uploaded image URLs), never
-the file bytes themselves. The one exception: `expert-documents` (private) — signed-URL minting
-moved server-side (`GET /api/v1/expert/admin/{expert_id}/document-url`, admin-only), because it
-derives the document path from that expert's own stored verification history rather than
-accepting a client-supplied path, which a bucket-level RLS policy alone can't express.
+All 6 buckets stay direct-to-Storage from the mobile client for the upload itself
+(owner/participant-scoped RLS on `storage.objects` already correct for `avatars`,
+`listing-images`, `message-attachments`, `consultation-attachments`). FastAPI mediates only the
+resulting domain record (e.g. `POST /api/v1/marketplace/listings` referencing already-uploaded
+image URLs), never the file bytes themselves. Two exceptions, both private buckets where the API
+mints the read-facing URL server-side rather than trusting one from the client:
+
+- `expert-documents` — signed-URL minting moved server-side
+  (`GET /api/v1/expert/admin/{expert_id}/document-url`, admin-only), because it derives the
+  document path from that expert's own stored verification history rather than accepting a
+  client-supplied path, which a bucket-level RLS policy alone can't express.
+- `disease-images` — security fix C2 (see [ai-disease-advisory.md](ai-disease-advisory.md)
+  §Data flow). This one isn't about admin access: the API used to accept and store whatever
+  `image_url` the client sent and fetch it server-side, which P0 proved was a blind SSRF. It now
+  accepts only a validated, owner-checked `storage_path` and mints its own signed URL for every
+  response, so the backend never resolves a client-supplied location at all, upload or read.
 
 ## Realtime
 
@@ -175,9 +222,69 @@ changes — never a `.from(table)` read/write bypassing FastAPI. `authService.ts
 
 ## Model integration (disease domain)
 
-See [ai-disease-advisory.md](ai-disease-advisory.md) for the model itself. On the backend side:
-`ai_engine.py` loads `model.pth` lazily and once (a module-level singleton, not
-per-request); `MODEL_PATH`/`MODEL_VERSION`/`MODEL_CLASSES` are all `Settings` fields, not
-hardcoded. A missing/corrupt/incompatible model file returns `503`; an unparseable image returns
-`422`; a valid request against the current placeholder file returns `503` until real weights are
-dropped in at the same path — no code change needed when that happens.
+See [ai-disease-advisory.md](ai-disease-advisory.md) for the model itself. On the backend side: the checkpoint is
+loaded once in the lifespan (`load_classifier()`, read through `get_classifier()`), not at import and not per
+request, and the forward pass runs in a worker thread (`asyncio.to_thread`) so inference cannot stall the event loop.
+`MODEL_PATH`/`MODEL_VERSION`/`MODEL_CLASSES` are `Settings` fields. A missing/corrupt/incompatible checkpoint returns
+`503`; an unparseable image `422`.
+
+## Async data access
+
+Every repository and service is `async`; only the terminal `.execute()` of a query chain is awaited. Independent
+reads use `asyncio.gather` (checkout availability, analytics, platform stats); dependent chains stay sequential on
+purpose. httpx builds an SSL context for every client, which loaded the CA bundle each time and blocked the event
+loop for about 0.3 s, so `core/supabase_client.py` memoizes `create_ssl_context` (pinned to `httpx==0.28.1`). This,
+not `await` alone, is what stopped requests serializing: see
+[ADR 0001](adr/0001-async-supabase-client-migration.md) for the measurements.
+
+## API contract (P7)
+
+The OpenAPI document is the source of truth (`backend/openapi.json`, written by `scripts/export_openapi.py`; the mobile
+client in `src/api/generated` is generated from it). `core/openapi.py` shapes it: readable operation ids
+(`<tag>_<handler>`), a bearer security scheme instead of an optional `Authorization` parameter on every call, problem+json
+as the documented error body (including 422), and the `Link` and `X-Request-ID` response headers. Every response has a
+Pydantic model in `schemas/` (embeds such as the listing's owner and category are optional, because create and update
+return the bare row and reads embed relations). Database errors that are really bad input are mapped to 4xx in
+`core/problem_details.py` (`database_error_handler`), and an update that matched no row is a 404 (`core/rows.first_row`).
+
+## Error contract (P7 7B)
+
+Every error is `application/problem+json` (`core/problem_details.py`) with a stable `code` from `core/errors.py`
+(`ErrorCode`, documented in the OpenAPI `ProblemDetail`). Most codes follow from the HTTP status (`default_code`); the
+ones the app must tell apart raise `AppHTTPException` with their own (`account_suspended`, `insufficient_role`,
+`mfa_required`, `incorrect_password`, `insufficient_stock`, `invalid_transition`, `idempotency_in_progress`,
+`idempotency_key_reused`, and others). A 422 lists `errors: [{loc, msg}]` (never the input values), and a rate-limit 429
+carries `Retry-After`. `title` is English for logs; clients decide from `code`, and the mobile app maps it to its own message.
+
+## Pagination and idempotency
+
+- **Pagination** (`core/pagination.py`): every list endpoint takes `limit` (1 to 100, default 100; 20 for the
+  marketplace feed) and `offset`, returns a bare array, and sets `Link: <...>; rel="next"` when a page comes back
+  full. There is no `X-Total-Count` (it needs a counted query per list and nothing consumes it yet). Mobile screens do
+  not read `Link` until P7, so a list over 100 rows is cut off there.
+- **Idempotency** (`core/idempotency.py`, table `idempotency_keys`): `Idempotency-Key` on order checkout and payment
+  initiation. The key is claimed with an insert before any work runs; a repeat replays the stored response, a
+  concurrent repeat gets 409 with `Retry-After`, a different body under the same key gets 422 (a stored request hash),
+  and any failure releases the key. Keys are per user and per endpoint, owner-only under RLS, and swept after 24 h.
+  Opt-in, and no client sends the header yet (P7). Checkout is not atomic across sellers, so a failure after the first
+  seller's order releases the key and a retry can create that order again.
+
+## Observability
+
+JSON logs with the request id (stdlib, no structlog). Sentry (`core/observability.py`) is initialised only when
+`SENTRY_DSN` is set; it sends no request bodies, cookies, query strings, credential headers, stack-frame locals, email
+or IP. Live proof is blocked on the maintainer creating the project ([g5-sentry.md](../process/briefs/g5-sentry.md)).
+
+## Container
+
+`backend/Dockerfile` is multi-stage (uv builds the environment from `uv.lock`), runs as a non-root user, fetches the
+checksum-verified model weights at build time with a BuildKit secret, and has a healthcheck on `/health/ready`.
+`backend/docker-compose.yml` joins the local Supabase Docker network. Not hosted anywhere yet (gate G4).
+
+## Tests
+
+`backend/tests/unit` mocks only outer edges; `backend/tests/integration` runs a real uvicorn against the local
+Supabase stack. Highlights: the authorization matrix (every route as every role, plus a reviewed snapshot of who may
+call what), the admin audit-log guard (every admin-reachable write leaves an `audit_logs` row, BR-15), idempotency,
+pagination, HTTP hardening and proxy-header tests. CI gates unit plus integration coverage combined at 85% (currently
+about 95%); the smoke backend runs under `tests/integration/smoke/serve_measured.py` so its lines are counted.

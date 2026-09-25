@@ -58,3 +58,18 @@ the same check server-side (`core/auth.py`, 403 on a suspended token) — see
 All resources in the table above have their policies written and enforced — this is no longer a
 pending checklist. The table itself remains the reference other modules implement against, and
 should be updated in the same commit as any policy change, not treated as a one-time snapshot.
+
+## How the rules are enforced and tested (P5)
+
+Role gates live in `require_role(...)` dependencies, and every route's requirement is recorded in
+`backend/tests/integration/smoke/authorization_policy.json`. The authorization matrix probes each route as farmer,
+buyer, dealer, expert, admin, anonymous and an admin without a second factor over real HTTP, and fails if a route's
+declared roles differ from that reviewed file, so weakening a gate shows up as a failing test and a diff. Every
+admin-reachable write must leave an `audit_logs` row (BR-15); a test enumerates those routes and fails on one with no
+audit assertion.
+
+The row-level-security layer itself is proven separately, in the database: `supabase/tests/database` (pgTAP) runs
+allowed and rejected statements as each role against every policy and storage bucket, and
+`scripts/db/policy_mutation.py` breaks each policy in turn to show a test notices. Policies call `auth.uid()` and the
+`is_*` helpers wrapped as `(select ...)` so they are evaluated once per query, not once per row.
+

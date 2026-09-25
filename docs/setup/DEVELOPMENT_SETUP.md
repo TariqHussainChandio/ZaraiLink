@@ -53,6 +53,7 @@ real Supabase project. Fixtures for tests are created inside the disposable loca
 cd backend
 uv sync --frozen
 cp .env.example .env
+python ../scripts/fetch_model_weights.py
 ```
 
 Fill `backend/.env` from step 2: `SUPABASE_URL` is `API_URL`, plus `SUPABASE_ANON_KEY` and
@@ -69,8 +70,33 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 `--host 0.0.0.0` lets an emulator or a phone on the same Wi-Fi reach it. If Windows Firewall prompts,
 allow private networks. The API serves interactive docs at `/docs` in development.
 
-`backend/app/ml/checkpoints/` holds the disease-model weights and their metadata. See
-`docs/architecture/ai-disease-advisory.md` for what the model does and does not cover.
+Deployment settings worth knowing (all optional locally):
+
+- `FORWARDED_ALLOW_IPS`: the proxy addresses whose `X-Forwarded-For` uvicorn trusts (default `127.0.0.1`). Behind a
+  load balancer, set it to the balancer's address, or every caller shares one rate-limit bucket. Never set it to `*`
+  on a server reachable directly: any client could then pick its own bucket.
+- `RATE_LIMIT_DEFAULT`: the per-caller ceiling on routes without their own (default `200/minute`).
+- `SENTRY_DSN`: empty keeps error tracking off (`docs/process/briefs/g5-sentry.md`).
+- Container: `cd backend && docker compose up --build` on the local Supabase network; the image build takes
+  `--secret id=gh_token` (a GitHub token) to fetch the model weights.
+
+`backend/app/ml/checkpoints/` holds `model_metadata.json` (tracked) and `model.pth` (not tracked — see
+below). See `docs/architecture/ai-disease-advisory.md` for what the model does and does not cover.
+
+**Model weights (`model.pth`, 9.3 MB):** hosted on a GitHub Release, not git (security fix C5 — every
+retrain used to add ~9 MB to history permanently). `scripts/fetch_model_weights.py` downloads it,
+verifying the SHA-256 pinned in `model_metadata.json`; re-run it any time the weights change, it's a
+no-op otherwise. **While the repository is still private**, the plain download 404s (GitHub hides
+private release assets from anonymous requests) and the script needs a token to fall back to the
+authenticated API:
+
+```bash
+export GH_TOKEN=$(gh auth token)   # once per shell session
+python ../scripts/fetch_model_weights.py
+```
+
+CI does this automatically with the job's own `GITHUB_TOKEN`. Once the repository goes public (the
+standardization plan's go-public gate), the token is no longer needed by anyone.
 
 ## 4. The app
 
@@ -118,7 +144,8 @@ Only development builds have the menu; release builds do not.
 | `npm run typecheck` | TypeScript, no emit |
 | `npm test` | Jest (add `-- --coverage` for a coverage report) |
 | `npm run doctor` | Expo's project checks: package versions match the SDK, app config is valid |
-| `cd backend && uv run pytest` | API tests |
+| `cd backend && uv run pytest tests/unit` | API unit tests (mock only third-party edges) |
+| `cd backend && uv run pytest tests/integration` | Real-stack API tests (needs the local Supabase stack, see below) |
 | `python scripts/check_reality.py` | The reality gate: no stubs, fake behaviour, swallowed errors, or growing debt |
 | `cd backend && uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy` | Linter and type-check ratchets |
 | `npm run reality` | Reality gate plus the dead-code ratchet |
@@ -139,7 +166,63 @@ export LOCAL_SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY>
 uv run pytest tests/integration -rxs
 ```
 
-They refuse to run against anything that is not localhost.
+They refuse to run against anything that is not localhost. They start their own uvicorn and never read
+`backend/.env`. The suite includes the authorization matrix, the admin audit-log guard, idempotency, pagination,
+HTTP hardening and proxy-header tests (about 223 tests, roughly a minute).
+
+Coverage is measured on unit plus integration tests together (repositories are proven against the real database,
+not mocks); CI fails below 85%. To reproduce it locally, with the variables above exported:
+
+```bash
+cd backend
+ZARAILINK_COVERAGE=1 uv run pytest tests/unit tests/integration --cov --cov-report=term --cov-fail-under=85
+```
+
+`ZARAILINK_COVERAGE=1` runs the test backend under coverage (`tests/integration/smoke/serve_measured.py`) so the
+lines those real requests execute are counted. Delete `backend/.coverage*` afterwards.
+
+If a change adds or re-roles an API route, the authorization test fails until
+`backend/tests/integration/smoke/authorization_policy.json` is regenerated and reviewed:
+`UPDATE_AUTHORIZATION_POLICY=1 uv run pytest tests/integration/smoke/test_smoke_authorization_matrix.py`.
+
+After adding a migration, prove it on a database built only from migrations: `npx supabase db reset`.
+
+API contract (P7): the mobile client is generated from the backend's OpenAPI document. After changing any route,
+request or response model:
+
+```bash
+cd backend && uv run python ../scripts/export_openapi.py     # rewrites backend/openapi.json
+cd .. && npm run api:generate                                # rewrites src/api/generated
+```
+
+After a deliberate change to an error response, re-record the client's fixtures from the real API:
+`UPDATE_PROBLEM_FIXTURES=1 python -m pytest tests/integration/smoke/test_smoke_error_contract.py` (from `backend/`).
+The app's query hooks and client are also tested against the real backend (`*.realstack.test.ts[x]`, skipped unless
+`ZARAILINK_REALSTACK=1`; the setup is described at the top of `src/testUtils/realStack.ts`): start the stack and the API (`uvicorn app.main:app --port 8000`,
+with `RATE_LIMIT_DEFAULT` high), then run `npx jest src/services/api/client.realstack.test.ts` with `ZARAILINK_REALSTACK=1`,
+`REALSTACK_SUPABASE_URL`, `REALSTACK_ANON_KEY`, `REALSTACK_SERVICE_KEY` and `REALSTACK_API_URL` set.
+
+`export_openapi.py --check` and `npm run api:check` are the CI drift checks. The real-stack tests validate every
+response against the published schema, and `test_smoke_schemathesis.py` fuzzes every operation (about three minutes).
+
+Database checks (all against the local stack; start it with `npx supabase start`):
+
+| Command | What it proves |
+|---|---|
+| `npx supabase db reset` | every migration applies to an empty database (also reloads `seed.sql`) |
+| `npx supabase test db` | the pgTAP suite in `supabase/tests/database`: every policy, grant, trigger and storage bucket, as real roles |
+| `python scripts/db/policy_mutation.py [name]` | that the suite notices each policy being broken (0 survivors expected; about three minutes for all) |
+| `python scripts/ci/check_advisors.py` | Supabase advisors: only the documented `profiles_public` view may remain |
+| `python scripts/check_migrations.py` | new migrations follow the rules (template: `supabase/migrations/_template.sql.example`) |
+| `python scripts/gen_schema_docs.py` | regenerates `docs/database/schema.md` (run after any schema change; CI checks it) |
+
+`npx supabase test db` runs every `*.test.sql` under `supabase/tests`; shared helpers live in
+`supabase/tests/helpers/rls_helpers.inc` (not `.sql` on purpose) and are included with `\ir`. A new table needs a
+migration and a paired `supabase/tests/database/<migration version>_<name>.test.sql`.
+
+Backups: `scripts/db/backup.sh` and `scripts/db/restore-drill.sh` (needs Docker); the live setup is in
+`docs/process/briefs/g3-backup.md`. `scripts/db/explain-bench-load.sql` loads disposable benchmark data into the local
+stack only; `supabase db reset` removes it.
 
 ## Troubleshooting
 

@@ -12,7 +12,8 @@ Read first, every session:
 |---|---|
 | [`docs/status/feature-register.md`](docs/status/feature-register.md) | What actually works. Never assume a feature works without checking it |
 | [`docs/status/baseline-2026-09.md`](docs/status/baseline-2026-09.md) | Observed failures and how they were found |
-| [`docs/process/standardization-plan.md`](docs/process/standardization-plan.md) | The phased plan: what to build next and what is out of scope |
+| [`docs/srds.md`](docs/srds.md) | The requirements baseline (SRDS): roles, approval, inventory boundary, sync, AI, directory layout |
+| [`docs/plan.md`](docs/plan.md) | The phased plan built from the SRDS: what to build next, open decisions, what is out of scope. It replaces `docs/process/standardization-plan.md` (kept for history) |
 
 ## The ten rules
 
@@ -83,6 +84,7 @@ payments, error tracking, hosting, app stores, model-weight storage, domains, or
 | Run the app | `npm run android` (generates `android/`, builds, installs on the emulator, starts Metro), then `npm start` |
 | Native project | `npm run prebuild` regenerates `android/` from `app.config.ts`; `npm run prebuild:clean` starts it over |
 | Backend checks | `cd backend && uv run pytest` |
+| Database checks | `npx supabase test db` (pgTAP), `python scripts/ci/check_advisors.py`, `python scripts/check_migrations.py`, `python scripts/gen_schema_docs.py --check` |
 | Reality gate | `python scripts/check_reality.py --tools knip` and `cd backend && uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy` |
 | Real-stack tests | see `docs/setup/DEVELOPMENT_SETUP.md` |
 
@@ -94,7 +96,7 @@ Run the backend from `backend/`, not the repository root, or it loads the wrong 
 `app.config.ts` holds every native Android setting: permissions, SDK levels, plugins. `android/` is
 **generated output, git-ignored, never edited**: the next prebuild erases the edit.
 `src/screens/<role or domain>/`, `src/components/{ui,features/<domain>}/`, `src/services/modules/<domain>/`,
-`src/store/`, `src/types/<domain>.ts`, `src/localization/{en,ur}.json` (add both languages together);
+`src/store/`, `src/types/<domain>.ts`, `src/constants/` (shared display labels);
 `backend/app/{api/v1/endpoints,services,repositories,schemas,core,ml}/`; `supabase/migrations/` (timestamped,
 never edited after being pushed); `docs/{architecture,database,setup,process,status}/`.
 
