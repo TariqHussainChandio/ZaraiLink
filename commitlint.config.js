@@ -24,7 +24,6 @@ module.exports = {
         'notifications',
         'admin',
         'profile',
-        'i18n',
         'ui',
         'theme',
         'navigation',

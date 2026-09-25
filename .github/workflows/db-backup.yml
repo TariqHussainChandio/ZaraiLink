@@ -1,0 +1,51 @@
+# Nightly encrypted logical backup of the hosted database (P6 item 6, plan gate G3/backups).
+#
+# The free Supabase plan has no backups. This dumps the public, auth and storage schemas, encrypts the dump to the
+# maintainer's age public key inside the pipe (plaintext never touches disk), and keeps the ciphertext as a
+# workflow artifact for 90 days. Only the maintainer's PRIVATE key, which is never in GitHub, can open it, so the
+# artifact is safe even in a public repository. Restore drill: scripts/db/restore-drill.sh, and the runbook in
+# docs/process/briefs/g3-backup.md.
+#
+# It stays dormant until the maintainer sets the repository variable BACKUP_AGE_RECIPIENT and the secret
+# DATABASE_URL in the `backup` environment (AGENTS.md: outside services are provisioned by the maintainer).
+name: Database backup
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Encrypted backup
+    if: vars.BACKUP_AGE_RECIPIENT != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: backup
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Dump and encrypt
+        env:
+          # A Supabase session-mode pooler URL (IPv4). The direct connection is IPv6-only on the free plan.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          bash scripts/db/backup.sh "out/zarailink-$(date -u +%Y%m%dT%H%M%SZ).dump.age"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: db-backup
+          path: out/*.dump.age
+          retention-days: 90
+          if-no-files-found: error

@@ -25,6 +25,7 @@ Usage
     python scripts/check_reality.py --tools ruff,mypy    # also run tool ratchets
     python scripts/check_reality.py --update-baseline    # record improvements (never increases)
     python scripts/check_reality.py --init               # create the first baseline
+    python scripts/check_reality.py --update-baseline --adopt-new-rules   # after adding a ratchet rule to RULES
 """
 
 from __future__ import annotations
@@ -43,7 +44,9 @@ BASELINE_PATH = ROOT / "scripts" / "reality-baseline.json"
 BACKEND = ROOT / "backend"
 
 TS_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx")
-TS_TEST_MARKERS = (".test.", "/__tests__/", "/__mocks__/", "/testUtils/")
+# "/generated/": the API client generated from the OpenAPI document (P7). It is machine output, so the text rules
+# (as any, console, suppressions) do not apply to it; drift is caught by regenerating and diffing in CI instead.
+TS_TEST_MARKERS = (".test.", "/__tests__/", "/__mocks__/", "/testUtils/", "/generated/")
 
 
 # --------------------------------------------------------------------------- rules
@@ -57,6 +60,8 @@ class Rule:
     kind: str  # "strict" or "ratchet"
     patterns: dict[str, str]
     why: str
+    scope: tuple[str, ...] = ()  # path prefixes the rule applies to; empty means every production file
+    exempt: tuple[str, ...] = ()  # the one or two files that are allowed to break the rule by design
 
 
 RULES: tuple[Rule, ...] = (
@@ -109,20 +114,31 @@ RULES: tuple[Rule, ...] = (
         {"py": r"(?m)^[ \t]*print\("},
         "use the logger; print() leaks into responses and hides in production logs",
     ),
-    # ---- ratchet: existing debt may shrink, never grow --------------------------------------
-    Rule("as-any", "ratchet", {"ts": r"\bas any\b"}, "an unchecked cast; use a real type (generated from the API)"),
+    Rule("as-any", "strict", {"ts": r"\bas any\b"}, "an unchecked cast; use a real type"),
+    Rule(
+        "layer-boundary",
+        "strict",
+        # `from '...'`, a bare `import '...'`, `require('...')` and `import('...')`, for the service modules, the Supabase client (with or
+        # without a file after the folder) and the API client. `services/api/errors` (types only) stays allowed.
+        {"ts": r"(?:(?:from|import)\s+|(?:require|import)\(\s*)['\"][^'\"]*services/(?:modules|supabase|api/client(?:\.[a-z]+)?)(?:/[^'\"]*)?['\"]"},
+        "screens and components read and write through the hooks in src/hooks/api, never the service or Supabase "
+        "layer directly, so caching, offline behaviour and error handling live in one place",
+        scope=("src/screens/", "src/components/"),
+    ),
     Rule(
         "console-call",
-        "ratchet",
+        "strict",
         {"ts": r"\bconsole\.(?:log|info|warn|error|debug)\("},
-        "use the app logger so output is structured and can be scrubbed of personal data",
+        "use the logger in src/utils/logger.ts, so what reaches a log is decided in one place",
+        exempt=("src/utils/logger.ts",),
     ),
     Rule(
         "empty-handler",
-        "ratchet",
+        "strict",
         {"ts": r"=>\s*\{\s*\}"},
-        "a handler that does nothing is a dead control unless it is a deliberate default prop",
+        "a handler that does nothing is a dead control; remove it or make it do something",
     ),
+    # ---- ratchet: existing debt may shrink, never grow --------------------------------------
     Rule(
         "lint-disable",
         "ratchet",
@@ -187,7 +203,7 @@ def scan(files: list[tuple[str, str]]) -> tuple[dict[str, Counter], dict[str, li
         text = (ROOT / path).read_text(encoding="utf-8", errors="replace")
         for rule in RULES:
             pattern = rule.patterns.get(lang)
-            if not pattern:
+            if not pattern or (rule.scope and not path.startswith(rule.scope)) or path in rule.exempt:
                 continue
             for match in re.finditer(pattern, text, flags=re.MULTILINE):
                 line_no = text.count("\n", 0, match.start()) + 1
@@ -312,9 +328,16 @@ def main() -> int:
     ap.add_argument("--tools", default="", help="comma list of tool ratchets: ruff,ruff-format,mypy,knip,eslint")
     ap.add_argument("--update-baseline", action="store_true", help="record improvements; refuses increases")
     ap.add_argument("--init", action="store_true", help="create the first baseline")
+    ap.add_argument(
+        "--adopt-new-rules",
+        action="store_true",
+        help="with --update-baseline: record the current debt of a ratchet rule that has no baseline yet "
+        "(a rule added to RULES); existing rules and tool ratchets are still refused if they got worse",
+    )
     args = ap.parse_args()
 
     baseline = load_baseline()
+    new_rules = {r.name for r in RULES if r.kind == "ratchet" and r.name not in baseline["rules"]}
     if args.files is not None and args.files:
         wanted = {f.replace("\\", "/") for f in args.files}
         files = [(p, lang) for p, lang in candidate_files() if p in wanted]
@@ -339,9 +362,16 @@ def main() -> int:
                 for path, line_no, text in where[rule.name][:15]:
                     report.failures.append(f"    {path}:{line_no}: {text}")
         else:
-            worse = [
-                (path, n, base_files.get(path, 0)) for path, n in counts[rule.name].items() if n > base_files.get(path, 0)
-            ]
+            adopting = rule.name in new_rules and args.update_baseline and args.adopt_new_rules
+            worse = (
+                []
+                if adopting
+                else [
+                    (path, n, base_files.get(path, 0))
+                    for path, n in counts[rule.name].items()
+                    if n > base_files.get(path, 0)
+                ]
+            )
             status = "ok" if not worse else "FAIL"
             for path, n, was in worse:
                 report.failures.append(f"[{rule.name}] {path}: {n} now, {was} allowed. {rule.why}")

@@ -19,7 +19,7 @@ This app is not built on Material Design 3. It has its own token system in `src/
 
 ## Known, already-scoped richness gaps (see the published ZaraiLink Field Manual artifact for the full plan)
 
-Motion/transition tokens (none exist yet — screens have no shared animation vocabulary), skeleton loaders (screens currently fall back to a bare `Spinner`), consistent `EmptyState` usage across list screens, camera capture alongside the existing gallery-only image picking, touch-target sizing audit, and i18n coverage (`react-i18next` works but only 2 of ~70 screens use it).
+Motion/transition tokens (none exist yet — screens have no shared animation vocabulary), skeleton loaders (screens currently fall back to a bare `Spinner`), consistent `EmptyState` usage across list screens, camera capture alongside the existing gallery-only image picking, touch-target sizing audit.
 
 ## When designing something new
 

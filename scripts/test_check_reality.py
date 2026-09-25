@@ -57,6 +57,11 @@ STRICT_CASES = [
     ("test-double-in-prod", "src/a.ts", "export const send = jest.fn();\n"),
     ("test-double-in-prod", "backend/app/a.py", "from unittest.mock import MagicMock\nclient = MagicMock()\n"),
     ("py-print", "backend/app/a.py", "print('debugging')\n"),
+    ("as-any", "src/a.ts", "export const a = 1 as any;\n"),
+    ("console-call", "src/a.ts", "console.log('x');\n"),
+    ("empty-handler", "src/a.tsx", "export const p = { onPress: () => {} };\n"),
+    ("layer-boundary", "src/screens/A.tsx", "import { x } from '../services/modules/a/b';\nexport const y = x;\n"),
+    ("layer-boundary", "src/components/A.tsx", "import { supabase } from '../services/supabase/client';\nexport const s = supabase;\n"),
 ]
 
 
@@ -78,7 +83,7 @@ def test_todo_with_an_issue_reference_is_allowed(repo):
     ["src/a.test.ts", "src/__tests__/a.ts", "src/__mocks__/a.ts", "src/testUtils/a.ts", "backend/tests/a.py"],
 )
 def test_test_code_is_exempt(repo, rel):
-    write(repo, rel, "export const f = jest.fn();\nconst x = 1 as any;\nconsole.log(x);\n// TODO later\n")
+    write(repo, rel, "export const f = jest.fn();\nconst x = 1; // eslint-disable-line\nconsole.log(x);\n// TODO later\n")
     assert gate(repo).returncode == 0
 
 
@@ -93,53 +98,51 @@ def test_a_strict_hit_blocks_creating_a_baseline(repo):
 
 
 def test_ratchet_allows_recorded_debt_but_not_growth_in_a_file(repo):
-    write(repo, "src/a.ts", "export const a = 1 as any;\n")
+    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\n")
     assert gate(repo, "--init").returncode == 0
     assert gate(repo).returncode == 0
 
-    write(repo, "src/a.ts", "export const a = 1 as any;\nexport const b = 2 as any;\n")
+    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\nexport const b = 2; // eslint-disable-line\n")
     result = gate(repo)
     assert result.returncode == 1
-    assert "[as-any] src/a.ts: 2 now, 1 allowed" in result.stderr
+    assert "[lint-disable] src/a.ts: 2 now, 1 allowed" in result.stderr
 
 
 def test_a_new_file_starts_at_zero(repo):
-    write(repo, "src/a.ts", "export const a = 1 as any;\n")
+    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\n")
     assert gate(repo, "--init").returncode == 0
 
-    write(repo, "src/new.ts", "export const n = 1 as any;\n")
+    write(repo, "src/new.ts", "export const n = 1; // eslint-disable-line\n")
     result = gate(repo)
     assert result.returncode == 1
     assert "src/new.ts: 1 now, 0 allowed" in result.stderr
 
 
 def test_fixing_one_file_cannot_mask_a_new_problem_in_another(repo):
-    write(repo, "src/a.ts", "export const a = 1 as any;\nexport const a2 = 1 as any;\n")
+    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
     assert gate(repo, "--init").returncode == 0
 
     write(repo, "src/a.ts", "export const a = 1;\n")  # two fewer
-    write(repo, "src/b.ts", "export const b = 1 as any;\n")  # one new
+    write(repo, "src/b.ts", "export const b = 1; // eslint-disable-line\n")  # one new
     assert gate(repo).returncode == 1  # total went down, but the new file is still refused
 
 
 def test_update_baseline_records_improvements_and_refuses_increases(repo):
-    write(repo, "src/a.ts", "export const a = 1 as any;\nexport const a2 = 1 as any;\n")
+    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
     assert gate(repo, "--init").returncode == 0
 
-    write(repo, "src/a.ts", "export const a = 1 as any;\n")
+    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\n")
     assert gate(repo, "--update-baseline").returncode == 0
-    assert baseline(repo)["rules"]["as-any"] == {"src/a.ts": 1}
+    assert baseline(repo)["rules"]["lint-disable"] == {"src/a.ts": 1}
 
-    write(repo, "src/a.ts", "export const a = 1 as any;\nexport const a2 = 1 as any;\n")
+    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
     assert gate(repo, "--update-baseline").returncode == 1
-    assert baseline(repo)["rules"]["as-any"] == {"src/a.ts": 1}
+    assert baseline(repo)["rules"]["lint-disable"] == {"src/a.ts": 1}
 
 
 @pytest.mark.parametrize(
     ("rule", "rel", "content"),
     [
-        ("console-call", "src/a.ts", "console.log('x');\n"),
-        ("empty-handler", "src/a.tsx", "export const p = { onPress: () => {} };\n"),
         ("lint-disable", "src/a.ts", "// eslint-disable-next-line no-console\nexport const x = 1;\n"),
         ("broad-except", "backend/app/a.py", "try:\n    f()\nexcept Exception as exc:\n    log(exc)\n"),
     ],
@@ -151,6 +154,87 @@ def test_each_ratchet_rule_detects_new_debt(repo, rule, rel, content):
     result = gate(repo)
     assert result.returncode == 1
     assert f"[{rule}]" in result.stderr
+
+
+# ------------------------------------------------------------------ layer boundary and the logger
+
+
+LAYER_IMPORT = "import { fetchListings } from '../../services/modules/marketplace/listingsService';\nexport const x = fetchListings;\n"
+CLEAN = "export const ok = 1;\n"
+DEBT = "export const a = 1; // eslint-disable-line\n"
+
+
+def forget_rule(repo: Path, rule: str) -> None:
+    """Rewrite the baseline as it was before `rule` existed."""
+    recorded = baseline(repo)
+    del recorded["rules"][rule]
+    (repo / "scripts" / "reality-baseline.json").write_text(json.dumps(recorded), encoding="utf-8")
+
+
+@pytest.mark.parametrize("rel", ["src/hooks/api/a.ts", "src/store/a.ts", "src/services/modules/a/b.ts"])
+def test_hooks_stores_and_services_are_outside_the_boundary(repo, rel):
+    write(repo, rel, LAYER_IMPORT)
+    assert gate(repo).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "import { supabase } from '../services/supabase';\nexport const s = supabase;\n",
+        "import { apiFetch } from '../services/api/client';\nexport const s = apiFetch;\n",
+        "const service = require('../services/modules/a/b');\nexport const s = service;\n",
+        "export const load = () => import('../services/modules/a/b');\n",
+        "import '../services/supabase/client';\n",
+        "import { apiFetch } from '../services/api/client.ts';\n",
+        "export * from '../services/modules/a/b';\n",
+    ],
+)
+def test_every_way_of_reaching_the_service_layer_is_caught(repo, statement):
+    write(repo, "src/screens/A.tsx", statement)
+    result = gate(repo)
+    assert result.returncode == 1
+    assert "[layer-boundary]" in result.stderr
+
+
+def test_importing_the_error_types_is_allowed_from_a_screen(repo):
+    write(repo, "src/screens/A.tsx", "import type { ApiError } from '../services/api/errors';\nexport type E = ApiError;\n")
+    assert gate(repo).returncode == 0
+
+
+def test_the_layer_boundary_has_no_baseline_to_hide_behind(repo):
+    write(repo, "src/screens/A.tsx", LAYER_IMPORT)
+    assert gate(repo, "--init").returncode == 1  # a strict rule blocks even the first baseline
+
+
+def test_the_logger_is_the_only_file_that_may_use_the_console(repo):
+    write(repo, "src/utils/logger.ts", "export const log = () => console.warn('x');\n")
+    assert gate(repo).returncode == 0
+    write(repo, "src/utils/other.ts", "export const log = () => console.warn('x');\n")
+    result = gate(repo)
+    assert result.returncode == 1
+    assert "[console-call]" in result.stderr
+    assert "src/utils/other.ts" in result.stderr
+
+
+def test_a_rule_added_later_records_its_existing_debt_only_when_asked(repo):
+    write(repo, "src/a.ts", DEBT)
+    assert gate(repo, "--init").returncode == 0
+    forget_rule(repo, "lint-disable")
+
+    assert gate(repo).returncode == 1  # the debt is unrecorded, so the rule fails
+    assert gate(repo, "--update-baseline").returncode == 1  # and a plain update refuses to record it
+    assert gate(repo, "--update-baseline", "--adopt-new-rules").returncode == 0
+    assert baseline(repo)["rules"]["lint-disable"] == {"src/a.ts": 1}
+    assert gate(repo).returncode == 0
+
+
+def test_adopting_a_new_rule_never_forgives_growth_in_an_existing_one(repo):
+    write(repo, "backend/app/a.py", "try:\n    f()\nexcept Exception as exc:\n    log(exc)\n")
+    assert gate(repo, "--init").returncode == 0
+    forget_rule(repo, "lint-disable")
+
+    write(repo, "backend/app/a.py", "try:\n    f()\nexcept Exception as exc:\n    log(exc)\ntry:\n    g()\nexcept Exception as exc:\n    log(exc)\n")
+    assert gate(repo, "--update-baseline", "--adopt-new-rules").returncode == 1
 
 
 # ------------------------------------------------------------------ pre-commit mode

@@ -27,6 +27,14 @@ coverage/
 .env.*
 !.env.example
 
+# JWT signing keys (P4, gate-free — private key material, never committed; see
+# supabase/config.toml's [auth] signing_keys_path comment).
+supabase/signing_keys.json
+
+# Go-public prep (standardization plan P3 §6.4): this file hardcodes a real Supabase project ref
+# (read-only, but still project-identifying). Local setup uses .mcp.json.example as a template.
+.mcp.json
+
 # Python / FastAPI
 __pycache__/
 *.py[cod]
@@ -71,6 +79,9 @@ pnpm-debug.log*
 
 # Supabase local development
 .supabase/
+# `supabase start` writes its edge-runtime bundle here — `*.temp` above matches files named
+# literally that, not this directory.
+supabase/.temp/
 
 # Secrets / credentials
 *.pem
@@ -85,6 +96,11 @@ __pycache__/
 *.h5
 *.keras
 *.ckpt
+# The trained disease-advisory checkpoint (security fix C5, gate G8): hosted on GitHub Releases
+# and fetched by scripts/fetch_model_weights.py instead of being tracked in git, so a retrain no
+# longer adds ~9 MB to history every time. model_metadata.json (the pinned URL + SHA-256) stays
+# tracked.
+backend/app/ml/checkpoints/model.pth
 # Ruby Bundler
 .bundle/
 
