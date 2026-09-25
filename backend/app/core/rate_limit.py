@@ -1,6 +1,6 @@
+import hashlib
 from collections.abc import Callable
 
-import jwt
 from fastapi import FastAPI, Request
 from fastapi.routing import iter_route_contexts
 from slowapi import Limiter
@@ -15,35 +15,23 @@ from .config import settings
 
 
 def rate_limit_key(request: Request) -> str:
-    """P5 (item 4): buckets by user id when a bearer token is present, else by IP — so one heavy
-    user can't exhaust the shared IP bucket for everyone behind the same NAT/proxy, and a logged-in
+    """P5 (item 4): buckets by the caller's bearer token when there is one, else by IP — so one heavy
+    user can't exhaust the shared IP bucket for everyone behind the same NAT/proxy, and a signed-in
     abuser can't dodge a per-IP limit by rotating source addresses.
 
-    slowapi's `key_func` is a plain *synchronous* function called before FastAPI resolves its own
-    dependency graph for the route, so it has no access to `get_current_user`'s already-verified
-    result (that dependency hasn't run yet at this point, and can't — `key_func` isn't awaitable).
-    Re-verifying here would mean either blocking on a JWKS fetch in a sync context (reintroducing
-    the exact blocking-call problem elsewhere in this phase) or duplicating that logic. This reads
-    the token's `sub` claim WITHOUT verifying its signature — deliberately: it is used only to pick
-    a rate-limit bucket, never to authorize anything. A forged `sub` at worst buys the caller their
-    own separate bucket, no worse than today's trivially-IP-rotated bucketing; the real
-    authorization boundary (core/auth.py's get_current_user, require_role) is untouched and still
-    verifies every request regardless of what bucket it landed in here.
+    slowapi's `key_func` is a plain *synchronous* function called before FastAPI resolves the route's
+    dependencies, so `get_current_user`'s verified identity is not available here (and verifying the
+    token again would mean a blocking JWKS fetch in a sync context). The token is therefore hashed, not
+    decoded: nothing read from an unverified token is trusted, and the raw token never becomes a
+    storage key. A session keeps one bucket until its token is refreshed. A made-up token at worst buys
+    its sender a separate bucket, and core/auth.py's signature-checked `get_current_user` still rejects
+    it with a 401 on the same request.
     """
     authorization = request.headers.get("authorization", "")
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() == "bearer" and token:
-        try:
-            claims = jwt.decode(token, options={"verify_signature": False})
-            sub = claims.get("sub")
-            if sub:
-                return f"user:{sub}"
-        except jwt.PyJWTError:
-            # Malformed/undecodable token — falls through to the IP bucket below. get_current_user
-            # still runs its own, real, signature-verified check later on this same request; a bad
-            # token ends up rejected there with a 401 regardless of which bucket it was counted in.
-            pass
-    return f"ip:{get_remote_address(request)}"
+        return "token:" + hashlib.sha256(token.encode()).hexdigest()[:32]
+    return "ip:" + get_remote_address(request)
 
 
 # Defined in its own module (not inline in main.py) so endpoint modules can import `limiter` for
