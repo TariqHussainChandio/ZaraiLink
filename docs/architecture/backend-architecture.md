@@ -73,7 +73,7 @@ about 15% of throughput on public reads (ADR 0001).
 - **CORS**: `ALLOWED_ORIGINS` allowlist, `GET/POST/PATCH/DELETE`, `Authorization` and `Content-Type` only, no
   credentials (bearer tokens, never cookies). Only browsers care; the mobile app is not subject to CORS.
 - **Rate limiting** (`core/rate_limit.py`): `RATE_LIMIT_DEFAULT` (200/minute) per caller on every route, keyed by
-  user id when a bearer token is present (read without verifying the signature, only to pick a bucket) and otherwise
+  a hash of the bearer token when one is present (nothing is read from the unverified token) and otherwise
   by client IP, with a tighter 10/minute on `/api/v1/disease/predict`. slowapi's own middleware cannot find handlers
   behind FastAPI 0.141's lazy included routers and silently stopped limiting, so `RateLimitMiddleware` does the route
   lookup through `iter_route_contexts`. Behind a load balancer set `FORWARDED_ALLOW_IPS` to its address, or every
