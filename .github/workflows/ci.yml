@@ -240,6 +240,10 @@ jobs:
       # Applies the full migration history to a throwaway Postgres and starts Auth and the REST API,
       # the same local validation done by hand before any `supabase db push`. Fails if any migration
       # does not apply cleanly.
+      # supabase/config.toml points Auth at supabase/signing_keys.json (ES256, so the API can check tokens against a
+      # real JWKS). The file holds a private key and is git-ignored; CI makes a throwaway one for this run.
+      - name: Generate a throwaway JWT signing key
+        run: supabase gen signing-key --algorithm ES256 | python3 -c 'import json, sys; json.dump([json.load(sys.stdin)], sys.stdout)' > supabase/signing_keys.json
       - name: Start local Supabase
         run: supabase start -x studio,edge-runtime,logflare,vector,imgproxy,supavisor
       - name: Lint schema for typing errors

@@ -33,6 +33,8 @@ installed, and check the commit message against Conventional Commits. Skip a sin
 ## 2. Local Supabase
 
 ```bash
+# once per clone: the JWT signing key the local Auth uses (private, git-ignored)
+npx supabase gen signing-key --algorithm ES256 | python -c "import json, sys; json.dump([json.load(sys.stdin)], sys.stdout)" > supabase/signing_keys.json
 npx supabase start        # first run pulls images; applies all migrations and supabase/seed.sql
 npx supabase status -o env
 ```
@@ -229,6 +231,8 @@ stack only; `supabase db reset` removes it.
 | Symptom | Cause and fix |
 |---|---|
 | `supabase start` fails immediately | Docker Desktop is not running |
+| `supabase start` says `failed to read signing keys` | `supabase/signing_keys.json` is missing: generate it with the first command in section 2 |
+| `supabase start` says `ports are not available` for 54321-54324 | Windows reserved that port range. In an Administrator PowerShell: `net stop winnat; net start winnat`, then start again |
 | Backend cannot find its keys | It was started from the repository root; run it from `backend/` |
 | App stops at startup with `Invalid app configuration` | `.env` is missing, still uses the old variable names, or has a value that is not a URL. The message names the field |
 | App shows `Network request failed` | `EXPO_PUBLIC_API_BASE_URL` uses `127.0.0.1`; use `10.0.2.2` or the LAN address |

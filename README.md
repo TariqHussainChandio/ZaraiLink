@@ -37,6 +37,7 @@ app itself Android Studio with an emulator. Full detail is in
 npm ci
 
 # 2. Local Supabase (Postgres, Auth, REST, mail catcher) in Docker; applies every migration
+npx supabase gen signing-key --algorithm ES256 | python -c "import json, sys; json.dump([json.load(sys.stdin)], sys.stdout)" > supabase/signing_keys.json   # once per clone
 npx supabase start
 npx supabase status -o env        # prints the local URL and keys used below
 
