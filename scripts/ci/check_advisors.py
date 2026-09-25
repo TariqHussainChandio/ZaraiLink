@@ -44,12 +44,16 @@ def run_advisors() -> list[dict]:
 
 
 def parse(text: str) -> list[dict]:
-    """The CLI prints a progress line before the JSON document, and some versions a second document after it."""
-    start = text.find("{")
-    if start < 0:
+    """The findings from the CLI output, after any progress line.
+
+    The npm CLI (local runs) prints `{"results": [...]}` and may print a second document after it; the standalone
+    binary CI installs prints the list of findings itself.
+    """
+    starts = [index for index in (text.find("{"), text.find("[")) if index >= 0]
+    if not starts:
         raise SystemExit(f"no JSON in the advisor output:\n{text}")
-    document, _ = json.JSONDecoder().raw_decode(text, start)
-    return document["results"]
+    document, _ = json.JSONDecoder().raw_decode(text, min(starts))
+    return document if isinstance(document, list) else document["results"]
 
 
 def subject(finding: dict) -> str:

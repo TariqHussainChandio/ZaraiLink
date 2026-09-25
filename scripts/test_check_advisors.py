@@ -69,3 +69,8 @@ def test_output_with_a_progress_line_before_the_json_parses():
 def test_a_second_document_after_the_results_is_ignored():
     text = 'Connecting to local database...\n{"results": []}\n{"message": ""}\n'
     assert check.parse(text) == []
+
+
+def test_the_standalone_cli_prints_the_list_of_findings_itself():
+    text = 'Connecting to local database...\n[{"name": "unused_index", "level": "INFO"}]\n'
+    assert check.parse(text) == [{"name": "unused_index", "level": "INFO"}]
