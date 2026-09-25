@@ -64,3 +64,8 @@ def test_a_stale_allow_list_entry_fails():
 def test_output_with_a_progress_line_before_the_json_parses():
     text = 'Connecting to local database...\n{"results": []}'
     assert check.parse(text) == []
+
+
+def test_a_second_document_after_the_results_is_ignored():
+    text = 'Connecting to local database...\n{"results": []}\n{"message": ""}\n'
+    assert check.parse(text) == []

@@ -44,11 +44,12 @@ def run_advisors() -> list[dict]:
 
 
 def parse(text: str) -> list[dict]:
-    """The CLI prints a progress line before the JSON document."""
+    """The CLI prints a progress line before the JSON document, and some versions a second document after it."""
     start = text.find("{")
     if start < 0:
         raise SystemExit(f"no JSON in the advisor output:\n{text}")
-    return json.loads(text[start:])["results"]
+    document, _ = json.JSONDecoder().raw_decode(text, start)
+    return document["results"]
 
 
 def subject(finding: dict) -> str:
