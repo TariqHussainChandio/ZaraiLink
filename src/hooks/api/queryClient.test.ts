@@ -1,6 +1,7 @@
-import { dehydrate, QueryClient } from '@tanstack/react-query';
+import { dehydrate, type QueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../services/api/errors';
 import { useAuthStore } from '../../store/authStore';
+import { createTestQueryClient } from '../../testUtils/renderWithProviders';
 import { queryKeys } from './keys';
 import { connectQueryManagers, queryClient, shouldPersist, shouldRetry } from './queryClient';
 
@@ -31,7 +32,7 @@ describe('shouldRetry', () => {
 
 describe('the persisted cache', () => {
   async function seeded() {
-    const client = new QueryClient();
+    const client = createTestQueryClient();
     await client.prefetchQuery({ queryKey: queryKeys.marketplace.categories(), queryFn: async () => ['seeds'] });
     await client.prefetchQuery({ queryKey: queryKeys.orders.list('buyer'), queryFn: async () => [{ id: 'order-1' }] });
     await client.prefetchQuery({ queryKey: queryKeys.marketplace.crops(), queryFn: async () => Promise.reject(new Error('x')) });

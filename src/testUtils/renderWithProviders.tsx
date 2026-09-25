@@ -6,10 +6,14 @@ import { render, type RenderResult } from '@testing-library/react-native';
 
 const Stack = createNativeStackNavigator();
 
-/** A query client for tests: no retries (a failure should fail the test, not wait), and nothing cached between tests. */
+/**
+ * A query client for tests: no retries (a failure should fail the test, not wait), and nothing cached between tests.
+ * `gcTime: Infinity` for queries and mutations means no garbage-collection timer is scheduled when a component
+ * unmounts; the default (5 minutes) kept Jest's process alive after the last test when it ran in one process (CI).
+ */
 export function createTestQueryClient(): QueryClient {
   return new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } },
+    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
   });
 }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { OrderDetailScreen } from './OrderDetailScreen';
 import {
@@ -16,6 +16,7 @@ import {
 } from '../../services/modules/payments/paymentsService';
 import { fetchReviewByOrderId } from '../../services/modules/reviews/reviewsService';
 import { useAuthStore } from '../../store/authStore';
+import { createTestQueryClient } from '../../testUtils/renderWithProviders';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
 import type { OrderWithItems } from '../../types/orders';
 
@@ -81,7 +82,7 @@ const order = (overrides: Partial<OrderWithItems> = {}): OrderWithItems =>
   }) as OrderWithItems;
 
 function renderScreen() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = createTestQueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
       <OrderDetailScreen />
