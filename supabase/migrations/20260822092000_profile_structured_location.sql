@@ -1,4 +1,4 @@
--- SRDS v4.0 Module 5 (Reference Data & Localization, §6.2/§6.3).
+-- SRDS v4.0 Module 5 (Reference Data, §6.2/§6.3).
 -- `profiles.location` (free text) predates the reference-data tables from Module 4 and stays
 -- as-is — additive only, so existing rows (real users already registered) are untouched.
 -- New structured columns let the app use country → province → city pickers going forward;
