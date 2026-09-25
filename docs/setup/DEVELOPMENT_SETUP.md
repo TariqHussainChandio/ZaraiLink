@@ -34,7 +34,7 @@ installed, and check the commit message against Conventional Commits. Skip a sin
 
 ```bash
 # once per clone: the JWT signing key the local Auth uses (private, git-ignored)
-npx supabase gen signing-key --algorithm ES256 | python -c "import json, sys; json.dump([json.load(sys.stdin)], sys.stdout)" > supabase/signing_keys.json
+npx supabase gen signing-key --algorithm ES256 --workdir "$(mktemp -d)" | python -c "import json, sys; json.dump([json.load(sys.stdin)], sys.stdout)" > supabase/signing_keys.json
 npx supabase start        # first run pulls images; applies all migrations and supabase/seed.sql
 npx supabase status -o env
 ```
