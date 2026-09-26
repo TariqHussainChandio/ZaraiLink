@@ -133,6 +133,7 @@ N ids are from the baseline report.
 | Create/predict request contract | Fixed | C2 (SSRF): `image_url` replaced with a validated, owner-checked `storage_path`; the private `disease-images` bucket only ever yields a signed URL to a client, the server never fetches a client-supplied URL — `tests/unit/test_disease_case_ssrf_protection.py` | P3 (done) |
 | Predict, privileges present | Works, limited | B10d. No rejection of non-leaf images (H8); 38 PlantVillage classes, none of Pakistan's staple crops | P9 |
 | Prediction on a real photo | Unverified | The integration test fixture does not exist (N4) | P9 |
+| Model weights stored in Supabase | Works (hosted bucket + fetch script) | The 9.3 MB model is in the private `ml-models` bucket of the hosted project (migration `20260928080000`, pgTAP: no client role can list or read it); `scripts/fetch_model_weights.py` downloads it through a signed URL (`MODEL_WEIGHTS_URL`) and checks the pinned SHA-256. Uploaded and downloaded back with a matching checksum. The GitHub release and the old copies in git history are removed. CI needs the `MODEL_WEIGHTS_URL` repository secret | A0 |
 
 ## Platform
 
