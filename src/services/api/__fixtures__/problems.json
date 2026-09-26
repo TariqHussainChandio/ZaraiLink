@@ -1,0 +1,169 @@
+{
+  "account_suspended": {
+    "body": {
+      "code": "account_suspended",
+      "instance": "/api/v1/orders",
+      "status": 403,
+      "title": "Account suspended",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 403
+  },
+  "idempotency_key_reused": {
+    "body": {
+      "code": "idempotency_key_reused",
+      "instance": "/api/v1/orders/checkout",
+      "status": 422,
+      "title": "This Idempotency-Key was already used with a different request.",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 422
+  },
+  "insufficient_role": {
+    "body": {
+      "code": "insufficient_role",
+      "instance": "/api/v1/dealer/inventory",
+      "status": 403,
+      "title": "Insufficient role",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 403
+  },
+  "insufficient_stock": {
+    "body": {
+      "code": "insufficient_stock",
+      "instance": "/api/v1/orders/checkout",
+      "status": 422,
+      "title": "Only 50.0 left in stock for listing <uuid>.",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 422
+  },
+  "mfa_required": {
+    "body": {
+      "code": "mfa_required",
+      "instance": "/api/v1/reference-data/units/rows",
+      "status": 403,
+      "title": "This action requires a verified second factor (MFA).",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 403
+  },
+  "not_found": {
+    "body": {
+      "code": "not_found",
+      "instance": "/api/v1/orders/<uuid>",
+      "status": 404,
+      "title": "Order not found",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 404
+  },
+  "payload_too_large": {
+    "body": {
+      "code": "payload_too_large",
+      "detail": "Body exceeds the 10485760 byte limit.",
+      "instance": "/api/v1/orders/checkout",
+      "status": 413,
+      "title": "Request body too large",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 413
+  },
+  "rate_limited": {
+    "body": {
+      "code": "rate_limited",
+      "detail": "3 per 1 minute",
+      "instance": "/api/v1/orders",
+      "status": 429,
+      "title": "Too many requests",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 429
+  },
+  "server_error": {
+    "body": {
+      "code": "server_error",
+      "instance": "/api/v1/orders",
+      "status": 500,
+      "title": "Internal server error",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 500
+  },
+  "service_unavailable": {
+    "body": {
+      "code": "service_unavailable",
+      "instance": "/health/ready",
+      "status": 503,
+      "title": "Supabase unreachable",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 503
+  },
+  "token_invalid": {
+    "body": {
+      "code": "token_invalid",
+      "instance": "/api/v1/orders",
+      "status": 401,
+      "title": "Invalid or expired token",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 401
+  },
+  "unauthenticated": {
+    "body": {
+      "code": "unauthenticated",
+      "instance": "/api/v1/orders",
+      "status": 401,
+      "title": "Missing Authorization header",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 401
+  },
+  "validation_failed": {
+    "body": {
+      "code": "validation_failed",
+      "errors": [
+        {
+          "loc": [
+            "body",
+            "cart_items"
+          ],
+          "msg": "Input should be a valid list"
+        }
+      ],
+      "instance": "/api/v1/orders/checkout",
+      "status": 422,
+      "title": "Request validation failed",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 422
+  }
+}

@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertDashboardScreen } from './DashboardScreen';
 import { fetchExpertProfile } from '../../services/modules/expert/expertService';
 import { fetchConsultationsForExpert } from '../../services/modules/expert/consultationService';
@@ -78,7 +78,7 @@ describe('ExpertDashboardScreen', () => {
   it('shows the profile-completion banner when there is no expert profile yet', async () => {
     mockFetchExpertProfile.mockResolvedValue(null);
     mockFetchConsultationsForExpert.mockResolvedValue([]);
-    await render(<ExpertDashboardScreen />);
+    await renderWithQuery(<ExpertDashboardScreen />);
 
     expect(await screen.findByText('Complete your expert profile')).toBeTruthy();
     await fireEvent.press(screen.getByText('Complete your expert profile'));
@@ -88,14 +88,14 @@ describe('ExpertDashboardScreen', () => {
   it('shows a pending-review banner while verification is pending', async () => {
     mockFetchExpertProfile.mockResolvedValue({ ...baseProfile, verification_status: 'pending' });
     mockFetchConsultationsForExpert.mockResolvedValue([]);
-    await render(<ExpertDashboardScreen />);
+    await renderWithQuery(<ExpertDashboardScreen />);
     expect(await screen.findByText('Application pending review')).toBeTruthy();
   });
 
   it('shows a rejected banner and lets the expert re-apply', async () => {
     mockFetchExpertProfile.mockResolvedValue({ ...baseProfile, verification_status: 'rejected' });
     mockFetchConsultationsForExpert.mockResolvedValue([]);
-    await render(<ExpertDashboardScreen />);
+    await renderWithQuery(<ExpertDashboardScreen />);
 
     await fireEvent.press(await screen.findByText('Application not approved'));
     expect(mockNavigate).toHaveBeenCalledWith(EXPERT_HOME_ROUTES.ExpertApplication);
@@ -107,7 +107,7 @@ describe('ExpertDashboardScreen', () => {
       consultation,
       { ...consultation, id: 'c2', status: 'closed' },
     ]);
-    await render(<ExpertDashboardScreen />);
+    await renderWithQuery(<ExpertDashboardScreen />);
 
     expect(await screen.findByText('Open Requests')).toBeTruthy();
     expect(screen.getByText('Resolved')).toBeTruthy();
@@ -118,7 +118,7 @@ describe('ExpertDashboardScreen', () => {
   it('navigates to Analytics via Quick Actions', async () => {
     mockFetchExpertProfile.mockResolvedValue(baseProfile);
     mockFetchConsultationsForExpert.mockResolvedValue([]);
-    await render(<ExpertDashboardScreen />);
+    await renderWithQuery(<ExpertDashboardScreen />);
 
     await fireEvent.press(await screen.findByText('Analytics'));
     expect(mockNavigate).toHaveBeenCalledWith(EXPERT_HOME_ROUTES.Analytics);
@@ -127,7 +127,7 @@ describe('ExpertDashboardScreen', () => {
   it('navigates to the consultation detail screen when a card is tapped', async () => {
     mockFetchExpertProfile.mockResolvedValue(baseProfile);
     mockFetchConsultationsForExpert.mockResolvedValue([consultation]);
-    await render(<ExpertDashboardScreen />);
+    await renderWithQuery(<ExpertDashboardScreen />);
 
     await fireEvent.press(await screen.findByText('Yellowing wheat leaves'));
     expect(mockNavigate).toHaveBeenCalledWith(EXPERT_TABS.Consultations, {
@@ -139,14 +139,14 @@ describe('ExpertDashboardScreen', () => {
   it('shows the empty state when there are no consultation requests', async () => {
     mockFetchExpertProfile.mockResolvedValue(baseProfile);
     mockFetchConsultationsForExpert.mockResolvedValue([]);
-    await render(<ExpertDashboardScreen />);
+    await renderWithQuery(<ExpertDashboardScreen />);
     expect(await screen.findByText('No requests yet')).toBeTruthy();
   });
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchExpertProfile.mockRejectedValue(new Error('network down'));
     mockFetchConsultationsForExpert.mockResolvedValue([]);
-    await render(<ExpertDashboardScreen />);
+    await renderWithQuery(<ExpertDashboardScreen />);
 
     expect(await screen.findByText("Couldn't load the dashboard")).toBeTruthy();
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
+import { queryKeys } from '../../hooks/api/keys';
 import { ReferenceDataScreen } from './ReferenceDataScreen';
 import {
   createRefDataRow,
@@ -9,8 +10,9 @@ import {
   fetchRefDataRows,
   updateRefDataRow,
 } from '../../services/modules/reference-data/referenceDataService';
-import { useReferenceDataStore } from '../../store/referenceDataStore';
 import { useAuthStore } from '../../store/authStore';
+
+const queryClient = createTestQueryClient();
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -41,7 +43,8 @@ beforeEach(() => {
   mockUpdateRow.mockReset();
   mockDeleteRow.mockReset();
   useAuthStore.setState({ user: { id: 'admin-1' } as never });
-  useReferenceDataStore.setState({ invalidateAll: jest.fn() } as never);
+  queryClient.clear();
+  jest.spyOn(queryClient, 'invalidateQueries');
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
@@ -52,7 +55,7 @@ afterEach(() => {
 describe('ReferenceDataScreen', () => {
   it('loads currencies by default', async () => {
     mockFetchRows.mockResolvedValue([{ id: 'cur-1', code: 'PKR', symbol: 'Rs.', name: 'Pakistani Rupee' }]);
-    await render(<ReferenceDataScreen />);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
 
     expect(await screen.findByText('PKR — Pakistani Rupee')).toBeTruthy();
     expect(mockFetchRows).toHaveBeenCalledWith('currencies');
@@ -60,7 +63,7 @@ describe('ReferenceDataScreen', () => {
 
   it('shows an empty state when a table has no rows', async () => {
     mockFetchRows.mockResolvedValue([]);
-    await render(<ReferenceDataScreen />);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
     expect(await screen.findByText('No currencies yet')).toBeTruthy();
   });
 
@@ -70,7 +73,7 @@ describe('ReferenceDataScreen', () => {
         table === 'units' ? [{ id: 'unit-1', code: 'kg', label: 'Kilogram', applies_to: 'weight' }] : [],
       ),
     );
-    await render(<ReferenceDataScreen />);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
     await screen.findByText('No currencies yet');
 
     await fireEvent.press(screen.getByText('Units'));
@@ -83,7 +86,7 @@ describe('ReferenceDataScreen', () => {
   it('creates a new currency row through the sheet', async () => {
     mockFetchRows.mockResolvedValue([]);
     mockCreateRow.mockResolvedValue(undefined);
-    await render(<ReferenceDataScreen />);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
     await screen.findByText('No currencies yet');
 
     await fireEvent.press(screen.getByText('+ Add Currencie'));
@@ -94,14 +97,14 @@ describe('ReferenceDataScreen', () => {
     await fireEvent.press(screen.getByText('Create'));
 
     expect(mockCreateRow).toHaveBeenCalledWith('currencies', { code: 'USD', symbol: '$', name: 'US Dollar' });
-    expect(useReferenceDataStore.getState().invalidateAll).toHaveBeenCalledTimes(1);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeys.referenceData.all });
     expect(await screen.findByText('USD — US Dollar')).toBeTruthy();
   });
 
   it('edits an existing row', async () => {
     mockFetchRows.mockResolvedValue([{ id: 'cur-1', code: 'PKR', symbol: 'Rs.', name: 'Pakistani Rupee' }]);
     mockUpdateRow.mockResolvedValue(undefined);
-    await render(<ReferenceDataScreen />);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
     await screen.findByText('PKR — Pakistani Rupee');
 
     await fireEvent.press(screen.getByText('Edit'));
@@ -123,7 +126,7 @@ describe('ReferenceDataScreen', () => {
     (Alert.alert as jest.Mock).mockImplementation((_title, _msg, buttons) => {
       buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
     });
-    await render(<ReferenceDataScreen />);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
     await screen.findByText('PKR — Pakistani Rupee');
 
     await fireEvent.press(screen.getByText('Delete'));

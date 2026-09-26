@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { CheckoutScreen } from './CheckoutScreen';
 import { checkout } from '../../services/modules/orders/ordersService';
 import { useAuthStore } from '../../store/authStore';
@@ -48,14 +48,14 @@ describe('CheckoutScreen', () => {
         item({ listingId: 'listing-2', sellerId: 'seller-2', title: 'Rice seeds', price: 50, quantity: 1 }),
       ],
     });
-    await render(<CheckoutScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<CheckoutScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByText('2 × Wheat seeds')).toBeTruthy();
     expect(screen.getByText('1 × Rice seeds')).toBeTruthy();
     expect(screen.getByText('Rs. 250')).toBeTruthy();
   });
 
   it('adds a delivery charge into the total for that seller', async () => {
-    await render(<CheckoutScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<CheckoutScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Delivery charge (optional)'), '50');
     expect(screen.getByText('Rs. 250')).toBeTruthy();
   });
@@ -63,7 +63,7 @@ describe('CheckoutScreen', () => {
   it('checks out, clears the cart, and pops to top on success', async () => {
     mockCheckout.mockResolvedValue([{ id: 'order-1' }]);
     const navigation = makeNavigation();
-    await render(<CheckoutScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<CheckoutScreen navigation={navigation} route={{} as never} />);
     await fireEvent.press(screen.getByText('Place Order'));
 
     expect(mockCheckout).toHaveBeenCalledWith([item()], { 'seller-1': 0 });
@@ -75,7 +75,7 @@ describe('CheckoutScreen', () => {
   it('shows a failure alert and keeps the cart when checkout rejects', async () => {
     mockCheckout.mockRejectedValue(new Error('Listing sold out'));
     const navigation = makeNavigation();
-    await render(<CheckoutScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<CheckoutScreen navigation={navigation} route={{} as never} />);
     await fireEvent.press(screen.getByText('Place Order'));
 
     expect(Alert.alert).toHaveBeenCalledWith('Checkout failed', 'Listing sold out');

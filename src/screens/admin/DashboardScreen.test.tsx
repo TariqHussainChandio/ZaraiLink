@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AdminDashboardScreen } from './DashboardScreen';
 import { fetchPlatformStats, type PlatformStats } from '../../services/modules/admin/adminService';
 import { ADMIN_HOME_ROUTES } from '../../constants/routes';
@@ -44,7 +44,7 @@ beforeEach(() => {
 describe('AdminDashboardScreen', () => {
   it('loads and renders the platform totals', async () => {
     mockFetchStats.mockResolvedValue(stats());
-    await render(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(await screen.findByText('120')).toBeTruthy();
     expect(screen.getByText('55')).toBeTruthy();
@@ -53,7 +53,7 @@ describe('AdminDashboardScreen', () => {
 
   it('shows a breakdown of users by role', async () => {
     mockFetchStats.mockResolvedValue(stats());
-    await render(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
 
     await screen.findByText('120');
     expect(screen.getByText('Farmer')).toBeTruthy();
@@ -65,7 +65,7 @@ describe('AdminDashboardScreen', () => {
 
   it("shows a retry state when loading fails", async () => {
     mockFetchStats.mockRejectedValueOnce(new Error('offline'));
-    await render(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(await screen.findByText("Couldn't load the dashboard")).toBeTruthy();
 
@@ -77,7 +77,7 @@ describe('AdminDashboardScreen', () => {
   it('navigates to each admin destination via Quick Actions', async () => {
     mockFetchStats.mockResolvedValue(stats());
     const navigation = makeNavigation();
-    await render(<AdminDashboardScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<AdminDashboardScreen navigation={navigation} route={{} as never} />);
     await screen.findByText('120');
 
     await fireEvent.press(screen.getByText('Manage Users'));
@@ -90,7 +90,9 @@ describe('AdminDashboardScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.ExpertVerification);
 
     const ordersMatches = screen.getAllByText('Orders');
-    await fireEvent.press(ordersMatches[ordersMatches.length - 1]);
+    const ordersTile = ordersMatches.at(-1);
+    if (!ordersTile) throw new Error('the Orders tile was not rendered');
+    await fireEvent.press(ordersTile);
     expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Orders);
 
     await fireEvent.press(screen.getByText('Reports'));

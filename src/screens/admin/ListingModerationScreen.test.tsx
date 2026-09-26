@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ListingModerationScreen } from './ListingModerationScreen';
 import {
   fetchAllListingsForModeration,
@@ -62,13 +62,13 @@ beforeEach(() => {
 describe('ListingModerationScreen', () => {
   it('shows an empty state when there are no listings', async () => {
     mockFetchListings.mockResolvedValue([]);
-    await render(<ListingModerationScreen />);
+    await renderWithQuery(<ListingModerationScreen />);
     expect(await screen.findByText('No listings yet')).toBeTruthy();
   });
 
   it('lists listings with owner, price, and status', async () => {
     mockFetchListings.mockResolvedValue([listing()]);
-    await render(<ListingModerationScreen />);
+    await renderWithQuery(<ListingModerationScreen />);
 
     expect(await screen.findByText('Wheat Seeds')).toBeTruthy();
     expect(screen.getByText(/Farmer Sana/)).toBeTruthy();
@@ -79,7 +79,7 @@ describe('ListingModerationScreen', () => {
   it('deactivates an active listing', async () => {
     mockFetchListings.mockResolvedValue([listing()]);
     mockUpdateListingStatus.mockResolvedValue(undefined);
-    await render(<ListingModerationScreen />);
+    await renderWithQuery(<ListingModerationScreen />);
     await screen.findByText('Wheat Seeds');
 
     await fireEvent.press(screen.getByText('Deactivate'));
@@ -90,7 +90,7 @@ describe('ListingModerationScreen', () => {
   it('activates an inactive listing', async () => {
     mockFetchListings.mockResolvedValue([listing({ status: 'inactive' })]);
     mockUpdateListingStatus.mockResolvedValue(undefined);
-    await render(<ListingModerationScreen />);
+    await renderWithQuery(<ListingModerationScreen />);
     await screen.findByText('Wheat Seeds');
 
     await fireEvent.press(screen.getByText('Activate'));
@@ -100,7 +100,7 @@ describe('ListingModerationScreen', () => {
 
   it('hides the toggle action for sold listings', async () => {
     mockFetchListings.mockResolvedValue([listing({ status: 'sold' })]);
-    await render(<ListingModerationScreen />);
+    await renderWithQuery(<ListingModerationScreen />);
     await screen.findByText('Wheat Seeds');
 
     expect(screen.queryByText('Deactivate')).toBeNull();

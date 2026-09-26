@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { PaymentMethodScreen } from './PaymentMethodScreen';
 import { fetchOrderById } from '../../services/modules/orders/ordersService';
 import { fetchPaymentByOrderId, initiatePayment } from '../../services/modules/payments/paymentsService';
@@ -44,7 +44,7 @@ describe('PaymentMethodScreen', () => {
   it('loads the order total and defaults to Cash on Delivery', async () => {
     mockFetchOrder.mockResolvedValue({ total: 1500 });
     mockFetchPayment.mockResolvedValue(null);
-    await render(<PaymentMethodScreen {...makeProps()} />);
+    await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
 
     expect(await screen.findByText('Rs. 1500')).toBeTruthy();
     expect(screen.getByText('Cash on Delivery')).toBeTruthy();
@@ -55,7 +55,7 @@ describe('PaymentMethodScreen', () => {
     mockFetchOrder.mockResolvedValue({ total: 1500 });
     mockFetchPayment.mockResolvedValue({ id: 'payment-1' });
     const props = makeProps();
-    await render(<PaymentMethodScreen {...props} />);
+    await renderWithQuery(<PaymentMethodScreen {...props} />);
 
     await waitFor(() =>
       expect(props.navigation.replace).toHaveBeenCalledWith(ORDERS_ROUTES.PaymentProcessing, {
@@ -69,7 +69,7 @@ describe('PaymentMethodScreen', () => {
     mockFetchPayment.mockResolvedValue(null);
     mockInitiate.mockResolvedValue({ id: 'payment-2' });
     const props = makeProps();
-    await render(<PaymentMethodScreen {...props} />);
+    await renderWithQuery(<PaymentMethodScreen {...props} />);
     await screen.findByText('Rs. 1500');
 
     await fireEvent.press(screen.getByText('Bank Transfer'));
@@ -85,7 +85,7 @@ describe('PaymentMethodScreen', () => {
     mockFetchOrder.mockResolvedValue({ total: 1500 });
     mockFetchPayment.mockResolvedValue(null);
     mockInitiate.mockRejectedValue(new Error('Gateway unavailable'));
-    await render(<PaymentMethodScreen {...makeProps()} />);
+    await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
     await screen.findByText('Rs. 1500');
 
     await fireEvent.press(screen.getByText('Continue'));

@@ -83,7 +83,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     barValue: {
       fontSize: typography.sizes.xs,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },

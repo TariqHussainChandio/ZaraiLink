@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { DiseaseProcessingScreen } from './DiseaseProcessingScreen';
 import { createDiseaseCase, predictDisease, uploadDiseaseImage } from '../../services/modules/ai/diseaseService';
 import { CONSULTATIONS_ROUTES, APP_TABS } from '../../constants/routes';
@@ -47,15 +47,15 @@ beforeEach(() => {
 describe('DiseaseProcessingScreen', () => {
   it('shows the analyzing spinner while the pipeline runs', async () => {
     mockUploadDiseaseImage.mockReturnValue(new Promise(() => {}));
-    await render(<DiseaseProcessingScreen />);
+    await renderWithQuery(<DiseaseProcessingScreen />);
     expect(screen.getByText('Analyzing your photo...')).toBeTruthy();
   });
 
   it('uploads the image, creates a case, predicts, and navigates to the result', async () => {
-    mockUploadDiseaseImage.mockResolvedValue('https://example.com/leaf.jpg');
+    mockUploadDiseaseImage.mockResolvedValue('farmer-1/leaf.jpg');
     mockCreateDiseaseCase.mockResolvedValue({ id: 'case-1' });
     mockPredictDisease.mockResolvedValue({ id: 'pred-1' });
-    await render(<DiseaseProcessingScreen />);
+    await renderWithQuery(<DiseaseProcessingScreen />);
 
     await screen.findByText('Analyzing your photo...');
     expect(mockUploadDiseaseImage).toHaveBeenCalledWith('farmer-1', {
@@ -65,18 +65,18 @@ describe('DiseaseProcessingScreen', () => {
     });
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('DiseaseResult', { diseaseCaseId: 'case-1' }));
-    expect(mockCreateDiseaseCase).toHaveBeenCalledWith('crop-1', 'https://example.com/leaf.jpg');
+    expect(mockCreateDiseaseCase).toHaveBeenCalledWith('crop-1', 'farmer-1/leaf.jpg');
     expect(mockPredictDisease).toHaveBeenCalledWith('case-1');
   });
 
   it('shows an error and lets the farmer retry when the pipeline fails', async () => {
     mockUploadDiseaseImage.mockRejectedValueOnce(new Error('Upload failed'));
-    await render(<DiseaseProcessingScreen />);
+    await renderWithQuery(<DiseaseProcessingScreen />);
 
     expect(await screen.findByText("AI analysis isn't available right now")).toBeTruthy();
     expect(screen.getByText('Upload failed')).toBeTruthy();
 
-    mockUploadDiseaseImage.mockResolvedValueOnce('https://example.com/leaf.jpg');
+    mockUploadDiseaseImage.mockResolvedValueOnce('farmer-1/leaf.jpg');
     mockCreateDiseaseCase.mockResolvedValueOnce({ id: 'case-1' });
     mockPredictDisease.mockResolvedValueOnce({ id: 'pred-1' });
     await fireEvent.press(screen.getByText('Retry'));
@@ -84,11 +84,15 @@ describe('DiseaseProcessingScreen', () => {
     expect(await screen.findByText('Analyzing your photo...')).toBeTruthy();
   });
 
-  it('hands off to Consult an Expert with the disease context on failure', async () => {
+  // Security fix C2: the fallback used to pass the (now-private-bucket, no-longer-resolvable)
+  // uploaded URL, which was also `null` whenever upload itself was what failed — a dead end. It
+  // now always uses the original local photo URI from route params, valid regardless of whether
+  // upload/create/predict ever succeeded.
+  it('hands off to Consult an Expert with the local photo on failure', async () => {
     mockUploadDiseaseImage.mockRejectedValue(new Error('AI service unavailable'));
     const tabNavigate = jest.fn();
     mockGetParent.mockReturnValue({ navigate: tabNavigate });
-    await render(<DiseaseProcessingScreen />);
+    await renderWithQuery(<DiseaseProcessingScreen />);
 
     await screen.findByText("AI analysis isn't available right now");
     await fireEvent.press(screen.getByText('Talk to an Expert'));
@@ -101,7 +105,7 @@ describe('DiseaseProcessingScreen', () => {
           subject: 'Crop disease advisory',
           problemDescription: '',
           cropId: 'crop-1',
-          imageUrl: null,
+          imageUrl: 'file://leaf.jpg',
         },
       },
     });

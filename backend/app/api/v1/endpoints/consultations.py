@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from ....core.auth import AuthenticatedUser, require_authenticated_user
+from ....core.pagination import Page, paginate
 from ....schemas.consultations import (
     Consultation,
     ConsultationMessageWithListing,
@@ -29,24 +30,26 @@ async def create_request(
         "images": request.images,
         "priority": request.priority,
     }
-    return service.create_request(user, fields)
+    return await service.create_request(user, fields)
 
 
 @router.get("/mine", response_model=list[ConsultationWithRelations])
-async def list_for_user(user: AuthenticatedUser = Depends(require_authenticated_user)) -> list[dict]:
-    return service.fetch_for_user(user)
+async def list_for_user(
+    user: AuthenticatedUser = Depends(require_authenticated_user), page: Page = Depends(paginate)
+) -> list[dict]:
+    return page.finish(await service.fetch_for_user(user))
 
 
 @router.get("/assigned", response_model=list[ConsultationWithRelations])
-async def list_for_expert(user: AuthenticatedUser = Depends(require_authenticated_user)) -> list[dict]:
-    return service.fetch_for_expert(user)
+async def list_for_expert(
+    user: AuthenticatedUser = Depends(require_authenticated_user), page: Page = Depends(paginate)
+) -> list[dict]:
+    return page.finish(await service.fetch_for_expert(user))
 
 
 @router.get("/{consultation_id}", response_model=ConsultationWithRelations)
-async def get_consultation(
-    consultation_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)
-) -> dict:
-    return service.fetch_by_id(user, consultation_id)
+async def get_consultation(consultation_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> dict:
+    return await service.fetch_by_id(user, consultation_id)
 
 
 @router.patch("/{consultation_id}/images", status_code=204)
@@ -55,7 +58,7 @@ async def update_images(
     request: UpdateImagesRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> None:
-    service.update_images(user, consultation_id, request.images)
+    await service.update_images(user, consultation_id, request.images)
 
 
 @router.patch("/{consultation_id}/status", status_code=204)
@@ -64,14 +67,16 @@ async def update_status(
     request: UpdateStatusRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> None:
-    service.update_status(user, consultation_id, request.to)
+    await service.update_status(user, consultation_id, request.to)
 
 
 @router.get("/{consultation_id}/messages", response_model=list[ConsultationMessageWithListing])
 async def list_messages(
-    consultation_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)
+    consultation_id: str,
+    user: AuthenticatedUser = Depends(require_authenticated_user),
+    page: Page = Depends(paginate),
 ) -> list[dict]:
-    return service.fetch_messages(user, consultation_id)
+    return page.finish(await service.fetch_messages(user, consultation_id))
 
 
 @router.post("/{consultation_id}/messages", response_model=ConsultationMessageWithListing)
@@ -80,6 +85,6 @@ async def send_message(
     request: SendConsultationMessageRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> dict:
-    return service.send_message(
+    return await service.send_message(
         user, consultation_id, request.body, request.attachments, request.recommended_listing_id
     )

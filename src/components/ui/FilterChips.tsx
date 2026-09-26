@@ -69,7 +69,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.secondary,
     },
     labelActive: {

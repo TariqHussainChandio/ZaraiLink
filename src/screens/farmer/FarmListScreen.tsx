@@ -1,55 +1,35 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
-import { fetchFarms } from '../../services/modules/farmer/farmService';
+import { useFarms } from '../../hooks/api/farmer';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { Farm } from '../../types/farmer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const [farms, setFarms] = useState<Farm[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: farms = [], isPending, error, refetch } = useFarms(!!userId);
+  const loading = isPending && !!userId;
+  const load = () => refetch();
 
-  const load = useCallback(() => {
-    if (!userId) return () => {};
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchFarms().then(data => {
-      if (!cancelled) {
-        setFarms(data);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.warn('[FarmListScreen] failed to load farms:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) refetch();
+    }, [userId, refetch]),
+  );
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && farms.length === 0) {
     return (
       <EmptyState
-        title={t('farmer.farmList.loadErrorTitle', "Couldn't load farms")}
-        description={t('farmer.farmList.loadErrorDescription', 'Check your connection and try again.')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load farms"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -57,7 +37,7 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={farms}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -70,15 +50,15 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
               <Text style={styles.meta}>
                 {item.area
                   ? `${item.area} ${item.land_unit ?? ''}`.trim()
-                  : t('farmer.farmList.areaNotSet', 'Area not set')}
+                  : 'Area not set'}
               </Text>
             </Card>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('farmer.farmList.emptyFarmsTitle', 'No farms yet')}
-            description={t('farmer.farmList.emptyFarmsDescription', 'Add your first farm to get started.')}
+            title="No farms yet"
+            description="Add your first farm to get started."
           />
         }
       />
@@ -86,7 +66,7 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.CreateFarm)}
       >
-        <Text style={styles.fabLabel}>{t('farmer.farmList.newFarmFab', '+ New Farm')}</Text>
+        <Text style={styles.fabLabel}>+ New Farm</Text>
       </TouchableOpacity>
     </View>
   );
@@ -107,7 +87,7 @@ function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     meta: {

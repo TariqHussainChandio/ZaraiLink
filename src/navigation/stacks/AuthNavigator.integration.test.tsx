@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AuthNavigator } from './AuthNavigator';
 import { signUp, verifySignupOtp } from '../../services/modules/auth/authService';
 
@@ -29,7 +29,7 @@ describe('Auth flow: register -> verify OTP', () => {
   it('carries the exact email typed at registration through to the verification screen', async () => {
     mockSignUp.mockResolvedValue({ session: null });
 
-    await render(
+    await renderWithQuery(
       <NavigationContainer>
         <AuthNavigator />
       </NavigationContainer>,

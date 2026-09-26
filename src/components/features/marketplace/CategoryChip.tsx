@@ -40,7 +40,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       color: colors.text.secondary,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       fontSize: typography.sizes.sm,
     },
     labelSelected: {

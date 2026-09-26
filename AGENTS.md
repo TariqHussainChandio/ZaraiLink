@@ -12,7 +12,8 @@ Read first, every session:
 |---|---|
 | [`docs/status/feature-register.md`](docs/status/feature-register.md) | What actually works. Never assume a feature works without checking it |
 | [`docs/status/baseline-2026-09.md`](docs/status/baseline-2026-09.md) | Observed failures and how they were found |
-| [`docs/process/standardization-plan.md`](docs/process/standardization-plan.md) | The phased plan: what to build next and what is out of scope |
+| [`docs/srds.md`](docs/srds.md) | The requirements baseline (SRDS): roles, approval, inventory boundary, sync, AI, directory layout |
+| [`docs/plan.md`](docs/plan.md) | The phased plan built from the SRDS: what to build next, open decisions, what is out of scope. It replaces `docs/process/standardization-plan.md` (kept for history) |
 
 ## The ten rules
 
@@ -57,6 +58,13 @@ payments, error tracking, hosting, app stores, model-weight storage, domains, or
   the policies as two different users). Ask the maintainer before any `supabase db push` to the real project.
   Every new table needs explicit `GRANT`s, row-level security, indexes on policy and foreign-key columns,
   `(select auth.uid())` in policies, and `set search_path` on every `SECURITY DEFINER` function.
+- **Supabase holds data and files; Git holds code.** Application data lives in Supabase PostgreSQL, application
+  files (images, documents, the trained model, exports) in Supabase Storage. Never commit, or attach to a GitHub
+  release, model weights, datasets, exports, backups or uploads (SRDS §45–§46). The model is fetched from the
+  private `ml-models` bucket by `scripts/fetch_model_weights.py`.
+- **Parallel lanes.** Plan phases are split into lanes, each owned by one agent in `.claude/agents/` with a fixed
+  set of folders (`docs/plan.md` §3). Edit only your lane's folders; send anything else to the owning lane. Only
+  `zl-db` writes migrations; only `zl-backend-core` regenerates the OpenAPI document and the client.
 - **No dummy data:** never insert fake users, listings, orders, or other user content into a real project.
   Disposable fixtures inside the local stack or a test run are fine. `seed.sql` is admin-curated reference data only.
 - **Do not commit or stage.** Leave changes in the working tree for the maintainer to test and commit, unless
@@ -83,6 +91,7 @@ payments, error tracking, hosting, app stores, model-weight storage, domains, or
 | Run the app | `npm run android` (generates `android/`, builds, installs on the emulator, starts Metro), then `npm start` |
 | Native project | `npm run prebuild` regenerates `android/` from `app.config.ts`; `npm run prebuild:clean` starts it over |
 | Backend checks | `cd backend && uv run pytest` |
+| Database checks | `npx supabase test db` (pgTAP), `python scripts/ci/check_advisors.py`, `python scripts/check_migrations.py`, `python scripts/gen_schema_docs.py --check` |
 | Reality gate | `python scripts/check_reality.py --tools knip` and `cd backend && uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy` |
 | Real-stack tests | see `docs/setup/DEVELOPMENT_SETUP.md` |
 
@@ -93,10 +102,13 @@ Run the backend from `backend/`, not the repository root, or it loads the wrong 
 
 `app.config.ts` holds every native Android setting: permissions, SDK levels, plugins. `android/` is
 **generated output, git-ignored, never edited**: the next prebuild erases the edit.
-`src/screens/<role or domain>/`, `src/components/{ui,features/<domain>}/`, `src/services/modules/<domain>/`,
-`src/store/`, `src/types/<domain>.ts`, `src/localization/{en,ur}.json` (add both languages together);
-`backend/app/{api/v1/endpoints,services,repositories,schemas,core,ml}/`; `supabase/migrations/` (timestamped,
-never edited after being pushed); `docs/{architecture,database,setup,process,status}/`.
+Today: `src/screens/<role or domain>/`, `src/components/{ui,features/<domain>}/`, `src/services/modules/<domain>/`,
+`src/store/`, `src/types/<domain>.ts`, `src/constants/` (shared display labels);
+`backend/app/{api/v1/endpoints,services,repositories,schemas,core,ml}/`. Plan A phase A1 moves everything to the
+SRDS module layout (`docs/plan.md` §2): `frontend/` and `backend/app/` with `admin`, `farmer`, `dealer`, `buyer`,
+`expert`, `ai`, `inventory`, `common` (shared features and utilities) and the core folders; new code written before
+A1 follows today's layout. `supabase/migrations/` (timestamped, never edited after being pushed);
+`docs/{architecture,database,setup,process,status}/`; the plans are `docs/plan*.md`.
 
 ## Learned the hard way
 

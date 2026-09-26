@@ -4,10 +4,151 @@
 
 # ZaraiLink Standardization Program — Plan v2
 
+> **Superseded (2026-09-26).** The plan of record is now [`docs/plan.md`](../plan.md), built from the SRDS in
+> [`docs/srds.md`](../srds.md). This file is kept as the history of phases P0 to P7; do not plan new work from it.
+
 > **Status (2026-09-22): P0, P1, and P2 executed and open as pull request 3, with all 11 CI checks green on
 > GitHub.** The one proof left there is that each gate goes red when it should
 > (`scripts/ci/plant-violations.sh`). See `docs/status/p1-gates-2026-09.md` and `docs/status/p2-expo-2026-09.md`.
 > P2 stops at gate G13: the EAS brief waits for you and blocks nothing before P12.
+>
+> **P3 executed (this session), not yet merged.** C1 (role escalation), C2 (SSRF), C5 (torch CVE +
+> model weights off GitHub Releases, gate G8), and H2 (storage bucket limits) are fixed and proven
+> against the real local stack — both P0 `xfail` red tests now pass for real with their markers
+> removed. Go-public gate (§6.4) local prep is done (LICENSE, `.mcp.json` cleanup); flipping
+> visibility, branch protection, and the live forensic check on the hosted project are still yours
+> to run. Full detail: the two-key verifier's findings, once recorded, and the Evidence Block in
+> this session's summary.
+>
+> **P5a executed and two-key verified (this session), not yet merged.** N1 (25 write-then-select
+> chains), N2 (4 crashing consultations reads), and N3 (disease service-role grants) are all fixed
+> and proven — the real-stack smoke matrix (`tests/integration/smoke/`, ~65 tests) is green on the
+> local Docker stack, on GitHub Actions `ubuntu-latest` (34s, 0 failures), and independently
+> reproduced by the verifier (63 passed, 1 skipped). A byproduct fix (`profiles_public` view) and
+> one newly-found bug (N6, non-participant send-message returned 500 not 403) are included. A
+> Windows-only local hang that looked severe on first discovery does not reproduce on the actual CI
+> platform — see the P5a section for the full story, including the verifier's mutation-testing
+> results.
+>
+> **P4 executed and two-key verified (this session), not yet merged.** Every item in
+> 4A and 4B is done and proven on the real local stack: local JWT/JWKS verification, role/
+> suspension caching, admin TOTP MFA (enforced at both FastAPI and RLS), account deletion (soft-
+> delete avoids the cascade that would otherwise wipe an anonymized profile), encrypted session
+> storage, global 401/403/offline handling, a rebuilt VerifyOtpScreen, and password reset via a
+> recovery code instead of a deep link — including finally turning on the numeric-code email
+> templates that were written but never enabled, proven live against a real Mailpit inbox. One
+> deliberate deviation (MFA enrolment is a direct mobile→Supabase SDK call, not a new FastAPI
+> endpoint, matching this codebase's existing auth pattern) and two items gated on G1 (custom SMTP,
+> brief written) that stay `Blocked` on the hosted project until the maintainer answers it. Full
+> detail in the P4 section's own Result subsection.
+>
+> **P5 in progress (2026-09-24), uncommitted, not yet two-key verified.** Done: 5A (config fail-fast, model
+> loading in the lifespan, request-ID and JSON logs, problem+json errors, security headers, tightened CORS,
+> body-size cap, health/readiness/version) and 5B (every repository and service moved to the async Supabase
+> client), and 5C (below). Proof: 145 unit tests, reality gate improved, 55 of 55 real-stack smoke tests. The k6 benchmark
+> (`docs/architecture/adr/0001-async-supabase-client-migration.md`) found that `await` alone did not stop the
+> serialization: per-request SSL-context construction blocked the loop, fixed by caching it. Authenticated
+> requests went from 1.55 s and fully serialized to 19 ms and scaling. 5E is built up to the seam (below); the staged two-key
+> verification of 5A-5E has not run.
+>
+> **5D (service-role audit, container, tests), done, unverified by a second agent.** Service-role sites
+> audited and documented (`backend-architecture.md`); no call site changed. `backend/Dockerfile` and
+> `docker-compose.yml` build a non-root image (1.49 GB) that passes its `/health/ready` healthcheck on the local
+> Supabase network. The authorization matrix (`test_smoke_authorization_matrix.py`, 122 tests) is generated
+> from the app's real dependency graph and fails on an unclassified route; `test_smoke_admin_audit.py` proves
+> every aal2 admin write leaves an `audit_logs` row (BR-15) and fails when a new one has no assertion.
+> Coverage: unit plus real-stack tests combined reach 95% locally (unit alone 67%), gated at 85% in the CI
+> `database` job; the smoke backend runs under `serve_measured.py`. The gate has not yet run on GitHub. Full
+> local run at the end of P5: 150 unit, 223 real-stack (1 skipped), 95.3% combined coverage, reality gate green.
+>
+> **P5 closing work (dependencies and gaps left from P5a), done, unverified by a second agent.** The
+> dependency refresh P5a deferred: FastAPI 0.141.1, Starlette 1.7.0, pydantic 2.13.5, uvicorn 0.53, supabase-py
+> 2.31, pillow 12.3, pytest 9, and the rest pinned in `uv.lock`. OSV-Scanner reports no issues; the Starlette,
+> python-dotenv, pytest and pillow accepted-risk entries are removed. Only torch stays accepted, until P9 removes it.
+> The upgrade broke two things silently, both caught by tests and fixed: FastAPI no longer flattens `app.routes`,
+> so slowapi found no handler and **stopped applying the default rate limit to every `/api/v1` route**
+> (`test_smoke_proxy_headers.py`, plus a route-walk helper for the matrix); and supabase-py's stricter typing
+> surfaced 155 mypy errors, cleared with typed row helpers (`core/rows.py`), which also exposed a wrong
+> storage-client close. Also finished: inference runs in a worker thread (unit test proves the loop stays free,
+> mutation-checked), trusted-proxy configuration (`FORWARDED_ALLOW_IPS`, proven with real forwarded requests),
+> and the 20% public-read slowdown, removed by rewriting the middleware as pure ASGI (150 req/s again). Deliberately
+> not done: structlog (stdlib JSON logging serves the need), and `X-Total-Count` (see 5C).
+>
+> **Independent verification of P5 (fresh-context agent), verdict: verified with findings, all fixed.** Every claim
+> reproduced (tests, gate, k6, container, OSV) and its mutation checks were caught except four weak spots: the
+> authorization matrix could not see a weakened role (now compared with a reviewed snapshot), the audit test covered
+> only second-factor routes (now every admin-reachable write, so a dropped `delete_review` audit fails), the scrub
+> hook was not proven wired (now proven), and the body cap trusted `Content-Length` (now counts received bytes, so
+> chunked bodies get 413). Idempotency keys now carry a request hash, so reuse with a different body is a 422
+> (migration `20260925090000`, applied by `supabase db reset`). Left as documented limits: no client sends the
+> header until P7, and checkout is not atomic across sellers.
+>
+> **P7 in progress (2026-09-25), uncommitted, not yet verified by a second agent. 7A (the API contract), 7B (the client and error contract) 7C (the React Query foundation and the marketplace pilot) and all of 7D (every screen now reads and writes through hooks, and the debt ratchets are at zero) are implemented; none of it has device proof yet.**
+> The backend spec is exported by `scripts/export_openapi.py` to `backend/openapi.json` (120 operations, readable ids
+> such as `orders_list_orders`, a bearer security scheme, problem+json errors, `Link` and `X-Request-ID` headers), the
+> TypeScript client is generated from it into `src/api/generated` by `@hey-api/openapi-ts`, and CI fails if either
+> drifts. Every dealer, farmer, expert, marketplace and reference-data response now has a Pydantic model. Every real
+> response in the smoke suite is validated against its published schema (`contract.py`), and a test fails for any
+> documented operation the suite never called, which found `POST /listings/{id}/views` returning 500 for every
+> non-owner. A Schemathesis run (118 operations, real users, real database) then found four more classes of 500 (a
+> malformed id, an empty update, a missing row, a NUL character), all now proper 4xx problem+json responses. 7B: every error is problem+json with a stable
+> `code` (21 documented codes, structured 422 field errors, a problem+json 429 with `Retry-After`), recorded from the real
+> API into `src/services/api/__fixtures__/problems.json` and re-checked against the live API by a real-stack test. The
+> client (`src/services/api/client.ts`) was rewritten: timeouts, retries only for GET, an error taxonomy (`ApiError`
+> with code, kind, request id, field errors), the P4 401 and suspended handling kept, and the generated SDK sharing the
+> same pipeline. It found that the old client read `detail` while the backend sends `title` (every message was generic,
+> and the suspended-account screen could never trigger), and that a wrong password on account deletion signed the user
+> out. Errors are mapped to messages from the code (`errorMessage`, 18 screens moved to it), and checkout and
+> payment initiation now send an `Idempotency-Key` that survives a retry. 7C: `src/hooks/api` holds the query client
+> (30 s stale time, 24 h cache, retries driven by the error kind, paused while offline through NetInfo, refetch on app
+> resume), one key factory, and hooks per domain. Only public marketplace reads are written to disk, and the whole cache
+> is emptied when the signed-in user changes, however the session ended. Browse, listing detail, my listings, create
+> and edit listing, the seller dashboard and the order screens now read through it, which deleted their hand-rolled
+> loading and retry code and gave them cached data when a refetch fails. The seller dashboard's two direct table
+> queries became API figures (`activeListings`, `pendingOrders` on the farmer and dealer analytics). A ratchet in the
+> reality gate (`layer-boundary`) records the 71 places where a screen or component still imports the service layer
+> (marketplace is at zero) and 7D burns it down. `noUncheckedIndexedAccess` is on. 7D-1 to 7D-3: all 114 `as any` were one
+> repeated font-weight cast and are gone (the count is 0); orders, payments, reviews, messaging, notifications, dealer
+> (inventory, stores, suppliers), farmer (farms, crops), disease and the seller and buyer dashboards now read through
+> hooks, the zustand copies of server data (`referenceDataStore`, and categories and crops in `marketplaceStore`) are
+> deleted, and the layer-boundary count fell from 71 to 37 (left: admin 14, expert 13, auth 4, profile 6). Real-stack
+> hook tests with a second user found a real hole: the API let a buyer confirm, process or complete their own order,
+> because only the app hid the buttons. It is fixed in the backend (seller-only, buyer-only and admin-only moves, three
+> new real-user smoke tests). 7D-4 and 7D-5 finished the job: expert, admin, sign-in and profile screens moved onto
+> hooks, so no screen or component imports the service or Supabase layer any more. `as any`, `console` calls, empty
+> handlers and layer-boundary imports are now strict rules with no baseline (the console is reachable only through
+> `src/utils/logger.ts`); only `lint-disable` (5) and `broad-except` (1) remain as ratchets. The two React Compiler lint
+> rules `set-state-in-effect` and `refs` are on (three effects and four animated values were fixed to satisfy them);
+> `incompatible-library` stays off because it only objects to react-hook-form's `watch()`. Real-user tests found two more
+> API defects, both fixed with tests: `GET /expert/me` returned null for an expert whose application was still pending
+> (so the app never showed the pending banner and offered a second application), and a consultation could be requested
+> from an expert who was not verified. The API also gained no new endpoints in 7D. A fresh-context verification then found that these role rules held only on the API path (any user could call PostgREST directly), which is now closed in the database by guard triggers (see the feature register), together with payment state guards, a wider layer-boundary gate, and form and error-message fixes. A second and a third verification then found insert-path, stock and payment gaps, closed by two more migrations (`20260927090000`, `20260927100000`; local only, not pushed): server-owned columns, one line per listing, one open payment per order, stock reduced only from the seller's own rows, dispute resolution audited. 7E and 7F are built (uncommitted): an ErrorBoundary per navigator, an offline banner driven by NetInfo, photo compression with EXIF removal, and all 25 list files on FlashList v2, with the airplane-mode acceptance script written in `docs/process/airplane-mode-acceptance.md`. Not done: Sentry for the app (needs your DSN, gate G5) and every device proof (no emulator here). Next: your test on a device or
+> emulator, running that script.
+>
+> **P6 (database standardization), done locally, unverified by a second agent.** Migrations `20260926080000` to
+> `080500` (all forward; nothing edited): 83 policies wrapped so per-row calls run once per query, overlapping
+> policies merged, 16 foreign keys indexed, helper functions hardened, and TRUNCATE/REFERENCES/TRIGGER revoked from the
+> client roles (the pgTAP suite found that over-grant). Measured on 60,000 orders and 180,000 messages: hottest queries
+> 50 to 156 times faster (758 ms to 5 ms). Proof: 383 pgTAP assertions, a policy mutation check with 0 survivors after
+> it first found 26 gaps, Realtime RLS tests, the advisors clean except the documented `profiles_public` view, a
+> migration checker, generated schema docs, and a local backup and restore drill. The backup is `Blocked` on the
+> maintainer's key and connection string (`docs/process/briefs/g3-backup.md`). Details: `docs/status/p6-database-2026-09.md`.
+>
+> **5E (Sentry), built to the seam, `Blocked` on G5.** `core/observability.py` initialises Sentry only when
+> `SENTRY_DSN` is set, drops bodies, cookies, query strings, credential headers and contact details, and tags
+> events with the request id. `test_observability.py` (3 tests) captures the real outgoing event; it caught a
+> bearer token leaking through stack-frame locals, now disabled. Integration Brief: `docs/process/briefs/g5-sentry.md`.
+>
+> **5C (pagination and idempotency), done, unverified by a second agent.** Every list endpoint takes
+> `limit` (1-100, default 100; 20 for the marketplace feed) and `offset`, returns a bare array, and sets
+> `Link: rel="next"` when a page comes back full (`core/pagination.py`). Deviation from the plan: `X-Total-Count`
+> is not implemented (it needs a counted query per list and nothing consumes it yet). Because the default is
+> 100, a list longer than 100 is now truncated for a client that never sends `limit`, until P7 adds "load
+> more". `Idempotency-Key` on order checkout and payment initiation (`core/idempotency.py`, migration
+> `20260925080000_idempotency_keys.sql`): the key is claimed before the work runs, so concurrent retries
+> create one order; a failed request releases the key. Real-stack proof: 70 of 70 smoke tests, including
+> replay, a two-user key-reuse check, a four-way concurrent race, and a mutation check that removing the
+> claim or the paging makes those tests fail.
 >
 > **P0 executed.** Runtime results are in §1.6 and in
 > `docs/status/baseline-2026-09.md`. They confirmed the source-level findings, re-rated one, and
@@ -16,7 +157,8 @@
 >
 > **Decisions already made by you:** full Expo (prebuild + EAS) · email sign-in first, phone next ·
 > repository becomes public · full 12+ week program (all phases in scope; each is tagged
-> Must/Should/Could only to set order).
+> Must/Should/Could only to set order) · model weights hosted on GitHub Releases (G8) · licence
+> Apache-2.0.
 
 ---
 
@@ -110,12 +252,11 @@ test, then fix).
 |---|---|---|
 | M1 | Data layer is hand-rolled: React Query is used in 2 files while 57 of 65 screens fetch in `useEffect`; no `onlineManager`/NetInfo, no ErrorBoundary, no crash reporting | `src/`, `App.tsx` |
 | M2 | Type and lint debt: 114 `as any` in 76 files, 39 `console.*` calls, 10 empty handlers, ESLint 8 with the RN preset only, no knip/dead-code check, stale comments (e.g. `diseaseService.ts` still describes placeholder weights) | grep census |
-| M3 | Localization: 62/65 screens wired but 1/42 components; `ur.json` is 4 keys short; no Urdu font bundled (`src/assets/fonts` empty); no RTL handling (no `I18nManager` call), so Urdu renders left-to-right | `src/localization`, grep |
 | M4 | Photos are uploaded uncompressed (no `maxWidth`/`quality`) over rural connections | `src/utils/photoPicker.ts` |
 | M5 | Dependency drift: FastAPI 0.115.6 (0.141.x current), pydantic 2.10.4 (2.13.x), supabase-py 2.11.0; no lockfile or hashes; pytest in production requirements; no ruff/mypy/coverage | `backend/requirements.txt` |
 | M6 | Features that do not exist: push notifications (no FCM, no device tokens) and any payment gateway (only manual confirmation) | grep |
 | M7 | `edgeToEdgeEnabled=false` while `targetSdk 36` (opt-out is ignored on Android 16) | `android/gradle.properties`, `build.gradle` |
-| M8 | Repo hygiene: 152 uncommitted files (+4.6k/−1.5k lines) including a new screen and model metadata; stray `.zl-i18n-verify-tmp/`; `mcp_configurations/` Python files that are documentation, not config; no `.gitattributes`/`.editorconfig` (CRLF churn); no CONTRIBUTING, SECURITY, LICENSE, CHANGELOG, CODEOWNERS, dependabot, PR template, or CLAUDE.md; README is two lines; two project skills are stale (`qa-test-engineer` says frontend tests are absent; `devops-engineer` says do not propose Docker) | git status, file checks |
+| M8 | Repo hygiene: 152 uncommitted files (+4.6k/−1.5k lines) including a new screen and model metadata; `mcp_configurations/` Python files that are documentation, not config; no `.gitattributes`/`.editorconfig` (CRLF churn); no CONTRIBUTING, SECURITY, LICENSE, CHANGELOG, CODEOWNERS, dependabot, PR template, or CLAUDE.md; README is two lines; two project skills are stale (`qa-test-engineer` says frontend tests are absent; `devops-engineer` says do not propose Docker) | git status, file checks |
 | M9 | CI: no `permissions` block, actions pinned to tags not SHAs, no Gradle cache or APK build, no coverage, no security scans, no CD; path filters can leave required checks pending | `.github/workflows/*.yml` |
 
 ### 1.3 What is genuinely solid (keep and protect)
@@ -142,34 +283,34 @@ row below is closed with the listed proof, or explicitly still open.
 
 | Finding | Fixed in | Proof required |
 |---|---|---|
-| C1 role escalation | P3 (fix), P4 (AT2), P6 (pgTAP) | Red test turns green; reverting the fix turns it red again |
-| C2 SSRF | P3, P11 (abuse suite) | Internal-URL payloads rejected; oversize and non-image files rejected |
-| C3 signup cannot complete | P4 (4A–4C) | AT1 locally and AT11 live on staging |
+| C1 role escalation | **P3 — done.** Also P4 (AT2), P6 (pgTAP) for the fuller suite | Red test (`tests/integration/test_signup_role_escalation.py`) turns green with the `xfail` marker removed; reverting `20260922080000_role_escalation_fix.sql` turns it red again (verifier to confirm) |
+| C2 SSRF | **P3 — done.** Also P11 (abuse suite) for the fuller suite | Red test (`tests/unit/test_disease_case_ssrf_protection.py`) turns green; URL-shaped, path-traversal, and cross-user `storage_path` payloads all rejected before `disease_repository.create_case` runs; oversize/non-image content rejected in `predict()` |
+| C3 signup cannot complete | **P4 — done locally.** AT11 (live, hosted) waits on G1 | AT1: real signup produces a 6-digit code (Mailpit), verifies successfully — `test_email_otp_templates.py`. Recovery uses the same code pattern, no deep link. Hosted-project proof is AT11, blocked on G1 (custom SMTP, brief written) |
 | C4 blocking I/O | P5 | k6 run shows concurrent requests no longer serialize; ADR with numbers |
-| C5 torch CVE, weights in git | P3 (pin, move), P9 (ONNX) | `pip-audit` clean; fresh clone fetches weights by checksum |
-| H1 plain-text tokens | P4B | AT7: stored value is ciphertext |
-| H2 no upload limits | P3 (limits), P6 (pgTAP), P7 (compress, EXIF strip) | Oversize and wrong-MIME uploads rejected by the bucket itself |
+| C5 torch CVE, weights in git | **P3 — done.** Full ONNX move is still P9 | `torch==2.6.0` (was 2.5.1, CVE-2025-32434); `model.pth` untracked from git going forward, hosted on a GitHub Release (gate G8), fetched and SHA-256-verified by `scripts/fetch_model_weights.py` |
+| H1 plain-text tokens | **P4 — done.** | AT7: AES-256-CTR ciphertext on disk, key in `expo-secure-store` — `encryptedStorage.test.ts` |
+| H2 no upload limits | **P3 — done** (all 6 buckets). P6 (pgTAP), P7 (compress, EXIF strip) still ahead | `file_size_limit`/`allowed_mime_types` set per bucket (`20260922080200_storage_bucket_limits.sql`); client-side extension now derived from the picker's MIME type via `mime-types`, not the client-controlled filename |
 | H3 debug-signed release, no R8 | P2 (R8, versionCode), P12 (signing) | Release AAB verified with `apksigner`; mapping file archived |
 | H4 rate limit, docs, logs, headers | P5 | Behind a proxy, two users get separate buckets; `/docs` off in prod |
 | H5 mock-only tests, no E2E/pgTAP/coverage | P1 (report), P5, P6, P11 | Integration, pgTAP, Maestro all run in CI with thresholds |
 | H6 bare `auth.uid()` | P6 | Advisor clean; `EXPLAIN` before/after |
 | H7 no pagination | P5 | Every list route rejects `limit > 100` and returns a `next` link |
 | H8 AI honesty | P9 | Model card; field-set accuracy; out-of-distribution rejection tested |
-| H9 no account deletion / privacy artefacts | P4 (deletion), P13 (compliance) | AT9; public deletion page; Data Safety mapping |
+| H9 no account deletion / privacy artefacts | **P4 — deletion done.** P13 (compliance artefacts) still ahead | AT9 proven live, including a counterparty's order surviving with the anonymized placeholder — `tests/integration/smoke/test_smoke_account_deletion.py`. Public deletion page content still needs G10 (hosting) to actually publish |
 | M1 hand-rolled data layer | P7 | 57 screens migrated; boilerplate deleted; airplane-mode script |
 | M2 type and lint debt | P1 (ratchet), P2 (ESLint), P7 (burn-down) | Counters at zero |
-| M3 localization / RTL | P8 | RTL and Urdu-font script; parity lint |
 | M4 uncompressed photos | P7 | Uploaded size under budget on a test photo |
 | M5 dependency drift | P2 (frontend), P5 (backend) | `expo-doctor` and `pip-audit`/OSV clean; lockfiles |
 | M6 push and gateway absent | P0 (register is truthful), P10 | Live smoke tests, or the feature stays hidden |
 | M7 edge-to-edge | P2 (config), P8 (verified) | Screenshots on Android 15 and 16 |
 | M8 repo hygiene | P0, P1 | Clean `git status`; standards files present |
 | M9 CI gaps | P1, P12 | Deliberate-failure PRs; tagged release rehearsal |
-| N1 write-then-select crashes (25 chains, 9 repositories) | P5a | Every create/update endpoint returns 2xx against the real local stack in CI |
-| N2 four read routes crash (missing foreign key hint) | P5a | The GET sweep returns no 5xx |
-| N3 service role has no privileges on a fresh database | P5a (grants), P3 (disease flow) | Disease create and predict pass on a database built only from migrations |
+| N1 write-then-select crashes (25 chains, 9 repositories) | **P5a — done.** | Every affected create/update endpoint returns 2xx against the real local stack in CI — proven per-flow in `tests/integration/smoke/` (10 files, ~65 tests), not just spot-checked |
+| N2 four read routes crash (missing foreign key hint) | **P5a — done.** | `consultations.expert_id` embed retargeted to the real `experts → profiles_public` chain; the four previously-crashing reads (mine/assigned/get-by-id/messages) all return 200 — `test_smoke_consultations.py` |
+| N3 service role has no privileges on a fresh database | **P5a — done** (grants). P3 fixed the disease request contract (C2) separately | `20260923080000_service_role_disease_grants.sql`; disease create and predict pass on a database built only from migrations — `test_disease_pipeline_end_to_end_on_a_database_built_only_from_migrations` |
 | N4 real-photo model test skipped (no fixture) | P9 | A license-clean sample photo committed; test runs unskipped |
 | N5 unneeded TRUNCATE/TRIGGER/REFERENCES grants | P6 | Grants match a documented allow-list |
+| N6 non-participant send-message returns 500, not 403 | **P5a — done.** | Uncaught RLS `APIError` (`42501`) in `messaging_service.send_message` now maps to 403; proven live — `test_smoke_messaging.py::test_non_participant_cannot_send_a_message` |
 
 ### 1.6 P0 runtime results (2026-09-21)
 
@@ -409,7 +550,7 @@ exists, so nothing is blocked longer than necessary.
 
 | Area | Standard |
 |---|---|
-| TypeScript | `strict` + `noUncheckedIndexedAccess`; no `any`; ESLint 9 flat config (`eslint-config-expo/flat` + typescript-eslint strict-type-checked + react-hooks + react-native-a11y); layer-boundary rule (screens → hooks → services; no direct Supabase calls in screens); `i18next/no-literal-string` to finish localization; Prettier 3; **knip** for dead code |
+| TypeScript | `strict` + `noUncheckedIndexedAccess`; no `any`; ESLint 9 flat config (`eslint-config-expo/flat` + typescript-eslint strict-type-checked + react-hooks + react-native-a11y); layer-boundary rule (screens → hooks → services; no direct Supabase calls in screens); Prettier 3; **knip** for dead code |
 | Python | `pyproject.toml` + `uv.lock`; **ruff** (lint + format; rule sets incl. `S`, `B`, `ARG`, `T20`, `ERA`, `ASYNC`, `TD`); **mypy** strict on `app/`; **vulture**; `pydantic-settings`; **structlog**; dev vs prod dependency split (pytest out of prod image) |
 | SQL | Migration template (§4.3); `supabase db lint` + Supabase advisors (splinter) + pgTAP in CI |
 | Git | Conventional Commits (commit-msg hook via **lefthook**), PR template with an evidence checklist, CODEOWNERS, ADRs in `docs/adr/` |
@@ -437,14 +578,12 @@ local containers/CI runs, never in the real projects.
   accessibility, and robustness rather than repainting.
 - **Accessibility (WCAG 2.2 AA)**: 4.5:1 text contrast, ≥ 48 dp touch targets, TalkBack
   labels/roles/states, logical focus order, font scaling to 200%, reduce-motion respected.
-- **Urdu/RTL parity**: full RTL pass (mirrored layouts and icons, Nastaliq line-height clipping,
-  numerals, restart handling on language switch), enforced by the no-literal-string lint.
 - **Edge-to-edge at API 36**: explicit inset handling on every screen; verified on Android 15 and
   16 emulators.
 - **Low-connectivity first** (rural users): NetInfo-aware react-query (`onlineManager`), persisted
   query cache (MMKV or AsyncStorage), image compression before upload, retry with backoff, offline banner, drafts
   for listings/messages; **no** offline checkout.
-- **Low-literacy design**: icon-first navigation, plain-language Urdu copy, large targets,
+- **Low-literacy design**: icon-first navigation, plain-language copy, large targets,
   sunlight-safe contrast; voice input is a stretch item, not a commitment.
 - **Performance**: FlashList v2 on long lists, Reanimated 4 for animation, cached images, budgets
   for cold start (< 2 s mid-range device) and bundle size.
@@ -454,7 +593,7 @@ local containers/CI runs, never in the real projects.
 ### 4.7 CI/CD design
 
 - **PR pipeline** (an always-running aggregate job so required checks never hang on path
-  filters): frontend (lint, typecheck, jest+coverage, knip, i18n parity, OpenAPI drift), backend
+  filters): frontend (lint, typecheck, jest+coverage, knip, OpenAPI drift), backend
   (ruff, mypy, pytest unit+integration on local Supabase, vulture, pip-audit), database
   (migrations apply, `db lint`, advisors, pgTAP, migration-template checker), security (gitleaks,
   Semgrep, OSV, actionlint + zizmor), Android (`assembleDebug` with Gradle cache; Maestro smoke),
@@ -504,7 +643,7 @@ parallel under separate agents.
 | P5 | Backend standardization | Must | L | 3 | P1, P3, P5a | G4, G5 |
 | P6 | Database standardization | Must | M | 3 | P3 | G3 |
 | P7 | API contract and frontend data layer | Must | L | 3 | P2, P4 | G5 |
-| P8 | UI/UX, accessibility, localization | Should | L | 4 | P7 | — |
+| P8 | UI/UX and accessibility | Should | L | 4 | P7 | — |
 | P9 | AI disease advisory, made honest | Should | L | 4 | P5 | G8, data |
 | P10 | Push notifications and payments | Should / Could | L | 4 | P4, P5 | G6, G7 |
 | P11 | Test suite completion | Must | L | 5 (ongoing) | P4–P10 | — |
@@ -529,7 +668,7 @@ building on unverified ground.
 
 **Skills:** `zarailink-master-orchestrator`, `qa-test-engineer`, `integration-engineer`.
 
-1. **Commit plan for the working tree.** The agent proposes logical groups (i18n retrofit, reset-
+1. **Commit plan for the working tree.** The agent proposes logical groups (reset-
    password screen + auth changes, ML model + metadata + tests, docs, Android/config); you test
    and commit each. Nothing is committed by an agent (standing rule).
 2. **Stand up the real stack locally**: `supabase start` (Docker), FastAPI under uvicorn, app on an
@@ -541,7 +680,7 @@ building on unverified ground.
    flips red the moment a fix lands, forcing the marker's removal.
 5. **Feature Register v0** — truthful: email signup `Blocked-on-G1`, phone `Blocked-on-G2`, push
    `Not started`, payment gateway `Not started`, AI `Working-but-limited`.
-6. **Quick hygiene** (no logic change): delete `.zl-i18n-verify-tmp/`, add `.gitattributes`
+6. **Quick hygiene** (no logic change): add `.gitattributes`
    (`* text=auto eol=lf`) and `.editorconfig`, move `mcp_configurations/` into `docs/tooling/`,
    fix the stale `qa-test-engineer` and `devops-engineer` skill text, refresh comments that
    describe placeholder weights.
@@ -618,7 +757,7 @@ proven by before/after evidence.
    startup, fail fast) and per-environment EAS env files. Public values only — never secrets.
 6. **Library swaps**: `react-native-haptic-feedback` → `expo-haptics`; `react-native-image-picker`
    → `expo-image-picker`; add `expo-secure-store`, `expo-image`, `expo-image-manipulator`,
-   `expo-font`, `expo-localization`, `expo-dev-client`. Keep `react-native-svg`: `lucide-react-native`
+   `expo-font`, `expo-dev-client`. Keep `react-native-svg`: `lucide-react-native`
    needs it (an earlier note called it unused; knip showed that was wrong). Each swap
    is its own reviewed commit.
 7. **ESLint 9 flat** with `eslint-config-expo/flat`, `typescript-eslint` strict, react-native-a11y,
@@ -644,8 +783,8 @@ stack, and `expo-doctor` passes 21 of 21 on a fresh copy of the tree. Details, n
   override is gone. Proven with a control build, after my first tests turned out to be invalid.
 - Item 6: the SDK pins several packages *below* what the repo had (gesture-handler, async-storage, screens,
   safe-area-context, svg), and TypeScript 6. The repo now follows the pins. Dependabot ignores them.
-- Item 6: the unused packages (`expo-secure-store`, `expo-image`, `expo-image-manipulator`, `expo-font`,
-  `expo-localization`) are added by the phase that first uses them (P4, P7, P8), because an unused package raises
+- Item 6: the unused packages (`expo-secure-store`, `expo-image`, `expo-image-manipulator`,
+  `expo-font`) are added by the phase that first uses them (P4, P7, P8), because an unused package raises
   the dead-code ratchet.
 - Item 7: ESLint 9 and Expo's config are in, with findings unchanged, and the 55 useful rules that Expo's config
   dropped are restored (jest, React Native, deep imports, shadowing, `eval`, and others). `typescript-eslint`
@@ -692,6 +831,34 @@ stack, and `expo-doctor` passes 21 of 21 on a fresh copy of the tree. Details, n
 **Exit:** C1 and C2 tests green and mutation-checked (revert the fix, test must fail again); repo
 public with protection on.
 
+**Result (2026-09-22):** items 1, 3, 4 (pin only), 5 done and proven on the real local stack — the
+migration-lint job, the real-stack integration suite (151 passed, 1 skipped after the verifier
+round), the full backend unit suite, and the full frontend lint/typecheck/jest suite all pass.
+Item 2 (the live forensic check on the hosted project) and item 4's `model.pth` extraction to git
+history (the file leaves tracking going forward; past commits still carry the old blob) are noted
+below. Item 6 (go-public gate) has its local prep done (LICENSE, `.mcp.json` cleanup, an
+internal-notes scan for exploit-usable detail on still-open findings); flipping visibility and
+turning on branch protection/secret-scanning/CodeQL/Dependabot are still yours to run, and the
+live forensic check needs your go-ahead to touch the hosted project even read-only.
+
+**Two-key verification (2026-09-22):** a separate agent with fresh context independently re-ran
+every acceptance test, ran a real mutation test on the C1 migration (reverted the fix, confirmed
+the test goes red, restored it), ran a real two-user proof against the local stack for C2, and
+adversarially probed the `storage_path` validation with path traversal, URL-encoding, oversized,
+and cross-user payloads. Verdict: **verified with notes**. Two real, low-severity gaps it found
+were fixed in response, both proven on the real stack: the `disease-images` bucket's write/update/
+delete policies checked `owner = auth.uid()` only, which Storage auto-satisfies regardless of the
+chosen path, so any user could write into another user's folder (fixed by
+`20260922080300_disease_images_owner_path_check.sql`, proven by
+`test_disease_images_storage_policy.py`); `storage_path` had no length bound (fixed with
+`max_length=255`, proven in `test_disease_case_ssrf_protection.py`). It also reconfirmed, without
+prompting, that **N3 (service-role has no privileges on `disease_cases`/`disease_predictions`/
+`crops` on a database built only from migrations) is real, pre-existing, and unchanged by
+P3** — the feature register already disclosed this accurately, and completing the two-user proof
+required a temporary, never-committed manual `GRANT` that was reverted before the final reset.
+This is P5a's job, not P3's, and P3's own tests never touch that code path (they mock the
+repository layer), so it wasn't masked by anything P3 did — it just wasn't in scope to fix here.
+
 ---
 
 ### P4 — Auth vertical slice (reference implementation)  `Must · L`  (`G1`, `G2`, `G12`)
@@ -727,7 +894,7 @@ everything that follows.
 2. **Global auth handling** in the API client: 401 → one refresh attempt → sign-out with a clear
    message; 403 suspended → suspended screen; offline → banner, not a logout.
 3. Rebuild `VerifyOtpScreen`: 6-digit validation, `oneTimeCode` autofill, paste support, resend
-   cooldown with cleanup on unmount, localized mapped errors (no raw server text), accessibility.
+   cooldown with cleanup on unmount, mapped errors (no raw server text), accessibility.
 4. Password reset via **recovery OTP code** (no deep link, no PKCE dependency); remove the
    custom-scheme handler from `authStore`. After a password change, sign out other sessions.
 5. Register screen sends only allowed roles; expert applicants follow the verification path.
@@ -750,6 +917,143 @@ AT11 live email smoke on staging.
 
 **Exit:** Feature Register shows auth `Working` with links to all evidence; verifier's attempts to
 break it (escalation, brute force, replay, tampering) all fail.
+
+**Result (2026-09-23):** every item in 4A and 4B is done and proven on the real local stack, with
+one deliberate deviation from this section's own wording and two items still gated on an outside
+service the maintainer hasn't provisioned yet.
+
+**Deviation from the plan as written:** item 4A.4 specified backend `enroll`/`verify` endpoints for
+admin MFA. Building those would have contradicted this codebase's own established pattern — every
+other auth operation (signup, signin, OTP, password reset) already goes directly from the mobile
+app to the Supabase Auth SDK, never proxied through FastAPI. MFA enrolment does the same
+(`supabase.auth.mfa.*`, `src/services/modules/auth/mfaService.ts`); FastAPI's actual job is
+enforcing `aal2` on the specific admin write endpoints, which it does
+(`core/auth.py:require_admin_aal2`), mirrored at the RLS layer for defense in depth
+(`is_admin_aal2()`, `20260924080100_admin_mfa_enforcement.sql`) the same way role and suspension
+already are checked at both layers.
+
+**4A — server and config, all done:**
+- **4A.1** `otp_expiry` 900s, `max_frequency` 60s (both channels), `minimum_password_length` 8 +
+  `password_requirements = "letters_digits"`. The confirmation and recovery email templates
+  (`{{ .Token }}`, not a link) were already written in an earlier session but never actually
+  turned on in config.toml — enabled this session and proven live against Mailpit: a real signup
+  and a real password-reset request both produce a 6-digit code that verifies
+  (`test_email_otp_templates.py`). This closes finding A2 for local dev; the hosted project is a
+  separate SMTP gate (G1, below). TOTP `enroll_enabled`/`verify_enabled` were flipped on *before*
+  building the aal2 RLS migration, per this section's own sequencing warning — confirmed nothing
+  depended on them being off first.
+- **4A.2** `core/jwt_verifier.py`: `PyJWKClient` against the local stack's new asymmetric signing
+  keys (`supabase gen signing-key`, `supabase/config.toml`'s `signing_keys_path`). Proven live: a
+  real token verifies; a tampered signature, an `alg: none` token, a malformed/non-JWT string, and
+  a genuinely unreachable JWKS endpoint each resolve to the *correct* one of 401 vs 503 — the
+  last of those took two rounds of fixing (the first cut conflated "no key for this kid" with
+  "endpoint unreachable"; the second missed that a non-JWT-shaped string raises `DecodeError`
+  before any network call at all, which the original except clause didn't catch either). The
+  hosted project's own key-type migration is explicit unfinished business, not silently assumed —
+  it's dashboard-driven and belongs with 4C.
+- **4A.3** Role/suspension cached 10s per user id (`cachetools.TTLCache`) inside
+  `get_current_user` — proven by a unit test asserting the profile lookup runs once, not once per
+  request, within the TTL.
+- **4A.4** Admin MFA — see the deviation note above. Proven live end to end twice over: an aal1
+  admin session is rejected by FastAPI's `require_admin_aal2` *and*, independently, by a direct
+  PostgREST call that bypasses FastAPI entirely; a real TOTP enrol+challenge+verify round trip
+  produces an aal2 session accepted by both (`test_smoke_admin_mfa.py`).
+- **4A.5** Account deletion, sequenced exactly as specified. The one real design question — how to
+  "delete the auth user" without the `profiles.id references auth.users(id) on delete cascade`
+  wiping the just-anonymized profile row (and everything cascading from it: orders, reviews,
+  messages) — resolved by `should_soft_delete=True` on `auth.admin.delete_user`, found by reading
+  the installed `supabase_auth` package rather than assumed. Proven live: wrong password rejected,
+  correct password deletes, the account can no longer sign in, the profile is anonymized in place,
+  owned storage objects (avatars/disease-images/expert-documents) are swept, an audit-log entry is
+  written, and — the actual point of the design — a counterparty's existing order still renders
+  with the "Deleted user" placeholder instead of erroring or vanishing
+  (`tests/integration/smoke/test_smoke_account_deletion.py`).
+  Message/consultation attachments are NOT swept (their paths are keyed by conversation/
+  consultation id, not user id — a real, disclosed gap, not silently dropped). The public
+  deletion-request page is G10 (hosting), unchanged.
+- **4A.6** Admin bootstrap runbook — already existed from P3, nothing to do.
+
+**4B — mobile, all done:**
+- **4B.1** `src/services/supabase/encryptedStorage.ts`: AES-256-CTR, key in `expo-secure-store`
+  (`expo-crypto` for randomness, `aes-js` for the cipher — Supabase's own documented
+  "LargeSecureStore" pattern, chosen over a bare `expo-secure-store` adapter because Keystore-
+  backed storage has a size limit a session blob can exceed). Proven by a real round-trip test
+  that also asserts the AsyncStorage entry itself is ciphertext (AT7), not just that decryption
+  happens to work. `autoRefreshToken` tied to `AppState`, per supabase-js's own documented pattern.
+- **4B.2** `apiFetch` (4B.2): one `refreshSession()` + retry on 401 before signing out; a 403
+  matching the exact suspended-account detail string routes to the suspended screen without a
+  sign-out; a network-level failure (fetch throws, no response at all) sets an offline flag
+  instead of either, cleared the moment a request succeeds again. 9 unit tests cover all three
+  paths plus the boundary that a role/MFA 403 is *not* misrouted as a suspension.
+- **4B.3** `VerifyOtpScreen` rebuilt: `textContentType`/`autoComplete` for platform code
+  autofill, paste tolerance (strips non-digits, caps at 6), the resend-cooldown `setInterval` is
+  now actually cleared on unmount (a real leak in the pre-P4 version — found while reading the
+  code, not hunted for), and a new `mapAuthError.ts` maps known GoTrue codes (`otp_expired`,
+  `invalid_credentials`, the three rate-limit codes) to readable copy, falling back to a generic
+  message rather than ever showing raw server text.
+- **4B.4** Password reset now runs through the same `VerifyOtpScreen`, parameterized by a new
+  `purpose: 'signup' | 'recovery'` route param, calling `verifyRecoveryOtp`/`resendRecoveryOtp`
+  instead of the signup pair. The `Linking`-based deep-link handler and its dead-link test cases
+  are removed from `authStore.ts` entirely (dead code, not just unused). After a password change,
+  `signOut({ scope: 'others' })` revokes other sessions. Proven live end to end via the real
+  Mailpit recovery email (see 4A.1).
+- **4B.5** Register screen's role list — already correct, no change needed.
+
+**Two new screens, not explicitly named in this section's original items but required to actually
+use 4A.4/4A.5 from the app** (`src/screens/profile/MfaEnrollmentScreen.tsx`,
+`DeleteAccountScreen.tsx`, wired into the existing shared `ProfileNavigator`/`SettingsScreen`): MFA
+enrolment shows only for the `admin` role today, since that's the only role any endpoint currently
+gates on `aal2`. Both are unit-tested (12 tests combined); a real bug surfaced by writing the MFA
+screen's own test first — disabling a factor enrolled in an *earlier* session had no `factorId` to
+act on, since only a fresh `enrollTotp()` response carried one — fixed by having
+`getVerifiedTotpFactorId()` return the id `listFactors()` already has, not just a boolean.
+
+**G1 (custom SMTP), written up, not provisioned:** `docs/process/briefs/g1-smtp.md` recommends
+Brevo (300/day free, no card) over Resend (lower free cap) and Amazon SES (sandbox approval
+friction) for this project's actual volume. Everything that doesn't need the real service is
+already finished and proven locally, per the brief's own accounting. AT11 (live email on staging)
+and the corresponding Feature Register rows stay `Blocked` on the hosted project until this is
+answered — 4D (phone OTP) was not touched at all, Could-priority and separately gated on G2.
+
+**Two-key verification (2026-09-23):** a separate agent, fresh context, working directly in this
+checkout (not a worktree). Independently re-ran the full backend unit suite (145 passed), both
+reality gates (ratchets at or below baseline), the full frontend suite (794 passed), and the real-
+stack smoke matrix in batches (63/63 green, no `httpx.ReadTimeout`). Mutation-tested `jwt_verifier.py`
+directly against the real local JWKS (tampered signature, `alg: none`, and an unreachable JWKS URL
+each produced the correct one of `TokenVerificationError`/`JWKSUnavailableError`); reverted
+`require_admin_aal2` to a no-op and confirmed the RLS layer *alone* still blocked the write at the
+database level (checked the row directly, not just the HTTP response) — then additionally reverted
+the RLS migration itself and confirmed the same write now succeeds, proving both layers are real,
+independently effective controls rather than one silently covering for an untested other; flipped
+`should_soft_delete` to `False` and confirmed a counterparty's listing then genuinely breaks
+(404, cascade-deleted) instead of showing the placeholder, then restored and reconfirmed the fix.
+Verdict: **VERIFIED WITH NOTES**.
+
+The notes were a real, if narrow, integrity problem: this Result section cited
+`test_email_otp_templates.py` and `test_account_deletion.py` as existing evidence for the email-
+template and account-deletion proofs, when in the implementation session both were throwaway
+scratchpad scripts, not committed test files — a rule-4 violation (evidence must be real and
+checkable, not asserted). Both have since been promoted to permanent tests
+(`backend/tests/integration/test_email_otp_templates.py`,
+`backend/tests/integration/smoke/test_smoke_account_deletion.py`, the latter renamed to match this
+repo's `test_smoke_*` convention for the smoke directory) and pass for real; every citation above
+now points at the file that actually exists. The verifier separately noted (not a P4 defect, not
+blocking, recorded for awareness): `admin_repository.set_profile_suspended` and its role-update
+sibling don't check the write builder's affected-row count, so an RLS-filtered zero-row write still
+returns 204 as if it succeeded — the security property holds (RLS genuinely blocks the write), but
+the response is misleading about why. Pre-existing across this codebase's write paths, not unique
+to P4 or introduced by it.
+
+**Not done / blocked:**
+- AT10 (Maestro E2E) — not in scope yet, matches every other phase's current state.
+- AT11 (live email on staging) and the hosted-project halves of C3/H9 — gated on G1, brief written,
+  waiting on the maintainer.
+- Message/consultation-attachment storage cleanup on account deletion — disclosed gap, not
+  silently dropped (see 4A.5 above).
+- The public account-deletion web page — content not blocked, but publishing it needs G10
+  (hosting), untouched.
+- The pre-existing affected-row-count gap on write endpoints (see verifier note above) — not P4's
+  to fix, flagged for whichever phase does the backend write-path audit (P5).
 
 ---
 
@@ -783,6 +1087,89 @@ on a fresh database fail, and that no existing test can see it.
 **Exit:** the matrix is green in CI with zero 5xx; the Feature Register shows every backend
 capability as `Works (API)` or explicitly `Blocked`; a database built only from migrations passes
 the disease flow.
+
+**Result (2026-09-23):** all six items done and proven on the real local stack and, separately, on
+GitHub Actions (`ubuntu-latest`) — not just locally. The smoke matrix (`tests/integration/smoke/`,
+10 files, ~65 tests) covers every flow item 1 named: marketplace listings and categories,
+checkout with the BR-09 delivery split, the order lifecycle, payments, reviews, dealer inventory
+under real two-buyer contention (BR-03/04 oversell rejection), farmer/expert/consultations CRUD,
+messaging, notifications, and the disease pipeline on a database built only from migrations. N1
+(25 write-then-select chains, fixed across all 10 affected repositories with the pinned client's
+supported pattern — no `.select()` after `.insert()`/`.update()`, since the write's own
+`returning=representation` default already includes the row), N2 (the `consultations.expert_id`
+embed retargeted from a foreign key that didn't point at `profiles` to the real
+`experts → profiles_public` chain), and N3 (`20260923080000_service_role_disease_grants.sql`,
+scoped to exactly what `disease_repository.py` calls) are all green. Item 5's Feature Register
+update touched every row N1/N2/N3 had marked `Broken`/`Broken (static)`. Item 6 needed no new CI
+job — `pytest tests/integration` already runs everything under that directory.
+
+A byproduct migration landed alongside N2: fixing the consultations embed exposed that **every**
+cross-user profile embed in the backend (a listing's `owner`, an order's `buyer`/`seller`, a
+review's `buyer`, a conversation's participants, an expert's own profile) silently returned `null`
+for anyone but that row's owner or an admin — `profiles`' only `SELECT` policy is
+`profiles_select_own_or_admin`. Confirmed live: `GET /rest/v1/listings?select=*,owner:profiles(...)`
+returned `"owner": null` for every listing, for every caller but the seller. Fixed by
+`20260923080100_profiles_public_view.sql`, a narrow view exposing only `id`/`full_name`/`avatar_url`
+(exactly the three columns every embed site already asked for, grep-verified) — deliberately not
+`security_invoker`, so it bypasses `profiles_select_own_or_admin` by design for only those three
+columns, the same way a table owner is already exempt from its own table's RLS.
+
+The smoke matrix also caught **N6**, a real, previously-invisible bug: a non-participant sending a
+message got `500`, not `403` — RLS (`messages_insert_participant`) correctly rejected the insert,
+but the uncaught `postgrest.exceptions.APIError` (code `42501`) propagated past
+`messaging_service.send_message` as an unhandled exception. Fixed by mapping that specific code to
+a 403; proven by `test_smoke_messaging.py::test_non_participant_cannot_send_a_message`.
+
+**A Windows-only false alarm, run down and closed.** The first full local run of the matrix (25
+local Docker stack) produced a 25-minute cascade: 32 of 64 tests timed out at 60s each, starting
+exactly at the disease-prediction test and continuing through the rest of the suite. Reproduced
+identically on a second full run — not a flake. The obvious theory (a blocking torch/storage call
+inside an `async def` handler wedging the single-worker event loop, per C4) was tested directly:
+giving the disease test its own separate backend process changed nothing, which disproves it —
+whatever broke wasn't about which process served that one request. `pg_stat_activity` on the local
+Postgres showed no lock, no idle-in-transaction session, no connection exhaustion; Storage and Auth
+container logs showed no errors. Deselecting the disease test entirely let the other 15
+`business_flows`/`consultations` tests pass in 70 seconds. To settle whether this was a real
+cross-platform defect or a Windows/Docker-Desktop artifact, the work was pushed to a throwaway
+branch (`debug/p5a-smoke-matrix-hang`, deleted after) and run via `workflow_dispatch` on the actual
+`ubuntu-latest` CI runner: **the full matrix passed in 34 seconds, zero timeouts, on the first try.**
+The hang does not reproduce on the target CI platform at all — closed as a local Windows/Docker
+Desktop networking artifact, not a product defect. (That CI run is also what surfaced N6 and a
+ratchet regression from this session's own `except APIError` fix, both fixed before the final
+green run above.)
+
+**Broadened by the verifier (below): the trigger isn't disease-test-specific.** During mutation
+testing, five separate deliberate breakages (unrelated to the disease flow) each produced the same
+`httpx.ReadTimeout` through the pytest smoke fixture's client on this Windows/Docker Desktop
+machine, while a direct `curl` against a manually-started backend on the same DB state returned
+the correct `500` in 1-2 seconds every time, with a clean traceback proving the intended failure.
+The pattern is a failing request through that specific client/transport path hanging on Windows,
+not something specific to torch inference or the disease endpoint. Still does not reproduce on
+Linux CI. Anyone running this suite as one long local session on Windows should expect it and fall
+back to per-file runs, or trust CI.
+
+**Two-key verification (2026-09-23):** a separate agent, fresh context, working directly in this
+checkout (not an isolated worktree — a first attempt used one and correctly refused to verify
+uncommitted changes it couldn't see, which is exactly the failure mode a worktree-isolated verifier
+should catch). Confirmed every N1/N2/N3/N6 code change and the `profiles_public` migration match
+the plan's description; grepped for any remaining direct `profiles` embed outside the two
+documented, legitimate admin-only exceptions (`admin_repository.py`, `expert_repository.py`'s
+`EXPERT_ADMIN_SELECT`) and found none missed. Ran the full real-stack suite in file-group batches
+(working around the Windows hang above): **63 passed, 1 skipped, 0 failed** — an exact match to
+the CI result. Mutation-tested all five fixes (N1 ×2, N2, N3, N6): reverted each, captured a real
+HTTP 500 with the exact documented error (`AttributeError: no attribute 'select'` for N1,
+`PGRST200` foreign-key-not-found for N2, `42501` with the precise missing-grant hint for N3, `42501`
+RLS-violation for N6), restored each file, confirmed byte-identical to the original and the
+relevant tests green again. Verdict: **VERIFIED**. Working tree left exactly as found (confirmed
+by diffing `git status` before and after); orphaned manual-uvicorn processes from mutation probing
+were cleaned up.
+
+**Not done / blocked:** stale-order expiry (a scheduled job, not a request path) is not exercised
+by the matrix and stays `Unverified`. Realtime delivery and admin moderation's finer edge cases are
+outside what item 5 named and remain as they were. The bundled non-P5a changes in this same working
+tree (P3's role-escalation/SSRF/model-weights fixes) were out of scope for this verification pass —
+already covered by P3's own two-key verification. The go-public gate items (hosted-project forensic
+check, flipping repo visibility) are still the maintainer's to run, unchanged from P3.
 
 ---
 
@@ -820,6 +1207,27 @@ the disease flow.
 **Exit:** k6 shows concurrent requests no longer serialize; authorization matrix green; Docker
 image builds and passes the readiness check.
 
+**P5 result (2026-09-24), uncommitted, independently verified with findings that were then fixed.**
+
+| Item | Outcome | Evidence |
+|---|---|---|
+| 1 Dependencies | FastAPI 0.141.1, Starlette 1.7.0, pydantic 2.13.5, uvicorn 0.53, supabase-py 2.31, pillow 12.3, pytest 9; `uv.lock`; production and dev split. OSV clean except torch (accepted until P9) | OSV-Scanner run |
+| 2 Async (C4) | Async client on shared singletons, SSL-context memoization, inference in a worker thread. Design (b) was chosen without benchmarking (a) sync-in-threadpool; the ADR says so | ADR 0001, k6 before and after |
+| 3 Config | Fails at boot on empty Supabase settings; model loaded in the lifespan | boot test, smoke suite |
+| 4 HTTP hardening | Request id, JSON logs (stdlib, not structlog), problem+json, security headers, CORS, docs off in production, trusted-proxy setting, user-or-IP rate limit, body cap that counts bytes | `test_smoke_http_hardening.py`, `test_smoke_proxy_headers.py` |
+| 5 Pagination | limit up to 100, offset, `Link` header, bare arrays. `X-Total-Count` not built | `test_smoke_pagination.py` |
+| 6 Idempotency | Checkout and payment initiation, with request-hash check. Opt-in; no client sends the header until P7 | `test_smoke_idempotency.py` |
+| 7 Service-role audit | Documented; no call site changed | `backend-architecture.md` |
+| 8 Health | live, ready, version | smoke and container |
+| 9 Container | Multi-stage, non-root, healthcheck, compose on the Supabase network; not hosted (G4) | built and run locally |
+| 10 Tests | Authorization matrix (120 routes as five roles, anonymous and aal1 admin, plus a reviewed policy snapshot); every admin-reachable write audited (BR-15); combined coverage 95% against an 85% gate | 150 unit, 223 real-stack, gate green |
+| 11 Observability | SDK and scrubbing built, off without a DSN; live proof `Blocked` on G5 | `test_observability.py`, `g5-sentry.md` |
+
+Exit criteria: k6 shows requests no longer serialize (met); authorization matrix green (met); Docker image builds and
+passes the readiness check (met locally). Not met or open: the coverage gate and container build have not run on
+GitHub Actions; Sentry has no live proof; checkout is not atomic across sellers, which idempotency does not fix;
+the k6 "before" numbers come from the last commit, not an isolated test.
+
 ---
 
 ### P6 — Database standardization  `Must · M`  (`G3`)
@@ -844,6 +1252,22 @@ image builds and passes the readiness check.
 
 **Exit:** advisors clean, pgTAP green in CI, restore drill completed once.
 
+**P6 result (2026-09-24).**
+
+| Item | Outcome |
+|---|---|
+| 1 Init-plan rewrite | 83 policies (all 57 flagged, plus storage and helper wrapping); rule unchanged, proven by un-wrapping to the original text. `EXPLAIN` before and after in the status doc |
+| 2 Advisors | 1 ERROR and 127 WARN down to the one accepted `profiles_public` finding; gated in CI by `scripts/ci/check_advisors.py` |
+| 3 pgTAP | 383 assertions over all 113 policies, storage buckets, table and function grants, guard and notification triggers; mutation-checked. The plan said 126 policies; the live count was 92, now 113 after splitting `for all` policies |
+| 4 Migration checker | `scripts/check_migrations.py` and a template, from version 20260926090000 on |
+| 5 Realtime | RLS governs delivery; nothing else to secure |
+| 6 Backups | Built and proven locally; live run `Blocked` on the maintainer (G3 brief) |
+| 7 Generated schema docs | `scripts/gen_schema_docs.py`, drift check in CI |
+
+Exit criteria: advisors clean (met, one documented exception), pgTAP green in CI (written, not yet run on GitHub),
+restore drill completed once (met locally, not on the hosted project). G3, a second Supabase project, was not
+created.
+
 ---
 
 ### P7 — API contract and frontend data layer  `Must · L`  (`G5`)
@@ -854,7 +1278,7 @@ image builds and passes the readiness check.
    committed, with a drift check. Schemathesis runs against the local API.
 2. **`apiFetch` rewrite**: timeouts via `AbortController`, bounded retries for idempotent GETs,
    the P4 auth handling, error taxonomy (network / auth / validation / server), stable error
-   codes mapped to localized messages, request IDs surfaced in Sentry breadcrumbs.
+   codes mapped to messages, request IDs surfaced in Sentry breadcrumbs.
 3. **React Query everywhere**: query-key factory, hooks per domain in `src/hooks/api/`,
    `onlineManager` + `focusManager` wired to NetInfo/AppState, persisted cache for safe reads,
    optimistic updates only where idempotent. Migrate the 57 hand-rolled screens domain by domain
@@ -872,7 +1296,7 @@ green; airplane-mode test script passes (reads from cache, writes fail clearly, 
 
 ---
 
-### P8 — UI/UX, accessibility, localization  `Should · L`
+### P8 — UI/UX and accessibility  `Should · L`
 
 **Skills:** `ui-ux-designer`, `senior-react-native-architect`; verifier `srds-requirements-
 validator`, `academic-supervisor-reviewer`.
@@ -884,17 +1308,13 @@ validator`, `academic-supervisor-reviewer`.
 3. **Accessibility (WCAG 2.2 AA)**: labels/roles/states, ≥ 48 dp targets, contrast audit of the
    token set, font scaling to 200%, reduce-motion; TalkBack script per role; Accessibility
    Scanner run; lint rule enforced.
-4. **Urdu/RTL (M3)**: `I18nManager` handling with a reload on language change, bundled Urdu font
-   via `expo-font` (Nastaliq or Naskh, chosen after a line-height/clipping test), mirrored icons,
-   numerals, plurals, and `i18next/no-literal-string` lint; close the 4-key gap; translate the 41
-   untranslated components; `SellerDashboard` check.
-5. **Low-literacy and low-bandwidth design**: icon-first navigation, plain-language Urdu copy,
+4. **Low-literacy and low-bandwidth design**: icon-first navigation, plain-language copy,
    illustrated empty states, retake-photo guidance for disease capture; voice input is a stretch.
-6. Motion with Reanimated 4 (replace the 5 `Animated` files); dark-mode QA.
-7. **Usability test**: task-based, 5–8 real users (farmers, dealers, buyers), SUS score, findings
+5. Motion with Reanimated 4 (replace the 5 `Animated` files); dark-mode QA.
+6. **Usability test**: task-based, 5–8 real users (farmers, dealers, buyers), SUS score, findings
    fed back and reused in the FYP report.
 
-**Exit:** a11y and RTL scripts pass; SUS results documented.
+**Exit:** a11y script passes; SUS results documented.
 
 ---
 
@@ -917,8 +1337,8 @@ validator`, `academic-supervisor-reviewer`.
    image); preprocessing parity tests, golden-image regression tests, latency budget; inference
    off the event loop.
 6. Model registry: versioned artefacts, SHA-256 pinning, model card (data, metrics, limits).
-7. **App UX**: retake guidance, crop-mismatch warning, disclaimer kept visible, Urdu advisory
-   text; optional expert-validated feedback loop as a stretch.
+7. **App UX**: retake guidance, crop-mismatch warning, disclaimer kept visible; optional
+   expert-validated feedback loop as a stretch.
 
 **Exit:** model card published; field-set accuracy reported honestly; OOD test images rejected.
 
@@ -1001,7 +1421,7 @@ than approvals; one rollback rehearsed.
 
 ### P14 — Release readiness and store launch  `Must · M`  (`G9`)
 
-1. Play Console: app registration, Urdu + English listing, content rating, Data Safety, target
+1. Play Console: app registration, store listing, content rating, Data Safety, target
    API 36 verified, **16 KB page-size check** on the release build, Play App Signing.
 2. Testing: a personal account created after Nov 2023 needs a closed test with **12 testers for 14
    days** before production access — schedule this early (organization accounts are exempt).

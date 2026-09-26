@@ -1,4 +1,5 @@
 import type { PickedPhoto } from '../../../utils/photoPicker';
+import { extensionFromMimeType } from '../../../utils/mimeExtension';
 import { apiFetch } from '../../api/client';
 import { supabase } from '../../supabase/client';
 import type {
@@ -123,7 +124,7 @@ export async function resolveExpertDocumentUrl(expertId: string): Promise<string
 export async function uploadExpertDocument(userId: string, file: PickedPhoto): Promise<string | null> {
   if (!file.uri) return null;
 
-  const extension = file.fileName?.split('.').pop() ?? 'pdf';
+  const extension = extensionFromMimeType(file.mimeType, 'pdf');
   const path = `${userId}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${extension}`;
 
   const response = await fetch(file.uri);

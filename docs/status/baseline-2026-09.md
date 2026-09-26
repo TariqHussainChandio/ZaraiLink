@@ -24,6 +24,14 @@ invisible because the backend tests replace the database client with a mock.
 | Disease pipeline | Fails on a fresh database (missing privileges). With privileges it runs, but has no rejection of non-leaf images and fetches client-supplied URLs |
 | Throughput | About 1.6 s per authenticated request, and concurrent requests are fully serialized |
 
+> **Update (2026-09-22, phase P3):** this page is left as originally observed on 2026-09-21 — it
+> is point-in-time evidence, not a living status doc (see [`feature-register.md`](feature-register.md)
+> for current status). C1 (role assignment) and C2 (disease pipeline fetching client URLs) below
+> are now fixed and proven against the real local stack; see
+> `docs/process/standardization-plan.md` §5 "P3" and the Evidence files table at the bottom of
+> this page for the renamed regression tests. Backend writes (N1), backend reads (N2), and the
+> disease pipeline's fresh-database privilege failure (N3) remain open — P5a, not P3.
+
 ## How this was run
 
 ```bash
@@ -118,8 +126,8 @@ serialization does not: the handlers are `async` but call a synchronous client.
 
 ## Not verified (needs an emulator or the hosted project)
 
-- Every screen and on-device behaviour: OTP screen, deep-link reset, RTL and Urdu rendering, dark
-  mode, edge-to-edge on Android 16.
+- Every screen and on-device behaviour: OTP screen, deep-link reset, dark mode, edge-to-edge on
+  Android 16.
 - Realtime delivery of messages and notifications.
 - Whether the hosted project has the same admin-signup hole, custom SMTP, email confirmation on,
   and service-role privileges (read-only checks below).
@@ -149,7 +157,7 @@ what do the email templates contain.
 | `evidence/p0_auth_reality.py`, `results/p0_auth_results.json` | Auth flows A0 to A8 |
 | `evidence/p0_core_reality.py`, `results/p0_core_results2.json`, `results/p0_core_run.txt` | Business flows, disease pipeline, authorization, concurrency |
 | `evidence/p0_get_sweep.py`, `results/p0_get_sweep.txt` | The 30-route GET sweep |
-| `backend/tests/unit/test_baseline_disease_case_url_validation.py` | Expected-failure test for C2 (runs in CI) |
-| `backend/tests/integration/test_baseline_signup_role_escalation.py` | Expected-failure test for C1 (needs the local stack) |
+| `backend/tests/unit/test_disease_case_ssrf_protection.py` | Was the expected-failure test for C2; now a passing regression test (P3 fixed it) |
+| `backend/tests/integration/test_signup_role_escalation.py` | Was the expected-failure test for C1; now a passing regression test (P3 fixed it) |
 
 These scripts are the seed of the reality-audit script planned in P1.

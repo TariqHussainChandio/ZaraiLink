@@ -43,6 +43,7 @@ export function makeSupabaseMock(options: SupabaseMockOptions = {}) {
       Promise.resolve({ data: { session: options.session ?? null }, error: null }),
     ),
     signOut: jest.fn(() => Promise.resolve({ error: null })),
+    refreshSession: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
     signUp: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
     verifyOtp: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
@@ -53,6 +54,17 @@ export function makeSupabaseMock(options: SupabaseMockOptions = {}) {
     onAuthStateChange: jest.fn(() => ({
       data: { subscription: { unsubscribe: jest.fn() } },
     })),
+    mfa: {
+      listFactors: jest.fn(() => Promise.resolve({ data: { totp: [], phone: [], all: [] }, error: null })),
+      enroll: jest.fn(() =>
+        Promise.resolve({
+          data: { id: 'factor-1', totp: { qr_code: '<svg></svg>', secret: 'SECRET', uri: 'otpauth://totp/x' } },
+          error: null,
+        }),
+      ),
+      challengeAndVerify: jest.fn(() => Promise.resolve({ data: {}, error: null })),
+      unenroll: jest.fn(() => Promise.resolve({ data: { id: 'factor-1' }, error: null })),
+    },
   };
 
   const storage = {

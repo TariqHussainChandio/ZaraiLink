@@ -5,7 +5,16 @@ jest.mock('../../supabase/client', () => {
 
 import { supabase } from '../../supabase/client';
 import { makeSupabaseMock } from '../../../testUtils/supabaseMock';
-import { resendSignupOtp, resetPassword, signIn, signOut, signUp, verifySignupOtp } from './authService';
+import {
+  resendRecoveryOtp,
+  resendSignupOtp,
+  resetPassword,
+  signIn,
+  signOut,
+  signUp,
+  verifyRecoveryOtp,
+  verifySignupOtp,
+} from './authService';
 
 const mockedSupabase = supabase as unknown as ReturnType<typeof makeSupabaseMock>;
 
@@ -137,19 +146,42 @@ describe('resendSignupOtp', () => {
 });
 
 describe('resetPassword', () => {
-  it('requests a reset email with the app-scheme deep link as the redirect target', async () => {
+  it('requests a reset email with no redirectTo (P4: a numeric code, not a link)', async () => {
     mockedSupabase.auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
     await resetPassword('farmer@example.com');
-    // Without an explicit redirectTo, Supabase falls back to the project's site_url — a
-    // placeholder with nothing hosted there, since this app has no web frontend. Regression
-    // guard: this must stay pointed at the app's own deep link, not the default.
-    expect(mockedSupabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('farmer@example.com', {
-      redirectTo: 'zarailink://reset-password',
-    });
+    expect(mockedSupabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('farmer@example.com');
   });
 
   it('throws on error', async () => {
     mockedSupabase.auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: new Error('no such user') } as never);
     await expect(resetPassword('missing@example.com')).rejects.toThrow('no such user');
+  });
+});
+
+describe('verifyRecoveryOtp', () => {
+  it('verifies a recovery-type code', async () => {
+    mockedSupabase.auth.verifyOtp.mockResolvedValue({ data: { session: {}, user: {} }, error: null } as never);
+    await verifyRecoveryOtp('farmer@example.com', '654321');
+    expect(mockedSupabase.auth.verifyOtp).toHaveBeenCalledWith({
+      email: 'farmer@example.com',
+      token: '654321',
+      type: 'recovery',
+    });
+  });
+
+  it('throws on error', async () => {
+    mockedSupabase.auth.verifyOtp.mockResolvedValue({
+      data: { session: null, user: null },
+      error: new Error('invalid code'),
+    } as never);
+    await expect(verifyRecoveryOtp('farmer@example.com', '000000')).rejects.toThrow('invalid code');
+  });
+});
+
+describe('resendRecoveryOtp', () => {
+  it('requests the reset email again, the same as resetPassword (no "resend" type exists for recovery)', async () => {
+    mockedSupabase.auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
+    await resendRecoveryOtp('farmer@example.com');
+    expect(mockedSupabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('farmer@example.com');
   });
 });

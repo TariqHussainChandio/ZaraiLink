@@ -1,24 +1,25 @@
 import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/ui';
 import { PROFILE_ROUTES } from '../../constants/routes';
-import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES, setLanguage, type LanguageCode } from '../../localization';
-import { updateProfile } from '../../services/modules/profile/profileService';
+import { useUpdateProfile } from '../../hooks/api/profile';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore, type ThemeMode } from '../../store/themeStore';
 import { useTheme, type Theme } from '../../theme';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+import { errorMessage } from '../../utils/errorMessage';
 
 const THEME_MODES: ThemeMode[] = ['light', 'dark', 'system'];
+const THEME_MODE_LABELS: Record<ThemeMode, string> = { light: 'Light', dark: 'Dark', system: 'System' };
 
 export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
   const signOut = useAuthStore(state => state.signOut);
   const profile = useAuthStore(state => state.profile);
+  const role = useAuthStore(state => state.role);
   const refreshProfile = useAuthStore(state => state.refreshProfile);
-  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { mutateAsync: updateProfile } = useUpdateProfile();
   const themeMode = useThemeStore(state => state.mode);
   const setThemeMode = useThemeStore(state => state.setMode);
   const [savingNotifications, setSavingNotifications] = useState(false);
@@ -31,7 +32,7 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
     } catch (error) {
       Alert.alert(
         'Could not update notification setting',
-        error instanceof Error ? error.message : String(error),
+        errorMessage(error),
       );
     } finally {
       setSavingNotifications(false);
@@ -41,13 +42,13 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Text style={styles.rowLabel}>{t('settings.notifications')}</Text>
+        <Text style={styles.rowLabel}>Notifications</Text>
         {/* `accessible` and the label are explicit: TalkBack needs a name for the switch, and
             Testing Library only recognizes iOS's RCTSwitch as accessible by default, not the
             AndroidSwitch this app renders. */}
         <Switch
           accessible
-          accessibilityLabel={t('settings.notifications')}
+          accessibilityLabel="Notifications"
           value={profile?.notifications_enabled ?? true}
           onValueChange={onToggleNotifications}
           disabled={savingNotifications}
@@ -55,46 +56,23 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
         />
       </View>
       <View style={styles.row}>
-        <Text style={styles.rowLabel}>{t('settings.appearance')}</Text>
-        <View style={styles.languageRow}>
+        <Text style={styles.rowLabel}>Appearance</Text>
+        <View style={styles.chipRow}>
           {THEME_MODES.map(value => (
             <TouchableOpacity
               key={value}
-              style={[styles.languageChip, themeMode === value && styles.languageChipSelected]}
+              style={[styles.chip, themeMode === value && styles.chipSelected]}
               onPress={() => setThemeMode(value)}
               accessibilityRole="button"
               accessibilityState={{ selected: themeMode === value }}
             >
               <Text
                 style={[
-                  styles.languageChipLabel,
-                  themeMode === value && styles.languageChipLabelSelected,
+                  styles.chipLabel,
+                  themeMode === value && styles.chipLabelSelected,
                 ]}
               >
-                {t(`settings.appearance${value[0].toUpperCase()}${value.slice(1)}`)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>{t('settings.language')}</Text>
-        <View style={styles.languageRow}>
-          {SUPPORTED_LANGUAGES.map(code => (
-            <TouchableOpacity
-              key={code}
-              style={[styles.languageChip, i18n.language === code && styles.languageChipSelected]}
-              onPress={() => setLanguage(code as LanguageCode)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: i18n.language === code }}
-            >
-              <Text
-                style={[
-                  styles.languageChipLabel,
-                  i18n.language === code && styles.languageChipLabelSelected,
-                ]}
-              >
-                {LANGUAGE_LABELS[code]}
+                {THEME_MODE_LABELS[value]}
               </Text>
             </TouchableOpacity>
           ))}
@@ -102,12 +80,28 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
       </View>
 
       <Button
-        label={t('settings.changePassword')}
+        label="Change Password"
         variant="secondary"
         onPress={() => navigation.navigate(PROFILE_ROUTES.ChangePassword)}
         style={styles.action}
       />
-      <Button label={t('settings.signOut')} variant="destructive" onPress={signOut} style={styles.action} />
+      {/* P4 (4A.4): only admin write endpoints actually require aal2 today, so this is the one
+          role where enrolling has an immediate, visible effect. */}
+      {role === 'admin' ? (
+        <Button
+          label="Two-Factor Authentication"
+          variant="secondary"
+          onPress={() => navigation.navigate(PROFILE_ROUTES.MfaEnrollment)}
+          style={styles.action}
+        />
+      ) : null}
+      <Button
+        label="Delete Account"
+        variant="secondary"
+        onPress={() => navigation.navigate(PROFILE_ROUTES.DeleteAccount)}
+        style={styles.action}
+      />
+      <Button label="Sign Out" variant="destructive" onPress={signOut} style={styles.action} />
     </View>
   );
 }
@@ -131,27 +125,27 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
       fontSize: typography.sizes.base,
       color: colors.text.primary,
     },
-    languageRow: {
+    chipRow: {
       flexDirection: 'row',
       gap: spacing.xs,
     },
-    languageChip: {
+    chip: {
       paddingVertical: spacing.xs,
       paddingHorizontal: spacing.md,
       borderRadius: radii.full,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    languageChipSelected: {
+    chipSelected: {
       backgroundColor: colors.brand.primary,
       borderColor: colors.brand.primary,
     },
-    languageChipLabel: {
+    chipLabel: {
       fontSize: typography.sizes.sm,
       color: colors.text.secondary,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
     },
-    languageChipLabelSelected: {
+    chipLabelSelected: {
       color: colors.neutral.white,
     },
     action: {

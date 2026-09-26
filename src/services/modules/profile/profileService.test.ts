@@ -71,10 +71,20 @@ describe('uploadAvatar', () => {
 });
 
 describe('updatePassword', () => {
-  it('calls the Supabase Auth SDK directly', async () => {
+  it('calls the Supabase Auth SDK directly and signs out other sessions', async () => {
     mockedSupabase.auth.updateUser.mockResolvedValue({ data: { user: {} }, error: null } as never);
     await updatePassword('newSecret123');
     expect(mockedSupabase.auth.updateUser).toHaveBeenCalledWith({ password: 'newSecret123' });
+    expect(mockedSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'others' });
+  });
+
+  it('still succeeds, and logs, when the other sessions cannot be signed out', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockedSupabase.auth.updateUser.mockResolvedValue({ data: { user: {} }, error: null } as never);
+    mockedSupabase.auth.signOut.mockResolvedValue({ error: new Error('network') } as never);
+    await expect(updatePassword('newSecret123')).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith('[profileService: could not sign out other sessions]', 'Error: network');
+    warn.mockRestore();
   });
 
   it('throws on error', async () => {

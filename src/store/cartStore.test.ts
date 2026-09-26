@@ -29,7 +29,7 @@ describe('useCartStore', () => {
     act(() => {
       useCartStore.getState().addItem(listing(), 3);
     });
-    expect(useCartStore.getState().items[0].quantity).toBe(3);
+    expect(useCartStore.getState().items[0]?.quantity).toBe(3);
   });
 
   it('merges quantities when the same listing is added again', () => {
@@ -39,7 +39,7 @@ describe('useCartStore', () => {
     });
     const { items } = useCartStore.getState();
     expect(items).toHaveLength(1);
-    expect(items[0].quantity).toBe(5);
+    expect(items[0]?.quantity).toBe(5);
   });
 
   it('keeps distinct listings as separate line items', () => {
@@ -63,7 +63,7 @@ describe('useCartStore', () => {
       useCartStore.getState().addItem(listing());
       useCartStore.getState().updateQuantity('listing-1', 7);
     });
-    expect(useCartStore.getState().items[0].quantity).toBe(7);
+    expect(useCartStore.getState().items[0]?.quantity).toBe(7);
   });
 
   it('removes the item when updateQuantity is called with 0 or less', () => {

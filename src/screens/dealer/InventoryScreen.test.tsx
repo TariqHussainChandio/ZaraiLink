@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { InventoryScreen } from './InventoryScreen';
 import {
   createInventoryItem,
@@ -85,13 +85,13 @@ afterEach(() => {
 describe('InventoryScreen', () => {
   it('shows an empty state when there are no stock items', async () => {
     mockFetchInventory.mockResolvedValue([]);
-    await render(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText('No stock items yet')).toBeTruthy();
   });
 
   it('lists stock items with their quantity and a low-stock badge', async () => {
     mockFetchInventory.mockResolvedValue([item({ stock_quantity: 2 })]);
-    await render(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText('DAP Fertilizer')).toBeTruthy();
     expect(screen.getByText('2 bag in stock')).toBeTruthy();
     expect(screen.getByText('Low stock')).toBeTruthy();
@@ -99,7 +99,7 @@ describe('InventoryScreen', () => {
 
   it('shows an error state with retry when inventory fails to load', async () => {
     mockFetchInventory.mockRejectedValue(new Error('network down'));
-    await render(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText("Couldn't load inventory")).toBeTruthy();
 
     mockFetchInventory.mockResolvedValue([]);
@@ -110,7 +110,7 @@ describe('InventoryScreen', () => {
   it('creates a new stock item through the sheet', async () => {
     mockFetchInventory.mockResolvedValueOnce([]).mockResolvedValueOnce([item()]);
     mockCreateInventoryItem.mockResolvedValue(item());
-    await render(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
     await screen.findByText('No stock items yet');
 
     await fireEvent.press(screen.getByText('+ Add Item'));
@@ -131,7 +131,7 @@ describe('InventoryScreen', () => {
   it('edits an existing item, prefilling the sheet', async () => {
     mockFetchInventory.mockResolvedValue([item()]);
     mockUpdateInventoryItem.mockResolvedValue(item());
-    await render(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
     await screen.findByText('DAP Fertilizer');
 
     await fireEvent.press(screen.getByText('DAP Fertilizer'));
@@ -154,7 +154,7 @@ describe('InventoryScreen', () => {
     (Alert.alert as jest.Mock).mockImplementation((_title, _msg, buttons) => {
       buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
     });
-    await render(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
     await screen.findByText('DAP Fertilizer');
 
     await fireEvent.press(screen.getByText('DAP Fertilizer'));
@@ -165,7 +165,7 @@ describe('InventoryScreen', () => {
 
   it('opens the stock adjust modal from a row', async () => {
     mockFetchInventory.mockResolvedValue([item()]);
-    await render(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
     await screen.findByText('DAP Fertilizer');
 
     await fireEvent.press(screen.getByText('Adjust Stock'));
@@ -175,7 +175,7 @@ describe('InventoryScreen', () => {
   it('navigates to stock history from a row', async () => {
     mockFetchInventory.mockResolvedValue([item()]);
     const navigation = makeNavigation();
-    await render(<InventoryScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<InventoryScreen navigation={navigation} route={{} as never} />);
     await screen.findByText('DAP Fertilizer');
 
     await fireEvent.press(screen.getByText('History'));

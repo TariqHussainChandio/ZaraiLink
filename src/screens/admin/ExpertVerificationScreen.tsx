@@ -1,17 +1,13 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, Linking, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Badge, Button, EmptyState, FilterChips, Input, Spinner } from '../../components/ui';
-import {
-  fetchExpertsForAdmin,
-  resolveExpertDocumentUrl,
-  reviewExpertVerification,
-  type ExpertWithVerifications,
-} from '../../services/modules/expert/expertService';
+import { useExpertDocumentUrl, useExpertVerifications, useReviewVerification } from '../../hooks/api/admin';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { VerificationStatus } from '../../types/expert';
+import { errorMessage } from '../../utils/errorMessage';
 
 type FilterValue = VerificationStatus | 'all';
 
@@ -23,55 +19,58 @@ const STATUS_TONE: Record<VerificationStatus, 'warning' | 'success' | 'error' | 
 };
 
 export function ExpertVerificationScreen() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const filters: { value: FilterValue; label: string }[] = useMemo(
     () => [
-      { value: 'pending', label: t('admin.expertVerification.pending') },
-      { value: 'approved', label: t('admin.expertVerification.approved') },
-      { value: 'rejected', label: t('admin.expertVerification.rejected') },
-      { value: 'suspended', label: t('admin.expertVerification.suspended') },
-      { value: 'all', label: t('admin.expertVerification.all') },
+      { value: 'pending', label: 'Pending' },
+      { value: 'approved', label: 'Approved' },
+      { value: 'rejected', label: 'Rejected' },
+      { value: 'suspended', label: 'Suspended' },
+      { value: 'all', label: 'All' },
     ],
-    [t],
+    [],
   );
   const actorId = useAuthStore(state => state.user?.id);
   const [filter, setFilter] = useState<FilterValue>('pending');
-  const [experts, setExperts] = useState<ExpertWithVerifications[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: experts = [], isPending: loading, refetch } = useExpertVerifications(filter === 'all' ? undefined : filter);
+  const review = useReviewVerification();
+  const documentUrl = useExpertDocumentUrl();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setExperts(await fetchExpertsForAdmin(filter === 'all' ? undefined : filter));
-    setLoading(false);
-  }, [filter]);
-
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      refetch();
+    }, [refetch]),
   );
 
-  const decide = async (expert: ExpertWithVerifications, decision: VerificationStatus) => {
+  const decide = async (expert: (typeof experts)[number], decision: VerificationStatus) => {
     if (!actorId) return;
     const latestVerification = expert.expert_verifications[0];
     if (!latestVerification) return;
-
     setUpdatingId(expert.id);
     try {
-      await reviewExpertVerification(expert.id, latestVerification.id, decision, notes[expert.id] ?? '');
-      await load();
+      await review.mutateAsync({
+        expertId: expert.id,
+        verificationId: latestVerification.id,
+        decision,
+        notes: notes[expert.id] ?? '',
+      });
+    } catch (error) {
+      Alert.alert('Could not record the decision', errorMessage(error));
     } finally {
       setUpdatingId(null);
     }
   };
 
   const viewDocument = async (expertId: string) => {
-    const url = await resolveExpertDocumentUrl(expertId);
-    if (url) Linking.openURL(url);
+    try {
+      const url = await documentUrl.mutateAsync(expertId);
+      if (url) Linking.openURL(url);
+    } catch (error) {
+      Alert.alert('Could not open the document', errorMessage(error));
+    }
   };
 
   if (loading) return <Spinner fullscreen />;
@@ -79,21 +78,21 @@ export function ExpertVerificationScreen() {
   return (
     <View style={styles.container}>
       <FilterChips options={filters} value={filter} onChange={setFilter} />
-      <FlatList
+      <FlashList
         contentContainerStyle={styles.list}
         data={experts}
         keyExtractor={item => item.id}
-        ListEmptyComponent={<EmptyState title={t('admin.expertVerification.emptyTitle')} />}
+        ListEmptyComponent={<EmptyState title="No experts in this status" />}
         renderItem={({ item }) => {
           const latestVerification = item.expert_verifications[0];
           return (
             <View style={styles.card}>
               <View style={styles.headerRow}>
-                <Text style={styles.name}>{item.profile?.full_name ?? t('admin.expertVerification.unknownName')}</Text>
+                <Text style={styles.name}>{item.profile?.full_name ?? 'Unknown'}</Text>
                 <Badge label={item.verification_status} tone={STATUS_TONE[item.verification_status]} />
               </View>
-              <Text style={styles.detail}>{item.degree ?? t('admin.expertVerification.noDegreeListed')}</Text>
-              <Text style={styles.detail}>{item.experience ?? t('admin.expertVerification.noExperienceListed')}</Text>
+              <Text style={styles.detail}>{item.degree ?? 'No degree listed'}</Text>
+              <Text style={styles.detail}>{item.experience ?? 'No experience listed'}</Text>
               {item.qualifications ? <Text style={styles.detail}>{item.qualifications}</Text> : null}
               <View style={styles.badgeRow}>
                 {item.expert_specializations.map(s => (
@@ -103,7 +102,7 @@ export function ExpertVerificationScreen() {
 
               {latestVerification?.document_url ? (
                 <Button
-                  label={t('admin.expertVerification.viewDocument')}
+                  label="View Document"
                   variant="ghost"
                   fullWidth={false}
                   style={styles.docButton}
@@ -112,7 +111,7 @@ export function ExpertVerificationScreen() {
               ) : null}
 
               <Input
-                placeholder={t('admin.expertVerification.decisionNotePlaceholder')}
+                placeholder="Decision note (optional)"
                 value={notes[item.id] ?? ''}
                 onChangeText={text => setNotes(prev => ({ ...prev, [item.id]: text }))}
               />
@@ -121,13 +120,13 @@ export function ExpertVerificationScreen() {
                 {item.verification_status === 'pending' ? (
                   <>
                     <Button
-                      label={t('admin.expertVerification.approve')}
+                      label="Approve"
                       fullWidth={false}
                       loading={updatingId === item.id}
                       onPress={() => decide(item, 'approved')}
                     />
                     <Button
-                      label={t('admin.expertVerification.reject')}
+                      label="Reject"
                       variant="destructive"
                       fullWidth={false}
                       loading={updatingId === item.id}
@@ -136,7 +135,7 @@ export function ExpertVerificationScreen() {
                   </>
                 ) : item.verification_status === 'approved' ? (
                   <Button
-                    label={t('admin.expertVerification.suspend')}
+                    label="Suspend"
                     variant="destructive"
                     fullWidth={false}
                     loading={updatingId === item.id}
@@ -144,7 +143,7 @@ export function ExpertVerificationScreen() {
                   />
                 ) : item.verification_status === 'suspended' ? (
                   <Button
-                    label={t('admin.expertVerification.reactivate')}
+                    label="Reactivate"
                     variant="secondary"
                     fullWidth={false}
                     loading={updatingId === item.id}
@@ -187,7 +186,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     detail: {

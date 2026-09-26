@@ -1,8 +1,8 @@
 import { SlidersHorizontal } from 'lucide-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Input, LocationPicker, Sheet } from '../../../components/ui';
-import { useMarketplaceStore } from '../../../store/marketplaceStore';
+import { useCrops } from '../../../hooks/api/marketplace';
 import { useTheme, type Theme } from '../../../theme';
 import type { Category } from '../../../types/marketplace';
 import { CategoryChip } from './CategoryChip';
@@ -42,12 +42,7 @@ export function FilterBar({
   const [draftCity, setDraftCity] = useState<string | null>(city);
   const [draftCropName, setDraftCropName] = useState<string | null>(cropName);
 
-  const crops = useMarketplaceStore(state => state.crops);
-  const loadCrops = useMarketplaceStore(state => state.loadCrops);
-
-  useEffect(() => {
-    loadCrops();
-  }, [loadCrops]);
+  const { data: crops = [] } = useCrops();
 
   const activeMoreFiltersCount = [minPrice, maxPrice, city, cropName].filter(v => v !== null).length;
 
@@ -229,7 +224,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     sheetTitle: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
       marginBottom: spacing.md,
     },
@@ -242,7 +237,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },

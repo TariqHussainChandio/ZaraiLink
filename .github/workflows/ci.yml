@@ -78,6 +78,10 @@ jobs:
       # No stubs, fake behaviour, swallowed errors, or growth in recorded debt (scripts/check_reality.py).
       - name: Text rules
         run: python scripts/check_reality.py
+      # Rules every new migration must meet (RLS, explicit grants, wrapped auth.uid(), indexed foreign keys,
+      # search_path on definer functions, a paired pgTAP file). scripts/check_migrations.py, stdlib only.
+      - name: Migration rules
+        run: python scripts/check_migrations.py
 
   frontend:
     name: Frontend
@@ -103,6 +107,9 @@ jobs:
         run: npm run lint
       - name: Type check
         run: npm run typecheck
+      # P7: src/api/generated is generated from backend/openapi.json (npm run api:generate); it must match what is committed.
+      - name: API client is current
+        run: npm run api:check
       - name: Tests with coverage
         run: >-
           npm run test:ci --
@@ -188,12 +195,22 @@ jobs:
           cache-dependency-glob: backend/uv.lock
       # --frozen: install exactly what uv.lock records, never re-resolve.
       - run: uv sync --frozen
+      # The trained model is application data, so it lives in Supabase Storage (private ml-models bucket), not in git
+      # or a GitHub release. MODEL_WEIGHTS_URL is a signed URL for that one object (repository secret).
+      - name: Fetch the disease-model checkpoint
+        env:
+          MODEL_WEIGHTS_URL: ${{ secrets.MODEL_WEIGHTS_URL }}
+        run: uv run python ../scripts/fetch_model_weights.py
       # ruff, formatting, and mypy findings may only go down. mypy alone flags every write path that
       # crashes against a real database, which the mocked unit tests cannot see.
       - name: Lint and type ratchets
         run: uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy
+      # P7: the OpenAPI document the mobile client is generated from must match the code (regenerate with
+      # `cd backend && uv run python ../scripts/export_openapi.py`).
+      - name: OpenAPI document is current
+        run: uv run python ../scripts/export_openapi.py --check
       - name: Tests for the reality gate itself
-        run: uv run pytest ../scripts/test_check_reality.py -q -p no:cacheprovider
+        run: uv run pytest ../scripts/test_check_reality.py ../scripts/test_check_migrations.py ../scripts/test_check_advisors.py -q -p no:cacheprovider
       - name: Tests with coverage
         run: uv run pytest --cov --cov-report=term --cov-report=json:coverage.json -q
       - name: Coverage summary
@@ -222,10 +239,26 @@ jobs:
       # Applies the full migration history to a throwaway Postgres and starts Auth and the REST API,
       # the same local validation done by hand before any `supabase db push`. Fails if any migration
       # does not apply cleanly.
+      # supabase/config.toml points Auth at supabase/signing_keys.json (ES256, so the API can check tokens against a
+      # real JWKS). The file holds a private key and is git-ignored; CI makes a throwaway one for this run. The CLI runs
+      # against an empty --workdir: inside this project it would try to read the key file it is being asked to create.
+      - name: Generate a throwaway JWT signing key
+        run: supabase gen signing-key --algorithm ES256 --workdir "$RUNNER_TEMP" | python3 -c 'import json, sys; json.dump([json.load(sys.stdin)], sys.stdout)' > supabase/signing_keys.json
       - name: Start local Supabase
         run: supabase start -x studio,edge-runtime,logflare,vector,imgproxy,supavisor
       - name: Lint schema for typing errors
         run: supabase db lint --local --fail-on error
+      # P6: every policy, grant, trigger and function proven with real roles in the database itself
+      # (supabase/tests/database), then the Supabase advisors. Only the documented profiles_public exception
+      # may remain; anything else at WARN or above, or an unindexed foreign key, fails.
+      - name: Database tests (pgTAP)
+        run: supabase test db
+      - name: Database advisors
+        run: python3 scripts/ci/check_advisors.py
+      # docs/database/schema.md is generated from the live schema; a migration that changes the schema must
+      # regenerate it (python scripts/gen_schema_docs.py), or this fails.
+      - name: Schema documentation is current
+        run: python3 scripts/gen_schema_docs.py --check --db-url postgresql://postgres:postgres@127.0.0.1:54322/postgres
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           version: ${{ env.UV_VERSION }}
@@ -235,8 +268,14 @@ jobs:
       - name: Install backend dependencies
         working-directory: backend
         run: uv sync --frozen
-      # Real Auth, real database, no mocks. The expected-failure tests here flip red the moment the
-      # defect they document is fixed, which forces their marker to be removed.
+      # tests/integration includes test_ai_engine_real_checkpoint.py, which needs the real weights from Supabase Storage.
+      - name: Fetch the disease-model checkpoint
+        working-directory: backend
+        env:
+          MODEL_WEIGHTS_URL: ${{ secrets.MODEL_WEIGHTS_URL }}
+        run: uv run python ../scripts/fetch_model_weights.py
+      # Real Auth, real database, no mocks — proves security fixes C1/C2 (docs/process/
+      # standardization-plan.md) end to end, not just against mocks.
       - name: Real-stack tests
         working-directory: backend
         run: |
@@ -245,7 +284,12 @@ jobs:
           export LOCAL_SUPABASE_URL="$API_URL"
           export LOCAL_SUPABASE_ANON_KEY="$ANON_KEY"
           export LOCAL_SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
-          uv run pytest tests/integration -rxs -q
+          # Unit and real-stack tests are measured together (P5, item 10): repositories are proven against
+          # the real database, not mocks, so unit tests alone cannot honestly reach the bar. The smoke
+          # backend runs under coverage (ZARAILINK_COVERAGE, tests/integration/smoke/serve_measured.py).
+          export ZARAILINK_COVERAGE=1
+          uv run pytest tests/unit --cov -q
+          uv run pytest tests/integration --cov --cov-append --cov-report=term --cov-fail-under=85 -rxs -q
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup

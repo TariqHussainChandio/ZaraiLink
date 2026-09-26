@@ -10,7 +10,7 @@ import { ConsultationListScreen } from '../../screens/expert/ConsultationListScr
 import { ExpertApplicationScreen } from '../../screens/expert/ExpertApplicationScreen';
 import { ExpertDashboardScreen } from '../../screens/expert/DashboardScreen';
 import { NotificationListScreen } from '../../screens/notifications/NotificationListScreen';
-import { useUnreadNotificationsCount } from '../../hooks/api/useUnreadNotificationsCount';
+import { useUnreadNotificationsCount } from '../../hooks/api/notifications';
 import { useTheme } from '../../theme';
 import { MessagingNavigator, type MessagingStackParamList } from './MessagingNavigator';
 import { ProfileNavigator, type ProfileStackParamList } from './ProfileNavigator';

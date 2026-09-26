@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.auth import AuthenticatedUser, get_current_user
@@ -12,11 +13,12 @@ ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_to
 FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access_token="tok2")
 
 
-def test_update_user_role_logs_the_real_previous_role_not_a_client_supplied_one():
+@pytest.mark.asyncio
+async def test_update_user_role_logs_the_real_previous_role_not_a_client_supplied_one():
     with patch("app.services.admin_service.repo.fetch_profile_role", return_value="farmer") as mock_fetch:
         with patch("app.services.admin_service.repo.update_profile_role") as mock_update:
             with patch("app.services.admin_service.log_admin_action") as mock_log:
-                service.update_user_role(ADMIN, "user-1", "dealer")
+                await service.update_user_role(ADMIN, "user-1", "dealer")
 
     mock_fetch.assert_called_once_with(ADMIN.access_token, "user-1")
     mock_update.assert_called_once_with(ADMIN.access_token, "user-1", "dealer")
@@ -25,10 +27,11 @@ def test_update_user_role_logs_the_real_previous_role_not_a_client_supplied_one(
     )
 
 
-def test_fetch_all_orders_returns_every_order_not_scoped_to_the_caller():
+@pytest.mark.asyncio
+async def test_fetch_all_orders_returns_every_order_not_scoped_to_the_caller():
     orders = [{"id": "o-1", "buyer_id": "buyer-1", "seller_id": "seller-1"}]
     with patch("app.services.admin_service.orders_repo.fetch_all_orders", return_value=orders) as mock_fetch:
-        result = service.fetch_all_orders(ADMIN)
+        result = await service.fetch_all_orders(ADMIN)
 
     mock_fetch.assert_called_once_with(ADMIN.access_token)
     assert result == orders

@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertProfileScreen } from './ExpertProfileScreen';
 import { fetchExpertById } from '../../services/modules/expert/expertService';
 import { findOrCreateConversation } from '../../services/modules/messaging/messagingService';
@@ -84,7 +84,7 @@ describe('ExpertProfileScreen', () => {
   it('renders the expert profile with specializations and reviews', async () => {
     mockFetchExpertById.mockResolvedValue(expert);
     mockFetchReviewsForExpert.mockResolvedValue([review]);
-    await render(<ExpertProfileScreen {...makeProps()} />);
+    await renderWithQuery(<ExpertProfileScreen {...makeProps()} />);
 
     expect(await screen.findByText('Dr. Ahsan')).toBeTruthy();
     expect(screen.getByText('PhD Agronomy')).toBeTruthy();
@@ -97,14 +97,14 @@ describe('ExpertProfileScreen', () => {
   it('shows "No reviews yet" when the expert has no reviews', async () => {
     mockFetchExpertById.mockResolvedValue(expert);
     mockFetchReviewsForExpert.mockResolvedValue([]);
-    await render(<ExpertProfileScreen {...makeProps()} />);
+    await renderWithQuery(<ExpertProfileScreen {...makeProps()} />);
     expect(await screen.findByText('No reviews yet')).toBeTruthy();
   });
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchExpertById.mockRejectedValue(new Error('network down'));
     mockFetchReviewsForExpert.mockResolvedValue([]);
-    await render(<ExpertProfileScreen {...makeProps()} />);
+    await renderWithQuery(<ExpertProfileScreen {...makeProps()} />);
 
     expect(await screen.findByText("Couldn't load this expert")).toBeTruthy();
 
@@ -118,7 +118,7 @@ describe('ExpertProfileScreen', () => {
     mockFetchReviewsForExpert.mockResolvedValue([]);
     const prefill = { subject: 'Yellow leaves', problemDescription: '', cropId: null, imageUrl: null };
     const props = makeProps(prefill);
-    await render(<ExpertProfileScreen {...props} />);
+    await renderWithQuery(<ExpertProfileScreen {...props} />);
 
     await fireEvent.press(await screen.findByText('Request Consultation'));
     expect(props.navigation.navigate).toHaveBeenCalledWith(CONSULTATIONS_ROUTES.RequestConsultation, {
@@ -131,7 +131,7 @@ describe('ExpertProfileScreen', () => {
     mockFetchExpertById.mockResolvedValue(expert);
     mockFetchReviewsForExpert.mockResolvedValue([]);
     mockFindOrCreateConversation.mockResolvedValue({ id: 'conv1' });
-    await render(<ExpertProfileScreen {...makeProps()} />);
+    await renderWithQuery(<ExpertProfileScreen {...makeProps()} />);
 
     await fireEvent.press(await screen.findByText('Message Expert'));
     expect(mockFindOrCreateConversation).toHaveBeenCalledWith('e1');

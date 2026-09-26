@@ -1,15 +1,12 @@
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import React, { useMemo } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Button, Card, EmptyState, Spinner } from '../../components/ui';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
-import { fetchDiseaseCaseWithPrediction } from '../../services/modules/ai/diseaseService';
-import { fetchListings } from '../../services/modules/marketplace/listingsService';
+import { useDiseaseCase } from '../../hooks/api/disease';
+import { useRelatedListings } from '../../hooks/api/marketplace';
 import { useTheme, type Theme } from '../../theme';
 import { LOW_CONFIDENCE_THRESHOLD } from '../../types/disease';
-import type { DiseaseCaseWithPrediction } from '../../types/disease';
-import type { ListingWithRelations } from '../../types/marketplace';
 import { navigateToConsultExpert } from './expertHandoff';
 
 // Only ever reached by Farmer — Disease Advisory is farmer-only (like Inventory is
@@ -19,51 +16,19 @@ import { navigateToConsultExpert } from './expertHandoff';
 export function DiseaseResultScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
   const { diseaseCaseId } = useRoute().params as { diseaseCaseId: string };
   const navigation = useNavigation<any>();
-  const [diseaseCase, setDiseaseCase] = useState<DiseaseCaseWithPrediction | null>(null);
-  const [relatedListings, setRelatedListings] = useState<ListingWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  const load = useCallback(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchDiseaseCaseWithPrediction(diseaseCaseId).then(async data => {
-      if (cancelled) return;
-      setDiseaseCase(data);
-      setLoading(false);
-      if (data.crop?.name) {
-        try {
-          const listings = await fetchListings({ cropName: data.crop.name });
-          if (!cancelled) setRelatedListings(listings.slice(0, 5));
-        } catch (err) {
-          console.warn('[DiseaseResultScreen] failed to load related listings:', err);
-        }
-      }
-    }).catch(err => {
-      console.warn('[DiseaseResultScreen] failed to load disease case:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [diseaseCaseId]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  const { data: diseaseCase, isPending: loading, error, refetch } = useDiseaseCase(diseaseCaseId);
+  const { data: relatedListings = [] } = useRelatedListings(diseaseCase?.crop?.name);
+  const load = () => refetch();
 
   if (loading) return <Spinner fullscreen />;
   if (error || !diseaseCase) {
     return (
       <EmptyState
-        title={t('disease.result.loadErrorTitle')}
-        description={t('common.checkConnectionRetry')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load this result"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -74,10 +39,10 @@ export function DiseaseResultScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Image source={{ uri: diseaseCase.image_url }} style={styles.image} />
+      <Image source={{ uri: diseaseCase.image_signed_url }} style={styles.image} />
 
       <Card style={styles.disclaimer}>
-        <Text style={styles.disclaimerText}>{t('disease.result.disclaimerText')}</Text>
+        <Text style={styles.disclaimerText}>This is an AI advisory only and not a replacement for professional consultation.</Text>
       </Card>
 
       {prediction ? (
@@ -94,7 +59,7 @@ export function DiseaseResultScreen() {
 
           {prediction.recommended_actions.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('disease.result.recommendedActionsTitle')}</Text>
+              <Text style={styles.sectionTitle}>Recommended Actions</Text>
               {prediction.recommended_actions.map((action, index) => (
                 <Text key={index} style={styles.bullet}>
                   {'•'} {action}
@@ -104,16 +69,16 @@ export function DiseaseResultScreen() {
           ) : null}
         </>
       ) : (
-        <Text style={styles.description}>{t('disease.result.noPredictionFallback')}</Text>
+        <Text style={styles.description}>No prediction is available for this case.</Text>
       )}
 
       <Button
-        label={t('disease.result.consultExpertButton')}
+        label="Consult an Expert"
         variant={isLowConfidence ? 'primary' : 'secondary'}
         onPress={() =>
           navigateToConsultExpert(navigation, {
             cropId: diseaseCase.crop_id,
-            imageUrl: diseaseCase.image_url,
+            imageUrl: diseaseCase.image_signed_url,
             predictedDisease: prediction?.predicted_disease,
             description: prediction?.description,
           })
@@ -123,8 +88,8 @@ export function DiseaseResultScreen() {
 
       {relatedListings.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('disease.result.relatedProductsTitle')}</Text>
-          <Text style={styles.sectionCaption}>{t('disease.result.relatedProductsCaption')}</Text>
+          <Text style={styles.sectionTitle}>Related Products</Text>
+          <Text style={styles.sectionCaption}>These may help — not a guarantee.</Text>
           {relatedListings.map(listing => (
             <TouchableOpacity
               key={listing.id}
@@ -142,7 +107,7 @@ export function DiseaseResultScreen() {
                   {listing.title}
                 </Text>
                 <Text style={styles.listingPrice}>
-                  {t('disease.result.priceFormat', { price: listing.price.toFixed(0), unit: listing.unit })}
+                  {`Rs. ${listing.price.toFixed(0)}/${listing.unit}`}
                 </Text>
               </Card>
             </TouchableOpacity>
@@ -187,7 +152,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
       flex: 1,
       marginRight: spacing.sm,
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     description: {
@@ -201,7 +166,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     sectionTitle: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.xs,
     },
@@ -223,7 +188,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     listingTitle: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     listingPrice: {

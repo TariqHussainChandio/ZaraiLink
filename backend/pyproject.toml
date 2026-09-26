@@ -8,28 +8,38 @@ requires-python = ">=3.12"
 # pinned exactly and upgraded deliberately (phases P3 and P5a), never by drift. `uv.lock` records the
 # full resolved tree with hashes, and CI installs from it with `uv sync --frozen`.
 dependencies = [
-  "fastapi==0.115.6",
-  "uvicorn[standard]==0.34.0",
-  "pydantic==2.10.4",
-  "pydantic-settings==2.7.1",
-  "python-dotenv==1.0.1",
-  "supabase==2.11.0",
+  "fastapi==0.141.1",
+  "uvicorn[standard]==0.53.0",
+  "pydantic==2.13.5",
+  "pydantic-settings==2.15.0",
+  "python-dotenv==1.2.3",
+  "supabase==2.31.0",
   "httpx==0.28.1",
-  "slowapi==0.1.9",
-  "torch==2.5.1",
-  "torchvision==0.20.1",
-  "pillow==11.0.0",
+  "slowapi==0.1.10",
+  # torch>=2.6 closes CVE-2025-32434 (RCE via torch.load, even with weights_only=True, in every
+  # version before 2.6.0 — ai_engine.py already passed weights_only=True, which is necessary but
+  # was not sufficient on 2.5.x). torchvision pinned to the version PyTorch's own compatibility
+  # matrix pairs with 2.6.0.
+  "torch==2.6.0",
+  "torchvision==0.21.0",
+  "pillow==12.3.0",
+  "pyjwt[crypto]==2.15.0",
+  "cachetools==5.5.0",
+  "sentry-sdk[fastapi]==2.70.0",
 ]
 
 # Development-only tools. Kept out of the production image, unlike the old single requirements file.
 [dependency-groups]
 dev = [
-  "pytest==8.3.4",
-  "pytest-asyncio==0.25.2",
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
   "pytest-cov>=6.0",
   "ruff>=0.8",
   "mypy>=1.13",
   "vulture>=2.13",
+  "pyotp>=2.10.0",
+  "jsonschema>=4.23",
+  "schemathesis>=4.0",
 ]
 
 # PyPI's Linux torch wheel drags in multi-gigabyte CUDA libraries. The API runs inference on CPU,
@@ -56,6 +66,11 @@ pythonpath = ["."]
 [tool.coverage.run]
 source = ["app"]
 branch = true
+# The real-stack tests run the app in a uvicorn subprocess (tests/integration/smoke/conftest.py) under
+# `coverage run`; each process writes its own data file and `coverage combine` merges them with the unit
+# run. `sigterm` makes a terminated subprocess flush its data instead of losing it.
+parallel = true
+sigterm = true
 
 [tool.coverage.report]
 show_missing = true
@@ -86,7 +101,10 @@ select = [
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query", "fastapi.Body", "fastapi.Path"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106", "ARG001", "ARG002", "ARG005"]
+# S603/S607/S608: the real-stack smoke matrix (tests/integration/smoke/) legitimately shells out to
+# docker/psql/uvicorn with our own fixed argument lists and generated UUIDs, never untrusted input —
+# the same pattern docs/status/evidence/p0_core_reality.py already established, just now under CI.
+"tests/**" = ["S101", "S105", "S106", "S603", "S607", "S608", "ARG001", "ARG002", "ARG005"]
 
 # ------------------------------------------------------------------ mypy
 # Lenient today, on purpose: the existing code is untyped in places. The count of errors is a

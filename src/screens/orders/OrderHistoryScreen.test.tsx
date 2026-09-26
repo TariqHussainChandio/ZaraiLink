@@ -1,10 +1,10 @@
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
 import { OrderHistoryScreen } from './OrderHistoryScreen';
 import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
 import { useAuthStore } from '../../store/authStore';
+import { createTestQueryClient } from '../../testUtils/renderWithProviders';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import type { OrderWithItems } from '../../types/orders';
 import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
@@ -48,7 +48,7 @@ const order = (overrides: Partial<OrderWithItems> = {}): OrderWithItems =>
   }) as OrderWithItems;
 
 function renderScreen(navigation = { navigate: jest.fn() }) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = createTestQueryClient();
   const props = { navigation, route: {} } as unknown as OrdersScreenProps<'OrderHistory'>;
   return {
     navigation,

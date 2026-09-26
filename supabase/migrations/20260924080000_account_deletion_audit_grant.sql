@@ -1,0 +1,11 @@
+-- P4 (4A.5), account deletion. `audit_logs`' only INSERT policy (`audit_logs_insert_admin`,
+-- 20260822090700_governance.sql) is admin-only — deliberately, since ordinary self-service writes
+-- have no business touching the audit trail. Deleting your own account isn't an admin action, but
+-- BR-15's spirit still applies (every account-affecting change should be traceable), so that one
+-- entry is written through the service-role client instead (profile_repository.log_self_deletion)
+-- — the same account_deletion flow that already needs service-role access for
+-- auth.admin.delete_user(should_soft_delete=True). Grant is SELECT + INSERT — confirmed live that
+-- INSERT alone still 42501s, because PostgREST's default `Prefer: return=representation` on an
+-- insert reads the row back, which needs SELECT too. Nothing else, matching the narrow-grant
+-- pattern established by 20260923080000_service_role_disease_grants.sql (N3).
+grant select, insert on public.audit_logs to service_role;

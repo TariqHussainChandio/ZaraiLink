@@ -146,4 +146,7 @@ export const PROFILE_ROUTES = {
   EditProfile: 'EditProfile',
   Settings: 'Settings',
   ChangePassword: 'ChangePassword',
+  // P4 (4A.4, admin-only) and (4A.5, every role).
+  MfaEnrollment: 'MfaEnrollment',
+  DeleteAccount: 'DeleteAccount',
 } as const;

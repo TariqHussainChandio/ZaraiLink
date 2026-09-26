@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-import pytest
 
 from app.core.auth import AuthenticatedUser
 from app.main import app
@@ -22,32 +22,36 @@ COMPLETED_ORDER = {
 }
 
 
-def test_create_review_rejects_non_owner_of_order():
+@pytest.mark.asyncio
+async def test_create_review_rejects_non_owner_of_order():
     with patch("app.services.reviews_service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
         with pytest.raises(HTTPException) as exc_info:
-            service.create_review(OTHER_BUYER, "order-1", None, 5, "great")
+            await service.create_review(OTHER_BUYER, "order-1", None, 5, "great")
     assert exc_info.value.status_code == 404
 
 
-def test_create_review_rejects_incomplete_order():
+@pytest.mark.asyncio
+async def test_create_review_rejects_incomplete_order():
     incomplete = {**COMPLETED_ORDER, "status": "pending"}
     with patch("app.services.reviews_service.repo.get_order_for_review", return_value=incomplete):
         with pytest.raises(HTTPException) as exc_info:
-            service.create_review(BUYER, "order-1", None, 5, "great")
+            await service.create_review(BUYER, "order-1", None, 5, "great")
     assert exc_info.value.status_code == 404
 
 
-def test_create_review_rejects_listing_not_in_order():
+@pytest.mark.asyncio
+async def test_create_review_rejects_listing_not_in_order():
     with patch("app.services.reviews_service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
         with pytest.raises(HTTPException) as exc_info:
-            service.create_review(BUYER, "order-1", "listing-not-in-this-order", 5, "great")
+            await service.create_review(BUYER, "order-1", "listing-not-in-this-order", 5, "great")
     assert exc_info.value.status_code == 422
 
 
-def test_create_review_derives_seller_id_from_order_not_client():
+@pytest.mark.asyncio
+async def test_create_review_derives_seller_id_from_order_not_client():
     with patch("app.services.reviews_service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
         with patch("app.services.reviews_service.repo.create_review", return_value={"id": "r-1"}) as mock_create:
-            service.create_review(BUYER, "order-1", "listing-1", 5, "great")
+            await service.create_review(BUYER, "order-1", "listing-1", 5, "great")
 
     # seller_id passed to the repository comes from COMPLETED_ORDER["seller_id"], never from any
     # client-supplied value (there is no seller_id parameter on create_review at all).

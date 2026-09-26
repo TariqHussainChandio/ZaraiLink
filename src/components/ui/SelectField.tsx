@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useTheme, type Theme } from '../../theme';
 import { EmptyState } from './EmptyState';
 import { Sheet } from './Sheet';
@@ -79,7 +80,7 @@ export function SelectField({
         {loading ? (
           <Spinner />
         ) : (
-          <FlatList
+          <FlashList
             data={filteredOptions}
             keyExtractor={item => item.id}
             style={styles.list}
@@ -112,7 +113,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },
@@ -168,7 +169,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     optionLabelSelected: {
       fontSize: typography.sizes.base,
       color: colors.brand.primary,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
   });
 }

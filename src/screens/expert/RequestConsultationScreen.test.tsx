@@ -1,8 +1,9 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { launchImageLibraryAsync } from 'expo-image-picker';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
+import { queryKeys } from '../../hooks/api/keys';
 import { RequestConsultationScreen } from './RequestConsultationScreen';
 import { fetchFarms } from '../../services/modules/farmer/farmService';
 import {
@@ -11,8 +12,9 @@ import {
   uploadConsultationAttachments,
 } from '../../services/modules/expert/consultationService';
 import { useAuthStore } from '../../store/authStore';
-import { useMarketplaceStore } from '../../store/marketplaceStore';
 import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
+
+const queryClient = createTestQueryClient();
 
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
@@ -48,11 +50,8 @@ describe('RequestConsultationScreen', () => {
     mockUploadConsultationAttachments.mockReset();
     mockLaunchImageLibrary.mockReset();
     useAuthStore.setState({ user: { id: 'u1' } as never });
-    useMarketplaceStore.setState({
-      crops: [{ id: 'crop1', name: 'Wheat', category: null }],
-      cropsLoaded: true,
-      loadCrops: jest.fn(),
-    });
+    queryClient.clear();
+    queryClient.setQueryData(queryKeys.marketplace.crops(), [{ id: 'crop1', name: 'Wheat', category: null }]);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -61,7 +60,7 @@ describe('RequestConsultationScreen', () => {
   });
 
   it('renders the form with a default medium priority', async () => {
-    await render(<RequestConsultationScreen {...makeProps()} />);
+    await renderWithQuery(<RequestConsultationScreen {...makeProps()} />, queryClient);
     expect(await screen.findByLabelText('Subject')).toBeTruthy();
     expect(screen.getByText('Medium')).toBeTruthy();
   });
@@ -73,7 +72,7 @@ describe('RequestConsultationScreen', () => {
       cropId: 'crop1',
       imageUrl: null,
     };
-    await render(<RequestConsultationScreen {...makeProps(prefill)} />);
+    await renderWithQuery(<RequestConsultationScreen {...makeProps(prefill)} />, queryClient);
 
     expect(await screen.findByLabelText('Subject')).toBeTruthy();
     expect(screen.getByLabelText('Subject').props.value).toBe('Yellowing wheat leaves');
@@ -84,12 +83,12 @@ describe('RequestConsultationScreen', () => {
 
   it('shows the Farm select once the farmer’s farms load', async () => {
     mockFetchFarms.mockResolvedValue([{ id: 'farm1', name: 'North Farm' }]);
-    await render(<RequestConsultationScreen {...makeProps()} />);
+    await renderWithQuery(<RequestConsultationScreen {...makeProps()} />, queryClient);
     expect(await screen.findByText('Farm (optional)')).toBeTruthy();
   });
 
   it('shows a validation error when the subject is left empty', async () => {
-    await render(<RequestConsultationScreen {...makeProps()} />);
+    await renderWithQuery(<RequestConsultationScreen {...makeProps()} />, queryClient);
     await screen.findByLabelText('Subject');
 
     await fireEvent.press(screen.getByText('Send Request'));
@@ -100,7 +99,7 @@ describe('RequestConsultationScreen', () => {
   it('submits the request with no crop, farm, or images', async () => {
     mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
     const props = makeProps();
-    await render(<RequestConsultationScreen {...props} />);
+    await renderWithQuery(<RequestConsultationScreen {...props} />, queryClient);
     await fireEvent.changeText(await screen.findByLabelText('Subject'), 'Aphids on cotton');
 
     await fireEvent.press(screen.getByText('Send Request'));
@@ -123,14 +122,14 @@ describe('RequestConsultationScreen', () => {
     mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
     mockUploadConsultationAttachments.mockResolvedValue(['c1/u1/photo1.jpg']);
     const props = makeProps();
-    await render(<RequestConsultationScreen {...props} />);
+    await renderWithQuery(<RequestConsultationScreen {...props} />, queryClient);
     await fireEvent.changeText(await screen.findByLabelText('Subject'), 'Aphids on cotton');
     await fireEvent.press(screen.getByText('+ Add'));
 
     await fireEvent.press(screen.getByText('Send Request'));
 
     expect(mockUploadConsultationAttachments).toHaveBeenCalledWith('c1', 'u1', [
-      { uri: 'file://photo1.jpg', fileName: 'photo1.jpg' },
+      { uri: 'file://photo1.jpg', fileName: 'photo1.jpg', mimeType: 'image/jpeg' },
     ]);
     expect(mockUpdateConsultationImages).toHaveBeenCalledWith('c1', ['c1/u1/photo1.jpg']);
     expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
@@ -139,7 +138,7 @@ describe('RequestConsultationScreen', () => {
   it('shows an error alert and does not navigate back when the request fails', async () => {
     mockCreateConsultationRequest.mockRejectedValue(new Error('Server unavailable'));
     const props = makeProps();
-    await render(<RequestConsultationScreen {...props} />);
+    await renderWithQuery(<RequestConsultationScreen {...props} />, queryClient);
     await fireEvent.changeText(await screen.findByLabelText('Subject'), 'Aphids on cotton');
 
     await fireEvent.press(screen.getByText('Send Request'));

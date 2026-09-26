@@ -20,6 +20,8 @@ export interface MonthlyPoint {
 
 export interface FarmerAnalytics {
   totalListingViews: number;
+  activeListings: number;
+  pendingOrders: number;
   totalOrders: number;
   totalSales: number;
   popularProducts: PopularProduct[];
@@ -32,6 +34,8 @@ export interface FarmerAnalytics {
 export interface DealerAnalytics {
   totalSales: number;
   totalOrders: number;
+  activeListings: number;
+  pendingOrders: number;
   inventoryMovement: MonthlyPoint[];
   lowStockCount: number;
   bestSellers: PopularProduct[];

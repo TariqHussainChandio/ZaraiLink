@@ -1,7 +1,8 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
+import { queryKeys } from '../../hooks/api/keys';
 import { EditListingScreen } from './EditListingScreen';
 import {
   deleteListing,
@@ -19,6 +20,8 @@ jest.mock('../../services/modules/marketplace/listingsService', () => ({
   updateListing: jest.fn(),
   deleteListing: jest.fn(),
   uploadListingImages: jest.fn(),
+  fetchCategories: jest.fn().mockResolvedValue([]),
+  fetchCrops: jest.fn().mockResolvedValue([]),
 }));
 
 const mockFetchListingById = fetchListingById as jest.Mock;
@@ -63,10 +66,6 @@ beforeEach(() => {
   useAuthStore.setState({ user: { id: 'user-1' } as never });
   useMarketplaceStore.setState({
     filters: { categoryId: null, search: '', minPrice: null, maxPrice: null, city: null, cropName: null },
-    categories: [],
-    categoriesLoaded: true,
-    crops: [],
-    cropsLoaded: true,
   });
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
@@ -78,7 +77,7 @@ afterEach(() => {
 describe('EditListingScreen', () => {
   it('loads and prefills the existing listing', async () => {
     mockFetchListingById.mockResolvedValue(listing);
-    await render(<EditListingScreen {...makeProps()} />);
+    await renderWithQuery(<EditListingScreen {...makeProps()} />);
 
     expect(await screen.findByDisplayValue('Wheat seeds')).toBeTruthy();
     expect(screen.getByDisplayValue('Certified seeds')).toBeTruthy();
@@ -87,9 +86,28 @@ describe('EditListingScreen', () => {
     expect(screen.getByText('Delete Listing')).toBeTruthy();
   });
 
+  it('fills the form from the current listing, not from a stale cached copy, so saving cannot overwrite a newer price', async () => {
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.marketplace.listing('listing-1'), { ...listing, price: 90 }); // cached yesterday
+    mockFetchListingById.mockResolvedValue({ ...listing, price: 150 }); // what the server has now
+    await renderWithQuery(<EditListingScreen {...makeProps()} />, queryClient);
+
+    expect(await screen.findByDisplayValue('150')).toBeTruthy();
+    expect(screen.queryByDisplayValue('90')).toBeNull();
+  });
+
+  it('falls back to the cached copy when the current one cannot be fetched (offline)', async () => {
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.marketplace.listing('listing-1'), { ...listing, price: 90 });
+    mockFetchListingById.mockRejectedValue(new Error('offline'));
+    await renderWithQuery(<EditListingScreen {...makeProps()} />, queryClient);
+
+    expect(await screen.findByDisplayValue('90')).toBeTruthy();
+  });
+
   it('shows a retry state when loading the listing fails', async () => {
     mockFetchListingById.mockRejectedValue(new Error('Not found'));
-    await render(<EditListingScreen {...makeProps()} />);
+    await renderWithQuery(<EditListingScreen {...makeProps()} />);
 
     expect(await screen.findByText("Couldn't load this listing")).toBeTruthy();
 
@@ -102,7 +120,7 @@ describe('EditListingScreen', () => {
     mockFetchListingById.mockResolvedValue(listing);
     mockUpdateListing.mockResolvedValue({ id: 'listing-1' });
     const props = makeProps();
-    await render(<EditListingScreen {...props} />);
+    await renderWithQuery(<EditListingScreen {...props} />);
     await screen.findByDisplayValue('Wheat seeds');
 
     await fireEvent.changeText(screen.getByLabelText('Title'), 'Wheat seeds (updated)');
@@ -122,7 +140,7 @@ describe('EditListingScreen', () => {
   it('shows a validation error and does not save when a required field is cleared', async () => {
     mockFetchListingById.mockResolvedValue(listing);
     const props = makeProps();
-    await render(<EditListingScreen {...props} />);
+    await renderWithQuery(<EditListingScreen {...props} />);
     await screen.findByDisplayValue('Wheat seeds');
 
     await fireEvent.changeText(screen.getByLabelText('Title'), '');
@@ -137,7 +155,7 @@ describe('EditListingScreen', () => {
     mockFetchListingById.mockResolvedValue(listing);
     mockUpdateListing.mockRejectedValue(new Error('Server error'));
     const props = makeProps();
-    await render(<EditListingScreen {...props} />);
+    await renderWithQuery(<EditListingScreen {...props} />);
     await screen.findByDisplayValue('Wheat seeds');
 
     await fireEvent.press(screen.getByText('Save Changes'));
@@ -153,7 +171,7 @@ describe('EditListingScreen', () => {
       buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
     });
     const props = makeProps();
-    await render(<EditListingScreen {...props} />);
+    await renderWithQuery(<EditListingScreen {...props} />);
     await screen.findByDisplayValue('Wheat seeds');
 
     await fireEvent.press(screen.getByText('Delete Listing'));

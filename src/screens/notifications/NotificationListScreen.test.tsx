@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { NotificationListScreen } from './NotificationListScreen';
 import { fetchNotifications, markAllRead, markRead } from '../../services/modules/notifications/notificationsService';
 import { useAuthStore } from '../../store/authStore';
@@ -57,19 +57,19 @@ beforeEach(() => {
 describe('NotificationListScreen', () => {
   it('loads and renders notifications', async () => {
     mockFetchNotifications.mockResolvedValue([notification()]);
-    await render(<NotificationListScreen />);
+    await renderWithQuery(<NotificationListScreen />);
     expect(await screen.findByText('Order is now confirmed')).toBeTruthy();
   });
 
   it('shows an empty state when there are no notifications', async () => {
     mockFetchNotifications.mockResolvedValue([]);
-    await render(<NotificationListScreen />);
+    await renderWithQuery(<NotificationListScreen />);
     expect(await screen.findByText('No notifications yet')).toBeTruthy();
   });
 
   it('shows a retry state when loading fails', async () => {
     mockFetchNotifications.mockRejectedValue(new Error('Network error'));
-    await render(<NotificationListScreen />);
+    await renderWithQuery(<NotificationListScreen />);
     expect(await screen.findByText("Couldn't load notifications")).toBeTruthy();
 
     mockFetchNotifications.mockResolvedValue([notification()]);
@@ -79,7 +79,7 @@ describe('NotificationListScreen', () => {
 
   it('marks a notification read and navigates to the related order', async () => {
     mockFetchNotifications.mockResolvedValue([notification()]);
-    await render(<NotificationListScreen />);
+    await renderWithQuery(<NotificationListScreen />);
     await fireEvent.press(await screen.findByText('Order is now confirmed'));
 
     expect(mockMarkRead).toHaveBeenCalledWith('notif-1');
@@ -98,7 +98,7 @@ describe('NotificationListScreen', () => {
         payload: { conversation_id: 'conversation-1', sender_name: 'Ali Khan' },
       }),
     ]);
-    await render(<NotificationListScreen />);
+    await renderWithQuery(<NotificationListScreen />);
     await fireEvent.press(await screen.findByText('New message from Ali Khan'));
 
     expect(mockMarkRead).not.toHaveBeenCalled();
@@ -110,7 +110,7 @@ describe('NotificationListScreen', () => {
 
   it('shows Mark all as read only when there are unread notifications, and calls markAllRead', async () => {
     mockFetchNotifications.mockResolvedValue([notification({ read: false })]);
-    await render(<NotificationListScreen />);
+    await renderWithQuery(<NotificationListScreen />);
     await screen.findByText('Order is now confirmed');
 
     expect(screen.getByText('Mark all as read')).toBeTruthy();
@@ -120,7 +120,7 @@ describe('NotificationListScreen', () => {
 
   it('hides Mark all as read when everything is already read', async () => {
     mockFetchNotifications.mockResolvedValue([notification({ read: true })]);
-    await render(<NotificationListScreen />);
+    await renderWithQuery(<NotificationListScreen />);
     await screen.findByText('Order is now confirmed');
 
     expect(screen.queryByText('Mark all as read')).toBeNull();

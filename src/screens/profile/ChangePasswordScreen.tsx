@@ -1,25 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { Button, Input } from '../../components/ui';
-import { updatePassword } from '../../services/modules/profile/profileService';
+import { useUpdatePassword } from '../../hooks/api/profile';
 import { useTheme, type Theme } from '../../theme';
+import { mapPasswordFlowErrorMessage } from '../auth/mapAuthError';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
-import type { TFunction } from 'i18next';
 
-// Built from `t` at render time (not module scope) so validation messages stay in sync when the
-// user switches language mid-session.
-function makeChangePasswordSchema(t: TFunction) {
+function makeChangePasswordSchema() {
   return z
     .object({
-      password: z.string().min(6, t('profile.passwordMinLengthError')),
+      password: z.string().min(6, 'Password must be at least 6 characters'),
       confirmPassword: z.string(),
     })
     .refine(data => data.password === data.confirmPassword, {
-      message: t('profile.passwordsMismatchError'),
+      message: "Passwords don't match",
       path: ['confirmPassword'],
     });
 }
@@ -29,8 +26,8 @@ type ChangePasswordFormValues = z.infer<ReturnType<typeof makeChangePasswordSche
 export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangePassword'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
-  const changePasswordSchema = useMemo(() => makeChangePasswordSchema(t), [t]);
+  const { mutateAsync: updatePassword } = useUpdatePassword();
+  const changePasswordSchema = useMemo(() => makeChangePasswordSchema(), []);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     control,
@@ -45,23 +42,23 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
     setSubmitError(null);
     try {
       await updatePassword(values.password);
-      Alert.alert(t('profile.passwordUpdatedTitle'), t('profile.passwordUpdatedMessage'));
+      Alert.alert('Password updated', 'Your password has been changed.');
       navigation.goBack();
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : t('profile.updatePasswordError'));
+      setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to update password'));
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.subtitle}>{t('profile.changePasswordSubtitle')}</Text>
+      <Text style={styles.subtitle}>Choose a new password for your account.</Text>
 
       <Controller
         control={control}
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('profile.newPasswordLabel')}
+            label="New password"
             secureTextEntry
             value={value}
             onChangeText={onChange}
@@ -75,7 +72,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
         name="confirmPassword"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('profile.confirmPasswordLabel')}
+            label="Confirm new password"
             secureTextEntry
             value={value}
             onChangeText={onChange}
@@ -88,7 +85,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
       {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
 
       <Button
-        label={t('profile.updatePasswordButton')}
+        label="Update Password"
         loading={isSubmitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}

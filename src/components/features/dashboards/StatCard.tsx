@@ -43,7 +43,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     value: {
       fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     label: {

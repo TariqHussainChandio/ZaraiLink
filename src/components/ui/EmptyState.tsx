@@ -36,7 +36,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       textAlign: 'center',
     },

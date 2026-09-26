@@ -1,12 +1,14 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
+import { queryKeys } from '../../hooks/api/keys';
 import { FarmDetailScreen } from './FarmDetailScreen';
 import { deleteFarm, fetchFarmById, updateFarm } from '../../services/modules/farmer/farmService';
-import { useReferenceDataStore } from '../../store/referenceDataStore';
 import { HOME_ROUTES } from '../../constants/routes';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
+
+const queryClient = createTestQueryClient();
 
 jest.mock('../../services/modules/farmer/farmService', () => ({
   fetchFarmById: jest.fn(),
@@ -38,10 +40,8 @@ beforeEach(() => {
   mockFetchFarmById.mockReset();
   mockUpdateFarm.mockReset();
   mockDeleteFarm.mockReset();
-  useReferenceDataStore.setState({
-    units: [{ id: 'u1', code: 'acre', label: 'Acre', applies_to: 'area' }],
-    unitsLoaded: true,
-  });
+  queryClient.clear();
+  queryClient.setQueryData(queryKeys.referenceData.units(), [{ id: 'u1', code: 'acre', label: 'Acre', applies_to: 'area' }]);
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
@@ -52,7 +52,7 @@ afterEach(() => {
 describe('FarmDetailScreen', () => {
   it('loads and prefills the farm details', async () => {
     mockFetchFarmById.mockResolvedValue(farm);
-    await render(<FarmDetailScreen {...makeProps()} />);
+    await renderWithQuery(<FarmDetailScreen {...makeProps()} />, queryClient);
 
     expect(await screen.findByDisplayValue('Green Acres')).toBeTruthy();
     expect(screen.getByDisplayValue('10')).toBeTruthy();
@@ -62,7 +62,7 @@ describe('FarmDetailScreen', () => {
 
   it('shows a retry state when loading fails, and recovers on retry', async () => {
     mockFetchFarmById.mockRejectedValue(new Error('Network error'));
-    await render(<FarmDetailScreen {...makeProps()} />);
+    await renderWithQuery(<FarmDetailScreen {...makeProps()} />, queryClient);
     expect(await screen.findByText("Couldn't load this farm")).toBeTruthy();
 
     mockFetchFarmById.mockResolvedValue(farm);
@@ -74,7 +74,7 @@ describe('FarmDetailScreen', () => {
     mockFetchFarmById.mockResolvedValue(farm);
     mockUpdateFarm.mockResolvedValue({ ...farm, name: 'Greener Acres' });
     const props = makeProps();
-    await render(<FarmDetailScreen {...props} />);
+    await renderWithQuery(<FarmDetailScreen {...props} />, queryClient);
     await screen.findByDisplayValue('Green Acres');
 
     await fireEvent.changeText(screen.getByDisplayValue('Green Acres'), 'Greener Acres');
@@ -88,7 +88,7 @@ describe('FarmDetailScreen', () => {
     mockFetchFarmById.mockResolvedValue(farm);
     mockUpdateFarm.mockRejectedValue(new Error('Server unavailable'));
     const props = makeProps();
-    await render(<FarmDetailScreen {...props} />);
+    await renderWithQuery(<FarmDetailScreen {...props} />, queryClient);
     await screen.findByDisplayValue('Green Acres');
 
     await fireEvent.press(screen.getByText('Save Changes'));
@@ -104,7 +104,7 @@ describe('FarmDetailScreen', () => {
       buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
     });
     const props = makeProps();
-    await render(<FarmDetailScreen {...props} />);
+    await renderWithQuery(<FarmDetailScreen {...props} />, queryClient);
     await screen.findByDisplayValue('Green Acres');
 
     await fireEvent.press(screen.getByText('Delete Farm'));
@@ -116,7 +116,7 @@ describe('FarmDetailScreen', () => {
   it('navigates to CropList for this farm', async () => {
     mockFetchFarmById.mockResolvedValue(farm);
     const props = makeProps();
-    await render(<FarmDetailScreen {...props} />);
+    await renderWithQuery(<FarmDetailScreen {...props} />, queryClient);
     await screen.findByDisplayValue('Green Acres');
 
     await fireEvent.press(screen.getByText('Crops on this Farm'));

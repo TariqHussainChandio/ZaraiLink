@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { FarmListScreen } from './FarmListScreen';
 import { fetchFarms } from '../../services/modules/farmer/farmService';
 import { useAuthStore } from '../../store/authStore';
@@ -44,7 +44,7 @@ describe('FarmListScreen', () => {
       { id: 'farm-1', name: 'Green Acres', area: 10, land_unit: 'acre' },
       { id: 'farm-2', name: 'North Field', area: null, land_unit: null },
     ]);
-    await render(<FarmListScreen {...makeProps()} />);
+    await renderWithQuery(<FarmListScreen {...makeProps()} />);
 
     expect(await screen.findByText('Green Acres')).toBeTruthy();
     expect(screen.getByText('10 acre')).toBeTruthy();
@@ -54,13 +54,13 @@ describe('FarmListScreen', () => {
 
   it('shows the empty state when there are no farms', async () => {
     mockFetchFarms.mockResolvedValue([]);
-    await render(<FarmListScreen {...makeProps()} />);
+    await renderWithQuery(<FarmListScreen {...makeProps()} />);
     expect(await screen.findByText('No farms yet')).toBeTruthy();
   });
 
   it('shows a retry state when loading fails', async () => {
     mockFetchFarms.mockRejectedValue(new Error('Network error'));
-    await render(<FarmListScreen {...makeProps()} />);
+    await renderWithQuery(<FarmListScreen {...makeProps()} />);
     expect(await screen.findByText("Couldn't load farms")).toBeTruthy();
 
     mockFetchFarms.mockResolvedValue([]);
@@ -71,7 +71,7 @@ describe('FarmListScreen', () => {
   it('navigates to FarmDetail when a farm card is pressed', async () => {
     mockFetchFarms.mockResolvedValue([{ id: 'farm-1', name: 'Green Acres', area: 10, land_unit: 'acre' }]);
     const props = makeProps();
-    await render(<FarmListScreen {...props} />);
+    await renderWithQuery(<FarmListScreen {...props} />);
 
     await fireEvent.press(await screen.findByText('Green Acres'));
     expect(props.navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.FarmDetail, { farmId: 'farm-1' });
@@ -80,7 +80,7 @@ describe('FarmListScreen', () => {
   it('navigates to CreateFarm via the FAB', async () => {
     mockFetchFarms.mockResolvedValue([]);
     const props = makeProps();
-    await render(<FarmListScreen {...props} />);
+    await renderWithQuery(<FarmListScreen {...props} />);
     await screen.findByText('No farms yet');
 
     await fireEvent.press(screen.getByText('+ New Farm'));

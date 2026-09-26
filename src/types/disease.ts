@@ -2,7 +2,9 @@ export interface DiseaseCase {
   id: string;
   user_id: string;
   crop_id: string | null;
-  image_url: string;
+  /** A signed, time-limited URL minted fresh by the backend on every response — the
+   * disease-images bucket is private (security fix C2), so this is never a stable/cacheable URL. */
+  image_signed_url: string;
   created_at: string;
 }
 

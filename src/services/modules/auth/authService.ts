@@ -65,12 +65,25 @@ export async function resendSignupOtp(channel: AuthChannel, identifier: string) 
   if (error) throw error;
 }
 
+// P4 (4B.4): recovery via a numeric code (VerifyOtpScreen, `type: 'recovery'`), not a deep link —
+// no `redirectTo`, since there is no link to follow anymore. `verifyOtp` below returns a real
+// session on success, the same way it already does for signup, firing the PASSWORD_RECOVERY auth
+// event authStore listens for regardless of how that session was established.
 export async function resetPassword(email: string) {
-  // Without redirectTo, Supabase falls back to the project's site_url (a placeholder value with
-  // nothing hosted there, since this app has no web frontend) — the app-scheme deep link below is
-  // registered from `scheme` in app.config.ts (see linking.ts) and caught by authStore's Linking listener.
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'zarailink://reset-password',
-  });
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
   if (error) throw error;
+}
+
+export async function verifyRecoveryOtp(email: string, token: string) {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+  if (error) throw error;
+  return data;
+}
+
+// There is no `resend` type for recovery (GoTrue's ResendParams only covers 'signup'/
+// 'email_change' — a recovery code has no "pending confirmation" to resend). Requesting the
+// reset again generates a fresh code the same way the first request did, which is exactly what
+// "resend" means here.
+export async function resendRecoveryOtp(email: string) {
+  await resetPassword(email);
 }

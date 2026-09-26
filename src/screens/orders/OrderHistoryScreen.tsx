@@ -1,12 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { EmptyState, SkeletonList, StaggeredItem } from '../../components/ui';
 import { OrderCard } from '../../components/features/orders/OrderCard';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
+import { useOrders } from '../../hooks/api/orders';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
@@ -15,7 +14,6 @@ type Segment = 'buyer' | 'seller';
 
 export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHistory'>) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const role = useAuthStore(state => state.role);
@@ -23,11 +21,7 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
     role === 'farmer' || role === 'dealer' ? 'seller' : 'buyer',
   );
 
-  const { data: orders = [], isLoading: loading, refetch } = useQuery({
-    queryKey: ['orders', segment],
-    queryFn: () => fetchOrdersForUser(segment),
-    enabled: !!userId,
-  });
+  const { data: orders = [], isLoading: loading, refetch } = useOrders(segment, !!userId);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,7 +39,7 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
             onPress={() => setSegment(value)}
           >
             <Text style={[styles.segmentLabel, segment === value && styles.segmentLabelActive]}>
-              {value === 'buyer' ? t('orders.orderHistory.purchasesLabel') : t('orders.orderHistory.salesLabel')}
+              {value === 'buyer' ? 'Purchases' : 'Sales'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -54,7 +48,7 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
       {loading ? (
         <SkeletonList />
       ) : (
-        <FlatList
+        <FlashList
           data={orders}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
@@ -64,7 +58,7 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
                 order={item}
                 counterpartyName={
                   (segment === 'buyer' ? item.seller?.full_name : item.buyer?.full_name) ??
-                  t('orders.orderHistory.unknownCounterpartyFallback')
+                  'Unknown'
                 }
                 onPress={() => navigation.navigate(ORDERS_ROUTES.OrderDetail, { orderId: item.id })}
               />
@@ -72,8 +66,8 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
           )}
           ListEmptyComponent={
             <EmptyState
-              title={segment === 'buyer' ? t('orders.orderHistory.emptyPurchasesTitle') : t('orders.orderHistory.emptySalesTitle')}
-              description={t('orders.orderHistory.emptyDescription')}
+              title={segment === 'buyer' ? 'No purchases yet' : 'No sales yet'}
+              description="Orders will show up here once they're placed."
             />
           }
         />
@@ -107,11 +101,11 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     segmentLabel: {
       fontSize: typography.sizes.sm,
       color: colors.text.secondary,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
     },
     segmentLabelActive: {
       color: colors.brand.primary,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
     list: {
       paddingHorizontal: spacing.lg,

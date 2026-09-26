@@ -3,22 +3,12 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Avatar, Card } from '../../ui';
 import { useTheme, type Theme } from '../../../theme';
 import type { ExpertWithProfile } from '../../../types/expert';
-
-const SPECIALIZATION_LABEL: Record<string, string> = {
-  crop_management: 'Crop Management',
-  plant_diseases: 'Plant Diseases',
-  pest_management: 'Pest Management',
-  fertilizer_management: 'Fertilizer Management',
-  irrigation: 'Irrigation',
-  soil_management: 'Soil Management',
-  crop_nutrition: 'Crop Nutrition',
-  general_agriculture: 'General Agriculture',
-};
+import { SPECIALIZATION_LABELS } from '../../../constants/labels';
 
 export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onPress: () => void }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const specializations = expert.expert_specializations.map(s => SPECIALIZATION_LABEL[s.specialization] ?? s.specialization);
+  const specializations = expert.expert_specializations.map(s => SPECIALIZATION_LABELS[s.specialization]);
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
@@ -55,7 +45,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     degree: {

@@ -11,7 +11,11 @@ export type AuthStackParamList = {
   [AUTH_ROUTES.Login]: undefined;
   [AUTH_ROUTES.Register]: undefined;
   [AUTH_ROUTES.ForgotPassword]: undefined;
-  [AUTH_ROUTES.VerifyOtp]: { channel: 'email' | 'phone'; identifier: string };
+  [AUTH_ROUTES.VerifyOtp]:
+    | { purpose: 'signup'; channel: 'email' | 'phone'; identifier: string }
+    // Recovery is email-only — Supabase has no SMS recovery flow, and phone sign-up is Blocked
+    // project-wide anyway.
+    | { purpose: 'recovery'; identifier: string };
 };
 
 export type AuthScreenProps<RouteName extends keyof AuthStackParamList> =

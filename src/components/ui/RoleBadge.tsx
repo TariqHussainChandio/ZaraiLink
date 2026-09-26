@@ -34,7 +34,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       fontSize: typography.sizes.xs,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
   });
 }

@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { MyListingsScreen } from './MyListingsScreen';
 import { fetchListings } from '../../services/modules/marketplace/listingsService';
 import { useAuthStore } from '../../store/authStore';
@@ -63,7 +63,7 @@ beforeEach(() => {
 describe('MyListingsScreen', () => {
   it('loads and renders the current user\'s own listings', async () => {
     mockFetchListings.mockResolvedValue([listing()]);
-    await render(<MyListingsScreen />);
+    await renderWithQuery(<MyListingsScreen />);
 
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
     expect(mockFetchListings).toHaveBeenCalledWith({ ownerId: 'user-1' });
@@ -72,13 +72,13 @@ describe('MyListingsScreen', () => {
 
   it('shows an empty state when there are no listings', async () => {
     mockFetchListings.mockResolvedValue([]);
-    await render(<MyListingsScreen />);
+    await renderWithQuery(<MyListingsScreen />);
     expect(await screen.findByText('No listings yet')).toBeTruthy();
   });
 
   it('navigates to ListingDetail on the Marketplace tab when a row is pressed', async () => {
     mockFetchListings.mockResolvedValue([listing({ id: 'listing-42' })]);
-    await render(<MyListingsScreen />);
+    await renderWithQuery(<MyListingsScreen />);
 
     await fireEvent.press(await screen.findByText('Wheat seeds'));
 

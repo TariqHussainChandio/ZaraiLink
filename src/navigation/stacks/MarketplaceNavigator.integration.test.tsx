@@ -1,14 +1,15 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
 import { MarketplaceNavigator } from './MarketplaceNavigator';
 import { fetchListingById, fetchListings } from '../../services/modules/marketplace/listingsService';
 import { fetchReviewsForListing } from '../../services/modules/reviews/reviewsService';
 import { checkout } from '../../services/modules/orders/ordersService';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
+import { createTestQueryClient } from '../../testUtils/renderWithProviders';
 import type { ListingWithRelations } from '../../types/marketplace';
 
 // A full multi-screen flow through the real MarketplaceNavigator (real NavigationContainer +
@@ -78,9 +79,11 @@ const listing: ListingWithRelations = {
 
 function renderMarketplace() {
   return render(
-    <NavigationContainer>
-      <MarketplaceNavigator />
-    </NavigationContainer>,
+    <QueryClientProvider client={createTestQueryClient()}>
+      <NavigationContainer>
+        <MarketplaceNavigator />
+      </NavigationContainer>
+    </QueryClientProvider>,
   );
 }
 

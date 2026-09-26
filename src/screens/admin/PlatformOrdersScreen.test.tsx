@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { PlatformOrdersScreen } from './PlatformOrdersScreen';
 import { fetchAllOrders } from '../../services/modules/admin/adminService';
 import { ADMIN_HOME_ROUTES } from '../../constants/routes';
@@ -52,20 +52,20 @@ beforeEach(() => {
 describe('PlatformOrdersScreen', () => {
   it('shows an empty state when there are no orders', async () => {
     mockFetchAllOrders.mockResolvedValue([]);
-    await render(<PlatformOrdersScreen />);
+    await renderWithQuery(<PlatformOrdersScreen />);
     expect(await screen.findByText('No orders yet')).toBeTruthy();
   });
 
   it('lists orders with buyer and seller names', async () => {
     mockFetchAllOrders.mockResolvedValue([order()]);
-    await render(<PlatformOrdersScreen />);
+    await renderWithQuery(<PlatformOrdersScreen />);
     expect(await screen.findByText(/Buyer Bilal/)).toBeTruthy();
     expect(screen.getByText(/Seller Sana/)).toBeTruthy();
   });
 
   it('navigates to the order detail screen on press', async () => {
     mockFetchAllOrders.mockResolvedValue([order()]);
-    await render(<PlatformOrdersScreen />);
+    await renderWithQuery(<PlatformOrdersScreen />);
     await screen.findByText(/Buyer Bilal/);
 
     await fireEvent.press(screen.getByText(/Buyer Bilal/));

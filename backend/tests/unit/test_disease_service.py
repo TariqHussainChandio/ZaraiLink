@@ -4,13 +4,25 @@ recon's flagged vulnerability was that ANY disease_case_id could be predicted ag
 regardless of caller. These tests verify a non-owner/non-admin is rejected, an owner/admin is
 allowed, and the model-unavailable/invalid-image error paths return the right status codes.
 Repository and classifier calls are mocked; only disease_service's own logic is under test.
+
+Security fix C2 (SSRF) changed how the case image reaches predict(): it now comes from
+disease_repository.download_case_image() (the Storage API) instead of an httpx GET against a
+client-supplied URL, and every response now carries a signed image_signed_url instead of the
+raw storage_path — see test_disease_case_ssrf_protection.py for the SSRF-specific regression
+tests (payload rejection, cross-user paths). This file stays focused on ownership + the
+predict()/get_case_for_user() control flow.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import asyncio
+import time
+from contextlib import contextmanager
+from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from fastapi import HTTPException
 from PIL import UnidentifiedImageError
+from storage3.exceptions import StorageApiError
 
 from app.core.auth import AuthenticatedUser
 from app.core.config import settings
@@ -22,47 +34,64 @@ OWNER = AuthenticatedUser(id="owner-1", email="owner@x.com", role="farmer", acce
 STRANGER = AuthenticatedUser(id="stranger-1", email="stranger@x.com", role="farmer", access_token="t")
 ADMIN = AuthenticatedUser(id="admin-1", email="admin@x.com", role="admin", access_token="t")
 
-CASE = {"id": "case-1", "user_id": OWNER.id, "crop_id": None, "image_url": "https://x/img.jpg"}
+CASE = {"id": "case-1", "user_id": OWNER.id, "crop_id": None, "storage_path": f"{OWNER.id}/img.jpg"}
 
 
-def _mock_httpx_image_fetch(content: bytes = b"fake-bytes"):
-    fake_response = MagicMock()
-    fake_response.content = content
-    fake_response.raise_for_status.return_value = None
+def _mock_image_download(content: bytes = b"fake-bytes"):
+    return patch("app.services.disease_service.disease_repository.download_case_image", return_value=content)
 
-    mock_client = AsyncMock()
-    mock_client.get.return_value = fake_response
-    mock_client.__aenter__.return_value = mock_client
-    mock_client.__aexit__.return_value = False
-    return patch("app.services.disease_service.httpx.AsyncClient", return_value=mock_client)
+
+def _mock_signed_url(url: str = "https://example.supabase.co/storage/signed?token=abc"):
+    return patch("app.services.disease_service.disease_repository.create_signed_url", return_value=url)
+
+
+@contextmanager
+def _mock_classifier(return_value: tuple[str, float] | None = None, side_effect: Exception | None = None):
+    """P5 (item 3): predict() now resolves the classifier via `get_classifier()` on each call
+    instead of importing a module-level `classifier` name, so the target to patch is the getter,
+    not an attribute on disease_service itself. Yields the mock `.predict` method directly, so
+    call sites that need `mock_predict.assert_not_called()` still work unchanged."""
+    mock_classifier = MagicMock()
+    if side_effect is not None:
+        mock_classifier.predict.side_effect = side_effect
+    else:
+        mock_classifier.predict.return_value = return_value
+    with patch("app.services.disease_service.get_classifier", return_value=mock_classifier):
+        yield mock_classifier.predict
 
 
 @pytest.mark.asyncio
 async def test_predict_rejects_stranger_with_404():
-    with patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE):
-        with pytest.raises(HTTPException) as exc_info:
-            await disease_service.predict(STRANGER, CASE["id"])
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await disease_service.predict(STRANGER, CASE["id"])
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_predict_rejects_nonexistent_case_with_404():
-    with patch("app.services.disease_service.disease_repository.get_disease_case", return_value=None):
-        with pytest.raises(HTTPException) as exc_info:
-            await disease_service.predict(OWNER, "does-not-exist")
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=None),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await disease_service.predict(OWNER, "does-not-exist")
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_predict_allows_owner_and_returns_inserted_prediction():
     inserted = {"id": "pred-1", "disease_case_id": CASE["id"], "predicted_disease": "healthy", "confidence_score": 0.9}
-    with patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE):
-        with _mock_httpx_image_fetch():
-            with patch("app.services.disease_service.classifier.predict", return_value=("healthy", 0.9)):
-                with patch(
-                    "app.services.disease_service.disease_repository.insert_prediction", return_value=inserted
-                ) as mock_insert:
-                    result = await disease_service.predict(OWNER, CASE["id"])
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+        _mock_image_download(),
+        _mock_classifier(return_value=("healthy", 0.9)),
+        patch(
+            "app.services.disease_service.disease_repository.insert_prediction", return_value=inserted
+        ) as mock_insert,
+    ):
+        result = await disease_service.predict(OWNER, CASE["id"])
 
     assert result == inserted
     mock_insert.assert_called_once()
@@ -70,60 +99,147 @@ async def test_predict_allows_owner_and_returns_inserted_prediction():
 
 @pytest.mark.asyncio
 async def test_predict_allows_admin_for_someone_elses_case():
-    with patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE):
-        with _mock_httpx_image_fetch():
-            with patch("app.services.disease_service.classifier.predict", return_value=("healthy", 0.9)):
-                with patch(
-                    "app.services.disease_service.disease_repository.insert_prediction", return_value={"id": "p"}
-                ):
-                    # ADMIN.id != CASE["user_id"], must still succeed
-                    await disease_service.predict(ADMIN, CASE["id"])
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+        _mock_image_download(),
+        _mock_classifier(return_value=("healthy", 0.9)),
+        patch("app.services.disease_service.disease_repository.insert_prediction", return_value={"id": "p"}),
+    ):
+        # ADMIN.id != CASE["user_id"], must still succeed
+        await disease_service.predict(ADMIN, CASE["id"])
 
 
 @pytest.mark.asyncio
 async def test_predict_model_unavailable_returns_503():
-    with patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE):
-        with _mock_httpx_image_fetch():
-            with patch(
-                "app.services.disease_service.classifier.predict", side_effect=ModelUnavailableError("no weights")
-            ):
-                with pytest.raises(HTTPException) as exc_info:
-                    await disease_service.predict(OWNER, CASE["id"])
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+        _mock_image_download(),
+        _mock_classifier(side_effect=ModelUnavailableError("no weights")),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await disease_service.predict(OWNER, CASE["id"])
     assert exc_info.value.status_code == 503
 
 
 @pytest.mark.asyncio
 async def test_predict_invalid_image_returns_422():
-    with patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE):
-        with _mock_httpx_image_fetch():
-            with patch(
-                "app.services.disease_service.classifier.predict",
-                side_effect=UnidentifiedImageError("not an image"),
-            ):
-                with pytest.raises(HTTPException) as exc_info:
-                    await disease_service.predict(OWNER, CASE["id"])
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+        _mock_image_download(),
+        _mock_classifier(side_effect=UnidentifiedImageError("not an image")),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await disease_service.predict(OWNER, CASE["id"])
     assert exc_info.value.status_code == 422
 
 
-def test_get_case_for_user_rejects_stranger_with_404():
-    case_with_relations = {**CASE, "crop": None, "prediction": []}
-    with patch(
-        "app.services.disease_service.disease_repository.get_case_with_prediction",
-        return_value=case_with_relations,
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "download_error",
+    [
+        StorageApiError("The resource was not found", "not_found", 404),  # storage API error response
+        httpx.ConnectError("connection refused"),  # network-level failure before storage3 responds
+    ],
+)
+async def test_predict_storage_download_failure_returns_422_not_the_underlying_error(download_error):
+    # Security fix C2: any failure fetching the image from storage (object missing, transient
+    # storage error, ...) must map to the same generic 422 as an invalid image — never leak
+    # which case it was, matching the "uniform errors" requirement that closed the SSRF finding.
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+        patch(
+            "app.services.disease_service.disease_repository.download_case_image",
+            side_effect=download_error,
+        ),
+        pytest.raises(HTTPException) as exc_info,
     ):
-        with pytest.raises(HTTPException) as exc_info:
-            disease_service.get_case_for_user(STRANGER, CASE["id"])
+        await disease_service.predict(OWNER, CASE["id"])
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.detail == "Could not process the case image."
+
+
+@pytest.mark.asyncio
+async def test_predict_oversized_image_returns_422_before_decoding():
+    oversized = b"x" * (8 * 1024 * 1024 + 1)
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+        _mock_image_download(oversized),
+        _mock_classifier() as mock_predict,
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await disease_service.predict(OWNER, CASE["id"])
+    assert exc_info.value.status_code == 422
+    mock_predict.assert_not_called()  # rejected on size before ever reaching the model
+
+
+@pytest.mark.asyncio
+async def test_get_case_for_user_rejects_stranger_with_404():
+    case_with_relations = {**CASE, "crop": None, "prediction": []}
+    with (
+        patch(
+            "app.services.disease_service.disease_repository.get_case_with_prediction",
+            return_value=case_with_relations,
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await disease_service.get_case_for_user(STRANGER, CASE["id"])
     assert exc_info.value.status_code == 404
 
 
-def test_get_case_for_user_allows_owner_and_unwraps_prediction_list():
+@pytest.mark.asyncio
+async def test_get_case_for_user_allows_owner_and_unwraps_prediction_list():
     case_with_relations = {**CASE, "crop": None, "prediction": [{"id": "pred-1"}]}
-    with patch(
-        "app.services.disease_service.disease_repository.get_case_with_prediction",
-        return_value=case_with_relations,
+    with (
+        patch(
+            "app.services.disease_service.disease_repository.get_case_with_prediction",
+            return_value=case_with_relations,
+        ),
+        _mock_signed_url("https://example.supabase.co/storage/signed?token=abc"),
     ):
-        result = disease_service.get_case_for_user(OWNER, CASE["id"])
+        result = await disease_service.get_case_for_user(OWNER, CASE["id"])
     assert result["prediction"] == {"id": "pred-1"}
+    # storage_path never reaches the response — only a signed, displayable URL does.
+    assert "storage_path" not in result
+    assert result["image_signed_url"] == "https://example.supabase.co/storage/signed?token=abc"
+
+
+@pytest.mark.asyncio
+async def test_get_case_for_user_raises_500_if_signing_fails():
+    # The object the row points at is gone, or the signing call itself failed — a server-side
+    # fault distinct from the client ever having sent bad input, so this is a 500.
+    case_with_relations = {**CASE, "crop": None, "prediction": []}
+    with (
+        patch(
+            "app.services.disease_service.disease_repository.get_case_with_prediction",
+            return_value=case_with_relations,
+        ),
+        _mock_signed_url(None),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await disease_service.get_case_for_user(OWNER, CASE["id"])
+    assert exc_info.value.status_code == 500
+
+
+class TestCreateCase:
+    @pytest.mark.asyncio
+    async def test_rejects_a_storage_path_under_someone_elses_id(self):
+        # Security fix C2: the schema's regex can validate shape, not identity — this is the
+        # server-side ownership check that stops one user creating a case pointing at another
+        # user's uploaded object.
+        with pytest.raises(HTTPException) as exc_info:
+            await disease_service.create_case(OWNER, None, f"{STRANGER.id}/photo.jpg")
+        assert exc_info.value.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_accepts_a_storage_path_under_the_callers_own_id(self):
+        created = {"id": "case-1", "user_id": OWNER.id, "crop_id": None, "storage_path": f"{OWNER.id}/photo.jpg"}
+        with (
+            patch("app.services.disease_service.disease_repository.create_case", return_value=created),
+            _mock_signed_url(),
+        ):
+            result = await disease_service.create_case(OWNER, None, f"{OWNER.id}/photo.jpg")
+        assert result["id"] == "case-1"
+        assert "storage_path" not in result
 
 
 # --- _humanize_class_name: real PlantVillage taxonomy strings, chosen to cover the tricky
@@ -183,18 +299,49 @@ async def test_predict_stores_humanized_label_and_looks_up_description_by_raw_la
         captured.update(kwargs)
         return {"id": "pred-1", **kwargs}
 
-    with patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE):
-        with _mock_httpx_image_fetch():
-            with patch(
-                "app.services.disease_service.classifier.predict",
-                return_value=("Tomato___Late_blight", 0.87),
-            ):
-                with patch(
-                    "app.services.disease_service.disease_repository.insert_prediction",
-                    side_effect=fake_insert_prediction,
-                ):
-                    await disease_service.predict(OWNER, CASE["id"])
+    with (
+        patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+        _mock_image_download(),
+        _mock_classifier(return_value=("Tomato___Late_blight", 0.87)),
+        patch(
+            "app.services.disease_service.disease_repository.insert_prediction",
+            side_effect=fake_insert_prediction,
+        ),
+    ):
+        await disease_service.predict(OWNER, CASE["id"])
 
     assert captured["predicted_disease"] == "Tomato — Late blight"
     assert captured["description"] == DESCRIPTIONS["Tomato___Late_blight"][0]
     assert captured["recommended_actions"] == DESCRIPTIONS["Tomato___Late_blight"][1]
+
+
+@pytest.mark.asyncio
+async def test_inference_does_not_block_the_event_loop():
+    """P5 (item 2): a slow forward pass runs in a worker thread, so other requests keep being served.
+    The stand-in classifier sleeps 0.4 s; a ticker coroutine must get to run many times meanwhile."""
+    ticks = 0
+
+    async def ticker():
+        nonlocal ticks
+        while True:
+            await asyncio.sleep(0.01)
+            ticks += 1
+
+    def slow_predict(_image: bytes) -> tuple[str, float]:
+        time.sleep(0.4)
+        return "healthy", 0.9
+
+    slow_classifier = MagicMock()
+    slow_classifier.predict.side_effect = slow_predict
+    watcher = asyncio.create_task(ticker())
+    try:
+        with (
+            patch("app.services.disease_service.disease_repository.get_disease_case", return_value=CASE),
+            _mock_image_download(),
+            patch("app.services.disease_service.get_classifier", return_value=slow_classifier),
+            patch("app.services.disease_service.disease_repository.insert_prediction", return_value={"id": "p"}),
+        ):
+            await disease_service.predict(OWNER, CASE["id"])
+    finally:
+        watcher.cancel()
+    assert ticks >= 10, f"the event loop was blocked during inference (only {ticks} ticks in 0.4 s)"

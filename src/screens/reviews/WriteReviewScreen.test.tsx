@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { WriteReviewScreen } from './WriteReviewScreen';
 import { createReview } from '../../services/modules/reviews/reviewsService';
 import { useAuthStore } from '../../store/authStore';
@@ -32,13 +32,13 @@ afterEach(() => {
 
 describe('WriteReviewScreen', () => {
   it('defaults to a 5-star rating', async () => {
-    await render(<WriteReviewScreen {...makeProps()} />);
+    await renderWithQuery(<WriteReviewScreen {...makeProps()} />);
     expect(screen.getByLabelText('Rate 5 stars').props.accessibilityState.selected).toBe(true);
     expect(screen.getByLabelText('Rate 1 star').props.accessibilityState.selected).toBe(true);
   });
 
   it('changes the rating when a star is pressed', async () => {
-    await render(<WriteReviewScreen {...makeProps()} />);
+    await renderWithQuery(<WriteReviewScreen {...makeProps()} />);
     await fireEvent.press(screen.getByLabelText('Rate 3 stars'));
     expect(screen.getByLabelText('Rate 3 stars').props.accessibilityState.selected).toBe(true);
     expect(screen.getByLabelText('Rate 4 stars').props.accessibilityState.selected).toBe(false);
@@ -47,7 +47,7 @@ describe('WriteReviewScreen', () => {
   it('submits the review with the rating and comment, then goes back', async () => {
     mockCreateReview.mockResolvedValue({ id: 'review-1' });
     const props = makeProps();
-    await render(<WriteReviewScreen {...props} />);
+    await renderWithQuery(<WriteReviewScreen {...props} />);
 
     await fireEvent.press(screen.getByLabelText('Rate 4 stars'));
     await fireEvent.changeText(screen.getByLabelText('Comment (optional)'), 'Very fresh produce.');
@@ -59,7 +59,7 @@ describe('WriteReviewScreen', () => {
 
   it('submits a null comment when left blank', async () => {
     mockCreateReview.mockResolvedValue({ id: 'review-1' });
-    await render(<WriteReviewScreen {...makeProps()} />);
+    await renderWithQuery(<WriteReviewScreen {...makeProps()} />);
     await fireEvent.press(screen.getByText('Submit Review'));
     expect(mockCreateReview).toHaveBeenCalledWith('order-1', 'listing-1', 5, null);
   });
@@ -67,7 +67,7 @@ describe('WriteReviewScreen', () => {
   it('shows an alert and stays on the screen when submission fails', async () => {
     mockCreateReview.mockRejectedValue(new Error('Review already submitted'));
     const props = makeProps();
-    await render(<WriteReviewScreen {...props} />);
+    await renderWithQuery(<WriteReviewScreen {...props} />);
 
     await fireEvent.press(screen.getByText('Submit Review'));
 

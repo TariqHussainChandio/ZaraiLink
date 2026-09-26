@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { StoreListScreen } from './StoreListScreen';
 import { fetchStores } from '../../services/modules/dealer/storeService';
 import { useAuthStore } from '../../store/authStore';
@@ -53,7 +53,7 @@ beforeEach(() => {
 describe('StoreListScreen', () => {
   it('shows an empty state when there are no stores', async () => {
     mockFetchStores.mockResolvedValue([]);
-    await render(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText('No stores yet')).toBeTruthy();
   });
 
@@ -62,7 +62,7 @@ describe('StoreListScreen', () => {
       store(),
       store({ id: 'store-2', name: 'Warehouse', status: 'inactive', address: null }),
     ]);
-    await render(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText('Main Branch')).toBeTruthy();
     expect(screen.getByText('Ferozepur Road')).toBeTruthy();
     expect(screen.getByText('Warehouse')).toBeTruthy();
@@ -71,7 +71,7 @@ describe('StoreListScreen', () => {
 
   it('shows an error state with retry when stores fail to load', async () => {
     mockFetchStores.mockRejectedValue(new Error('network down'));
-    await render(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
     expect(await screen.findByText("Couldn't load stores")).toBeTruthy();
 
     mockFetchStores.mockResolvedValue([]);
@@ -82,7 +82,7 @@ describe('StoreListScreen', () => {
   it('navigates to a store detail on row press and to a new store on FAB press', async () => {
     mockFetchStores.mockResolvedValue([store()]);
     const navigation = makeNavigation();
-    await render(<StoreListScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<StoreListScreen navigation={navigation} route={{} as never} />);
     await screen.findByText('Main Branch');
 
     await fireEvent.press(screen.getByText('Main Branch'));

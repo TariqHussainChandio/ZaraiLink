@@ -1,22 +1,22 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Button, EmptyState, Input, SelectField, Sheet, SkeletonList } from '../../components/ui';
 import { InventoryRow } from '../../components/features/dealer/InventoryRow';
 import { StockAdjustModal } from '../../components/features/dealer/StockAdjustModal';
 import { HOME_ROUTES } from '../../constants/routes';
 import {
-  createInventoryItem,
-  deleteInventoryItem,
-  fetchDealerListings,
-  fetchInventory,
-  updateInventoryItem,
-} from '../../services/modules/dealer/inventoryService';
+  useDealerListingOptions,
+  useDeleteInventoryItem,
+  useInventory,
+  useSaveInventoryItem,
+} from '../../hooks/api/dealer';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { InventoryItemWithListing } from '../../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
+import { errorMessage } from '../../utils/errorMessage';
 
 interface ItemFormState {
   listingId: string | null;
@@ -37,41 +37,32 @@ const EMPTY_FORM: ItemFormState = {
 };
 
 export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const [items, setItems] = useState<InventoryItemWithListing[]>([]);
-  const [listings, setListings] = useState<{ id: string; title: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
+  const { data: items = [], isPending, error, refetch: refetchItems } = useInventory(!!userId);
+  const { data: listings = [], refetch: refetchListings } = useDealerListingOptions(!!userId);
+  const loading = isPending && !!userId;
+  const saveItem = useSaveInventoryItem();
+  const removeItem = useDeleteInventoryItem();
   const [formVisible, setFormVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItemWithListing | null>(null);
   const [form, setForm] = useState<ItemFormState>(EMPTY_FORM);
-  const [submitting, setSubmitting] = useState(false);
-
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    if (!userId) return;
-    setLoading(true);
-    setError(false);
-    Promise.all([fetchInventory(), fetchDealerListings()]).then(([inv, listingOptions]) => {
-      setItems(inv);
-      setListings(listingOptions);
-      setLoading(false);
-    }).catch(err => {
-      console.warn('[InventoryScreen] failed to load inventory:', err);
-      setError(true);
-      setLoading(false);
-    });
-  }, [userId]);
+  const load = () => {
+    refetchItems();
+    refetchListings();
+  };
 
+  // Coming back to the screen shows stock changed elsewhere (a sale, an adjustment on another screen).
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      if (userId) {
+        refetchItems();
+        refetchListings();
+      }
+    }, [userId, refetchItems, refetchListings]),
   );
 
   const openCreate = () => {
@@ -101,10 +92,9 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
   const onSubmitForm = async () => {
     if (!userId) return;
     if (!form.unit.trim()) {
-      Alert.alert(t('dealer.inventory.enterUnitAlert'));
+      Alert.alert('Enter a unit (e.g. bag, kg)');
       return;
     }
-    setSubmitting(true);
     try {
       const editableInput = {
         listingId: form.listingId,
@@ -114,32 +104,29 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
         minStockThreshold: Number(form.minStockThreshold) || 0,
       };
       if (editingItem) {
-        await updateInventoryItem(editingItem.id, editableInput);
+        await saveItem.mutateAsync({ id: editingItem.id, input: editableInput });
       } else {
-        await createInventoryItem({
-          ...editableInput,
-          stockQuantity: Number(form.stockQuantity) || 0,
-        });
+        await saveItem.mutateAsync({ input: { ...editableInput, stockQuantity: Number(form.stockQuantity) || 0 } });
       }
       closeForm();
-      load();
     } catch (err) {
-      Alert.alert(t('dealer.inventory.saveFailedTitle'), err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
+      Alert.alert('Failed to save stock item', errorMessage(err));
     }
   };
 
   const onDelete = (item: InventoryItemWithListing) => {
-    Alert.alert(t('dealer.inventory.removeConfirmTitle'), t('dealer.shared.cannotBeUndone'), [
-      { text: t('common.cancel'), style: 'cancel' },
+    Alert.alert('Remove stock item', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: t('dealer.shared.deleteAction'),
+        text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteInventoryItem(item.id);
-          closeForm();
-          load();
+          try {
+            await removeItem.mutateAsync(item.id);
+            closeForm();
+          } catch (err) {
+            Alert.alert('Could not delete the stock item', errorMessage(err));
+          }
         },
       },
     ]);
@@ -153,12 +140,12 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
     );
   }
 
-  if (error) {
+  if (error && items.length === 0) {
     return (
       <EmptyState
-        title={t('dealer.inventory.couldntLoadTitle')}
-        description={t('dealer.shared.checkConnectionDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load inventory"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -166,7 +153,7 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={items}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -180,61 +167,61 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('dealer.inventory.emptyTitle')}
-            description={t('dealer.inventory.emptyDescription')}
+            title="No stock items yet"
+            description="Add your first stock item to start tracking inventory."
           />
         }
       />
       <TouchableOpacity style={styles.fab} onPress={openCreate}>
-        <Text style={styles.fabLabel}>{t('dealer.inventory.addItemFab')}</Text>
+        <Text style={styles.fabLabel}>+ Add Item</Text>
       </TouchableOpacity>
 
       <Sheet visible={formVisible} onClose={closeForm}>
         <Text style={styles.sheetTitle}>
-          {editingItem ? t('dealer.inventory.editItemTitle') : t('dealer.inventory.newItemTitle')}
+          {editingItem ? 'Edit Stock Item' : 'New Stock Item'}
         </Text>
         <SelectField
-          label={t('dealer.inventory.linkedListingLabel')}
-          placeholder={t('dealer.inventory.linkedListingPlaceholder')}
+          label="Linked listing (optional)"
+          placeholder="No linked listing"
           value={form.listingId}
           options={listings.map(l => ({ id: l.id, label: l.title }))}
           onSelect={id => setForm(current => ({ ...current, listingId: id }))}
         />
         <Input
-          label={t('dealer.inventory.unitLabel')}
+          label="Unit"
           value={form.unit}
           onChangeText={text => setForm(current => ({ ...current, unit: text }))}
         />
         {!editingItem ? (
           <Input
-            label={t('dealer.inventory.initialStockLabel')}
+            label="Initial stock quantity"
             keyboardType="numeric"
             value={form.stockQuantity}
             onChangeText={text => setForm(current => ({ ...current, stockQuantity: text }))}
           />
         ) : null}
         <Input
-          label={t('dealer.inventory.purchaseCostLabel')}
+          label="Purchase cost"
           keyboardType="numeric"
           value={form.purchaseCost}
           onChangeText={text => setForm(current => ({ ...current, purchaseCost: text }))}
         />
         <Input
-          label={t('dealer.inventory.sellingPriceLabel')}
+          label="Selling price"
           keyboardType="numeric"
           value={form.sellingPrice}
           onChangeText={text => setForm(current => ({ ...current, sellingPrice: text }))}
         />
         <Input
-          label={t('dealer.inventory.lowStockThresholdLabel')}
+          label="Low-stock threshold"
           keyboardType="numeric"
           value={form.minStockThreshold}
           onChangeText={text => setForm(current => ({ ...current, minStockThreshold: text }))}
         />
-        <Button label={t('common.save')} loading={submitting} onPress={onSubmitForm} style={styles.formAction} />
+        <Button label="Save" loading={saveItem.isPending} onPress={onSubmitForm} style={styles.formAction} />
         {editingItem ? (
           <Button
-            label={t('dealer.inventory.removeItemButton')}
+            label="Remove Item"
             variant="destructive"
             onPress={() => onDelete(editingItem)}
             style={styles.formAction}
@@ -248,7 +235,6 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
           onClose={() => setAdjustingId(null)}
           inventoryId={adjustingId}
           unit={items.find(i => i.id === adjustingId)?.unit ?? 'unit'}
-          onAdjusted={load}
         />
       ) : null}
     </View>
@@ -281,7 +267,7 @@ function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
     },
     sheetTitle: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.md,
     },

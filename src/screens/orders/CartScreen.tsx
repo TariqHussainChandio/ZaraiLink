@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Button, EmptyState } from '../../components/ui';
 import { CartItemRow } from '../../components/features/orders/CartItemRow';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
@@ -10,7 +10,6 @@ import type { MarketplaceScreenProps } from '../../navigation/stacks/Marketplace
 
 export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { items, updateQuantity, removeItem } = useCartStore();
   const total = cartTotal(items);
@@ -19,8 +18,8 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
     return (
       <View style={styles.empty}>
         <EmptyState
-          title={t('orders.cart.emptyTitle')}
-          description={t('orders.cart.emptyDescription')}
+          title="Your cart is empty"
+          description="Browse the marketplace to add produce."
         />
       </View>
     );
@@ -28,7 +27,7 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={items}
         keyExtractor={item => item.listingId}
         contentContainerStyle={styles.list}
@@ -43,11 +42,11 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
       />
       <View style={styles.footer}>
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>{t('orders.cart.totalLabel')}</Text>
-          <Text style={styles.totalValue}>{t('orders.cart.totalValue', { amount: total.toFixed(0) })}</Text>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalValue}>{`Rs. ${total.toFixed(0)}`}</Text>
         </View>
         <Button
-          label={t('orders.cart.checkoutLabel')}
+          label="Checkout"
           onPress={() => navigation.navigate(MARKETPLACE_ROUTES.Checkout)}
         />
       </View>
@@ -85,7 +84,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     totalValue: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
   });

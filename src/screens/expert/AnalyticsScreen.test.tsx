@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertAnalyticsScreen } from './AnalyticsScreen';
 import { fetchExpertAnalytics } from '../../services/modules/analytics/analyticsService';
 import { useAuthStore } from '../../store/authStore';
@@ -44,7 +44,7 @@ describe('ExpertAnalyticsScreen', () => {
 
   it('renders the stats and monthly chart once analytics load', async () => {
     mockFetchExpertAnalytics.mockResolvedValue(baseAnalytics);
-    await render(<ExpertAnalyticsScreen />);
+    await renderWithQuery(<ExpertAnalyticsScreen />);
 
     expect(await screen.findByText('10')).toBeTruthy();
     expect(screen.getByText('Total Consultations')).toBeTruthy();
@@ -59,7 +59,7 @@ describe('ExpertAnalyticsScreen', () => {
 
   it('shows a dash for average rating when there are no reviews', async () => {
     mockFetchExpertAnalytics.mockResolvedValue({ ...baseAnalytics, reviewCount: 0, averageRating: 0 });
-    await render(<ExpertAnalyticsScreen />);
+    await renderWithQuery(<ExpertAnalyticsScreen />);
 
     expect(await screen.findByText('—')).toBeTruthy();
     expect(screen.getByText('Avg Rating (0)')).toBeTruthy();
@@ -67,7 +67,7 @@ describe('ExpertAnalyticsScreen', () => {
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchExpertAnalytics.mockRejectedValue(new Error('network down'));
-    await render(<ExpertAnalyticsScreen />);
+    await renderWithQuery(<ExpertAnalyticsScreen />);
 
     expect(await screen.findByText("Couldn't load analytics")).toBeTruthy();
 

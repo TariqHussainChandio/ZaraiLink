@@ -1,24 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { Button, Input } from '../../components/ui';
-import { updatePassword } from '../../services/modules/profile/profileService';
+import { useUpdatePassword } from '../../hooks/api/profile';
 import { useTheme, type Theme } from '../../theme';
-import type { TFunction } from 'i18next';
+import { mapPasswordFlowErrorMessage } from '../auth/mapAuthError';
 
-// Built from `t` at render time (not module scope) so validation messages stay in sync when the
-// user switches language mid-session — same pattern as ChangePasswordScreen's schema.
-function makeResetPasswordSchema(t: TFunction) {
+function makeResetPasswordSchema() {
   return z
     .object({
-      password: z.string().min(6, t('auth.resetPassword.passwordMinLengthError')),
+      password: z.string().min(6, 'Password must be at least 6 characters'),
       confirmPassword: z.string(),
     })
     .refine(data => data.password === data.confirmPassword, {
-      message: t('auth.resetPassword.passwordsMismatchError'),
+      message: "Passwords don't match",
       path: ['confirmPassword'],
     });
 }
@@ -34,9 +31,9 @@ type ResetPasswordFormValues = z.infer<ReturnType<typeof makeResetPasswordSchema
 export function ResetPasswordScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
-  const resetPasswordSchema = useMemo(() => makeResetPasswordSchema(t), [t]);
+  const resetPasswordSchema = useMemo(() => makeResetPasswordSchema(), []);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const updatePassword = useUpdatePassword();
   const {
     control,
     handleSubmit,
@@ -49,23 +46,23 @@ export function ResetPasswordScreen() {
   const onSubmit = async (values: ResetPasswordFormValues) => {
     setSubmitError(null);
     try {
-      await updatePassword(values.password);
+      await updatePassword.mutateAsync(values.password);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : t('auth.resetPassword.defaultError'));
+      setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to update password'));
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('auth.resetPassword.title')}</Text>
-      <Text style={styles.subtitle}>{t('auth.resetPassword.subtitle')}</Text>
+      <Text style={styles.title}>Set a new password</Text>
+      <Text style={styles.subtitle}>Choose a new password for your ZaraiLink account.</Text>
 
       <Controller
         control={control}
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('auth.resetPassword.newPasswordLabel')}
+            label="New password"
             secureTextEntry
             value={value}
             onChangeText={onChange}
@@ -79,7 +76,7 @@ export function ResetPasswordScreen() {
         name="confirmPassword"
         render={({ field: { onChange, onBlur, value } }) => (
           <Input
-            label={t('auth.resetPassword.confirmPasswordLabel')}
+            label="Confirm password"
             secureTextEntry
             value={value}
             onChangeText={onChange}
@@ -92,7 +89,7 @@ export function ResetPasswordScreen() {
       {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
 
       <Button
-        label={t('auth.resetPassword.submitButton')}
+        label="Update password"
         loading={isSubmitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
@@ -111,7 +108,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
       marginBottom: spacing.sm,
     },

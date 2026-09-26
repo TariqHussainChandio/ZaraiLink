@@ -4,12 +4,16 @@ One per task. Fill it in before writing code, keep it in the pull request or the
 the last two lines when you finish. If you cannot fill in the acceptance tests, you do not yet understand the task.
 
 ```
-Task / phase:               <id and one-sentence objective>
+Task / phase:               <id and one-sentence objective, e.g. A3 / zl-admin: dealer approval queue>
 Requirement or finding ids: <SRDS section, BR-xx, or audit finding such as C1>
+Lane (agent):               <zl-...>, from docs/plan.md section 3
 Skill(s):                   <implementer>, verified by <a different agent or person>
 
-Files in scope:
+Folders owned by this lane:
 Files explicitly out of scope:
+Contracts consumed / produced: <from docs/plan.md section 5; none if none>
+Requests to other lanes:    <what another lane must change, and why>
+Merge order at checkpoint:  <database -> API -> contract -> app>
 
 Acceptance tests (written first; for a bug, seen failing before the fix):
   1.

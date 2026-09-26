@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { SupplierDetailScreen } from './SupplierDetailScreen';
 import {
   createSupplier,
@@ -61,7 +61,7 @@ describe('SupplierDetailScreen', () => {
   it('creates a new supplier from the form', async () => {
     mockCreateSupplier.mockResolvedValue(supplier);
     const props = makeProps();
-    await render(<SupplierDetailScreen {...props} />);
+    await renderWithQuery(<SupplierDetailScreen {...props} />);
 
     await fireEvent.changeText(screen.getByLabelText('Supplier name'), 'AgriChem Traders');
     await fireEvent.press(screen.getByText('Save Supplier'));
@@ -78,7 +78,7 @@ describe('SupplierDetailScreen', () => {
 
   it('shows a validation error when the name is missing', async () => {
     const props = makeProps();
-    await render(<SupplierDetailScreen {...props} />);
+    await renderWithQuery(<SupplierDetailScreen {...props} />);
     await fireEvent.press(screen.getByText('Save Supplier'));
     expect(await screen.findByText('Enter a supplier name')).toBeTruthy();
     expect(mockCreateSupplier).not.toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe('SupplierDetailScreen', () => {
     mockFetchSupplierById.mockResolvedValue(supplier);
     mockUpdateSupplier.mockResolvedValue(supplier);
     const props = makeProps('sup-1');
-    await render(<SupplierDetailScreen {...props} />);
+    await renderWithQuery(<SupplierDetailScreen {...props} />);
 
     expect(await screen.findByLabelText('Supplier name')).toBeTruthy();
     expect(screen.getByLabelText('Supplier name').props.value).toBe('AgriChem Traders');
@@ -107,7 +107,7 @@ describe('SupplierDetailScreen', () => {
   it('shows an error state with retry when the supplier fails to load', async () => {
     mockFetchSupplierById.mockRejectedValueOnce(new Error('network down')).mockResolvedValue(supplier);
     const props = makeProps('sup-1');
-    await render(<SupplierDetailScreen {...props} />);
+    await renderWithQuery(<SupplierDetailScreen {...props} />);
     expect(await screen.findByText("Couldn't load this supplier")).toBeTruthy();
 
     await fireEvent.press(screen.getByText('Retry'));
@@ -121,7 +121,7 @@ describe('SupplierDetailScreen', () => {
       buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
     });
     const props = makeProps('sup-1');
-    await render(<SupplierDetailScreen {...props} />);
+    await renderWithQuery(<SupplierDetailScreen {...props} />);
     await screen.findByLabelText('Supplier name');
 
     await fireEvent.press(screen.getByText('Delete Supplier'));
@@ -132,7 +132,7 @@ describe('SupplierDetailScreen', () => {
   it('shows a failure alert when saving rejects', async () => {
     mockCreateSupplier.mockRejectedValue(new Error('Name already taken'));
     const props = makeProps();
-    await render(<SupplierDetailScreen {...props} />);
+    await renderWithQuery(<SupplierDetailScreen {...props} />);
     await fireEvent.changeText(screen.getByLabelText('Supplier name'), 'AgriChem Traders');
     await fireEvent.press(screen.getByText('Save Supplier'));
 

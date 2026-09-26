@@ -1,7 +1,8 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { AuthApiError } from '@supabase/supabase-js';
 import { ChangePasswordScreen } from './ChangePasswordScreen';
 import { updatePassword } from '../../services/modules/profile/profileService';
 import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
@@ -27,13 +28,13 @@ afterEach(() => {
 
 describe('ChangePasswordScreen', () => {
   it('renders the password fields', async () => {
-    await render(<ChangePasswordScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<ChangePasswordScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByLabelText('New password')).toBeTruthy();
     expect(screen.getByLabelText('Confirm new password')).toBeTruthy();
   });
 
   it('shows a validation error for a too-short password', async () => {
-    await render(<ChangePasswordScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<ChangePasswordScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'abc');
     await fireEvent.changeText(screen.getByLabelText('Confirm new password'), 'abc');
     await fireEvent.press(screen.getByText('Update Password'));
@@ -43,7 +44,7 @@ describe('ChangePasswordScreen', () => {
   });
 
   it('shows a validation error when passwords do not match', async () => {
-    await render(<ChangePasswordScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<ChangePasswordScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
     await fireEvent.changeText(screen.getByLabelText('Confirm new password'), 'different1');
     await fireEvent.press(screen.getByText('Update Password'));
@@ -55,7 +56,7 @@ describe('ChangePasswordScreen', () => {
   it('updates the password and navigates back on success', async () => {
     mockUpdatePassword.mockResolvedValue(undefined);
     const navigation = makeNavigation();
-    await render(<ChangePasswordScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<ChangePasswordScreen navigation={navigation} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
     await fireEvent.changeText(screen.getByLabelText('Confirm new password'), 'secret123');
     await fireEvent.press(screen.getByText('Update Password'));
@@ -66,14 +67,15 @@ describe('ChangePasswordScreen', () => {
   });
 
   it('shows the submit error when updatePassword rejects', async () => {
-    mockUpdatePassword.mockRejectedValue(new Error('Session expired'));
+    mockUpdatePassword.mockRejectedValue(new AuthApiError('New password should be different', 422, 'same_password'));
     const navigation = makeNavigation();
-    await render(<ChangePasswordScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<ChangePasswordScreen navigation={navigation} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
     await fireEvent.changeText(screen.getByLabelText('Confirm new password'), 'secret123');
     await fireEvent.press(screen.getByText('Update Password'));
 
-    expect(await screen.findByText('Session expired')).toBeTruthy();
+    expect(await screen.findByText('Choose a password different from your current one.')).toBeTruthy();
+    expect(screen.queryByText('New password should be different')).toBeNull();
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
 });

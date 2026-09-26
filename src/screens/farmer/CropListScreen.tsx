@@ -1,53 +1,34 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
-import { fetchFarmCrops } from '../../services/modules/farmer/farmService';
+import { useFarmCrops } from '../../hooks/api/farmer';
 import { useTheme, type Theme } from '../../theme';
-import type { FarmCropWithCrop } from '../../types/farmer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function CropListScreen({ route, navigation }: HomeScreenProps<'CropList'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { farmId } = route.params;
-  const [crops, setCrops] = useState<FarmCropWithCrop[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: crops = [], isPending: loading, error, refetch } = useFarmCrops(farmId);
+  const load = () => refetch();
 
-  const load = useCallback(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchFarmCrops(farmId).then(data => {
-      if (!cancelled) {
-        setCrops(data);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.warn('[CropListScreen] failed to load crops:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [farmId]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  // Coming back from adding or editing a crop shows the change.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && crops.length === 0) {
     return (
       <EmptyState
-        title={t('farmer.cropList.loadErrorTitle', "Couldn't load crops")}
-        description={t('farmer.cropList.loadErrorDescription', 'Check your connection and try again.')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load crops"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -55,7 +36,7 @@ export function CropListScreen({ route, navigation }: HomeScreenProps<'CropList'
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={crops}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -65,15 +46,15 @@ export function CropListScreen({ route, navigation }: HomeScreenProps<'CropList'
           >
             <Card style={styles.card}>
               <Text style={styles.name}>
-                {item.crop?.name ?? t('farmer.cropList.unspecifiedCrop', 'Unspecified crop')}
+                {item.crop?.name ?? 'Unspecified crop'}
               </Text>
               <Text style={styles.meta}>
                 {[item.variety, item.growth_stage].filter(Boolean).join(' · ') ||
-                  t('farmer.cropList.noDetailsYet', 'No details yet')}
+                  'No details yet'}
               </Text>
               {item.planting_date ? (
                 <Text style={styles.meta}>
-                  {t('farmer.cropList.plantedLabel', 'Planted {{date}}', { date: item.planting_date })}
+                  {`Planted ${item.planting_date}`}
                 </Text>
               ) : null}
             </Card>
@@ -81,8 +62,8 @@ export function CropListScreen({ route, navigation }: HomeScreenProps<'CropList'
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('farmer.cropList.emptyCropsTitle', 'No crops recorded')}
-            description={t('farmer.cropList.emptyCropsDescription', 'Add the crops growing on this farm.')}
+            title="No crops recorded"
+            description="Add the crops growing on this farm."
           />
         }
       />
@@ -90,7 +71,7 @@ export function CropListScreen({ route, navigation }: HomeScreenProps<'CropList'
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.AddCrop, { farmId })}
       >
-        <Text style={styles.fabLabel}>{t('farmer.cropList.addCropFab', '+ Add Crop')}</Text>
+        <Text style={styles.fabLabel}>+ Add Crop</Text>
       </TouchableOpacity>
     </View>
   );
@@ -111,7 +92,7 @@ function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     meta: {

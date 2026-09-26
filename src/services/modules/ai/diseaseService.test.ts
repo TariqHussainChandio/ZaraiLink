@@ -3,7 +3,9 @@ import { apiFetch } from '../../api/client';
 jest.mock('../../api/client');
 jest.mock('../../supabase/client', () => {
   const { makeSupabaseMock } = jest.requireActual('../../../testUtils/supabaseMock');
-  return { supabase: makeSupabaseMock({ storagePublicUrl: 'https://example.com/disease.jpg' }) };
+  // No storagePublicUrl option — the disease-images bucket is private (security fix C2), so
+  // this module never calls getPublicUrl.
+  return { supabase: makeSupabaseMock() };
 });
 
 import { supabase } from '../../supabase/client';
@@ -25,14 +27,17 @@ describe('uploadDiseaseImage', () => {
     await expect(uploadDiseaseImage('user-1', { uri: '' })).rejects.toThrow('No image selected');
   });
 
-  it('uploads to the disease-images bucket and returns the public URL', async () => {
+  // Security fix C2: the bucket is now private, so upload returns the storage PATH — never a
+  // public URL, which would no longer even resolve. getPublicUrl is deliberately not called.
+  it('uploads to the disease-images bucket and returns the storage path', async () => {
     const uploadMock = jest.fn(() => Promise.resolve({ data: {}, error: null }));
+    const getPublicUrlMock = jest.fn();
     mockedSupabase.storage.from.mockReturnValue({
       upload: uploadMock,
-      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://example.com/disease.jpg' } })),
+      getPublicUrl: getPublicUrlMock,
     } as never);
 
-    const url = await uploadDiseaseImage('user-1', { uri: 'file:///tmp/leaf.jpg', fileName: 'leaf.jpg', mimeType: 'image/jpeg' });
+    const path = await uploadDiseaseImage('user-1', { uri: 'file:///tmp/leaf.jpg', fileName: 'leaf.jpg', mimeType: 'image/jpeg' });
 
     expect(mockedSupabase.storage.from).toHaveBeenCalledWith('disease-images');
     expect(uploadMock).toHaveBeenCalledWith(
@@ -40,7 +45,20 @@ describe('uploadDiseaseImage', () => {
       expect.any(ArrayBuffer),
       { contentType: 'image/jpeg' },
     );
-    expect(url).toBe('https://example.com/disease.jpg');
+    expect(path).toMatch(/^user-1\/\d+-\d+\.jpg$/);
+    expect(getPublicUrlMock).not.toHaveBeenCalled();
+  });
+
+  // extensionFromMimeType (security fix H2): the extension comes from the picker's mimeType,
+  // not the client-controlled fileName — a mismatched fileName no longer changes the stored
+  // extension.
+  it('derives the extension from mimeType, not the (possibly mismatched) fileName', async () => {
+    const uploadMock = jest.fn(() => Promise.resolve({ data: {}, error: null }));
+    mockedSupabase.storage.from.mockReturnValue({ upload: uploadMock, getPublicUrl: jest.fn() } as never);
+
+    await uploadDiseaseImage('user-1', { uri: 'file:///tmp/leaf', fileName: 'leaf.png', mimeType: 'image/jpeg' });
+
+    expect(uploadMock).toHaveBeenCalledWith(expect.stringMatching(/\.jpg$/), expect.any(ArrayBuffer), expect.anything());
   });
 
   it('throws when the upload fails', async () => {
@@ -54,21 +72,21 @@ describe('uploadDiseaseImage', () => {
 });
 
 describe('createDiseaseCase', () => {
-  it('POSTs cropId/imageUrl mapped to snake_case', async () => {
+  it('POSTs cropId/storagePath mapped to snake_case', async () => {
     mockApiFetch.mockResolvedValue({});
-    await createDiseaseCase('crop-1', 'https://example.com/leaf.jpg');
+    await createDiseaseCase('crop-1', 'user-1/leaf.jpg');
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/disease/cases', {
       method: 'POST',
-      body: { crop_id: 'crop-1', image_url: 'https://example.com/leaf.jpg' },
+      body: { crop_id: 'crop-1', storage_path: 'user-1/leaf.jpg' },
     });
   });
 
   it('accepts a null cropId', async () => {
     mockApiFetch.mockResolvedValue({});
-    await createDiseaseCase(null, 'https://example.com/leaf.jpg');
+    await createDiseaseCase(null, 'user-1/leaf.jpg');
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/disease/cases', {
       method: 'POST',
-      body: { crop_id: null, image_url: 'https://example.com/leaf.jpg' },
+      body: { crop_id: null, storage_path: 'user-1/leaf.jpg' },
     });
   });
 });

@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { DealerAnalyticsScreen } from './AnalyticsScreen';
 import { fetchDealerAnalytics } from '../../services/modules/analytics/analyticsService';
 import { useAuthStore } from '../../store/authStore';
@@ -27,6 +27,8 @@ const mockFetchDealerAnalytics = fetchDealerAnalytics as jest.Mock;
 
 const analytics: DealerAnalytics = {
   totalSales: 15000,
+  activeListings: 3,
+  pendingOrders: 1,
   totalOrders: 12,
   inventoryMovement: [{ month: '2026-01', value: 40 }],
   lowStockCount: 3,
@@ -43,7 +45,7 @@ beforeEach(() => {
 describe('DealerAnalyticsScreen', () => {
   it('renders stats, inventory movement, and best sellers once loaded', async () => {
     mockFetchDealerAnalytics.mockResolvedValue(analytics);
-    await render(<DealerAnalyticsScreen />);
+    await renderWithQuery(<DealerAnalyticsScreen />);
 
     expect(await screen.findByText('Rs. 15000')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
@@ -55,7 +57,7 @@ describe('DealerAnalyticsScreen', () => {
 
   it('shows an error state with retry when analytics fail to load', async () => {
     mockFetchDealerAnalytics.mockRejectedValue(new Error('network down'));
-    await render(<DealerAnalyticsScreen />);
+    await renderWithQuery(<DealerAnalyticsScreen />);
     expect(await screen.findByText("Couldn't load analytics")).toBeTruthy();
 
     mockFetchDealerAnalytics.mockResolvedValue(analytics);

@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, EmptyState, Spinner } from '../../components/ui';
 import {
@@ -11,28 +10,27 @@ import {
   type ListingFormInput,
   type ListingFormValues,
 } from '../../components/features/marketplace/ListingFormFields';
-import {
-  deleteListing,
-  fetchListingById,
-  updateListing,
-  uploadListingImages,
-} from '../../services/modules/marketplace/listingsService';
+import { useDeleteListing, useListing, useUpdateListing } from '../../hooks/api/marketplace';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import { errorMessage } from '../../utils/errorMessage';
 
 export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<'EditListing'>) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<PickedPhoto[]>([]);
+  const { data: listing, isPending, isFetching, isFetchedAfterMount, error, refetch } = useListing(listingId);
+  // A listing can be on screen from the cache (persisted for a day) while the current copy is still on its way. The form
+  // is filled from the current copy, or from the cached one when the request failed (offline), never from a stale copy
+  // that is about to be replaced: saving it would overwrite a newer price or quantity.
+  const waitingForCurrent = !isFetchedAfterMount && isFetching;
+  const updateListing = useUpdateListing();
+  const deleteListing = useDeleteListing();
 
   const {
     control,
@@ -46,37 +44,27 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
     defaultValues: listingFormDefaults,
   });
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(false);
-    fetchListingById(listingId)
-      .then(listing => {
-        reset({
-          title: listing.title,
-          description: listing.description ?? '',
-          categoryId: listing.category_id,
-          price: listing.price,
-          unit: listing.unit,
-          quantity: listing.quantity,
-          brand: listing.brand ?? '',
-          condition: listing.condition ?? '',
-          cropCompatibility: listing.crop_compatibility,
-          country: listing.location?.country ?? null,
-          province: listing.location?.province ?? null,
-          city: listing.location?.city ?? null,
-        });
-        setExistingImages(listing.images);
-      })
-      .catch(err => {
-        console.warn('[EditListingScreen] failed to load listing:', err);
-        setError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [listingId, reset]);
-
+  // Fill the form once. A later background refetch must not overwrite what the seller has already typed.
+  const filled = useRef(false);
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!listing || filled.current || waitingForCurrent) return;
+    filled.current = true;
+    reset({
+      title: listing.title,
+      description: listing.description ?? '',
+      categoryId: listing.category_id,
+      price: listing.price,
+      unit: listing.unit,
+      quantity: listing.quantity,
+      brand: listing.brand ?? '',
+      condition: listing.condition ?? '',
+      cropCompatibility: listing.crop_compatibility,
+      country: listing.location?.country ?? null,
+      province: listing.location?.province ?? null,
+      city: listing.location?.city ?? null,
+    });
+    setExistingImages(listing.images);
+  }, [listing, waitingForCurrent, reset]);
 
   const pickImages = async () => {
     const assets = await pickPhotos({ selectionLimit: 5 });
@@ -85,49 +73,51 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
 
   const onSubmit = async (values: ListingFormValues) => {
     if (!userId) return;
-    setSubmitting(true);
     try {
-      const uploaded = newImages.length > 0 ? await uploadListingImages(userId, newImages) : [];
-      await updateListing(listingId, {
-        ...values,
-        description: values.description ?? '',
-        brand: values.brand || null,
-        condition: values.condition || null,
-        images: [...existingImages, ...uploaded],
+      await updateListing.mutateAsync({
+        id: listingId,
+        userId,
+        newImages,
+        existingImages,
+        input: {
+          ...values,
+          description: values.description ?? '',
+          brand: values.brand || null,
+          condition: values.condition || null,
+        },
       });
       navigation.goBack();
     } catch (err) {
-      Alert.alert(
-        t('marketplace.editListing.failedTitle'),
-        err instanceof Error ? err.message : String(err),
-      );
-    } finally {
-      setSubmitting(false);
+      Alert.alert('Failed to update listing', errorMessage(err));
     }
   };
 
   const onDelete = () => {
-    Alert.alert(t('marketplace.editListing.deleteConfirmTitle'), t('marketplace.editListing.deleteConfirmMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
+    Alert.alert('Delete listing', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: t('marketplace.editListing.deleteConfirmButton'),
+        text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteListing(listingId);
-          navigation.popToTop();
+          try {
+            await deleteListing.mutateAsync(listingId);
+            navigation.popToTop();
+          } catch (err) {
+            Alert.alert('Could not delete the listing', errorMessage(err));
+          }
         },
       },
     ]);
   };
 
-  if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (isPending || waitingForCurrent) return <Spinner fullscreen />;
+  if (error && !listing) {
     return (
       <EmptyState
-        title={t('marketplace.editListing.loadErrorTitle')}
-        description={t('marketplace.editListing.loadErrorDescription')}
-        actionLabel={t('common.retry')}
-        onAction={load}
+        title="Couldn't load this listing"
+        description="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={() => refetch()}
       />
     );
   }
@@ -136,7 +126,7 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
 
-      <Text style={styles.label}>{t('marketplace.editListing.photosLabel')}</Text>
+      <Text style={styles.label}>Photos</Text>
       <View style={styles.imageRow}>
         {existingImages.map(uri => (
           <Image key={uri} source={{ uri }} style={styles.thumbnail} />
@@ -145,18 +135,18 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
           <Image key={image.uri ?? index} source={{ uri: image.uri }} style={styles.thumbnail} />
         ))}
         <TouchableOpacity style={styles.addImage} onPress={pickImages}>
-          <Text style={styles.addImageLabel}>{t('marketplace.editListing.addImageLabel')}</Text>
+          <Text style={styles.addImageLabel}>+ Add</Text>
         </TouchableOpacity>
       </View>
 
       <Button
-        label={t('marketplace.editListing.saveChangesLabel')}
-        loading={submitting}
+        label="Save Changes"
+        loading={updateListing.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
       />
       <Button
-        label={t('marketplace.editListing.deleteListingLabel')}
+        label="Delete Listing"
         variant="destructive"
         onPress={onDelete}
         style={styles.delete}
@@ -176,7 +166,7 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     label: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
       color: colors.text.secondary,
       marginBottom: spacing.xs,
     },

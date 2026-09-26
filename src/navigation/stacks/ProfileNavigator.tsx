@@ -3,7 +3,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { ChangePasswordScreen } from '../../screens/profile/ChangePasswordScreen';
+import { DeleteAccountScreen } from '../../screens/profile/DeleteAccountScreen';
 import { EditProfileScreen } from '../../screens/profile/EditProfileScreen';
+import { MfaEnrollmentScreen } from '../../screens/profile/MfaEnrollmentScreen';
 import { SettingsScreen } from '../../screens/profile/SettingsScreen';
 import { ViewProfileScreen } from '../../screens/profile/ViewProfileScreen';
 
@@ -12,6 +14,8 @@ export type ProfileStackParamList = {
   [PROFILE_ROUTES.EditProfile]: undefined;
   [PROFILE_ROUTES.Settings]: undefined;
   [PROFILE_ROUTES.ChangePassword]: undefined;
+  [PROFILE_ROUTES.MfaEnrollment]: undefined;
+  [PROFILE_ROUTES.DeleteAccount]: undefined;
 };
 
 export type ProfileScreenProps<RouteName extends keyof ProfileStackParamList> =
@@ -41,6 +45,16 @@ export function ProfileNavigator() {
         name={PROFILE_ROUTES.ChangePassword}
         component={ChangePasswordScreen}
         options={{ title: 'Change Password' }}
+      />
+      <Stack.Screen
+        name={PROFILE_ROUTES.MfaEnrollment}
+        component={MfaEnrollmentScreen}
+        options={{ title: 'Two-Factor Authentication' }}
+      />
+      <Stack.Screen
+        name={PROFILE_ROUTES.DeleteAccount}
+        component={DeleteAccountScreen}
+        options={{ title: 'Delete Account' }}
       />
     </Stack.Navigator>
   );

@@ -1,55 +1,36 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
-import { fetchSuppliers } from '../../services/modules/dealer/supplierService';
+import { useSuppliers } from '../../hooks/api/dealer';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { Supplier } from '../../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: suppliers = [], isPending, error, refetch } = useSuppliers(!!userId);
+  const loading = isPending && !!userId;
+  const load = () => refetch();
 
-  const load = useCallback(() => {
-    if (!userId) return () => {};
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchSuppliers().then(data => {
-      if (!cancelled) {
-        setSuppliers(data);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.warn('[SupplierListScreen] failed to load suppliers:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  // Coming back to the list shows what was added or changed elsewhere.
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) refetch();
+    }, [userId, refetch]),
+  );
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && suppliers.length === 0) {
     return (
       <EmptyState
-        title={t('dealer.supplierList.couldntLoadTitle')}
-        description={t('dealer.shared.checkConnectionDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load suppliers"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -57,7 +38,7 @@ export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>)
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={suppliers}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -70,14 +51,14 @@ export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>)
                 <Text style={styles.name}>{item.name}</Text>
                 <Badge label={item.status} tone={item.status === 'active' ? 'success' : 'neutral'} />
               </View>
-              <Text style={styles.meta}>{item.products_supplied ?? t('dealer.supplierList.noProductsListed')}</Text>
+              <Text style={styles.meta}>{item.products_supplied ?? 'No products listed'}</Text>
             </Card>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('dealer.supplierList.emptyTitle')}
-            description={t('dealer.supplierList.emptyDescription')}
+            title="No suppliers yet"
+            description="Add your first supplier to get started."
           />
         }
       />
@@ -85,7 +66,7 @@ export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>)
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.SupplierDetail, {})}
       >
-        <Text style={styles.fabLabel}>{t('dealer.supplierList.newSupplierFab')}</Text>
+        <Text style={styles.fabLabel}>+ New Supplier</Text>
       </TouchableOpacity>
     </View>
   );
@@ -111,7 +92,7 @@ function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     meta: {

@@ -1,30 +1,27 @@
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import {
-  FlatList,
   RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { ShoppingCart } from 'lucide-react-native';
 import { EmptyState, SkeletonCard, StaggeredItem } from '../../components/ui';
 import { FilterBar } from '../../components/features/marketplace/FilterBar';
 import { ListingCard } from '../../components/features/marketplace/ListingCard';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
-import { fetchListings } from '../../services/modules/marketplace/listingsService';
+import { useCategories, useListings } from '../../hooks/api/marketplace';
 import { cartItemCount, useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useMarketplaceStore } from '../../store/marketplaceStore';
 import { useTheme, type Theme } from '../../theme';
-import type { ListingWithRelations } from '../../types/marketplace';
+import { errorMessage } from '../../utils/errorMessage';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
 
 function CartHeaderButton({ onPress }: { onPress: () => void }) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const count = useCartStore(state => cartItemCount(state.items));
 
@@ -35,8 +32,8 @@ function CartHeaderButton({ onPress }: { onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel={
         count > 0
-          ? t('marketplace.browse.cartLabelWithCount', { count })
-          : t('marketplace.browse.cartLabel')
+          ? `Cart, ${count} ${count === 1 ? 'item' : 'items'}`
+          : 'Cart'
       }
     >
       <View style={styles.cartIconWrap}>
@@ -53,16 +50,26 @@ function CartHeaderButton({ onPress }: { onPress: () => void }) {
 
 export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const role = useAuthStore(state => state.role);
   const canSell = role === 'farmer' || role === 'dealer';
-  const { filters, setFilters, categories, loadCategories } = useMarketplaceStore();
-  const [listings, setListings] = useState<ListingWithRelations[]>([]);
-  const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const { filters, setFilters } = useMarketplaceStore();
+  const { data: categories = [] } = useCategories();
+  const [pulling, setPulling] = useState(false);
+
+  const params = useMemo(
+    () => ({
+      categoryId: filters.categoryId ?? undefined,
+      search: filters.search || undefined,
+      minPrice: filters.minPrice ?? undefined,
+      maxPrice: filters.maxPrice ?? undefined,
+      city: filters.city ?? undefined,
+      cropName: filters.cropName ?? undefined,
+    }),
+    [filters],
+  );
+  const { data, isPending, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useListings(params);
+  const listings = useMemo(() => data?.pages.flat() ?? [], [data]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -72,55 +79,14 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
     });
   }, [navigation]);
 
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
-
-  const load = useCallback(
-    async (targetPage: number, replace: boolean) => {
-      const data = await fetchListings({
-        categoryId: filters.categoryId ?? undefined,
-        search: filters.search || undefined,
-        minPrice: filters.minPrice ?? undefined,
-        maxPrice: filters.maxPrice ?? undefined,
-        city: filters.city ?? undefined,
-        cropName: filters.cropName ?? undefined,
-        page: targetPage,
-      });
-      setHasMore(data.length > 0);
-      setListings(prev => (replace ? data : [...prev, ...data]));
-      setPage(targetPage);
-    },
-    [filters],
-  );
-
-  useEffect(() => {
-    setLoading(true);
-    load(0, true).finally(() => setLoading(false));
-  }, [load]);
-
-  const isFirstFocus = useRef(true);
-  useFocusEffect(
-    useCallback(() => {
-      // Skip the very first focus — the effect above already handles initial load.
-      // Refreshes silently on return from Create/Edit/Delete so changes show up immediately.
-      if (isFirstFocus.current) {
-        isFirstFocus.current = false;
-        return;
-      }
-      load(0, true);
-    }, [load]),
-  );
-
   const onRefresh = async () => {
-    setRefreshing(true);
-    await load(0, true);
-    setRefreshing(false);
+    setPulling(true);
+    await refetch();
+    setPulling(false);
   };
 
   const onEndReached = () => {
-    if (!hasMore || loading) return;
-    load(page + 1, false);
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   };
 
   return (
@@ -137,7 +103,7 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
         cropName={filters.cropName}
         onApplyMoreFilters={setFilters}
       />
-      {loading ? (
+      {isPending ? (
         <View style={[styles.list, styles.skeletonGrid]}>
           {Array.from({ length: 6 }, (_, i) => (
             <View key={i} style={styles.skeletonGridCell}>
@@ -146,12 +112,12 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
           ))}
         </View>
       ) : (
-        <FlatList
+        <FlashList
           data={listings}
           keyExtractor={item => item.id}
           numColumns={2}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={pulling} onRefresh={onRefresh} />}
           onEndReachedThreshold={0.4}
           onEndReached={onEndReached}
           renderItem={({ item, index }) => (
@@ -165,10 +131,19 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
             </StaggeredItem>
           )}
           ListEmptyComponent={
-            <EmptyState
-              title={t('marketplace.browse.emptyTitle')}
-              description={t('marketplace.browse.emptyDescription')}
-            />
+            error ? (
+              <EmptyState
+                title="Could not load listings"
+                description={errorMessage(error)}
+                actionLabel="Retry"
+                onAction={() => refetch()}
+              />
+            ) : (
+              <EmptyState
+                title="No listings yet"
+                description="Check back soon, or be the first to list produce here."
+              />
+            )
           }
         />
       )}
@@ -177,7 +152,7 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
           style={styles.fab}
           onPress={() => navigation.navigate(MARKETPLACE_ROUTES.CreateListing)}
         >
-          <Text style={styles.fabLabel}>{t('marketplace.browse.listFab')}</Text>
+          <Text style={styles.fabLabel}>+ List</Text>
         </TouchableOpacity>
       ) : null}
     </View>

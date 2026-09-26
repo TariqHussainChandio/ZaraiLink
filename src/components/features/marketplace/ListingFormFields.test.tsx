@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import {
   ListingFormFields,
   listingFormDefaults,
@@ -33,7 +33,7 @@ function Harness() {
 
 describe('ListingFormFields', () => {
   it('renders the core fields', async () => {
-    await render(<Harness />);
+    await renderWithQuery(<Harness />);
     expect(screen.getByText('Title')).toBeTruthy();
     expect(screen.getByText('Description')).toBeTruthy();
     expect(screen.getByText('Price')).toBeTruthy();
@@ -42,13 +42,13 @@ describe('ListingFormFields', () => {
   });
 
   it('lets the user select a category', async () => {
-    await render(<Harness />);
+    await renderWithQuery(<Harness />);
     await fireEvent.press(await screen.findByText('Seeds'));
     expect(screen.getByText('Seeds').parent?.props.accessibilityState.selected).toBe(true);
   });
 
   it('shows crop compatibility chips once crops load, and toggles selection', async () => {
-    await render(<Harness />);
+    await renderWithQuery(<Harness />);
     await fireEvent.press(await screen.findByText('Wheat'));
     expect(screen.getByText('Wheat').parent?.props.accessibilityState.selected).toBe(true);
     await fireEvent.press(screen.getByText('Wheat'));

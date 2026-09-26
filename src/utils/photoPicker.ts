@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
+import { compressPhoto } from './photoCompression';
 
 /**
  * A photo the user picked or took. This is the app's own shape, so screens and services do not
@@ -10,7 +11,6 @@ export interface PickedPhoto {
   /** MIME type such as image/jpeg. Sent as the upload Content-Type. */
   mimeType?: string;
   fileName?: string;
-  fileSize?: number;
   width?: number;
   height?: number;
 }
@@ -42,14 +42,18 @@ function isExpectedCameraError(error: unknown): boolean {
   );
 }
 
-function toPickedPhoto(asset: ImagePicker.ImagePickerAsset): PickedPhoto {
+/**
+ * Every photo leaves the picker already compressed and stripped of its EXIF block (see photoCompression), so no
+ * call site can upload an original by accident. The result is always a JPEG, so the type and the name follow it.
+ */
+async function toPickedPhoto(asset: ImagePicker.ImagePickerAsset): Promise<PickedPhoto> {
+  const compressed = await compressPhoto(asset.uri, asset.width, asset.height);
   return {
-    uri: asset.uri,
-    mimeType: asset.mimeType,
-    fileName: asset.fileName ?? undefined,
-    fileSize: asset.fileSize,
-    width: asset.width,
-    height: asset.height,
+    uri: compressed.uri,
+    mimeType: 'image/jpeg',
+    fileName: asset.fileName ? `${asset.fileName.replace(/\.[^.]*$/, '')}.jpg` : undefined,
+    width: compressed.width,
+    height: compressed.height,
   };
 }
 
@@ -62,11 +66,10 @@ export async function pickFromLibrary({ selectionLimit = 1 }: PickPhotosOptions 
     mediaTypes: ['images'],
     allowsMultipleSelection: selectionLimit > 1,
     selectionLimit,
-    // Full quality: the picker hands back the original file untouched. Compression before upload is
-    // a separate step (phase P7).
+    // Full quality here: the one lossy re-encode happens in toPickedPhoto, not twice.
     quality: 1,
   });
-  return result.canceled ? [] : result.assets.map(toPickedPhoto);
+  return result.canceled ? [] : Promise.all(result.assets.map(toPickedPhoto));
 }
 
 async function takePhoto(): Promise<PickedPhoto[]> {
@@ -79,7 +82,7 @@ async function takePhoto(): Promise<PickedPhoto[]> {
   try {
     // The photo is kept in the app's cache, not copied into the user's gallery.
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
-    return result.canceled ? [] : result.assets.map(toPickedPhoto);
+    return result.canceled ? [] : await Promise.all(result.assets.map(toPickedPhoto));
   } catch (error) {
     if (isExpectedCameraError(error)) return [];
     throw error;

@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
-import '../../localization';
 import { SplashScreen } from './SplashScreen';
 
 describe('SplashScreen', () => {

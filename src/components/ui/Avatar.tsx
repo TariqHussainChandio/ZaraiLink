@@ -43,7 +43,7 @@ function makeStyles({ colors, typography }: Theme) {
     },
     initials: {
       color: colors.neutral.white,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
     },
   });
 }

@@ -1,12 +1,19 @@
 import type { PickedPhoto } from '../../../utils/photoPicker';
+import { extensionFromMimeType } from '../../../utils/mimeExtension';
 import { supabase } from '../../supabase/client';
 import { apiFetch } from '../../api/client';
 import type { DiseaseCase, DiseaseCaseWithPrediction, DiseasePrediction } from '../../../types/disease';
 
+/**
+ * Uploads the photo and returns its storage PATH, not a URL — the disease-images bucket is
+ * private (security fix C2), so a public URL was never valid to begin with, and the backend
+ * mints its own signed URL for display rather than trusting one from the client. The returned
+ * path is what `createDiseaseCase` sends on; there is nothing else to do with it client-side.
+ */
 export async function uploadDiseaseImage(userId: string, image: PickedPhoto): Promise<string> {
   if (!image.uri) throw new Error('No image selected');
 
-  const extension = image.fileName?.split('.').pop() ?? 'jpg';
+  const extension = extensionFromMimeType(image.mimeType);
   const path = `${userId}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${extension}`;
 
   const response = await fetch(image.uri);
@@ -17,14 +24,13 @@ export async function uploadDiseaseImage(userId: string, image: PickedPhoto): Pr
     .upload(path, arrayBuffer, { contentType: image.mimeType ?? 'image/jpeg' });
   if (error) throw error;
 
-  const { data } = supabase.storage.from('disease-images').getPublicUrl(path);
-  return data.publicUrl;
+  return path;
 }
 
-export async function createDiseaseCase(cropId: string | null, imageUrl: string): Promise<DiseaseCase> {
+export async function createDiseaseCase(cropId: string | null, storagePath: string): Promise<DiseaseCase> {
   return apiFetch('/api/v1/disease/cases', {
     method: 'POST',
-    body: { crop_id: cropId, image_url: imageUrl },
+    body: { crop_id: cropId, storage_path: storagePath },
   });
 }
 

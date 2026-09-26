@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { CreateListingScreen } from './CreateListingScreen';
 import { createListing, uploadListingImages } from '../../services/modules/marketplace/listingsService';
 import { pickPhotos } from '../../utils/photoPicker';
@@ -12,6 +12,8 @@ import type { MarketplaceScreenProps } from '../../navigation/stacks/Marketplace
 jest.mock('../../services/modules/marketplace/listingsService', () => ({
   createListing: jest.fn(),
   uploadListingImages: jest.fn(),
+  fetchCategories: jest.fn().mockResolvedValue([]),
+  fetchCrops: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('../../utils/photoPicker', () => ({
   pickPhotos: jest.fn(),
@@ -39,10 +41,6 @@ beforeEach(() => {
   useAuthStore.setState({ user: { id: 'user-1' } as never });
   useMarketplaceStore.setState({
     filters: { categoryId: null, search: '', minPrice: null, maxPrice: null, city: null, cropName: null },
-    categories: [],
-    categoriesLoaded: true,
-    crops: [],
-    cropsLoaded: true,
   });
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
@@ -53,7 +51,7 @@ afterEach(() => {
 
 describe('CreateListingScreen', () => {
   it('shows inline validation errors and does not submit when required fields are invalid', async () => {
-    await render(<CreateListingScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<CreateListingScreen navigation={makeNavigation()} route={{} as never} />);
 
     await fireEvent.press(screen.getByText('Publish Listing'));
 
@@ -65,7 +63,7 @@ describe('CreateListingScreen', () => {
   });
 
   it('requires at least one photo before publishing', async () => {
-    await render(<CreateListingScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<CreateListingScreen navigation={makeNavigation()} route={{} as never} />);
     await fillRequiredFields();
 
     await fireEvent.press(screen.getByText('Publish Listing'));
@@ -79,7 +77,7 @@ describe('CreateListingScreen', () => {
     mockUploadImages.mockResolvedValue(['https://cdn.example.com/photo1.jpg']);
     mockCreateListing.mockResolvedValue({ id: 'listing-1' });
     const navigation = makeNavigation();
-    await render(<CreateListingScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<CreateListingScreen navigation={navigation} route={{} as never} />);
 
     await fillRequiredFields();
     await fireEvent.press(screen.getByText('+ Add'));
@@ -103,7 +101,7 @@ describe('CreateListingScreen', () => {
     mockUploadImages.mockResolvedValue(['https://cdn.example.com/photo1.jpg']);
     mockCreateListing.mockRejectedValue(new Error('Server error'));
     const navigation = makeNavigation();
-    await render(<CreateListingScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<CreateListingScreen navigation={navigation} route={{} as never} />);
 
     await fillRequiredFields();
     await fireEvent.press(screen.getByText('+ Add'));

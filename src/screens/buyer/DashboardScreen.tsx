@@ -1,6 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card, EmptyState, Skeleton, SkeletonList } from '../../components/ui';
 import { ActivityFeed } from '../../components/features/dashboards/ActivityFeed';
@@ -12,54 +11,34 @@ import {
   MARKETPLACE_ROUTES,
   ORDERS_ROUTES,
 } from '../../constants/routes';
-import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
+import { useOrders } from '../../hooks/api/orders';
 import { useAuthStore } from '../../store/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../theme';
-import type { OrderWithItems } from '../../types/orders';
 
 // Disease Advisory is farmer-only (like Inventory is dealer-only) — buyers get marketplace,
 // orders, and expert consultation only, no entry point into `HOME_ROUTES.DiseaseAdvisory` here.
 export function BuyerDashboardScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
   const userId = useAuthStore(state => state.user?.id);
   const tabNavigation = useAppTabNavigation();
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: orders = [], isPending: loading, error, refetch } = useOrders('buyer', !!userId);
+  const load = () => refetch();
 
-  const load = useCallback(() => {
-    if (!userId) return () => {};
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchOrdersForUser('buyer').then(data => {
-      if (!cancelled) {
-        setOrders(data);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.warn('[BuyerDashboardScreen] failed to load orders:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  // Coming back to the dashboard shows orders placed or updated elsewhere.
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) refetch();
+    }, [userId, refetch]),
+  );
 
   if (error) {
     return (
       <EmptyState
-        title={t('buyer.dashboard.loadErrorTitle')}
-        description={t('common.checkConnectionRetry')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load your dashboard"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -88,20 +67,20 @@ export function BuyerDashboardScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label={t('buyer.dashboard.totalPurchases')} value={orders.length} accent={theme.moduleAccents.orders} />
-        <StatCard label={t('buyer.dashboard.inProgress')} value={pendingCount} accent={theme.moduleAccents.orders} />
+        <StatCard label="Total Purchases" value={orders.length} accent={theme.moduleAccents.orders} />
+        <StatCard label="In Progress" value={pendingCount} accent={theme.moduleAccents.orders} />
       </View>
 
-      <Text style={styles.sectionTitle}>{t('buyer.dashboard.quickActionsTitle')}</Text>
+      <Text style={styles.sectionTitle}>Quick Actions</Text>
       <QuickActions
         actions={[
           {
-            label: t('buyer.dashboard.browseMarketplace'),
+            label: 'Browse Marketplace',
             onPress: () =>
               tabNavigation?.navigate(APP_TABS.Marketplace, { screen: MARKETPLACE_ROUTES.Browse }),
           },
           {
-            label: t('buyer.dashboard.consultExpert'),
+            label: 'Consult an Expert',
             onPress: () =>
               tabNavigation?.navigate(APP_TABS.Consultations, {
                 screen: CONSULTATIONS_ROUTES.ConsultationList,
@@ -111,12 +90,12 @@ export function BuyerDashboardScreen() {
       />
 
       <ActivityFeed
-        title={t('buyer.dashboard.recentPurchasesTitle')}
-        emptyMessage={t('buyer.dashboard.noPurchasesYet')}
+        title="Recent Purchases"
+        emptyMessage="No purchases yet"
         items={orders.slice(0, 5).map(order => ({
           id: order.id,
-          title: order.seller?.full_name ?? t('buyer.dashboard.unknownSeller'),
-          subtitle: t('buyer.dashboard.purchaseSubtitle', { amount: order.total.toFixed(0), status: order.status }),
+          title: order.seller?.full_name ?? 'Unknown seller',
+          subtitle: `Rs. ${order.total.toFixed(0)} · ${order.status}`,
           onPress: () =>
             tabNavigation?.navigate(APP_TABS.Orders, {
               screen: ORDERS_ROUTES.OrderDetail,
@@ -144,7 +123,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sectionTitle: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginBottom: spacing.sm,
     },

@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { Avatar, Badge, Button } from '../../components/ui';
 import { PROFILE_ROUTES } from '../../constants/routes';
@@ -11,7 +10,6 @@ import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigato
 export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfile'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { t } = useTranslation();
   const profile = useAuthStore(state => state.profile);
   const email = useAuthStore(state => state.user?.email);
 
@@ -26,18 +24,18 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
       </View>
 
       <View style={styles.section}>
-        <Row styles={styles} label={t('profile.emailLabel')} value={email ?? '—'} />
-        <Row styles={styles} label={t('profile.phone')} value={profile.phone ?? '—'} />
-        <Row styles={styles} label={t('profile.locationLabel')} value={profile.location ?? '—'} />
+        <Row styles={styles} label="Email" value={email ?? '—'} />
+        <Row styles={styles} label="Phone" value={profile.phone ?? '—'} />
+        <Row styles={styles} label="Location" value={profile.location ?? '—'} />
       </View>
 
       <Button
-        label={t('profile.editProfileButton')}
+        label="Edit Profile"
         onPress={() => navigation.navigate(PROFILE_ROUTES.EditProfile)}
         style={styles.action}
       />
       <Button
-        label={t('profile.settingsButton')}
+        label="Settings"
         variant="secondary"
         onPress={() => navigation.navigate(PROFILE_ROUTES.Settings)}
         style={styles.action}
@@ -69,7 +67,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     name: {
       fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     section: {
@@ -87,7 +85,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     rowValue: {
       color: colors.text.primary,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
     },
     action: {
       marginBottom: spacing.md,

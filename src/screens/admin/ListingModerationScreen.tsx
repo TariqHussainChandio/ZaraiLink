@@ -1,40 +1,35 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Badge, Button, EmptyState, Spinner } from '../../components/ui';
-import { fetchAllListingsForModeration, updateListingStatus } from '../../services/modules/marketplace/listingsService';
+import { useModerationListings, useSetListingStatus } from '../../hooks/api/admin';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { errorMessage } from '../../utils/errorMessage';
 import type { ListingWithRelations } from '../../types/marketplace';
 
 export function ListingModerationScreen() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
-  const [listings, setListings] = useState<ListingWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: listings = [], isPending: loading, refetch } = useModerationListings();
+  const setListingStatus = useSetListingStatus();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setListings(await fetchAllListingsForModeration());
-    setLoading(false);
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      refetch();
+    }, [refetch]),
   );
 
   const toggleActive = async (listing: ListingWithRelations) => {
     if (!actorId) return;
     setUpdatingId(listing.id);
     try {
-      await updateListingStatus(listing.id, listing.status === 'active' ? 'inactive' : 'active');
-      await load();
+      await setListingStatus.mutateAsync({ id: listing.id, status: listing.status === 'active' ? 'inactive' : 'active' });
+    } catch (error) {
+      Alert.alert('Could not update the listing', errorMessage(error));
     } finally {
       setUpdatingId(null);
     }
@@ -43,7 +38,7 @@ export function ListingModerationScreen() {
   if (loading) return <Spinner fullscreen />;
 
   return (
-    <FlatList
+    <FlashList
       style={styles.container}
       contentContainerStyle={styles.list}
       data={listings}
@@ -55,11 +50,7 @@ export function ListingModerationScreen() {
               {item.title}
             </Text>
             <Text style={styles.owner} numberOfLines={1}>
-              {t('admin.listingModeration.ownerPriceLine', {
-                owner: item.owner?.full_name ?? t('admin.listingModeration.unknownOwner'),
-                price: item.price.toFixed(0),
-                unit: item.unit,
-              })}
+              {`${item.owner?.full_name ?? 'Unknown'} · Rs. ${item.price.toFixed(0)}/${item.unit}`}
             </Text>
             <Badge
               label={item.status}
@@ -68,7 +59,7 @@ export function ListingModerationScreen() {
           </View>
           {item.status !== 'sold' ? (
             <Button
-              label={item.status === 'active' ? t('admin.listingModeration.deactivate') : t('admin.listingModeration.activate')}
+              label={item.status === 'active' ? 'Deactivate' : 'Activate'}
               variant={item.status === 'active' ? 'destructive' : 'secondary'}
               fullWidth={false}
               loading={updatingId === item.id}
@@ -79,8 +70,8 @@ export function ListingModerationScreen() {
       )}
       ListEmptyComponent={
         <EmptyState
-          title={t('admin.listingModeration.emptyTitle')}
-          description={t('admin.listingModeration.emptyDescription')}
+          title="No listings yet"
+          description="Listings will show up here once sellers start publishing."
         />
       }
     />
@@ -110,7 +101,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     title: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     owner: {

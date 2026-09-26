@@ -1,5 +1,4 @@
-import { act } from '@testing-library/react-native';
-import { Alert, Linking } from 'react-native';
+import { act, waitFor } from '@testing-library/react-native';
 import { makeSupabaseMock } from '../testUtils/supabaseMock';
 
 jest.mock('../services/supabase/client', () => {
@@ -67,10 +66,9 @@ describe('useAuthStore.initialize', () => {
     let unsubscribe!: () => void;
     await act(async () => {
       unsubscribe = useAuthStore.getState().initialize();
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
     });
+    // The profile arrives after a few async hops; wait for the result instead of counting microtask ticks.
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
 
     const state = useAuthStore.getState();
     expect(state.status).toBe('authenticated');
@@ -90,15 +88,13 @@ describe('useAuthStore.initialize', () => {
       return builder;
     });
 
+    let unsubscribe!: () => void;
     await act(async () => {
-      const unsubscribe = useAuthStore.getState().initialize();
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-      unsubscribe();
+      unsubscribe = useAuthStore.getState().initialize();
     });
 
-    expect(useAuthStore.getState().status).toBe('suspended');
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('suspended'));
+    unsubscribe();
   });
 
   it('falls back to unauthenticated when restoring the session throws', async () => {
@@ -121,23 +117,18 @@ describe('useAuthStore.initialize', () => {
       data: { subscription: { unsubscribe: unsubscribeSpy } },
     } as never);
     mockedSupabase.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
-    jest.spyOn(Linking, 'getInitialURL').mockResolvedValue(null);
-    const removeSpy = jest.fn();
-    jest.spyOn(Linking, 'addEventListener').mockReturnValue({ remove: removeSpy } as never);
 
     const unsubscribe = useAuthStore.getState().initialize();
     unsubscribe();
 
     expect(unsubscribeSpy).toHaveBeenCalledTimes(1);
-    // The password-reset deep-link listener must be cleaned up alongside the auth listener —
-    // a leaked `Linking` subscription would keep firing into an unmounted store.
-    expect(removeSpy).toHaveBeenCalledTimes(1);
   });
 
   it('routes a PASSWORD_RECOVERY auth event to the passwordRecovery status, not authenticated', async () => {
+    // P4 (4B.4): this event now originates from verifyOtp({ type: 'recovery' }) in
+    // VerifyOtpScreen, not a deep-link code exchange — the listener's handling of the event
+    // itself is unchanged, only how the recovery session gets established is different.
     mockedSupabase.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
-    jest.spyOn(Linking, 'getInitialURL').mockResolvedValue(null);
-    jest.spyOn(Linking, 'addEventListener').mockReturnValue({ remove: jest.fn() } as never);
 
     let authStateCallback!: (event: string, session: unknown) => void;
     mockedSupabase.auth.onAuthStateChange.mockImplementation(((
@@ -166,56 +157,6 @@ describe('useAuthStore.initialize', () => {
     unsubscribe();
   });
 
-  it('exchanges a password-reset deep-link code for a session on cold start', async () => {
-    mockedSupabase.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
-    jest.spyOn(Linking, 'getInitialURL').mockResolvedValue('zarailink://reset-password?code=abc123');
-    jest.spyOn(Linking, 'addEventListener').mockReturnValue({ remove: jest.fn() } as never);
-
-    let unsubscribe!: () => void;
-    await act(async () => {
-      unsubscribe = useAuthStore.getState().initialize();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(mockedSupabase.auth.exchangeCodeForSession).toHaveBeenCalledWith('abc123');
-    unsubscribe();
-  });
-
-  it('shows an alert and does not throw when the recovery code is invalid or expired', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    mockedSupabase.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
-    jest.spyOn(Linking, 'getInitialURL').mockResolvedValue('zarailink://reset-password?code=expired');
-    jest.spyOn(Linking, 'addEventListener').mockReturnValue({ remove: jest.fn() } as never);
-    mockedSupabase.auth.exchangeCodeForSession.mockRejectedValue(new Error('expired'));
-
-    let unsubscribe!: () => void;
-    await act(async () => {
-      unsubscribe = useAuthStore.getState().initialize();
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(alertSpy).toHaveBeenCalled();
-    unsubscribe();
-  });
-
-  it('ignores a deep link with no code param (e.g. the app opened normally)', async () => {
-    mockedSupabase.auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
-    jest.spyOn(Linking, 'getInitialURL').mockResolvedValue('zarailink://reset-password');
-    jest.spyOn(Linking, 'addEventListener').mockReturnValue({ remove: jest.fn() } as never);
-
-    let unsubscribe!: () => void;
-    await act(async () => {
-      unsubscribe = useAuthStore.getState().initialize();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(mockedSupabase.auth.exchangeCodeForSession).not.toHaveBeenCalled();
-    unsubscribe();
-  });
 });
 
 describe('useAuthStore.signOut', () => {

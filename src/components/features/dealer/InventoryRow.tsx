@@ -57,7 +57,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     title: {
       flex: 1,
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
       marginRight: spacing.sm,
     },
@@ -76,7 +76,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     actionLabel: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.brand.primary,
     },
   });

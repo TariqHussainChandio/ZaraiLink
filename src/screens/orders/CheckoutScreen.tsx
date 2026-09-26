@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Input } from '../../components/ui';
-import { checkout } from '../../services/modules/orders/ordersService';
+import { useCheckout } from '../../hooks/api/orders';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore, type CartItem } from '../../store/cartStore';
 import { useTheme, type Theme } from '../../theme';
 import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import { errorMessage } from '../../utils/errorMessage';
 
 function groupBySeller(items: CartItem[]): Map<string, CartItem[]> {
   const groups = new Map<string, CartItem[]>();
@@ -20,11 +20,10 @@ function groupBySeller(items: CartItem[]): Map<string, CartItem[]> {
 
 export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'>) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const { items, clear } = useCartStore();
-  const [submitting, setSubmitting] = useState(false);
+  const checkout = useCheckout();
   const grouped = useMemo(() => groupBySeller(items), [items]);
 
   // BR-09: delivery is always a separate, explicit charge the buyer proposes per seller here
@@ -44,23 +43,20 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
 
   const onConfirm = async () => {
     if (!userId) return;
-    setSubmitting(true);
     try {
       const deliveryChargeBySeller: Record<string, number> = {};
       for (const sellerId of grouped.keys()) {
         deliveryChargeBySeller[sellerId] = Number(deliveryCharges[sellerId] ?? 0) || 0;
       }
-      const orders = await checkout(items, deliveryChargeBySeller);
+      const orders = await checkout.mutateAsync({ items, deliveryChargeBySeller });
       clear();
       Alert.alert(
-        t('orders.checkout.orderPlacedTitle'),
-        t('orders.checkout.orderPlacedMessage', { count: orders.length }),
+        'Order placed',
+        `${orders.length} ${orders.length === 1 ? 'order' : 'orders'} created. Track them from the Orders tab.`,
       );
       navigation.popToTop();
     } catch (error) {
-      Alert.alert(t('orders.checkout.failedTitle'), error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
+      Alert.alert('Checkout failed', errorMessage(error));
     }
   };
 
@@ -73,22 +69,22 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
           return (
             <Card key={sellerId} style={styles.sellerCard}>
               <Text style={styles.sellerTitle}>
-                {t('orders.checkout.sellerOrderTitle', { count: sellerItems.length })}
+                {`Order ${sellerItems.length} ${sellerItems.length === 1 ? 'item' : 'items'}`}
               </Text>
               {sellerItems.map(item => (
                 <View key={item.listingId} style={styles.itemRow}>
                   <Text style={styles.itemLabel} numberOfLines={1}>
-                    {t('orders.checkout.itemLine', { quantity: item.quantity, title: item.title })}
+                    {`${item.quantity} × ${item.title}`}
                   </Text>
                   <Text style={styles.itemPrice}>
-                    {t('orders.checkout.itemPrice', { amount: (item.price * item.quantity).toFixed(0) })}
+                    {`Rs. ${(item.price * item.quantity).toFixed(0)}`}
                   </Text>
                 </View>
               ))}
               <Input
-                label={t('orders.checkout.deliveryChargeLabel')}
+                label="Delivery charge (optional)"
                 keyboardType="numeric"
-                placeholder={t('orders.checkout.deliveryChargePlaceholder')}
+                placeholder="0"
                 value={deliveryCharges[sellerId] ?? ''}
                 onChangeText={text =>
                   setDeliveryCharges(current => ({ ...current, [sellerId]: text }))
@@ -96,15 +92,15 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
               />
               <View style={styles.sellerSummary}>
                 <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>{t('orders.checkout.subtotalLabel')}</Text>
+                  <Text style={styles.itemLabel}>Subtotal</Text>
                   <Text style={styles.itemPrice}>
-                    {t('orders.checkout.itemPrice', { amount: subtotal.toFixed(0) })}
+                    {`Rs. ${subtotal.toFixed(0)}`}
                   </Text>
                 </View>
                 <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>{t('orders.checkout.deliveryLabel')}</Text>
+                  <Text style={styles.itemLabel}>Delivery</Text>
                   <Text style={styles.itemPrice}>
-                    {t('orders.checkout.itemPrice', { amount: delivery.toFixed(0) })}
+                    {`Rs. ${delivery.toFixed(0)}`}
                   </Text>
                 </View>
               </View>
@@ -114,12 +110,12 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
       </ScrollView>
       <View style={styles.footer}>
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>{t('orders.checkout.totalLabel')}</Text>
+          <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>
-            {t('orders.checkout.itemPrice', { amount: grandTotal.toFixed(0) })}
+            {`Rs. ${grandTotal.toFixed(0)}`}
           </Text>
         </View>
-        <Button label={t('orders.checkout.placeOrderLabel')} loading={submitting} onPress={onConfirm} />
+        <Button label="Place Order" loading={checkout.isPending} onPress={onConfirm} />
       </View>
     </View>
   );
@@ -139,7 +135,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sellerTitle: {
       fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.secondary,
       marginBottom: spacing.sm,
     },
@@ -161,7 +157,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     itemPrice: {
       color: colors.text.secondary,
-      fontWeight: typography.weights.medium as any,
+      fontWeight: typography.weights.medium,
     },
     footer: {
       padding: spacing.lg,
@@ -179,7 +175,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     totalValue: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
   });

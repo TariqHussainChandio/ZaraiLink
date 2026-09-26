@@ -1,11 +1,13 @@
-from datetime import datetime, timedelta, timezone
-
-from postgrest.exceptions import APIError
+import asyncio
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
+from postgrest.exceptions import APIError
 
 from ..core.auth import AuthenticatedUser
+from ..core.errors import AppHTTPException
 from ..repositories import orders_repository as repo
+from .audit_log_service import log_admin_action
 
 # Full SRDS v4.0 §12.2 lifecycle. `payment_failed` is reachable from `pending`/`confirmed` —
 # Payments' manual flow moves an order there when the seller records non-payment before
@@ -29,6 +31,12 @@ ALLOWED_TRANSITIONS: dict[str, list[str]] = {
     "expired": [],
 }
 
+# Who may request each target status. The state machine above says which moves exist; this says whose move it is,
+# so the rule holds for any client and not only for an app that hides the buttons. `cancelled` is the one move both
+# sides may make. A `disputed` order is resolved by an admin only (see `update_order_status`).
+SELLER_ONLY_TARGETS = frozenset({"confirmed", "rejected", "processing", "ready", "completed", "payment_failed"})
+BUYER_ONLY_TARGETS = frozenset({"disputed"})
+
 # How long a seller has to act on a new order before it silently expires. No scheduler exists
 # in this stack, so this is enforced lazily (see `_expire_stale_pending_orders`) rather than by
 # a background job. 48 hours, not e.g. 24 — SRDS doesn't specify a value, and a seller who checks
@@ -37,7 +45,7 @@ ALLOWED_TRANSITIONS: dict[str, list[str]] = {
 PENDING_ORDER_EXPIRY_HOURS = 48
 
 
-def _expire_stale_pending_orders(user: AuthenticatedUser) -> None:
+async def _expire_stale_pending_orders(user: AuthenticatedUser) -> None:
     """
     Runs on every order list/detail read rather than on a schedule — nothing in this stack runs
     one. Scoped to the caller's own token, so RLS (`orders_update_participants`) naturally limits
@@ -50,13 +58,13 @@ def _expire_stale_pending_orders(user: AuthenticatedUser) -> None:
     acting-session's-own-auth.uid() convention every other status change already gets from
     `create_notification`'s `p_skip_self`.
     """
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=PENDING_ORDER_EXPIRY_HOURS)).isoformat()
-    for order_id in repo.fetch_stale_pending_order_ids(user.access_token, user.id, cutoff):
-        repo.update_order_status(user.access_token, order_id, "expired")
-        repo.insert_order_status_history(user.access_token, order_id, "pending", "expired", None)
+    cutoff = (datetime.now(UTC) - timedelta(hours=PENDING_ORDER_EXPIRY_HOURS)).isoformat()
+    for order_id in await repo.fetch_stale_pending_order_ids(user.access_token, user.id, cutoff):
+        # The history row is written by the database trigger from this status change (system transition, no actor).
+        await repo.update_order_status(user.access_token, order_id, "expired")
 
 
-def _assert_available(access_token: str, cart_items: list[dict]) -> dict[str, dict]:
+async def _assert_available(access_token: str, cart_items: list[dict]) -> dict[str, dict]:
     """
     Re-validates every cart item against the database immediately before creating any order —
     the cart is client-side/persisted-local and can go stale (another buyer bought the last
@@ -65,24 +73,35 @@ def _assert_available(access_token: str, cart_items: list[dict]) -> dict[str, di
     the order from `listing.price` — never from anything the client sent — closing a real gap
     the original frontend implementation had (it priced orders from the client-cached cart
     item's `price` field, which a manipulated client could have set to anything).
+
+    The two lookups below are independent (both keyed only on `listing_ids`, neither depends on
+    the other's result) — genuinely safe to run concurrently, unlike checkout()'s own insert
+    sequence below, which is a real dependency chain and must stay sequential.
     """
     listing_ids = list({item["listing_id"] for item in cart_items})
-    listings = repo.fetch_listings_for_checkout(access_token, listing_ids)
+    listings, stock_rows = await asyncio.gather(
+        repo.fetch_listings_for_checkout(access_token, listing_ids),
+        repo.get_available_stock(access_token, listing_ids),
+    )
     listings_by_id = {listing["id"]: listing for listing in listings}
-    availability = {row["listing_id"]: row["available"] for row in repo.get_available_stock(access_token, listing_ids)}
+    availability = {row["listing_id"]: row["available"] for row in stock_rows}
 
     for item in cart_items:
         listing = listings_by_id.get(item["listing_id"])
         if listing is None or listing["status"] != "active":
-            raise HTTPException(status_code=422, detail=f'Listing {item["listing_id"]} is no longer available.')
+            raise AppHTTPException(422, f"Listing {item['listing_id']} is no longer available.", "listing_unavailable")
         available = availability.get(item["listing_id"], listing["quantity"])
         if item["quantity"] > available:
-            raise HTTPException(status_code=422, detail=f'Only {available} left in stock for listing {item["listing_id"]}.')
+            raise AppHTTPException(
+                422, f"Only {available} left in stock for listing {item['listing_id']}.", "insufficient_stock"
+            )
 
     return listings_by_id
 
 
-def checkout(user: AuthenticatedUser, cart_items: list[dict], delivery_charge_by_seller: dict[str, float]) -> list[dict]:
+async def checkout(
+    user: AuthenticatedUser, cart_items: list[dict], delivery_charge_by_seller: dict[str, float]
+) -> list[dict]:
     """
     `orders` is single-buyer/single-seller, so a cart spanning multiple sellers becomes one
     order per seller (grouped by each listing's actual `owner_id`, never a client-supplied
@@ -92,7 +111,7 @@ def checkout(user: AuthenticatedUser, cart_items: list[dict], delivery_charge_by
     rate in this app (BR-09: delivery is always a separate, explicit, manually-agreed line, not
     computed) — a seller with no entry gets `delivery_charge = 0`.
     """
-    listings_by_id = _assert_available(user.access_token, cart_items)
+    listings_by_id = await _assert_available(user.access_token, cart_items)
 
     by_seller: dict[str, list[dict]] = {}
     for item in cart_items:
@@ -104,8 +123,10 @@ def checkout(user: AuthenticatedUser, cart_items: list[dict], delivery_charge_by
         subtotal = sum(listings_by_id[item["listing_id"]]["price"] * item["quantity"] for item in items)
         delivery_charge = delivery_charge_by_seller.get(seller_id, 0)
 
-        order = repo.insert_order(user.access_token, user.id, seller_id, subtotal, delivery_charge)
-        repo.insert_order_items(
+        # Each call below needs the previous one's result (order["id"]) — a genuine sequential
+        # dependency chain, not parallelized, unlike _assert_available's two independent reads.
+        order = await repo.insert_order(user.access_token, user.id, seller_id, subtotal, delivery_charge)
+        await repo.insert_order_items(
             user.access_token,
             order["id"],
             [
@@ -117,48 +138,31 @@ def checkout(user: AuthenticatedUser, cart_items: list[dict], delivery_charge_by
                 for item in items
             ],
         )
-        repo.insert_order_status_history(user.access_token, order["id"], None, "pending", user.id)
-        created_orders.append(order)
+        # The database prices the items from the listings, sums the subtotal and writes the first history row, so the
+        # order is read again: the row returned by the insert was taken before any item existed (subtotal 0).
+        created_orders.append(await repo.fetch_order_by_id(user.access_token, order["id"]) or order)
 
     return created_orders
 
 
-def fetch_orders_for_user(user: AuthenticatedUser, as_: str) -> list[dict]:
-    _expire_stale_pending_orders(user)
-    return repo.fetch_orders_for_user(user.access_token, user.id, as_)
+async def fetch_orders_for_user(user: AuthenticatedUser, as_: str) -> list[dict]:
+    await _expire_stale_pending_orders(user)
+    return await repo.fetch_orders_for_user(user.access_token, user.id, as_)
 
 
-def fetch_order_by_id(user: AuthenticatedUser, order_id: str) -> dict:
-    _expire_stale_pending_orders(user)
-    order = repo.fetch_order_by_id(user.access_token, order_id)
+async def fetch_order_by_id(user: AuthenticatedUser, order_id: str) -> dict:
+    await _expire_stale_pending_orders(user)
+    order = await repo.fetch_order_by_id(user.access_token, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
 
 
-def fetch_order_status_history(user: AuthenticatedUser, order_id: str) -> list[dict]:
-    return repo.fetch_order_status_history(user.access_token, order_id)
+async def fetch_order_status_history(user: AuthenticatedUser, order_id: str) -> list[dict]:
+    return await repo.fetch_order_status_history(user.access_token, order_id)
 
 
-def _reduce_dealer_inventory_for_order(user: AuthenticatedUser, order_id: str) -> None:
-    """
-    The seller accepting an order (pending->confirmed) is what commits their stock.
-    `public.reduce_stock_for_order` (supabase/migrations/20260901130000_...) does the whole
-    order's worth of "check every linked item, then reduce every linked item" atomically inside
-    one Postgres transaction, row-locked for its duration — not here in Python across many
-    separate calls, which is what let two near-simultaneous confirmations race each other and
-    both succeed against the same stock. Runs using the confirming seller's own token; a
-    non-dealer seller (or an item with no linked inventory row) is a no-op, same as before.
-    """
-    try:
-        repo.reduce_stock_for_order(user.access_token, order_id, user.id)
-    except APIError as exc:
-        if exc.code == "P0001":
-            raise HTTPException(status_code=422, detail=exc.message or "Not enough stock to confirm this order.")
-        raise
-
-
-def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -> None:
+async def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -> None:
     """
     Never trusts a client-supplied "current status" — the order (and therefore its real current
     status) is always re-read from the database first. Ownership: only the order's buyer or
@@ -174,8 +178,8 @@ def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -> None
     supabase/migrations/20260901090000_admin_write_scope_hardening.sql, which enforces this same
     rule again at the database layer as defense in depth.
     """
-    _expire_stale_pending_orders(user)
-    order = repo.fetch_order_by_id(user.access_token, order_id)
+    await _expire_stale_pending_orders(user)
+    order = await repo.fetch_order_by_id(user.access_token, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -186,10 +190,33 @@ def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -> None
 
     from_status = order["status"]
     if to not in ALLOWED_TRANSITIONS.get(from_status, []):
-        raise HTTPException(status_code=422, detail=f'Cannot move an order from "{from_status}" to "{to}"')
+        raise AppHTTPException(422, f'Cannot move an order from "{from_status}" to "{to}"', "invalid_transition")
 
-    if from_status == "pending" and to == "confirmed":
-        _reduce_dealer_inventory_for_order(user, order_id)
+    if from_status == "disputed":
+        # Only the admin resolves a dispute; the seller closing a buyer's dispute themselves would defeat it.
+        if user.role != "admin":
+            raise HTTPException(status_code=403, detail="Only an admin can resolve a disputed order")
+    elif to in SELLER_ONLY_TARGETS and order["seller_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Only the seller can make this change to an order")
+    elif to in BUYER_ONLY_TARGETS and order["buyer_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Only the buyer can make this change to an order")
 
-    repo.update_order_status(user.access_token, order_id, to)
-    repo.insert_order_status_history(user.access_token, order_id, from_status, to, user.id)
+    try:
+        # Confirming commits the seller's stock in the same statement (a database trigger), so a shortage fails this
+        # update as a whole; the history row is written by a trigger too.
+        await repo.update_order_status(user.access_token, order_id, to)
+    except APIError as exc:
+        if exc.code == "P0001":
+            raise AppHTTPException(422, exc.message or "Not enough stock to confirm this order.", "insufficient_stock")
+        raise
+
+    if is_admin_resolving_dispute:
+        # BR-15: an admin's dispute decision is an admin action and is audit-logged.
+        await log_admin_action(
+            user,
+            "resolve_order_dispute",
+            "order",
+            order_id,
+            previous_state={"status": from_status},
+            new_state={"status": to},
+        )

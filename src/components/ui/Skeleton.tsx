@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Animated, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme, type Theme } from '../../theme';
 
@@ -11,7 +11,7 @@ const PULSE_MAX_OPACITY = 0.85;
 export function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const opacity = useRef(new Animated.Value(PULSE_MIN_OPACITY)).current;
+  const [opacity] = useState(() => new Animated.Value(PULSE_MIN_OPACITY));
 
   useEffect(() => {
     const pulse = Animated.loop(

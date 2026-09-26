@@ -3,8 +3,17 @@ from typing import Literal
 from pydantic import BaseModel
 
 OrderStatus = Literal[
-    "pending", "confirmed", "processing", "ready", "completed", "cancelled", "rejected",
-    "payment_failed", "disputed", "refunded",
+    "pending",
+    "confirmed",
+    "processing",
+    "ready",
+    "completed",
+    "cancelled",
+    "rejected",
+    "payment_failed",
+    "disputed",
+    "refunded",
+    "expired",
 ]
 
 

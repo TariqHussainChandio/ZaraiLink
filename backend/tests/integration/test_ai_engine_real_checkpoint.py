@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from app.core.config import settings
-from app.services.ai_engine import classifier
+from app.services.ai_engine import get_classifier
 
 FIXTURE_PATH = Path(__file__).parent.parent / "fixtures" / "sample_leaf.jpg"
 
@@ -21,7 +21,9 @@ FIXTURE_PATH = Path(__file__).parent.parent / "fixtures" / "sample_leaf.jpg"
 def test_classifier_loads_the_real_checkpoint():
     # If this is False, either model.pth is missing/corrupt/placeholder again, or its shape no
     # longer matches settings.model_classes (core/config.py) — see the warning ai_engine.py logs.
-    assert classifier.available is True
+    # get_classifier() loads on first call (P5, item 3 — no more import-time loading), so this is
+    # also the test that actually exercises the real checkpoint load, not just a cached singleton.
+    assert get_classifier().available is True
 
 
 def test_model_classes_loaded_from_real_metadata_not_the_old_placeholder():
@@ -42,7 +44,7 @@ def test_model_classes_loaded_from_real_metadata_not_the_old_placeholder():
 )
 def test_classifier_predicts_a_known_class_for_a_real_leaf_photo():
     image_bytes = FIXTURE_PATH.read_bytes()
-    predicted_disease, confidence = classifier.predict(image_bytes)
+    predicted_disease, confidence = get_classifier().predict(image_bytes)
     # Structural assertions only (valid class, valid confidence range) rather than one exact
     # predicted label, so this doesn't flake in CI on an arbitrary photo's real model uncertainty.
     assert predicted_disease in settings.model_classes

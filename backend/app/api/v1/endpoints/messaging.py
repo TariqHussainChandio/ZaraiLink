@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin, require_authenticated_user
+from ....core.auth import AuthenticatedUser, require_admin_aal2, require_authenticated_user
+from ....core.pagination import Page, paginate
 from ....schemas.messaging import (
     Conversation,
     ConversationWithPreview,
@@ -14,8 +15,10 @@ router = APIRouter(prefix="/api/v1/messaging", tags=["messaging"])
 
 
 @router.get("/conversations", response_model=list[ConversationWithPreview])
-async def list_conversations(user: AuthenticatedUser = Depends(require_authenticated_user)) -> list[dict]:
-    return service.fetch_conversations(user)
+async def list_conversations(
+    user: AuthenticatedUser = Depends(require_authenticated_user), page: Page = Depends(paginate)
+) -> list[dict]:
+    return page.finish(await service.fetch_conversations(user))
 
 
 @router.post("/conversations", response_model=Conversation)
@@ -23,14 +26,16 @@ async def find_or_create_conversation(
     request: FindOrCreateConversationRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> dict:
-    return service.find_or_create_conversation(user, request.other_user_id)
+    return await service.find_or_create_conversation(user, request.other_user_id)
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=list[Message])
 async def list_messages(
-    conversation_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)
+    conversation_id: str,
+    user: AuthenticatedUser = Depends(require_authenticated_user),
+    page: Page = Depends(paginate),
 ) -> list[dict]:
-    return service.fetch_messages(user, conversation_id)
+    return page.finish(await service.fetch_messages(user, conversation_id))
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=Message)
@@ -39,21 +44,21 @@ async def send_message(
     request: SendMessageRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> dict:
-    return service.send_message(user, conversation_id, request.body, request.attachments)
+    return await service.send_message(user, conversation_id, request.body, request.attachments)
 
 
 @router.patch("/conversations/{conversation_id}/read", status_code=204)
 async def mark_conversation_read(
     conversation_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)
 ) -> None:
-    service.mark_conversation_read(user, conversation_id)
+    await service.mark_conversation_read(user, conversation_id)
 
 
 @router.get("/messages/{message_id}", response_model=Message)
 async def get_message(message_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> dict:
-    return service.fetch_message_by_id(user, message_id)
+    return await service.fetch_message_by_id(user, message_id)
 
 
 @router.patch("/messages/{message_id}/redact", status_code=204)
-async def redact_message(message_id: str, user: AuthenticatedUser = Depends(require_admin)) -> None:
-    service.redact_message(user, message_id)
+async def redact_message(message_id: str, user: AuthenticatedUser = Depends(require_admin_aal2)) -> None:
+    await service.redact_message(user, message_id)

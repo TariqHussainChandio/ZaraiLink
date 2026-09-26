@@ -1,6 +1,7 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { AuthApiError } from '@supabase/supabase-js';
 import { LoginScreen } from './LoginScreen';
 import { signIn } from '../../services/modules/auth/authService';
 import { AUTH_ROUTES } from '../../constants/routes';
@@ -22,14 +23,14 @@ describe('LoginScreen', () => {
   });
 
   it('renders the email channel by default', async () => {
-    await render(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByLabelText('Email')).toBeTruthy();
     expect(screen.getByLabelText('Password')).toBeTruthy();
   });
 
   it('submits email + password and calls signIn', async () => {
     mockSignIn.mockResolvedValue(undefined);
-    await render(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'farmer@example.com');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'secret123');
     await fireEvent.press(screen.getByText('Sign In'));
@@ -42,17 +43,18 @@ describe('LoginScreen', () => {
   });
 
   it('shows the submit error when signIn rejects', async () => {
-    mockSignIn.mockRejectedValue(new Error('Invalid login credentials'));
-    await render(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
+    mockSignIn.mockRejectedValue(new AuthApiError('Invalid login credentials', 400, 'invalid_credentials'));
+    await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'farmer@example.com');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'wrongpass');
     await fireEvent.press(screen.getByText('Sign In'));
 
-    expect(await screen.findByText('Invalid login credentials')).toBeTruthy();
+    expect(await screen.findByText('Incorrect email, phone or password.')).toBeTruthy();
+    expect(screen.queryByText('Invalid login credentials')).toBeNull();
   });
 
   it('switches to the phone channel and back', async () => {
-    await render(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.press(screen.getByText('Phone number'));
     expect(screen.queryByLabelText('Email')).toBeNull();
     await fireEvent.press(screen.getByText('Email'));
@@ -61,7 +63,7 @@ describe('LoginScreen', () => {
 
   it('navigates to Register and ForgotPassword', async () => {
     const navigation = makeNavigation();
-    await render(<LoginScreen navigation={navigation} route={{} as never} />);
+    await renderWithQuery(<LoginScreen navigation={navigation} route={{} as never} />);
     await fireEvent.press(screen.getByText('Forgot your password?'));
     expect(navigation.navigate).toHaveBeenCalledWith(AUTH_ROUTES.ForgotPassword);
     await fireEvent.press(screen.getByText(' Sign up'));

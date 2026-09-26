@@ -1,6 +1,7 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { AuthApiError } from '@supabase/supabase-js';
 import { ResetPasswordScreen } from './ResetPasswordScreen';
 import { updatePassword } from '../../services/modules/profile/profileService';
 
@@ -16,13 +17,13 @@ beforeEach(() => {
 
 describe('ResetPasswordScreen', () => {
   it('renders the password fields', async () => {
-    await render(<ResetPasswordScreen />);
+    await renderWithQuery(<ResetPasswordScreen />);
     expect(screen.getByLabelText('New password')).toBeTruthy();
     expect(screen.getByLabelText('Confirm password')).toBeTruthy();
   });
 
   it('shows a validation error for a too-short password', async () => {
-    await render(<ResetPasswordScreen />);
+    await renderWithQuery(<ResetPasswordScreen />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'abc');
     await fireEvent.changeText(screen.getByLabelText('Confirm password'), 'abc');
     await fireEvent.press(screen.getByText('Update password'));
@@ -32,7 +33,7 @@ describe('ResetPasswordScreen', () => {
   });
 
   it('shows a validation error when passwords do not match', async () => {
-    await render(<ResetPasswordScreen />);
+    await renderWithQuery(<ResetPasswordScreen />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
     await fireEvent.changeText(screen.getByLabelText('Confirm password'), 'different1');
     await fireEvent.press(screen.getByText('Update password'));
@@ -45,7 +46,7 @@ describe('ResetPasswordScreen', () => {
     // No navigation on success, unlike ChangePasswordScreen — authStore's own USER_UPDATED
     // handler (see authStore.test.ts) is what flips RootNavigator over to the app shell.
     mockUpdatePassword.mockResolvedValue(undefined);
-    await render(<ResetPasswordScreen />);
+    await renderWithQuery(<ResetPasswordScreen />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
     await fireEvent.changeText(screen.getByLabelText('Confirm password'), 'secret123');
     await fireEvent.press(screen.getByText('Update password'));
@@ -54,12 +55,12 @@ describe('ResetPasswordScreen', () => {
   });
 
   it('shows the submit error when updatePassword rejects', async () => {
-    mockUpdatePassword.mockRejectedValue(new Error('Recovery session expired'));
-    await render(<ResetPasswordScreen />);
+    mockUpdatePassword.mockRejectedValue(new AuthApiError('same', 422, 'same_password'));
+    await renderWithQuery(<ResetPasswordScreen />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
     await fireEvent.changeText(screen.getByLabelText('Confirm password'), 'secret123');
     await fireEvent.press(screen.getByText('Update password'));
 
-    expect(await screen.findByText('Recovery session expired')).toBeTruthy();
+    expect(await screen.findByText('Choose a password different from your current one.')).toBeTruthy();
   });
 });

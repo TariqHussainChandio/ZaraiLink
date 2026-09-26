@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ChatScreen } from './ChatScreen';
 import {
   fetchMessages,
@@ -79,7 +79,7 @@ beforeEach(() => {
 describe('ChatScreen', () => {
   it('loads and renders messages, marking the conversation read', async () => {
     mockFetchMessages.mockResolvedValue([message()]);
-    await render(<ChatScreen {...makeProps()} />);
+    await renderWithQuery(<ChatScreen {...makeProps()} />);
 
     expect(await screen.findByText('Hello, is it still in stock?')).toBeTruthy();
     expect(mockMarkConversationRead).toHaveBeenCalledWith('conv-1');
@@ -87,7 +87,7 @@ describe('ChatScreen', () => {
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchMessages.mockRejectedValueOnce(new Error('offline'));
-    await render(<ChatScreen {...makeProps()} />);
+    await renderWithQuery(<ChatScreen {...makeProps()} />);
     expect(await screen.findByText("Couldn't load messages")).toBeTruthy();
 
     mockFetchMessages.mockResolvedValueOnce([message()]);
@@ -99,7 +99,7 @@ describe('ChatScreen', () => {
     mockFetchMessages.mockResolvedValue([]);
     const sentMessage = message({ id: 'm2', sender_id: 'buyer-1', body: 'Yes please!' });
     mockSendMessage.mockResolvedValue(sentMessage);
-    await render(<ChatScreen {...makeProps()} />);
+    await renderWithQuery(<ChatScreen {...makeProps()} />);
     await screen.findByPlaceholderText('Type a message...');
 
     await fireEvent.changeText(screen.getByPlaceholderText('Type a message...'), 'Yes please!');
@@ -113,7 +113,7 @@ describe('ChatScreen', () => {
   it('resolves attachment URLs for messages that include attachments', async () => {
     mockFetchMessages.mockResolvedValue([message({ id: 'm3', body: '', attachments: ['conv-1/seller-1/img.jpg'] })]);
     mockResolveAttachmentUrls.mockResolvedValue({ 'conv-1/seller-1/img.jpg': 'https://example.com/img.jpg' });
-    await render(<ChatScreen {...makeProps()} />);
+    await renderWithQuery(<ChatScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('attachment-image-conv-1/seller-1/img.jpg')).toBeTruthy();
     expect(mockResolveAttachmentUrls).toHaveBeenCalledWith(['conv-1/seller-1/img.jpg']);

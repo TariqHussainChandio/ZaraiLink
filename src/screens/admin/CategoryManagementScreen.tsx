@@ -1,25 +1,22 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Button, EmptyState, Input, Sheet, Spinner } from '../../components/ui';
-import {
-  createCategory,
-  deleteCategory,
-  fetchCategories,
-  updateCategory,
-} from '../../services/modules/marketplace/listingsService';
+import { useDeleteCategory, useSaveCategory } from '../../hooks/api/admin';
+import { useCategories } from '../../hooks/api/marketplace';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { errorMessage } from '../../utils/errorMessage';
 import type { Category } from '../../types/marketplace';
 
 export function CategoryManagementScreen() {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: categories = [], isPending: loading, refetch } = useCategories();
+  const saveCategory = useSaveCategory();
+  const removeCategory = useDeleteCategory();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
@@ -27,16 +24,10 @@ export function CategoryManagementScreen() {
   const [slug, setSlug] = useState('');
   const [icon, setIcon] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setCategories(await fetchCategories());
-    setLoading(false);
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      refetch();
+    }, [refetch]),
   );
 
   const openCreate = () => {
@@ -60,13 +51,10 @@ export function CategoryManagementScreen() {
     setSavingId(editing?.id ?? 'new');
     try {
       const input = { name: name.trim(), slug: slug.trim(), icon: icon.trim() || null };
-      if (editing) {
-        await updateCategory(editing.id, input);
-      } else {
-        await createCategory(input);
-      }
+      await saveCategory.mutateAsync({ id: editing?.id, input });
       setSheetOpen(false);
-      await load();
+    } catch (error) {
+      Alert.alert('Could not save the category', errorMessage(error));
     } finally {
       setSavingId(null);
     }
@@ -75,18 +63,19 @@ export function CategoryManagementScreen() {
   const remove = (category: Category) => {
     if (!actorId) return;
     Alert.alert(
-      t('admin.categoryManagement.deleteConfirmTitle'),
-      t('admin.categoryManagement.deleteConfirmMessage', { name: category.name }),
+      'Delete category',
+      `Delete "${category.name}"? This cannot be undone.`,
       [
-        { text: t('common.cancel'), style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: t('admin.categoryManagement.delete'),
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             setSavingId(category.id);
             try {
-              await deleteCategory(category.id);
-              await load();
+              await removeCategory.mutateAsync(category.id);
+            } catch (error) {
+              Alert.alert('Could not delete the category', errorMessage(error));
             } finally {
               setSavingId(null);
             }
@@ -100,7 +89,7 @@ export function CategoryManagementScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         contentContainerStyle={styles.list}
         data={categories}
         keyExtractor={item => item.id}
@@ -112,14 +101,14 @@ export function CategoryManagementScreen() {
             </View>
             <View style={styles.actions}>
               <Button
-                label={t('admin.categoryManagement.edit')}
+                label="Edit"
                 variant="secondary"
                 fullWidth={false}
                 loading={savingId === item.id}
                 onPress={() => openEdit(item)}
               />
               <Button
-                label={t('admin.categoryManagement.delete')}
+                label="Delete"
                 variant="destructive"
                 fullWidth={false}
                 loading={savingId === item.id}
@@ -130,13 +119,13 @@ export function CategoryManagementScreen() {
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('admin.categoryManagement.emptyTitle')}
-            description={t('admin.categoryManagement.emptyDescription')}
+            title="No categories yet"
+            description="Add the first product category below."
           />
         }
         ListFooterComponent={
           <Button
-            label={t('admin.categoryManagement.addCategory')}
+            label="+ Add Category"
             variant="secondary"
             onPress={openCreate}
             style={styles.addButton}
@@ -146,29 +135,29 @@ export function CategoryManagementScreen() {
 
       <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)}>
         <Text style={styles.sheetTitle}>
-          {editing ? t('admin.categoryManagement.editCategoryTitle') : t('admin.categoryManagement.newCategoryTitle')}
+          {editing ? 'Edit Category' : 'New Category'}
         </Text>
         <Input
-          label={t('admin.categoryManagement.nameLabel')}
+          label="Name"
           value={name}
           onChangeText={setName}
-          placeholder={t('admin.categoryManagement.namePlaceholder')}
+          placeholder="e.g. Seeds"
         />
         <Input
-          label={t('admin.categoryManagement.slugLabel')}
+          label="Slug"
           value={slug}
           onChangeText={setSlug}
-          placeholder={t('admin.categoryManagement.slugPlaceholder')}
+          placeholder="e.g. seeds"
           autoCapitalize="none"
         />
         <Input
-          label={t('admin.categoryManagement.iconLabel')}
+          label="Icon (optional)"
           value={icon}
           onChangeText={setIcon}
-          placeholder={t('admin.categoryManagement.iconPlaceholder')}
+          placeholder="e.g. sprout"
         />
         <Button
-          label={editing ? t('admin.categoryManagement.saveChangesButton') : t('admin.categoryManagement.createCategoryButton')}
+          label={editing ? 'Save Changes' : 'Create Category'}
           loading={savingId === (editing?.id ?? 'new')}
           onPress={save}
         />
@@ -196,7 +185,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     slug: {
@@ -213,7 +202,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     sheetTitle: {
       fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
       marginBottom: spacing.lg,
     },

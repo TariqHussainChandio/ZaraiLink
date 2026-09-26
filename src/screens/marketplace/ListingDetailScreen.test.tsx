@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ListingDetailScreen } from './ListingDetailScreen';
 import { fetchListingById, recordListingView } from '../../services/modules/marketplace/listingsService';
 import { findOrCreateConversation } from '../../services/modules/messaging/messagingService';
@@ -104,7 +104,7 @@ describe('ListingDetailScreen', () => {
     mockFetchListingById.mockResolvedValue(listing());
     mockFetchReviewsForListing.mockResolvedValue([review]);
 
-    await render(<ListingDetailScreen {...makeProps()} />);
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
 
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
     expect(screen.getByText('Certified high-yield seeds')).toBeTruthy();
@@ -117,7 +117,7 @@ describe('ListingDetailScreen', () => {
     useAuthStore.setState({ user: { id: 'seller-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());
 
-    await render(<ListingDetailScreen {...makeProps()} />);
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
     await screen.findByText('Wheat seeds');
 
     expect(mockRecordListingView).not.toHaveBeenCalled();
@@ -127,7 +127,7 @@ describe('ListingDetailScreen', () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockRejectedValue(new Error('Network error'));
 
-    await render(<ListingDetailScreen {...makeProps()} />);
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
     expect(await screen.findByText('Listing not found')).toBeTruthy();
 
     mockFetchListingById.mockResolvedValue(listing());
@@ -140,7 +140,7 @@ describe('ListingDetailScreen', () => {
     mockFetchListingById.mockResolvedValue(listing());
     const props = makeProps();
 
-    await render(<ListingDetailScreen {...props} />);
+    await renderWithQuery(<ListingDetailScreen {...props} />);
     await fireEvent.press(await screen.findByText('Edit Listing'));
 
     expect(props.navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.EditListing, {
@@ -153,7 +153,7 @@ describe('ListingDetailScreen', () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());
 
-    await render(<ListingDetailScreen {...makeProps()} />);
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
     await fireEvent.press(await screen.findByText('Add to Cart'));
 
     expect(useCartStore.getState().items).toEqual([
@@ -167,7 +167,7 @@ describe('ListingDetailScreen', () => {
     mockFetchListingById.mockResolvedValue(listing());
     mockFindOrCreateConversation.mockResolvedValue({ id: 'conversation-1' });
 
-    await render(<ListingDetailScreen {...makeProps()} />);
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
     await fireEvent.press(await screen.findByText('Message Seller'));
 
     expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1');

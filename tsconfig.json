@@ -2,6 +2,8 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // An index into an array or record may be missing, so the result must be checked before it is used.
+    "noUncheckedIndexedAccess": true,
     // Babel compiles one file at a time, so code must not rely on cross-file type information.
     "isolatedModules": true,
     "types": ["jest", "expo/types"]

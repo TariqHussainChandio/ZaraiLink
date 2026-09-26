@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { BuyerDashboardScreen } from './DashboardScreen';
 import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
 import { APP_TABS, CONSULTATIONS_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
@@ -54,7 +54,7 @@ describe('BuyerDashboardScreen', () => {
       order({ status: 'pending' }),
       order({ id: 'order-2', status: 'completed' }),
     ]);
-    await render(<BuyerDashboardScreen />);
+    await renderWithQuery(<BuyerDashboardScreen />);
 
     expect(await screen.findByText('Total Purchases')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
@@ -64,20 +64,20 @@ describe('BuyerDashboardScreen', () => {
 
   it('lists recent purchases in the activity feed', async () => {
     mockFetchOrders.mockResolvedValue([order()]);
-    await render(<BuyerDashboardScreen />);
+    await renderWithQuery(<BuyerDashboardScreen />);
     expect(await screen.findByText('Green Farms')).toBeTruthy();
     expect(screen.getByText('Rs. 500 · pending')).toBeTruthy();
   });
 
   it('shows an empty state when there are no purchases', async () => {
     mockFetchOrders.mockResolvedValue([]);
-    await render(<BuyerDashboardScreen />);
+    await renderWithQuery(<BuyerDashboardScreen />);
     expect(await screen.findByText('No purchases yet')).toBeTruthy();
   });
 
   it('navigates into other tabs via Quick Actions', async () => {
     mockFetchOrders.mockResolvedValue([]);
-    await render(<BuyerDashboardScreen />);
+    await renderWithQuery(<BuyerDashboardScreen />);
     await screen.findByText('Browse Marketplace');
 
     await fireEvent.press(screen.getByText('Browse Marketplace'));
@@ -91,7 +91,7 @@ describe('BuyerDashboardScreen', () => {
 
   it('tapping a purchase navigates to its order detail', async () => {
     mockFetchOrders.mockResolvedValue([order()]);
-    await render(<BuyerDashboardScreen />);
+    await renderWithQuery(<BuyerDashboardScreen />);
     await screen.findByText('Green Farms');
     await fireEvent.press(screen.getByTestId('activity-row-order-1'));
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Orders, {
@@ -102,7 +102,7 @@ describe('BuyerDashboardScreen', () => {
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchOrders.mockRejectedValueOnce(new Error('offline'));
-    await render(<BuyerDashboardScreen />);
+    await renderWithQuery(<BuyerDashboardScreen />);
     expect(await screen.findByText("Couldn't load your dashboard")).toBeTruthy();
 
     mockFetchOrders.mockResolvedValueOnce([]);

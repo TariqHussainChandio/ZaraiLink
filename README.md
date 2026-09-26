@@ -19,7 +19,7 @@ admins on one mobile app, with an AI-assisted crop-disease advisory that always 
 ## Repository layout
 
 ```
-src/          React Native app (screens, components, services, stores, theme, localization)
+src/          React Native app (screens, components, services, stores, theme)
 backend/      FastAPI service (api, services, repositories, schemas, ml) and its tests
 supabase/     Migrations, seed data (reference data only), local stack config
 scripts/      Quality gates (check_reality.py) and CI helpers
@@ -37,6 +37,7 @@ app itself Android Studio with an emulator. Full detail is in
 npm ci
 
 # 2. Local Supabase (Postgres, Auth, REST, mail catcher) in Docker; applies every migration
+npx supabase gen signing-key --algorithm ES256 --workdir "$(mktemp -d)" | python -c "import json, sys; json.dump([json.load(sys.stdin)], sys.stdout)" > supabase/signing_keys.json   # once per clone
 npx supabase start
 npx supabase status -o env        # prints the local URL and keys used below
 
@@ -44,6 +45,7 @@ npx supabase status -o env        # prints the local URL and keys used below
 cd backend
 uv sync --frozen                  # exact, hash-locked dependencies from uv.lock
 cp .env.example .env              # then fill in the local values from step 2
+python ../scripts/fetch_model_weights.py   # downloads model.pth from Supabase Storage (needs MODEL_WEIGHTS_URL, see the setup guide)
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 cd ..
 
@@ -62,6 +64,7 @@ Local data is disposable. Never seed dummy users, listings, or orders into a rea
 npm run lint && npm run typecheck && npm test            # app
 cd backend && uv run pytest                              # API
 python scripts/check_reality.py                          # no stubs, fake behaviour, or growing debt
+npx supabase test db                                    # database: every policy and grant, as real roles
 ```
 
 CI runs all of these plus dependency, secret, and workflow scans on every pull request. `npm ci` also installs
@@ -81,4 +84,4 @@ fast git hooks that check staged files and the commit message before each commit
 
 ## Licence
 
-No licence has been chosen yet, so all rights are reserved. One is added before the repository is made public.
+Apache License 2.0 — see [`LICENSE`](LICENSE).

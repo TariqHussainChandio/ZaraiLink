@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import '../../localization';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { PaymentResultScreen } from './PaymentResultScreen';
 import { fetchPaymentById } from '../../services/modules/payments/paymentsService';
 import { ORDERS_ROUTES } from '../../constants/routes';
@@ -47,7 +47,7 @@ describe('PaymentResultScreen', () => {
       method: 'cod',
       status: 'successful',
     });
-    await render(<PaymentResultScreen {...makeProps()} />);
+    await renderWithQuery(<PaymentResultScreen {...makeProps()} />);
 
     expect(await screen.findByText('Payment Confirmed')).toBeTruthy();
     expect(screen.getByText('Rs. 1500')).toBeTruthy();
@@ -61,13 +61,13 @@ describe('PaymentResultScreen', () => {
       method: 'cod',
       status: 'failed',
     });
-    await render(<PaymentResultScreen {...makeProps()} />);
+    await renderWithQuery(<PaymentResultScreen {...makeProps()} />);
     expect(await screen.findByText('Payment Failed')).toBeTruthy();
   });
 
   it('shows a retryable error state when loading fails', async () => {
     mockFetchPayment.mockRejectedValue(new Error('network down'));
-    await render(<PaymentResultScreen {...makeProps()} />);
+    await renderWithQuery(<PaymentResultScreen {...makeProps()} />);
 
     expect(await screen.findByText("Couldn't load payment result")).toBeTruthy();
 
@@ -91,7 +91,7 @@ describe('PaymentResultScreen', () => {
       status: 'successful',
     });
     const props = makeProps();
-    await render(<PaymentResultScreen {...props} />);
+    await renderWithQuery(<PaymentResultScreen {...props} />);
     await screen.findByText('Payment Confirmed');
 
     await fireEvent.press(screen.getByText('Back to Order'));

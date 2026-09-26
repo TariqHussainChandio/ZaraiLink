@@ -1,8 +1,10 @@
 import json
 import logging
+from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APP_DIR = Path(__file__).resolve().parent.parent
@@ -38,14 +40,51 @@ _metadata = _load_model_metadata()
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # Defaults to "" (not omitted) so pydantic-settings' generated `__init__` stays a plain
+    # zero-arg call for mypy — the actual fail-fast behavior comes from `_not_empty` below, which
+    # runs regardless of whether a value reached this field via .env, a real env var, or the
+    # default: an empty string is rejected either way. A missing/incomplete .env must fail at
+    # Settings() construction, not boot successfully and fail confusingly on the first request
+    # that needs a real client (P5, item 3 — "fail-fast config").
     supabase_url: str = ""
-    # Used to verify incoming user JWTs via GET {supabase_url}/auth/v1/user (core/auth.py) and
-    # to build a request-scoped, RLS-respecting client authenticated as the caller
-    # (core/supabase_client.py:get_user_scoped_client) — never used to bypass RLS.
+    # Builds a request-scoped, RLS-respecting client authenticated as the caller
+    # (core/supabase_client.py:get_user_scoped_client) and the anon-role public client — never
+    # used to bypass RLS. (JWT verification itself is local, against Supabase's JWKS —
+    # core/jwt_verifier.py — not this key.)
     supabase_anon_key: str = ""
     # Bypasses RLS entirely — reserved for the narrow, explicitly documented cases in
     # core/supabase_client.py:get_service_role_client. Never the default DB-access path.
     supabase_service_role_key: str = ""
+
+    # Gates docs exposure (main.py) and response verbosity (e.g. /health/ready's error detail) —
+    # never used to gate a security control itself (RLS/auth apply identically in both).
+    environment: Literal["development", "production"] = "development"
+
+    # Ceiling applied to every route that has no tighter `@limiter.limit` (core/rate_limit.py). Settable so
+    # the proxy-header test can use a small number instead of firing 200 requests.
+    rate_limit_default: str = "200/minute"
+
+    # Empty means error tracking is off (core/observability.py). Public identifier, not a secret, but it
+    # still comes from the environment so each deployment reports to its own Sentry project.
+    sentry_dsn: str = ""
+
+    @field_validator("supabase_url", "supabase_anon_key", "supabase_service_role_key")
+    @classmethod
+    def _not_empty(cls, value: str, info) -> str:
+        # A field merely being *present* in .env doesn't mean it's usable — an env file can (and,
+        # on this repo, once did) define a key with no value at all, which pydantic accepts as a
+        # valid empty string rather than "missing." That silently produces a Supabase client with
+        # a blank key instead of failing where the mistake actually is: here, at boot.
+        if not value.strip():
+            raise ValueError(f"{info.field_name} must not be empty — check your .env file")
+        return value
+
+    @field_validator("supabase_url")
+    @classmethod
+    def _url_has_scheme(cls, value: str) -> str:
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("supabase_url must start with http:// or https://")
+        return value
 
     # Comma-separated (not JSON — this is a plain .env file) list of origins allowed to make
     # cross-origin browser requests, e.g. the Swagger UI or a future admin web surface. React
@@ -74,9 +113,17 @@ class Settings(BaseSettings):
 
     # Loaded from model_metadata.json's class_names list (same order as the trained classifier's
     # output layer, which ai_engine.py maps positionally) — see _load_model_metadata() above.
-    model_classes: list[str] = Field(
-        default_factory=lambda: _metadata.get("class_names") or _FALLBACK_CLASSES
-    )
+    model_classes: list[str] = Field(default_factory=lambda: _metadata.get("class_names") or _FALLBACK_CLASSES)
 
 
-settings = Settings()
+@lru_cache
+def get_settings() -> Settings:
+    """Preferred entry point for new code (`Depends(get_settings)` — testable via
+    `dependency_overrides`, and its cache means `Settings()` — including the fail-fast .env
+    validation above — only ever runs once per process). The bare `settings` instance below is
+    kept for the ~30 existing `from .config import settings` call sites; both resolve to the same
+    object."""
+    return Settings()
+
+
+settings = get_settings()

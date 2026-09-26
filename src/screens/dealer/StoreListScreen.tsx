@@ -1,55 +1,36 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
 import { HOME_ROUTES } from '../../constants/routes';
-import { fetchStores } from '../../services/modules/dealer/storeService';
+import { useStores } from '../../hooks/api/dealer';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { DealerStore } from '../../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function StoreListScreen({ navigation }: HomeScreenProps<'Stores'>) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const [stores, setStores] = useState<DealerStore[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data: stores = [], isPending, error, refetch } = useStores(!!userId);
+  const loading = isPending && !!userId;
+  const load = () => refetch();
 
-  const load = useCallback(() => {
-    if (!userId) return () => {};
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchStores().then(data => {
-      if (!cancelled) {
-        setStores(data);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.warn('[StoreListScreen] failed to load stores:', err);
-      if (!cancelled) {
-        setError(true);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  useFocusEffect(useCallback(() => load(), [load]));
+  // Coming back to the list shows what was added or changed elsewhere.
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) refetch();
+    }, [userId, refetch]),
+  );
 
   if (loading) return <Spinner fullscreen />;
-  if (error) {
+  if (error && stores.length === 0) {
     return (
       <EmptyState
-        title={t('dealer.storeList.couldntLoadTitle')}
-        description={t('dealer.shared.checkConnectionDescription')}
-        actionLabel={t('common.retry')}
+        title="Couldn't load stores"
+        description="Check your connection and try again."
+        actionLabel="Retry"
         onAction={load}
       />
     );
@@ -57,7 +38,7 @@ export function StoreListScreen({ navigation }: HomeScreenProps<'Stores'>) {
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={stores}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
@@ -70,14 +51,14 @@ export function StoreListScreen({ navigation }: HomeScreenProps<'Stores'>) {
                 <Text style={styles.name}>{item.name}</Text>
                 <Badge label={item.status} tone={item.status === 'active' ? 'success' : 'neutral'} />
               </View>
-              <Text style={styles.meta}>{item.address ?? t('dealer.storeList.noAddressSet')}</Text>
+              <Text style={styles.meta}>{item.address ?? 'No address set'}</Text>
             </Card>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
           <EmptyState
-            title={t('dealer.storeList.emptyTitle')}
-            description={t('dealer.storeList.emptyDescription')}
+            title="No stores yet"
+            description="Add your first store location to get started."
           />
         }
       />
@@ -85,7 +66,7 @@ export function StoreListScreen({ navigation }: HomeScreenProps<'Stores'>) {
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.StoreDetail, {})}
       >
-        <Text style={styles.fabLabel}>{t('dealer.storeList.newStoreFab')}</Text>
+        <Text style={styles.fabLabel}>+ New Store</Text>
       </TouchableOpacity>
     </View>
   );
@@ -111,7 +92,7 @@ function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
     },
     name: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     meta: {

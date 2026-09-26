@@ -1,81 +1,65 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Spinner } from '../../components/ui';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import { fetchOrderById } from '../../services/modules/orders/ordersService';
-import { fetchPaymentByOrderId, initiatePayment } from '../../services/modules/payments/paymentsService';
+import { useInitiatePayment, useOrderPaymentContext } from '../../hooks/api/payments';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { PaymentMethod } from '../../types/payments';
 import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
+import { errorMessage } from '../../utils/errorMessage';
+import { PAYMENT_METHOD_LABELS } from '../../constants/labels';
 
-// Labels/descriptions for each payment method live under payments.paymentMethod.methods.<id> in
-// the translation resources, keyed by the same PaymentMethod ids used throughout the app.
 const METHOD_IDS: PaymentMethod[] = ['cod', 'bank_transfer'];
+const METHOD_DESCRIPTIONS: Record<PaymentMethod, string> = {
+  cod: 'Pay in cash when your order arrives.',
+  bank_transfer: 'Transfer the amount and the seller will confirm receipt.',
+};
 
 export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'PaymentMethod'>) {
   const theme = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { orderId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
-  const [orderTotal, setOrderTotal] = useState<number | null>(null);
   const [method, setMethod] = useState<PaymentMethod>('cod');
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const { data: context } = useOrderPaymentContext(orderId);
+  const initiate = useInitiatePayment();
+  const orderTotal = context?.orderTotal ?? null;
+  const existingPayment = context?.existingPayment;
 
   useEffect(() => {
-    (async () => {
-      const [order, existingPayment] = await Promise.all([
-        fetchOrderById(orderId),
-        fetchPaymentByOrderId(orderId),
-      ]);
-      setOrderTotal(order.total);
-
-      // Already has a payment on record — don't let the buyer create a second one, just show
-      // the existing one's status instead.
-      if (existingPayment) {
-        navigation.replace(ORDERS_ROUTES.PaymentProcessing, { paymentId: existingPayment.id });
-        return;
-      }
-      setLoading(false);
-    })();
-  }, [orderId, navigation]);
+    // Already has a payment on record — don't let the buyer create a second one, just show
+    // the existing one's status instead.
+    if (existingPayment) navigation.replace(ORDERS_ROUTES.PaymentProcessing, { paymentId: existingPayment.id });
+  }, [existingPayment, navigation]);
 
   const onSubmit = async () => {
     if (!userId || orderTotal === null) return;
-    setSubmitting(true);
     try {
-      const payment = await initiatePayment(orderId, method);
+      const payment = await initiate.mutateAsync({ orderId, method });
       navigation.replace(ORDERS_ROUTES.PaymentProcessing, { paymentId: payment.id });
     } catch (error) {
-      Alert.alert(
-        t('payments.paymentMethod.couldNotStartPaymentTitle'),
-        error instanceof Error ? error.message : String(error),
-      );
-    } finally {
-      setSubmitting(false);
+      Alert.alert('Could not start payment', errorMessage(error));
     }
   };
 
-  if (loading || orderTotal === null) return <Spinner fullscreen />;
+  if (orderTotal === null || existingPayment) return <Spinner fullscreen />;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.total}>{t('payments.paymentMethod.amountLine', { amount: orderTotal.toFixed(0) })}</Text>
-      <Text style={styles.subtitle}>{t('payments.paymentMethod.subtitle')}</Text>
+      <Text style={styles.total}>{`Rs. ${orderTotal.toFixed(0)}`}</Text>
+      <Text style={styles.subtitle}>{"Choose how you'll pay for this order"}</Text>
 
       {METHOD_IDS.map(id => (
         <TouchableOpacity key={id} onPress={() => setMethod(id)}>
           <Card style={[styles.option, method === id && styles.optionSelected]}>
-            <Text style={styles.optionLabel}>{t(`payments.paymentMethod.methods.${id}.label`)}</Text>
-            <Text style={styles.optionDescription}>{t(`payments.paymentMethod.methods.${id}.description`)}</Text>
+            <Text style={styles.optionLabel}>{PAYMENT_METHOD_LABELS[id]}</Text>
+            <Text style={styles.optionDescription}>{METHOD_DESCRIPTIONS[id]}</Text>
           </Card>
         </TouchableOpacity>
       ))}
 
-      <Button label={t('payments.paymentMethod.continueLabel')} loading={submitting} onPress={onSubmit} style={styles.submit} />
+      <Button label="Continue" loading={initiate.isPending} onPress={onSubmit} style={styles.submit} />
     </View>
   );
 }
@@ -89,7 +73,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     total: {
       fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold as any,
+      fontWeight: typography.weights.bold,
       color: colors.text.primary,
     },
     subtitle: {
@@ -108,7 +92,7 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     optionLabel: {
       fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as any,
+      fontWeight: typography.weights.semibold,
       color: colors.text.primary,
     },
     optionDescription: {

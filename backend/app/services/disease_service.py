@@ -1,11 +1,22 @@
+import asyncio
+
 import httpx
 from fastapi import HTTPException
-from PIL import UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError
+from storage3.utils import StorageException
 
 from ..core.auth import AuthenticatedUser
 from ..core.config import settings
 from ..repositories import disease_repository
-from .ai_engine import ModelUnavailableError, classifier
+from .ai_engine import ModelUnavailableError, get_classifier
+
+# Security fix C2: the server used to fetch whatever URL the client sent (a blind SSRF, confirmed
+# in the P0 baseline). The image now always comes from our own private storage bucket, addressed
+# by a path the caller must own — never a client-chosen host. Every failure in that path (object
+# missing, too large, not a real image) maps to this one generic message, so a response can never
+# be used to tell those cases apart from the outside.
+_IMAGE_FETCH_ERROR = "Could not process the case image."
+_MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB, matches the disease-images bucket's file_size_limit
 
 # Advisory copy for the 38-class PlantVillage taxonomy the real model (backend/app/ml/checkpoints/)
 # is trained on. Keyed by the RAW taxonomy string exactly as it appears in class_names.json/
@@ -338,44 +349,74 @@ def _assert_owner_or_admin(user: AuthenticatedUser, case: dict | None) -> dict:
     return case
 
 
-def create_case(user: AuthenticatedUser, crop_id: str | None, image_url: str) -> dict:
-    return disease_repository.create_case(user.id, crop_id, image_url)
+async def create_case(user: AuthenticatedUser, crop_id: str | None, storage_path: str) -> dict:
+    # Server-side ownership check beyond the schema's regex (Field pattern in schemas/disease.py
+    # can validate shape, not identity): the folder segment must be the caller's own id, so one
+    # user can never create a case pointing at another user's uploaded object.
+    if not storage_path.startswith(f"{user.id}/"):
+        raise HTTPException(status_code=422, detail="storage_path must be under your own user id.")
+    case = await disease_repository.create_case(user.id, crop_id, storage_path)
+    return await _with_signed_url(case)
 
 
-def get_case_for_user(user: AuthenticatedUser, disease_case_id: str) -> dict:
-    case = disease_repository.get_case_with_prediction(disease_case_id)
-    _assert_owner_or_admin(user, case)
-    predictions = case.get("prediction") or []
-    case["prediction"] = predictions[0] if predictions else None
+async def _with_signed_url(case: dict) -> dict:
+    """Replaces the stored storage_path with a freshly minted signed URL before the response
+    ever leaves the service layer — the disease-images bucket is private (security fix C2), so a
+    raw path is never returned to a client."""
+    storage_path = case.pop("storage_path")
+    signed_url = await disease_repository.create_signed_url(storage_path, expires_in=86400)
+    if signed_url is None:
+        # The object the case row points at is gone or the signing call itself failed — a
+        # server-side fault, not something the caller did, so this is a 500, not the generic
+        # client-facing 422 used above for bad input.
+        raise HTTPException(status_code=500, detail="Could not prepare the case image for display.")
+    case["image_signed_url"] = signed_url
     return case
 
 
-async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
-    case = disease_repository.get_disease_case(disease_case_id)
-    _assert_owner_or_admin(user, case)
+async def get_case_for_user(user: AuthenticatedUser, disease_case_id: str) -> dict:
+    case = _assert_owner_or_admin(user, await disease_repository.get_case_with_prediction(disease_case_id))
+    predictions = case.get("prediction") or []
+    case["prediction"] = predictions[0] if predictions else None
+    return await _with_signed_url(case)
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            image_response = await client.get(case["image_url"])
-            image_response.raise_for_status()
-        except httpx.HTTPError:
-            raise HTTPException(status_code=422, detail="Could not fetch the case image.")
+
+async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
+    case = _assert_owner_or_admin(user, await disease_repository.get_disease_case(disease_case_id))
 
     try:
-        raw_predicted_disease, confidence = classifier.predict(image_response.content)
-    except ModelUnavailableError:
+        image_bytes = await disease_repository.download_case_image(case["storage_path"])
+    # StorageException: the storage API returned an error response (e.g. the object doesn't
+    # exist). httpx.HTTPError: a network-level failure before storage3 could even respond (both
+    # are the realistic failure modes of the underlying storage3 client — see file_api.py, which
+    # only catches HTTPStatusError itself and re-raises as StorageException).
+    except (StorageException, httpx.HTTPError) as exc:
+        # Any storage failure (object missing, network, permissions) — one message for all of
+        # them, so a response can't be used to tell "doesn't exist" from "exists but broken".
+        # `from exc` keeps the real cause in server-side logs; the client only ever sees the
+        # generic detail above.
+        raise HTTPException(status_code=422, detail=_IMAGE_FETCH_ERROR) from exc
+
+    if len(image_bytes) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=422, detail=_IMAGE_FETCH_ERROR)
+
+    try:
+        # A CPU-bound forward pass: run in a worker thread so it cannot stall every other request on the
+        # event loop (P5 item 2, "inference moves to a threadpool"). torch releases the GIL while computing.
+        raw_predicted_disease, confidence = await asyncio.to_thread(get_classifier().predict, image_bytes)
+    except ModelUnavailableError as exc:
         raise HTTPException(
             status_code=503,
             detail="AI model not trained yet — check back once model.pth has been trained.",
-        )
-    except UnidentifiedImageError:
-        raise HTTPException(status_code=422, detail="Uploaded file is not a valid image.")
+        ) from exc
+    except (UnidentifiedImageError, Image.DecompressionBombError) as exc:
+        raise HTTPException(status_code=422, detail=_IMAGE_FETCH_ERROR) from exc
 
     # Look up advisory copy by the RAW label (DESCRIPTIONS' keys) before humanizing — the
     # humanized string below is presentation-only and must not be used for this lookup.
     description, recommended_actions = DESCRIPTIONS.get(raw_predicted_disease, DEFAULT_DESCRIPTION)
 
-    return disease_repository.insert_prediction(
+    return await disease_repository.insert_prediction(
         disease_case_id=case["id"],
         predicted_disease=_humanize_class_name(raw_predicted_disease),
         confidence_score=confidence,
