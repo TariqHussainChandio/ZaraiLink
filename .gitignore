@@ -96,11 +96,12 @@ __pycache__/
 *.h5
 *.keras
 *.ckpt
-# The trained disease-advisory checkpoint (security fix C5, gate G8): hosted on GitHub Releases
-# and fetched by scripts/fetch_model_weights.py instead of being tracked in git, so a retrain no
-# longer adds ~9 MB to history every time. model_metadata.json (the pinned URL + SHA-256) stays
-# tracked.
+# Model weights are application data: they live in Supabase Storage (private `ml-models` bucket) and
+# are fetched by scripts/fetch_model_weights.py, never tracked in git or attached to a GitHub release
+# (SRDS §45-§46). model_metadata.json (bucket, path and pinned SHA-256) stays tracked.
 backend/app/ml/checkpoints/model.pth
+*.pth
+*.onnx
 # Ruby Bundler
 .bundle/
 
