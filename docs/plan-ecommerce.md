@@ -69,7 +69,7 @@ Legend: **Keep** (works, moves as is), **Change** (works, must change to meet th
 | Top-level modules admin, farmer, dealer, buyer, expert, ai, inventory, common, theme | Layered: `src/screens/<domain>`, `src/components`, `src/services/modules`, `src/hooks/api`; backend `app/{api,services,repositories,schemas,core,ml}` | Change |
 | Centralised theme with dimensions, borders, components | `src/theme` has colors, typography, spacing (+radii, shadows), motion, accents; no dimensions, borders or components files; 74 raw sizes, 24 raw border widths | Change |
 | Layered separation, controlled cross-module calls | Screens → hooks → services gated; no module gate | Change |
-| Supabase for data and files; GitHub for code only | Model weights moved to Supabase Storage (D13); git history still holds two old copies | Change (A0) |
+| Supabase for data and files; GitHub for code only | Model weights in the private Supabase bucket `ml-models` (D13); GitHub release and old history copies removed | Keep |
 
 ## 2. Phases
 
