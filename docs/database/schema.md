@@ -1013,6 +1013,7 @@ Indexes:
 | `expert-documents` | no | 10485760 | application/pdf, image/jpeg, image/png, image/webp |
 | `listing-images` | yes | 8388608 | image/jpeg, image/png, image/webp |
 | `message-attachments` | no | 10485760 | image/jpeg, image/png, image/webp |
+| `ml-models` | no | 52428800 | application/octet-stream |
 
 ## Storage policies (`storage.objects`)
 

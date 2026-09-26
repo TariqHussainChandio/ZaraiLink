@@ -195,12 +195,11 @@ jobs:
           cache-dependency-glob: backend/uv.lock
       # --frozen: install exactly what uv.lock records, never re-resolve.
       - run: uv sync --frozen
-      # Security fix C5/gate G8: model.pth is no longer tracked in git (every retrain used to add
-      # ~9 MB to history). GITHUB_TOKEN covers the private-repo fallback in the fetch script;
-      # once the repo goes public this token is simply never needed by it.
+      # The trained model is application data, so it lives in Supabase Storage (private ml-models bucket), not in git
+      # or a GitHub release. MODEL_WEIGHTS_URL is a signed URL for that one object (repository secret).
       - name: Fetch the disease-model checkpoint
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODEL_WEIGHTS_URL: ${{ secrets.MODEL_WEIGHTS_URL }}
         run: uv run python ../scripts/fetch_model_weights.py
       # ruff, formatting, and mypy findings may only go down. mypy alone flags every write path that
       # crashes against a real database, which the mocked unit tests cannot see.
@@ -269,12 +268,11 @@ jobs:
       - name: Install backend dependencies
         working-directory: backend
         run: uv sync --frozen
-      # Security fix C5/gate G8: model.pth is no longer tracked in git. tests/integration includes
-      # test_ai_engine_real_checkpoint.py, which needs the real weights present.
+      # tests/integration includes test_ai_engine_real_checkpoint.py, which needs the real weights from Supabase Storage.
       - name: Fetch the disease-model checkpoint
         working-directory: backend
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODEL_WEIGHTS_URL: ${{ secrets.MODEL_WEIGHTS_URL }}
         run: uv run python ../scripts/fetch_model_weights.py
       # Real Auth, real database, no mocks — proves security fixes C1/C2 (docs/process/
       # standardization-plan.md) end to end, not just against mocks.

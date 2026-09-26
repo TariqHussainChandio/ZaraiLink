@@ -45,7 +45,7 @@ npx supabase status -o env        # prints the local URL and keys used below
 cd backend
 uv sync --frozen                  # exact, hash-locked dependencies from uv.lock
 cp .env.example .env              # then fill in the local values from step 2
-python ../scripts/fetch_model_weights.py   # downloads model.pth (not in git); see setup guide if the repo is still private
+python ../scripts/fetch_model_weights.py   # downloads model.pth from Supabase Storage (needs MODEL_WEIGHTS_URL, see the setup guide)
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 cd ..
 

@@ -85,20 +85,20 @@ Deployment settings worth knowing (all optional locally):
 `backend/app/ml/checkpoints/` holds `model_metadata.json` (tracked) and `model.pth` (not tracked — see
 below). See `docs/architecture/ai-disease-advisory.md` for what the model does and does not cover.
 
-**Model weights (`model.pth`, 9.3 MB):** hosted on a GitHub Release, not git (security fix C5 — every
-retrain used to add ~9 MB to history permanently). `scripts/fetch_model_weights.py` downloads it,
-verifying the SHA-256 pinned in `model_metadata.json`; re-run it any time the weights change, it's a
-no-op otherwise. **While the repository is still private**, the plain download 404s (GitHub hides
-private release assets from anonymous requests) and the script needs a token to fall back to the
-authenticated API:
+**Model weights (`model.pth`, 9.3 MB):** application data, so it lives in Supabase Storage like every other
+application file (SRDS §45–§46): the private `ml-models` bucket of the hosted project
+(`mobilenetv2-plantvillage-38/model.pth`). Git and GitHub hold code only. `scripts/fetch_model_weights.py`
+downloads it through a signed URL and checks the SHA-256 pinned in `model_metadata.json`; re-run it whenever the
+weights change, it is a no-op otherwise. Put the signed URL in `backend/.env` (git-ignored):
 
 ```bash
-export GH_TOKEN=$(gh auth token)   # once per shell session
-python ../scripts/fetch_model_weights.py
+MODEL_WEIGHTS_URL=https://<project-ref>.supabase.co/storage/v1/object/sign/ml-models/mobilenetv2-plantvillage-38/model.pth?token=...
 ```
 
-CI does this automatically with the job's own `GITHUB_TOKEN`. Once the repository goes public (the
-standardization plan's go-public gate), the token is no longer needed by anyone.
+CI reads the same value from the repository secret `MODEL_WEIGHTS_URL`. A signed URL expires (the current one on
+2028-09-25): make a new one in the Supabase dashboard (Storage → ml-models → the file → Get URL) and update both
+places. After a retrain: upload the new file to the bucket, update `weights_storage_path` and `weights_sha256` in
+`model_metadata.json`, and issue a new URL.
 
 ## 4. The app
 
