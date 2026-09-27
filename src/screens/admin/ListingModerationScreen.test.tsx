@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ListingModerationScreen } from './ListingModerationScreen';
@@ -7,6 +8,7 @@ import {
   updateListingStatus,
 } from '../../services/modules/marketplace/listingsService';
 import { useAuthStore } from '../../store/authStore';
+import { ApiError } from '../../services/api/errors';
 import type { ListingWithRelations } from '../../types/marketplace';
 
 jest.mock('@react-navigation/native', () => {
@@ -96,6 +98,22 @@ describe('ListingModerationScreen', () => {
     await fireEvent.press(screen.getByText('Activate'));
 
     expect(mockUpdateListingStatus).toHaveBeenCalledWith('listing-1', 'active');
+  });
+
+  it('tells an admin without a second factor to set one up (the status route needs it)', async () => {
+    // PATCH …/listings/{id}/status requires a second factor (require_admin_aal2, migration 20260928090000).
+    mockFetchListings.mockResolvedValue([listing()]);
+    mockUpdateListingStatus.mockRejectedValue(
+      new ApiError({ status: 403, code: 'mfa_required', kind: 'forbidden', message: 'MFA required' }),
+    );
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    await renderWithQuery(<ListingModerationScreen />);
+    await screen.findByText('Wheat Seeds');
+
+    await fireEvent.press(screen.getByText('Deactivate'));
+
+    expect(alert).toHaveBeenCalledWith('Could not update the listing', 'This action needs two-step verification.');
+    alert.mockRestore();
   });
 
   it('hides the toggle action for sold listings', async () => {

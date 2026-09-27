@@ -96,20 +96,26 @@ async def create_listing(access_token: str, owner_id: str, fields: dict[str, Any
     return first_row(response)
 
 
-async def update_listing(access_token: str, listing_id: str, fields: dict[str, Any]) -> dict:
+# Edit and delete match the owner as well as the id: only the owner changes or removes a listing (BR-15). An admin
+# moderates through update_listing_status instead, which is audited; anyone else matches no row and gets a 404.
+async def update_listing(access_token: str, listing_id: str, owner_id: str, fields: dict[str, Any]) -> dict:
     client = await get_user_scoped_client(access_token)
-    response = await client.table("listings").update(fields).eq("id", listing_id).execute()
+    response = await client.table("listings").update(fields).eq("id", listing_id).eq("owner_id", owner_id).execute()
     return first_row(response)
 
 
-async def delete_listing(access_token: str, listing_id: str) -> None:
+async def delete_listing(access_token: str, listing_id: str, owner_id: str) -> None:
     client = await get_user_scoped_client(access_token)
-    await client.table("listings").delete().eq("id", listing_id).execute()
+    response = await client.table("listings").delete().eq("id", listing_id).eq("owner_id", owner_id).execute()
+    first_row(response)
 
 
 async def update_listing_status(access_token: str, listing_id: str, status: str) -> None:
+    # first_row: a listing that does not exist (or that the policies refuse) is a 404, so no audit row is written for
+    # a change that did not happen.
     client = await get_user_scoped_client(access_token)
-    await client.table("listings").update({"status": status}).eq("id", listing_id).execute()
+    response = await client.table("listings").update({"status": status}).eq("id", listing_id).execute()
+    first_row(response)
 
 
 async def fetch_all_listings_for_moderation(access_token: str) -> list[dict]:

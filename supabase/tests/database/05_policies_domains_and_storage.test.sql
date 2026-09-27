@@ -78,7 +78,8 @@ select tests.expect(tests.fx('B'), 'insert into public.experts (id) values (' ||
 select tests.expect(tests.fx('S'), 'insert into public.experts (id) values (' || tests.l('S') || ')', 'err:42501', 'experts: a suspended user cannot');
 select tests.expect(tests.fx('E'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:1', 'experts: the expert updates their record');
 select tests.expect(tests.fx('B'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:0', 'experts: another user cannot');
-select tests.expect(tests.fx('A'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:1', 'experts: an admin can');
+select tests.expect(tests.fx('A'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:0', 'experts: an admin without a second factor cannot (20260928090000)');
+select tests.expect(tests.fx('A'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:1', 'experts: an admin with a second factor can', 'aal2');
 alter table public.experts disable trigger guard_experts_verification_status;
 update public.experts set verification_status = 'approved' where id = tests.fx('E');
 alter table public.experts enable trigger guard_experts_verification_status;

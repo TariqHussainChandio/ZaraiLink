@@ -304,7 +304,7 @@ Indexes:
 
 ### `expert_verifications`
 
-Row-level security: **on**. Grants: authenticated: insert, select, update.
+Row-level security: **on**. Grants: authenticated: select, update.
 
 | Column | Type | Null | Default |
 |---|---|---|---|
@@ -356,9 +356,9 @@ Indexes:
 |---|---|---|---|
 | `experts_insert_own` | INSERT | - | ((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
 | `experts_select_verified_or_own_or_admin` | SELECT | ((verification_status = 'approved'::verification_status) OR (id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
-| `experts_update_own_or_admin` | UPDATE | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
+| `experts_update_own_or_admin` | UPDATE | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
 
-Triggers: `guard_experts_verification_status`, `notify_expert_verification_changed`, `set_experts_updated_at`.
+Triggers: `guard_experts_admin_update`, `guard_experts_verification_status`, `notify_expert_verification_changed`, `set_experts_updated_at`.
 
 ### `farm_crops`
 
@@ -593,12 +593,12 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `listings_owner_delete` | DELETE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | - |
-| `listings_owner_insert` | INSERT | - | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
-| `listings_owner_update` | UPDATE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
+| `listings_owner_delete` | DELETE | ((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | - |
+| `listings_owner_insert` | INSERT | - | ((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+| `listings_owner_update` | UPDATE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
 | `listings_select_active_or_owner` | SELECT | ((status = 'active'::listing_status) OR (owner_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
-Triggers: `notify_listing_status_changed`, `set_listings_seller_role`, `set_listings_updated_at`.
+Triggers: `guard_listings_admin_update`, `notify_listing_status_changed`, `set_listings_seller_role`, `set_listings_updated_at`.
 
 ### `messages`
 
@@ -972,7 +972,9 @@ Indexes:
 | `commit_stock_on_confirm()` | trigger | definer | search_path=public, pg_temp |
 | `create_notification(uuid,text,jsonb,boolean)` | void | definer | search_path=public, pg_temp |
 | `guard_consultations_update()` | trigger | invoker | search_path="" |
+| `guard_experts_admin_update()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_experts_verification_status()` | trigger | invoker | search_path=public, pg_temp |
+| `guard_listings_admin_update()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_messages_updates()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_order_items_insert()` | trigger | invoker | search_path="" |
 | `guard_orders_insert()` | trigger | invoker | search_path="" |

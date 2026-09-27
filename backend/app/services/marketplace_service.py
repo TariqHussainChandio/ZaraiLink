@@ -82,11 +82,11 @@ async def update_listing(user: AuthenticatedUser, listing_id: str, input) -> dic
     fields = {k: v for k, v in provided.items() if k not in ("country", "province", "city")}
     if location_touched:
         fields["location"] = _location(provided.get("country"), provided.get("province"), provided.get("city"))
-    return await repo.update_listing(user.access_token, listing_id, fields)
+    return await repo.update_listing(user.access_token, listing_id, user.id, fields)
 
 
 async def delete_listing(user: AuthenticatedUser, listing_id: str) -> None:
-    await repo.delete_listing(user.access_token, listing_id)
+    await repo.delete_listing(user.access_token, listing_id, user.id)
 
 
 async def update_listing_status(user: AuthenticatedUser, listing_id: str, status: str) -> None:

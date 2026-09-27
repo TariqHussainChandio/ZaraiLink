@@ -40,7 +40,8 @@ select is(
     'authenticated disease_cases INSERT,SELECT',
     'authenticated disease_predictions SELECT',
     'authenticated expert_specializations DELETE,INSERT,SELECT,UPDATE',
-    'authenticated expert_verifications INSERT,SELECT,UPDATE',
+    -- INSERT is column-level (expert_id, document_url) since 20260928090000, so it is not a table grant.
+    'authenticated expert_verifications SELECT,UPDATE',
     'authenticated experts INSERT,SELECT,UPDATE',
     'authenticated farm_crops DELETE,INSERT,SELECT,UPDATE',
     'authenticated farmer_profiles INSERT,SELECT,UPDATE',
@@ -132,7 +133,8 @@ select tests.expect(tests.fx('A'), 'update public.payments set amount = 2 where 
 select tests.expect(tests.fx('F'), $$update public.messages set body = 'edited' where id = $$ || tests.l('M1'), 'err:P0001', 'guard_messages_updates: a participant cannot edit a body');
 select tests.expect(tests.fx('F'), 'update public.messages set sender_id = ' || tests.l('F') || ' where id = ' || tests.l('M1'), 'err:42501', 'guard_messages_updates: nobody can change the sender (column grant)');
 select tests.expect(tests.fx('E'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('E'), 'err:P0001', 'guard_experts_verification_status: an expert cannot approve themselves');
-select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('E'), 'n:1', 'guard_experts_verification_status: an admin can');
+select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('E'), 'n:0', 'experts_update_own_or_admin: an admin without a second factor cannot decide (20260928090000)');
+select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('E'), 'n:1', 'guard_experts_verification_status: an admin with a second factor can', 'aal2');
 
 -- notification triggers: the event reaches the right person --------------------------------------------------
 select is((select count(*) from public.notifications where user_id = tests.fx('F') and type = 'order_new'), 1::bigint, 'notify_new_order: the seller is told of a new order');
