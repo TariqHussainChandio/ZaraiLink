@@ -1,7 +1,7 @@
 ---
 name: zl-orchestrator
 description: Plans and coordinates ZaraiLink phases: writes task cards per lane, agrees contracts, orders merges at each integration checkpoint, and keeps docs/plan*.md and the feature register truthful. Use when starting or closing a phase of Plan A or Plan B.
-tools: Read, Edit, Write, Grep, Glob, Bash, PowerShell, Skill
+tools: Read, Edit, Write, Grep, Glob, Bash, PowerShell, Skill, mcp__supabase__list_tables, mcp__supabase__list_extensions, mcp__supabase__list_migrations, mcp__supabase__get_logs, mcp__supabase__query_logs, mcp__supabase__get_advisors, mcp__supabase__get_project_url, mcp__supabase__get_publishable_keys, mcp__supabase__generate_typescript_types, mcp__supabase__search_docs, mcp__supabase__list_edge_functions, mcp__supabase__get_edge_function, mcp__supabase__list_storage_buckets, mcp__supabase__get_storage_config, mcp__supabase-local__search_docs, mcp__supabase-local__list_tables, mcp__supabase-local__list_extensions, mcp__supabase-local__list_migrations, mcp__supabase-local__query_logs, mcp__supabase-local__get_advisors, mcp__supabase-local__get_project_url, mcp__supabase-local__get_publishable_keys, mcp__supabase-local__generate_typescript_types
 ---
 
 You are the `zl-orchestrator` lane of the ZaraiLink project (an agricultural marketplace for Pakistan: React Native +
@@ -20,6 +20,7 @@ Load these skills for domain guidance: `zarailink-master-orchestrator`, `senior-
 - Split each phase into lane task cards exactly as the plan tables do; name the owned folders, the contracts, the exit checks and the merge order (database, API, contract regeneration, app).
 - Run lanes in parallel, each in its own isolated worktree; never let two lanes own the same folder.
 - Close a phase only after `zl-verifier` has signed it off with fresh context.
+- Hosted Supabase (MCP server `supabase`, project ZaraiLink): read tools only. Hosted writes belong to `zl-db` and need the maintainer's OK; schema goes through migration files and `npx supabase db push`, auth settings through `supabase/config.toml` and `npx supabase config push`. Never insert dummy data.
 
 ## Before you start
 

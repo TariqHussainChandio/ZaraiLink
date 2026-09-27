@@ -1,6 +1,15 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-09-26): approved structure, not started.** The requirements are [`docs/srds.md`](srds.md); this
+> **Status (2026-09-27): A0 done and independently verified;** it closes when PR #13 and its follow-up are merged
+> with CI green. The hosted project now matches the repository: 55 migrations and the reference data pushed, and Auth
+> configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
+> Supabase's password rules, reauthentication for old sessions, phone sign-up off). An early build of A3's account
+> status, email-only sign-in and Application Status screen is parked, unmerged, on branch `wip/a3-account-status`
+> (its migration is not pushed); A3 starts from it after A1 and A2. Still to fix before A1 (plan mode): an expert can
+> approve themselves through PostgREST, and an admin can edit or delete any listing unaudited (BR-15); both in
+> `docs/plan-ecommerce.md`, A0 status. **Next: A1** (modular restructure), which
+> needs decisions D2–D4. The requirements are [`docs/srds.md`](srds.md),
+> traced requirement by requirement in [`docs/status/srds-traceability.md`](status/srds-traceability.md); this
 > plan follows it strictly. It is split into two plans that share one module map and one set of agents:
 >
 > - **Plan A — ZaraiLink e-commerce platform:** [`docs/plan-ecommerce.md`](plan-ecommerce.md)
@@ -152,7 +161,7 @@ Agreed before the phase that needs them. Each has a contract test, so a lane can
 | G5 Error tracking | App and API crash visibility | Brief exists |
 | G13 EAS | Store builds | Brief exists |
 | Hosted migrations | Every phase that changes the database | Pushed only with the maintainer's approval in that moment |
-| `MODEL_WEIGHTS_URL` | CI downloads the model | Maintainer adds the repository secret (value in `backend/.env`) |
+| `MODEL_WEIGHTS_URL` | CI downloads the model | **Done** 2026-09-26: repository secret set; CI downloads and checks the model. Dependabot pull requests need the same value as a Dependabot secret |
 
 ## 8. Where each SRDS §53 rule is delivered
 

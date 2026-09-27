@@ -6,11 +6,14 @@
     },
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=<your-project-ref>&read_only=true"
+      "url": "https://mcp.supabase.com/mcp?project_ref=<your-project-ref>&features=database,debugging,development,docs,functions,storage",
+      "headers": {
+        "Authorization": "Bearer ${SUPABASE_ACCESS_TOKEN}"
+      }
     },
     "supabase-local": {
       "type": "http",
-      "url": "http://127.0.0.1:54321/mcp"
+      "url": "http://127.0.0.1:54323/api/mcp"
     }
   }
 }

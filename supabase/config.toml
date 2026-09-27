@@ -234,7 +234,10 @@ double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
-secure_password_change = false
+# On: a session older than 24 h must confirm a code Supabase emails (`reauthenticate()` → nonce) before
+# `updateUser({ password })` is accepted, so an unlocked phone alone cannot change the password (audit SEC-06).
+# The app's code step arrives in A3 (parked on branch wip/a3-account-status); until then such a user signs in again.
+secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "60s"
 # Number of characters used in the email OTP.
@@ -242,23 +245,14 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour). P4: tightened to 15 min.
 otp_expiry = 900
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# SMTP: none locally (Mailpit catches every email). The hosted project sends through Gmail; that block
+# lives under [remotes.production] at the end of this file so local runs never send real mail.
 
 # Signup confirmation and password-recovery emails — show the OTP code (`{{ .Token }}`)
 # VerifyOtpScreen asks for, instead of the default link (finding A2: "email carries a link, not
-# a code"). Enabled here for local dev (Mailpit has no restriction on this); the HOSTED project
-# needs custom SMTP first — free-tier projects on Supabase's shared email provider reject
-# template customization entirely (verified: `supabase config push` → 400 "Email template
-# modification is not available for free tier projects using the default email provider"). See
-# the G1 integration brief — this stays local-only until that's resolved.
+# a code"). The hosted project accepts these templates only with custom SMTP (the shared sender
+# answers 400 "Email template modification is not available for free tier projects using the
+# default email provider"), which [remotes.production.auth.email.smtp] provides (gate G1).
 [auth.email.template.confirmation]
 subject = "Your ZaraiLink verification code"
 content_path = "./supabase/templates/confirmation.html"
@@ -279,10 +273,9 @@ content_path = "./supabase/templates/recovery.html"
 # content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
-# Allow/disallow new user signups via SMS to your project. RegisterScreen lets a user choose
-# email or phone as their verification channel (VerifyOtpScreen handles both) — this must stay
-# in lockstep with [auth.email] enable_confirmations above so both channels send a numeric OTP.
-enable_signup = true
+# Allow/disallow new user signups via SMS to your project. Off: no SMS provider exists (gate G2), so a phone sign-up
+# could never receive its code. The app's phone option is removed in A3; turning this on needs a provider below.
+enable_signup = false
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = true
 # Template for sending OTP to users — numeric code, matching the email OTP's {{ .Token }} shape
@@ -453,3 +446,24 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# The hosted ZaraiLink project. `npx supabase config push` applies everything above plus these overrides to it; local
+# `supabase start` ignores this block. Secrets come from the environment of the terminal that runs the push (never a
+# file in git): SUPABASE_AUTH_SMTP_USER, SUPABASE_AUTH_SMTP_PASS (a Google app password), SUPABASE_AUTH_SMTP_ADMIN_EMAIL.
+# Gmail allows about 500 emails a day, enough for the FYP; gate G1 brief: docs/process/briefs/g1-smtp.md.
+[remotes.production]
+project_id = "uqcxwshlxvmoovjpizlf"
+
+[remotes.production.auth.email.smtp]
+enabled = true
+host = "smtp.gmail.com"
+port = 587
+user = "env(SUPABASE_AUTH_SMTP_USER)"
+pass = "env(SUPABASE_AUTH_SMTP_PASS)"
+admin_email = "env(SUPABASE_AUTH_SMTP_ADMIN_EMAIL)"
+sender_name = "ZaraiLink"
+
+# With custom SMTP the hosted limit can rise above the local default of 2 an hour.
+[remotes.production.auth.rate_limit]
+email_sent = 30

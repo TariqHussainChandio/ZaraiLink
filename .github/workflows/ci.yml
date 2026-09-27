@@ -393,6 +393,26 @@ jobs:
     timeout-minutes: 2
     permissions: {}
     steps:
+      # Name every required job and its result in the run summary, so a skipped job is visible rather than
+      # hidden inside a green check. Written before the gate below, so it is there when the gate fails too.
+      - name: Summary of required jobs
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          {
+            echo "### Required jobs"
+            echo
+            echo "| Job | Result |"
+            echo "|---|---|"
+            printf '%s' "$NEEDS" | jq -r 'to_entries[] | "| \(.key) | \(.value.result) |"'
+            echo
+            skipped="$(printf '%s' "$NEEDS" | jq -r '[to_entries[] | select(.value.result == "skipped") | .key] | join(", ")')"
+            if [ -n "$skipped" ]; then
+              echo "Skipped: $skipped. A test job is skipped when nothing in its area changed (see the \`changes\` job); the title check runs only on pull requests."
+            else
+              echo "No required job was skipped."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
       # Skipped jobs (nothing relevant changed) are fine; failed or cancelled ones are not.
       - name: Every required job passed or was legitimately skipped
         env:

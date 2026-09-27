@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledMcpjsonServers": [
+    "supabase",
+    "supabase-local",
+    "context7"
+  ],
+  "permissions": {
+    "allow": [
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_extensions",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__get_logs",
+      "mcp__supabase__query_logs",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_publishable_keys",
+      "mcp__supabase__generate_typescript_types",
+      "mcp__supabase__search_docs",
+      "mcp__supabase__list_edge_functions",
+      "mcp__supabase__get_edge_function",
+      "mcp__supabase__list_storage_buckets",
+      "mcp__supabase__get_storage_config",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "mcp__supabase-local__search_docs",
+      "mcp__supabase-local__list_tables",
+      "mcp__supabase-local__list_extensions",
+      "mcp__supabase-local__list_migrations",
+      "mcp__supabase-local__query_logs",
+      "mcp__supabase-local__get_advisors",
+      "mcp__supabase-local__get_project_url",
+      "mcp__supabase-local__get_publishable_keys",
+      "mcp__supabase-local__generate_typescript_types"
+    ],
+    "deny": [
+      "mcp__supabase__apply_migration"
+    ]
+  }
+}

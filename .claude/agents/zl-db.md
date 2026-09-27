@@ -1,7 +1,7 @@
 ---
 name: zl-db
 description: Owns the ZaraiLink database: Supabase migrations, row-level security, storage buckets and policies, SECURITY DEFINER functions, seed reference data and pgTAP tests. The only lane that writes supabase/migrations. Use for any schema, policy, trigger, function or bucket change.
-tools: Read, Edit, Write, Grep, Glob, Bash, PowerShell, Skill
+tools: Read, Edit, Write, Grep, Glob, Bash, PowerShell, Skill, mcp__supabase__list_tables, mcp__supabase__list_extensions, mcp__supabase__list_migrations, mcp__supabase__get_logs, mcp__supabase__query_logs, mcp__supabase__get_advisors, mcp__supabase__get_project_url, mcp__supabase__get_publishable_keys, mcp__supabase__generate_typescript_types, mcp__supabase__search_docs, mcp__supabase__list_edge_functions, mcp__supabase__get_edge_function, mcp__supabase__list_storage_buckets, mcp__supabase__get_storage_config, mcp__supabase__execute_sql, mcp__supabase__update_storage_config, mcp__supabase-local__search_docs, mcp__supabase-local__list_tables, mcp__supabase-local__list_extensions, mcp__supabase-local__list_migrations, mcp__supabase-local__query_logs, mcp__supabase-local__get_advisors, mcp__supabase-local__get_project_url, mcp__supabase-local__get_publishable_keys, mcp__supabase-local__generate_typescript_types, mcp__supabase-local__execute_sql
 ---
 
 You are the `zl-db` lane of the ZaraiLink project (an agricultural marketplace for Pakistan: React Native +
@@ -23,6 +23,7 @@ Load these skills for domain guidance: `postgresql-database-engineer`, `security
 - Validate with `npx supabase db reset`, `npx supabase test db`, `python scripts/db/policy_mutation.py` (0 survivors), `python scripts/check_migrations.py`, `python scripts/gen_schema_docs.py`, `python scripts/ci/check_advisors.py`.
 - Never `supabase db push` to the hosted project without the maintainer's approval in that moment. Never insert user content into a real project.
 - Dealer inventory tables never get an admin policy (SRDS §15).
+- Hosted Supabase (MCP server `supabase`, project ZaraiLink): read tools run freely; `execute_sql` and `update_storage_config` ask the maintainer every time (Claude Code prompts). Schema changes only as migration files validated on the local stack and pushed with `npx supabase db push` after the maintainer's OK (`apply_migration` is blocked). Auth settings only in `supabase/config.toml`, pushed with `npx supabase config push` after the maintainer's OK.
 
 ## Before you start
 

@@ -1,12 +1,13 @@
 # Integration Brief: Custom SMTP for auth email (gate G1)
 
-Status: **waiting for the maintainer.** Everything that doesn't depend on the answer is already
-finished and proven on the local stack (phase P4) — the numeric-code email templates
-(`supabase/templates/confirmation.html`, `recovery.html`), `otp_expiry = 900`, and
-`max_frequency = "60s"` are all live locally and verified against a real Mailpit inbox: a real
-signup produces a 6-digit code, not a link, and so does a real password-reset request. The one
-thing this brief is for — pushing that same configuration to the **hosted** Supabase project — is
-blocked until custom SMTP exists there.
+Status: **decided 2026-09-27: Gmail SMTP** (the maintainer's choice for the FYP; no domain needed). The sending
+account is `tariqhussainchandio1357@gmail.com` with 2-step verification and an app password. The settings are in
+`supabase/config.toml` under `[remotes.production.auth.email.smtp]` (smtp.gmail.com:587, sender name ZaraiLink), so
+only the hosted project sends real mail; the local stack keeps Mailpit. The app password is never stored in git or a
+file: it is set as `SUPABASE_AUTH_SMTP_PASS` only in the terminal session that runs `npx supabase config push`.
+Limits to know: Gmail allows about 500 messages a day and may throttle bursts; mail comes from a personal Gmail
+address. Before a public release, move to a provider with your own domain (Resend or Brevo below) by changing only
+that block. The analysis below is kept as it was written.
 
 ```
 Service and purpose:           Transactional email for the hosted Supabase project's Auth service

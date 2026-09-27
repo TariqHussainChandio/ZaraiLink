@@ -95,9 +95,11 @@ weights change, it is a no-op otherwise. Put the signed URL in `backend/.env` (g
 MODEL_WEIGHTS_URL=https://<project-ref>.supabase.co/storage/v1/object/sign/ml-models/mobilenetv2-plantvillage-38/model.pth?token=...
 ```
 
-CI reads the same value from the repository secret `MODEL_WEIGHTS_URL`. A signed URL expires (the current one on
-2028-09-25): make a new one in the Supabase dashboard (Storage → ml-models → the file → Get URL) and update both
-places. After a retrain: upload the new file to the bucket, update `weights_storage_path` and `weights_sha256` in
+CI reads the same value from the repository secret `MODEL_WEIGHTS_URL`. Pull requests opened by Dependabot cannot
+read repository secrets, only Dependabot secrets, so a Dependabot pull request that touches the backend or database
+needs the value there as well: `gh secret set MODEL_WEIGHTS_URL --app dependabot --repo TariqHussainChandio/ZaraiLink`
+(not set yet). A signed URL expires (the current one on 2028-09-25): make a new one in the Supabase dashboard
+(Storage → ml-models → the file → Get URL) and update `backend/.env` and every secret that holds it. After a retrain: upload the new file to the bucket, update `weights_storage_path` and `weights_sha256` in
 `model_metadata.json`, and issue a new URL.
 
 ## 4. The app
@@ -225,6 +227,43 @@ migration and a paired `supabase/tests/database/<migration version>_<name>.test.
 Backups: `scripts/db/backup.sh` and `scripts/db/restore-drill.sh` (needs Docker); the live setup is in
 `docs/process/briefs/g3-backup.md`. `scripts/db/explain-bench-load.sql` loads disposable benchmark data into the local
 stack only; `supabase db reset` removes it.
+
+## MCP servers (for AI coding agents)
+
+Claude Code reads `.mcp.json` in the repository root (git-ignored; copy `.mcp.json.example` and put in the project
+ref, `uqcxwshlxvmoovjpizlf` for ZaraiLink). It defines three servers:
+
+| Server | What it reaches | Access |
+|---|---|---|
+| `supabase` | The hosted ZaraiLink project only (`project_ref` in the URL) | Read-write. Read tools run freely; `execute_sql`, `update_storage_config` and `deploy_edge_function` ask you every time; `apply_migration` is blocked (`.claude/settings.json`) |
+| `supabase-local` | The local Docker stack (`npx supabase start`), through Studio at `http://127.0.0.1:54323/api/mcp` (the gateway route `:54321/mcp` answers 400 in this CLI version) | Local data only; read tools run freely, writes ask |
+| `context7` | Current library documentation | Read-only |
+
+The `supabase` server signs in with a Supabase personal access token sent as a header; `.mcp.json` reads it from the
+`SUPABASE_ACCESS_TOKEN` environment variable, so the token is never written into a project file. (Browser sign-in does
+not work from the VS Code extension: its OAuth flow garbles the `?project_ref=…` part of the server address and
+Supabase answers "Resource must be a valid MCP endpoint"; anthropics/claude-code issues 69746 and 34880, closed
+without a fix.)
+
+1. Create the token: open https://supabase.com/dashboard/account/tokens, **Generate new token**, name it
+   `ZaraiLink Claude Code MCP`, choose an expiry if offered, and copy it (it is shown once).
+2. Store it as a Windows user environment variable: Start menu → "Edit environment variables for your account" →
+   **New** → name `SUPABASE_ACCESS_TOKEN`, value: the token → **OK**. (Never paste it into a chat, a file or git.)
+3. VS Code must start with the new variable. Windows hands a new variable only to programs started after Explorer
+   picked it up, so a plain restart of VS Code is not always enough. Reliable: quit VS Code (File → Exit), sign out of
+   Windows and back in, then open VS Code. Without signing out: quit VS Code, open PowerShell from the Start menu and run
+   `$env:SUPABASE_ACCESS_TOKEN = [Environment]::GetEnvironmentVariable('SUPABASE_ACCESS_TOKEN','User'); code D:\FYP\ZaraiLink`.
+4. In the Claude Code panel open the MCP servers list: `supabase` shows as connected. If it still says it needs
+   authentication, clear the old sign-in there once.
+
+To revoke access: delete the token on the same Supabase page and remove the environment variable. The token can reach
+every project in your account; the `project_ref` in the URL is what limits this server to ZaraiLink.
+
+With write access, `execute_sql` runs as `postgres`, so row-level security does not apply to it. Hosted changes follow
+`AGENTS.md`: schema as a migration file validated locally, then `npx supabase db push`; Auth settings (sign-up, email
+codes, redirect URLs, SMTP) in `supabase/config.toml`, then `npx supabase config push`, which shows the difference and
+asks before applying. The MCP server has no tool for Auth settings. The Supabase CLI is signed in separately
+(`npx supabase login`); check it with `npx supabase projects list`.
 
 ## Troubleshooting
 

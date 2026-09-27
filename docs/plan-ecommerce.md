@@ -48,7 +48,7 @@ Legend: **Keep** (works, moves as is), **Change** (works, must change to meet th
 
 | SRDS requirement | Today | Verdict |
 |---|---|---|
-| Farmer scans (camera/gallery) → AI API → report | Farmer-only flow; MobileNetV2, 38 classes; photos compressed; model now in Supabase Storage | Keep |
+| Farmer scans (camera/gallery) → AI API → report | The app offers the flow to farmers; the API accepts any signed-in role; MobileNetV2, 38 classes; photos compressed; model in Supabase Storage | Keep (API roles decided in A6) |
 | Report: disease, confidence, symptoms, treatment, precautions, advisory, disclaimer | Disease, confidence, description, recommended actions, disclaimer | Change |
 | Full AI report travels with the consultation; expert sees a case summary | Consult prefills text and photo; no link to the case | Change |
 | Expert assessment kept apart from the AI assessment | Free-text messages only | Build |
@@ -84,10 +84,41 @@ the phase ends with the integration checkpoint and a `zl-verifier` sign-off.
 | Lane | Tasks | Done when |
 |---|---|---|
 | maintainer | Test and merge PR #11; add the `MODEL_WEIGHTS_URL` repository secret; free the local Supabase ports (`net stop winnat; net start winnat` as Administrator); decide whether to push the pending migrations to the hosted project | `main` green on GitHub; `npx supabase start` works |
-| `zl-orchestrator` | Write `docs/status/srds-traceability.md` (every SRDS section → requirement → phase → test); add one feature-register row per Build/Change item in §1 | Matrix and register committed |
+| `zl-orchestrator` | Write `docs/status/srds-traceability.md` (every SRDS section → requirement → phase → test); add one feature-register row per Build/Change item in §1 (and Plan B §1) | Matrix and register committed |
 | `zl-devops` | CI job summary lists skipped jobs; confirm the model fetch uses the secret | CI shows the model downloaded from Supabase |
 
 **Exit:** clean tree, green CI, traceability matrix, local stack and emulator run.
+
+**Status (2026-09-27): done, verified with findings (all fixed).** PR #11 merged (5e963f8); CI green on `main` (run
+36273648403) with the model downloaded from Supabase and checksum-verified; `npx supabase test db` 486/486 locally;
+the app runs signed in on the Pixel_8 emulator against the local stack; traceability matrix and register rows
+written. Closes when the maintainer commits these documents and CI is green after the push (the new job summary
+first runs then). Open maintainer items that do not block A1: the Dependabot copy of `MODEL_WEIGHTS_URL`, GitHub
+Support for PR refs #1–#3.
+
+**Hosted project (2026-09-27, the maintainer's decision):** brought level with the repository: 55 migrations with the
+reference data (`npx supabase db push --include-seed`, checked through the Supabase MCP) and the Auth configuration
+(`npx supabase config push`; gate G1 decided: Gmail SMTP, `docs/process/briefs/g1-smtp.md`). A test password-reset
+email was accepted by the hosted project; its arrival is not yet confirmed. Known effect until A3: a password change
+from a session older than 24 hours fails in the app (Supabase now asks for reauthentication and the app's code step is
+parked with A3); signing in again works around it.
+
+**Found after A0 (2026-09-27) — expert self-approval, fix before A1:** an expert can insert their own `experts` row
+already `approved` through PostgREST and then appears as a verified expert (the verification guard fires on UPDATE
+only), and an admin without a second factor can change `verification_status` directly, unaudited. Both hold on the
+hosted project too. The fix (guard on INSERT and UPDATE, `is_admin_aal2()` in the guard and the policy's admin branch,
+pgTAP for each refused path) is built and tested on the parked branch `wip/a3-account-status`; bring it forward in
+plan mode together with the BR-15 fix below.
+
+**Found in A0 verification — BR-15 defect, fix before A1:** an admin can edit or delete any listing through
+`PATCH`/`DELETE /api/v1/marketplace/listings/{id}` with no audit row and no second factor, because
+`listings_owner_update` and `listings_owner_delete` allow `is_admin()` (see the feature register). The admin's own
+moderation route (`PATCH …/listings/{id}/status`, audited, `require_admin` without a second factor) writes through
+the same policy with the admin's token, so simply dropping `is_admin()` would break moderation. Decide in plan mode
+(`zl-db` with `zl-commerce`): for example, the API refuses edit and delete by anyone but the owner; the policies let
+the admin change only `status` (a guard trigger) and only with a second factor (`is_admin_aal2()`, matching the other
+admin writes); the `/status` route moves to `require_admin_aal2`. Proof: pgTAP and a two-user smoke test (owner
+allowed; admin edit or delete and another user refused; admin status change audited).
 
 ### A1 — Modular restructure (no behaviour change)
 
@@ -156,6 +187,13 @@ app bundles and opens on the emulator; `module-boundary` at zero.
 
 **Goal:** SRDS §3–§13, §50, §53.1–§53.9. Plan mode first (auth, RLS, migrations).
 
+**Parked head start:** branch `wip/a3-account-status` (commit `0d7edd8`, not merged, its migration not pushed) holds an
+early build of this phase's status work: `profiles.account_status` with its guards and helpers, the FastAPI
+`account_not_approved` check, an audited admin decision route, email-only sign-in with Supabase's password rule and
+reauthentication, the Application Status screen and Approve/Reject in User Management. It was verified with findings
+(residuals and the direct-database audit gap are in its commit and documents). A3 starts from it once A2's components
+and shell exist, in plan mode, confirming D10 first; its screens are rebuilt on A2's components rather than kept.
+
 | Lane | Tasks | Needs |
 |---|---|---|
 | `zl-db` | `account_status` for dealers and experts; `dealer_profiles` (business name, address, location, type, registration number); `required_documents` (per role, admin-managed); `application_documents`; private `dealer-documents` bucket; expert `years_experience`, `institution_affiliation`; helpers `is_approved_dealer()`, `is_approved_expert()` used in every dealer and expert policy; status-change audit trigger; farmer and buyer location columns; pgTAP two-user proofs (pending vs approved) | A1 |
@@ -177,7 +215,7 @@ Mailpit; audit rows for every decision. Hosted email stays Blocked until G1.
 
 | Lane | Tasks | Needs |
 |---|---|---|
-| `zl-db` | `order_status` gains `dispatched`; seller-only `ready → dispatched`; drop the confirm-time stock commit (confirm checks availability only); `order_events` outbox (unique per order line) written in the dispatch transaction; `listings.inventory_product_id` (nullable link, dealer listings); buying rules (experts and admin cannot buy) in the order guards; pgTAP | A3 |
+| `zl-db` | `order_status` gains `dispatched`; seller-only `ready → dispatched`; drop the confirm-time stock commit (confirm checks availability only); `order_events` outbox (unique per order line) written in the dispatch transaction; `listings.inventory_product_id` (nullable link, dealer listings); buying rules (experts and admin cannot buy) in the order guards; widen the BR-10 structure test to rider, vehicle and warehouse names; pgTAP | A3 |
 | `zl-commerce` | Order API and screens with Dispatch; stock-short block (D6) through the availability contract; stock badges (in, low, out, unknown); listing form "link to inventory product" for dealers (hidden until B3); keep BR-09/10/11 tests | contract "Order dispatched event"; availability keeps today's `available_stock` until B3 replaces it behind the same contract |
 | `zl-buyer` | Buyer dashboard (recent orders, quick actions), purchases list, checkout entry | `zl-commerce` |
 | `zl-farmer` | Farmer seller tools (my products, sales) and farmer buying from dealers | `zl-commerce` |
@@ -205,7 +243,7 @@ none; PostgREST and API agree on every move; buying matrix proven by two-user te
 | Lane | Tasks | Needs |
 |---|---|---|
 | `zl-db` | `disease_knowledge` (per model class: symptoms, treatment, precautions, advisory; admin-managed; audited "AI Configuration Changed"); `consultations.disease_case_id`; `consultation_assessments` (agree, correct, additional diagnosis, recommendations, request information); pgTAP | A3 |
-| `zl-ai` | AI report assembly (prediction + knowledge); report API; Scan, Analysing, Report (confident, low confidence, healthy), Unavailable screens; AI isolation tests (AI down → marketplace, orders, payments, messaging, inventory and expert accounts unaffected) | `zl-db` |
+| `zl-ai` | AI report assembly (prediction + knowledge); report API; decide with the maintainer whether `/api/v1/disease/*` is farmer-only (today any signed-in role may call it) and enforce it in the API and the policies; a real leaf photo fixture (licence-clear) so the real-photo prediction test runs instead of skipping; Scan, Analysing, Report (confident, low confidence, healthy), Unavailable screens; AI isolation tests (AI down → marketplace, orders, payments, messaging, inventory and expert accounts unaffected) | `zl-db` |
 | `zl-expert` | Consultation request carries the report; AI case summary for the expert; Expert Assessment panel kept apart from the AI assessment; farmer sees both | contract "AI report" |
 | `zl-farmer` | Scan Disease entry on the dashboard | `zl-ai` |
 | `zl-admin` | AI activity (scans, failures, low-confidence share, referrals); knowledge-base management | `zl-db` |
