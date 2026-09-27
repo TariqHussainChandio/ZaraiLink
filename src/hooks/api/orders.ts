@@ -10,6 +10,7 @@ import { fetchPaymentByOrderId } from '../../services/modules/payments/paymentsS
 import { fetchReviewByOrderId } from '../../services/modules/reviews/reviewsService';
 import type { CartItem } from '../../store/cartStore';
 import type { OrderStatus } from '../../types/orders';
+import { useInvalidateOrders } from './invalidation';
 import { queryKeys } from './keys';
 
 /** The signed-in user's orders as buyer or as seller (the same cache entry the order history screen reads). */
@@ -38,14 +39,16 @@ export function useOrderDetail(orderId: string) {
 }
 
 /** An order status change shows in the order list, the detail screen, the payment screens and the dashboards. */
-export function useInvalidateOrders() {
-  const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.orders.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all }),
-    ]);
+/** What the payment-method screen needs: the order total and any payment already started for it. */
+export function useOrderPaymentContext(orderId: string) {
+  return useQuery({
+    queryKey: queryKeys.payments.forOrder(orderId),
+    queryFn: async () => {
+      const [order, existingPayment] = await Promise.all([fetchOrderById(orderId), fetchPaymentByOrderId(orderId)]);
+      return { orderTotal: order.total, existingPayment };
+    },
+    staleTime: 0,
+  });
 }
 
 export function useUpdateOrderStatus(orderId: string) {

@@ -31,12 +31,12 @@ class UpdateOrderStatusRequest(BaseModel):
     to: OrderStatus
 
 
-class ProfileRef(BaseModel):
+class OrderProfileRef(BaseModel):
     id: str
     full_name: str
 
 
-class ListingRef(BaseModel):
+class OrderListingRef(BaseModel):
     title: str
     unit: str
 
@@ -51,7 +51,7 @@ class OrderItem(BaseModel):
 
 
 class OrderItemWithListing(OrderItem):
-    listing: ListingRef | None = None
+    listing: OrderListingRef | None = None
 
 
 class Order(BaseModel):
@@ -68,8 +68,8 @@ class Order(BaseModel):
 
 class OrderWithItems(Order):
     order_items: list[OrderItemWithListing] = []
-    buyer: ProfileRef | None = None
-    seller: ProfileRef | None = None
+    buyer: OrderProfileRef | None = None
+    seller: OrderProfileRef | None = None
 
 
 class OrderStatusHistoryEntry(BaseModel):

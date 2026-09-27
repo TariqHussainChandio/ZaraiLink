@@ -5,8 +5,8 @@
 > Supabase's password rules, reauthentication for old sessions, phone sign-up off). An early build of A3's account
 > status, email-only sign-in and Application Status screen is parked, unmerged, on branch `wip/a3-account-status`
 > (its migration is not pushed); A3 starts from it after A1 and A2. The two fixes due before A1 (an expert could
-> approve themselves; an admin could edit or delete any listing unaudited, BR-15) are built and tested on branch
-> `fix/admin-write-scope`, migration `20260928090000` (hosted push after merge). **Next: A1** (modular restructure);
+> approve themselves; an admin could edit or delete any listing unaudited, BR-15) are fixed (PR #14, migration
+> `20260928090000`, pushed to the hosted project 2026-09-27 (56 migrations, advisors unchanged)). **Next: A1** (modular restructure);
 > D2–D4 decided. The requirements are [`docs/srds.md`](srds.md),
 > traced requirement by requirement in [`docs/status/srds-traceability.md`](status/srds-traceability.md); this
 > plan follows it strictly. It is split into two plans that share one module map and one set of agents:

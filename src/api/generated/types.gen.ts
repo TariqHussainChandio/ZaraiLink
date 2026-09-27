@@ -328,6 +328,28 @@ export type Consultation = {
 };
 
 /**
+ * ConsultationListingRef
+ */
+export type ConsultationListingRef = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Price
+     */
+    price: number;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Unit
+     */
+    unit: string;
+};
+
+/**
  * ConsultationMessageWithListing
  */
 export type ConsultationMessageWithListing = {
@@ -351,7 +373,7 @@ export type ConsultationMessageWithListing = {
      * Id
      */
     id: string;
-    recommended_listing?: AppSchemasConsultationsListingRef | null;
+    recommended_listing?: ConsultationListingRef | null;
     /**
      * Recommended Listing Id
      */
@@ -360,6 +382,24 @@ export type ConsultationMessageWithListing = {
      * Sender Id
      */
     sender_id: string;
+};
+
+/**
+ * ConsultationProfileRef
+ */
+export type ConsultationProfileRef = {
+    /**
+     * Avatar Url
+     */
+    avatar_url?: string | null;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Id
+     */
+    id: string;
 };
 
 /**
@@ -375,7 +415,7 @@ export type ConsultationWithRelations = {
      * Crop Id
      */
     crop_id: string | null;
-    expert?: AppSchemasConsultationsProfileRef | null;
+    expert?: ConsultationProfileRef | null;
     /**
      * Expert Id
      */
@@ -412,7 +452,7 @@ export type ConsultationWithRelations = {
      * Updated At
      */
     updated_at: string;
-    user?: AppSchemasConsultationsProfileRef | null;
+    user?: ConsultationProfileRef | null;
     /**
      * User Id
      */
@@ -1977,7 +2017,7 @@ export type OrderItemWithListing = {
      * Id
      */
     id: string;
-    listing?: AppSchemasOrdersListingRef | null;
+    listing?: OrderListingRef | null;
     /**
      * Listing Id
      */
@@ -1994,6 +2034,34 @@ export type OrderItemWithListing = {
      * Unit Price
      */
     unit_price: number;
+};
+
+/**
+ * OrderListingRef
+ */
+export type OrderListingRef = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Unit
+     */
+    unit: string;
+};
+
+/**
+ * OrderProfileRef
+ */
+export type OrderProfileRef = {
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Id
+     */
+    id: string;
 };
 
 /**
@@ -2030,7 +2098,7 @@ export type OrderStatusHistoryEntry = {
  * OrderWithItems
  */
 export type OrderWithItems = {
-    buyer?: AppSchemasOrdersProfileRef | null;
+    buyer?: OrderProfileRef | null;
     /**
      * Buyer Id
      */
@@ -2055,7 +2123,7 @@ export type OrderWithItems = {
      * Product Subtotal
      */
     product_subtotal: number;
-    seller?: AppSchemasOrdersProfileRef | null;
+    seller?: OrderProfileRef | null;
     /**
      * Seller Id
      */
@@ -2895,74 +2963,6 @@ export type ViewCountsRequest = {
      * Listing Ids
      */
     listing_ids: Array<string>;
-};
-
-/**
- * ListingRef
- */
-export type AppSchemasConsultationsListingRef = {
-    /**
-     * Id
-     */
-    id: string;
-    /**
-     * Price
-     */
-    price: number;
-    /**
-     * Title
-     */
-    title: string;
-    /**
-     * Unit
-     */
-    unit: string;
-};
-
-/**
- * ProfileRef
- */
-export type AppSchemasConsultationsProfileRef = {
-    /**
-     * Avatar Url
-     */
-    avatar_url?: string | null;
-    /**
-     * Full Name
-     */
-    full_name: string;
-    /**
-     * Id
-     */
-    id: string;
-};
-
-/**
- * ListingRef
- */
-export type AppSchemasOrdersListingRef = {
-    /**
-     * Title
-     */
-    title: string;
-    /**
-     * Unit
-     */
-    unit: string;
-};
-
-/**
- * ProfileRef
- */
-export type AppSchemasOrdersProfileRef = {
-    /**
-     * Full Name
-     */
-    full_name: string;
-    /**
-     * Id
-     */
-    id: string;
 };
 
 export type AdminListAuditLogsData = {

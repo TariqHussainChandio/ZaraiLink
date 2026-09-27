@@ -144,7 +144,7 @@ describeReal('order, payment, messaging and notification hooks against the real 
 
     // --- the buyer pays; the seller marks it received
     signInAs(buyerToken);
-    const pay = await renderHook(() => ({ start: payments.useInitiatePayment(), context: payments.useOrderPaymentContext(orderId) }), { wrapper });
+    const pay = await renderHook(() => ({ start: payments.useInitiatePayment(), context: orders.useOrderPaymentContext(orderId) }), { wrapper });
     await waitFor(() => expect(pay.result.current.context.data?.orderTotal).toBe(220));
     let payment!: { id: string; status: string };
     await act(async () => {

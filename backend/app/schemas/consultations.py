@@ -8,7 +8,7 @@ ConsultationStatus = Literal[
 ]
 
 
-class ProfileRef(BaseModel):
+class ConsultationProfileRef(BaseModel):
     id: str
     full_name: str
     avatar_url: str | None = None
@@ -19,7 +19,7 @@ class CropRef(BaseModel):
     name: str
 
 
-class ListingRef(BaseModel):
+class ConsultationListingRef(BaseModel):
     id: str
     title: str
     price: float
@@ -42,8 +42,8 @@ class Consultation(BaseModel):
 
 
 class ConsultationWithRelations(Consultation):
-    user: ProfileRef | None = None
-    expert: ProfileRef | None = None
+    user: ConsultationProfileRef | None = None
+    expert: ConsultationProfileRef | None = None
     crop: CropRef | None = None
 
 
@@ -76,7 +76,7 @@ class ConsultationMessage(BaseModel):
 
 
 class ConsultationMessageWithListing(ConsultationMessage):
-    recommended_listing: ListingRef | None = None
+    recommended_listing: ConsultationListingRef | None = None
 
 
 class SendConsultationMessageRequest(BaseModel):

@@ -1,33 +1,19 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { fetchOrderById } from '../../services/modules/orders/ordersService';
 import {
   fetchPaymentById,
-  fetchPaymentByOrderId,
   initiatePayment,
   markPaymentFailed,
   markPaymentReceived,
 } from '../../services/modules/payments/paymentsService';
 import type { PaymentMethod } from '../../types/payments';
 import { queryKeys } from './keys';
-import { useInvalidateOrders } from './orders';
+import { useInvalidateOrders } from './invalidation';
 
 /** A payment by id. The seller changes its status, so it is always refetched when a screen shows it. */
 export function usePayment(paymentId: string) {
   return useQuery({
     queryKey: queryKeys.payments.byId(paymentId),
     queryFn: () => fetchPaymentById(paymentId),
-    staleTime: 0,
-  });
-}
-
-/** What the payment-method screen needs: the order total and any payment already started for it. */
-export function useOrderPaymentContext(orderId: string) {
-  return useQuery({
-    queryKey: queryKeys.payments.forOrder(orderId),
-    queryFn: async () => {
-      const [order, existingPayment] = await Promise.all([fetchOrderById(orderId), fetchPaymentByOrderId(orderId)]);
-      return { orderTotal: order.total, existingPayment };
-    },
     staleTime: 0,
   });
 }

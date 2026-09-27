@@ -103,15 +103,15 @@ email was accepted by the hosted project; its arrival is not yet confirmed. Know
 from a session older than 24 hours fails in the app (Supabase now asks for reauthentication and the app's code step is
 parked with A3); signing in again works around it.
 
-**Found after A0 (2026-09-27) — expert self-approval. Fixed locally 2026-09-27** (branch `fix/admin-write-scope`, migration `20260928090000_admin_write_scope.sql`; hosted push after merge, with the maintainer's OK): an expert can insert their own `experts` row
+**Found after A0 (2026-09-27) — expert self-approval. Fixed 2026-09-27** (PR #14, migration `20260928090000_admin_write_scope.sql`, pushed to the hosted project 2026-09-27 (56 migrations, advisors unchanged)): an expert can insert their own `experts` row
 already `approved` through PostgREST and then appears as a verified expert (the verification guard fires on UPDATE
-only), and an admin without a second factor can change `verification_status` directly, unaudited. Both hold on the
-hosted project until the migration is pushed. The fix: the guard on INSERT and UPDATE, `is_admin_aal2()` in the guard and
+only), and an admin without a second factor can change `verification_status` directly, unaudited. Both held on the
+hosted project until the push. The fix: the guard on INSERT and UPDATE, `is_admin_aal2()` in the guard and
 the policy's admin branch, an admin held to the decision column, experts inserting only `(expert_id, document_url)`
 into verification records, and pgTAP for each refused path. Residuals found by its verification are in the feature
 register ("Admin write scope: known residuals", A7).
 
-**Found in A0 verification — BR-15 defect. Fixed locally 2026-09-27** in the same migration and branch, as designed below (edit and delete match the owner; admin status moderation only, with a second factor, audited; a guard holds a non-owner to the status column): an admin can edit or delete any listing through
+**Found in A0 verification — BR-15 defect. Fixed 2026-09-27** in the same migration (PR #14, hosted too), as designed below (edit and delete match the owner; admin status moderation only, with a second factor, audited; a guard holds a non-owner to the status column): an admin can edit or delete any listing through
 `PATCH`/`DELETE /api/v1/marketplace/listings/{id}` with no audit row and no second factor, because
 `listings_owner_update` and `listings_owner_delete` allow `is_admin()` (see the feature register). The admin's own
 moderation route (`PATCH …/listings/{id}/status`, audited, `require_admin` without a second factor) writes through
