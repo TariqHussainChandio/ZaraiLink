@@ -534,7 +534,7 @@
   ]
  },
  "PATCH /api/v1/marketplace/listings/{listing_id}/status": {
-  "kind": "roles",
+  "kind": "aal2",
   "roles": [
    "admin"
   ]

@@ -64,7 +64,12 @@ select tests.expect(tests.fx('F'), $$insert into public.listings (owner_id, titl
 select tests.expect(tests.fx('S'), $$insert into public.listings (owner_id, title, price) values ($$ || tests.l('S') || $$, 'Suspended', 5)$$, 'err:42501', 'listings: a suspended user cannot insert');
 select tests.expect(tests.fx('F'), $$update public.listings set price = 7 where id = $$ || tests.l('L1'), 'n:1', 'listings: an owner updates');
 select tests.expect(tests.fx('F2'), $$update public.listings set price = 1 where id = $$ || tests.l('L1'), 'n:0', 'listings: another farmer updates nothing');
-select tests.expect(tests.fx('A'), $$update public.listings set price = 8 where id = $$ || tests.l('L1'), 'n:1', 'listings: an admin updates (moderation)');
+select tests.expect(tests.fx('A'), $$update public.listings set price = 8 where id = $$ || tests.l('L1'), 'n:0', 'listings: an admin without a second factor changes nothing (20260928090000)');
+select tests.expect(tests.fx('A'), $$update public.listings set price = 8 where id = $$ || tests.l('L1'), 'err:42501', 'listings: an admin with a second factor cannot edit someone else''s listing', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.listings set status = 'inactive' where id = $$ || tests.l('L1'), 'n:1', 'listings: an admin with a second factor moderates the status', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.listings set status = 'active' where id = $$ || tests.l('L1'), 'n:1', 'listings: and restores it', 'aal2');
+select tests.expect(tests.fx('A'), $$insert into public.listings (owner_id, title, price) values ($$ || tests.l('F2') || $$, 'Listed for someone', 5)$$, 'err:42501', 'listings: an admin cannot list in someone else''s name', 'aal2');
+select tests.expect(tests.fx('A'), $$delete from public.listings where id = $$ || tests.l('L2'), 'n:0', 'listings: an admin cannot delete someone else''s listing', 'aal2');
 select tests.expect(tests.fx('F2'), $$delete from public.listings where id = $$ || tests.l('L2'), 'n:0', 'listings: another farmer deletes nothing');
 select tests.expect(tests.fx('F'), $$delete from public.listings where id = $$ || tests.l('L2'), 'n:1', 'listings: an owner deletes');
 

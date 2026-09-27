@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin, require_authenticated_user
+from ....core.auth import AuthenticatedUser, require_admin, require_admin_aal2, require_authenticated_user
 from ....core.pagination import Page, paginate, paginate_feed
 from ....schemas.marketplace import (
     Category,
@@ -71,12 +71,11 @@ async def delete_listing(listing_id: str, user: AuthenticatedUser = Depends(requ
     await service.delete_listing(user, listing_id)
 
 
-# Status changes are admin-only in practice today (only the moderation screens call this,
-# always with an audit-log entry) — preserved as-is, not loosened, even though RLS alone would
-# also permit an owner to do this.
+# Admin moderation of a listing's status, audited. Like every other admin write it needs a second factor, matching the
+# listings policy's admin branch (is_admin_aal2, migration 20260928090000); an admin cannot edit or delete the listing.
 @router.patch("/listings/{listing_id}/status", status_code=204)
 async def update_listing_status(
-    listing_id: str, request: UpdateListingStatusRequest, user: AuthenticatedUser = Depends(require_admin)
+    listing_id: str, request: UpdateListingStatusRequest, user: AuthenticatedUser = Depends(require_admin_aal2)
 ) -> None:
     await service.update_listing_status(user, listing_id, request.status)
 

@@ -106,9 +106,10 @@ async def fetch_expert_for_admin_by_id(access_token: str, expert_id: str) -> dic
 async def review_verification(
     access_token: str, expert_id: str, verification_id: str, decision: str, notes: str | None, reviewed_by: str
 ) -> None:
+    # The record is decided first and must belong to this expert; first_row turns "no such record or expert" into a
+    # 404 before anything changes, so the service never audits a decision that did not happen.
     client = await get_user_scoped_client(access_token)
-    await client.table("experts").update({"verification_status": decision}).eq("id", expert_id).execute()
-    await (
+    decided = await (
         client.table("expert_verifications")
         .update(
             {
@@ -119,8 +120,12 @@ async def review_verification(
             }
         )
         .eq("id", verification_id)
+        .eq("expert_id", expert_id)
         .execute()
     )
+    first_row(decided)
+    response = await client.table("experts").update({"verification_status": decision}).eq("id", expert_id).execute()
+    first_row(response)
 
 
 async def create_document_signed_url(access_token: str, path: str) -> str | None:
