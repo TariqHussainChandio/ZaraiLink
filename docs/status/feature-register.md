@@ -1,4 +1,4 @@
-# Feature register (v0, updated 2026-09-25 during P7)
+# Feature register (updated 2026-09-27, Plan A phase A0)
 
 The single, truthful list of what the product can and cannot do today. Any capability that is not
 `Works` must be hidden or disabled in the UI, never shipped as a dead button. Update this file in
@@ -9,14 +9,54 @@ the same change that changes a capability's state, and link the evidence.
 | Status | Meaning |
 |---|---|
 | Works (API) | Observed working through the real backend against a real local database. The screens are not yet verified on a device, so this is not yet `Works` for users |
-| Broken | Observed failing (HTTP 500 or equivalent) in the P0 run |
+| Broken | Observed failing (HTTP 500 or equivalent) in the P0 run, or a business-rule or security violation observed since |
 | Broken (static) | Fails for the same proven cause as a sibling that was observed failing (unsupported call in the pinned client), but was not itself executed because an earlier step is blocked |
 | Blocked | Cannot work until an external service is provisioned |
 | Not started | No implementation exists |
 | Unverified | Not exercised in P0 |
+| Must change (SRDS) | Works today in a form the SRDS replaces; the phase named changes it |
 
 Evidence: [baseline-2026-09.md](baseline-2026-09.md), and for the device checks [p2-expo-2026-09.md](p2-expo-2026-09.md). Defect ids (C, H, M) refer to the plan's audit;
-N ids are from the baseline report.
+N ids are from the baseline report. Every SRDS requirement, with its phase and proof, is in
+[srds-traceability.md](srds-traceability.md). "Fix phase" values P1–P14 are from the earlier programme; A0–A9 and
+B0–B6 are the current plans ([plan.md](../plan.md)).
+
+## SRDS changes still to build (Plans A and B)
+
+One row per Build, Change or Remove item in the plans' §1. Each stays hidden or unchanged in the app until its phase
+proves it on the real stack.
+
+| Capability | Status | Today | Fix phase |
+|---|---|---|---|
+| Farmer and Buyer registration fields (phone, country, province, city, village, address) | Must change (SRDS) | Name, email, password and role at sign-up; location is one free-text field on Edit Profile | A3 |
+| Dealer registration with business details and configurable documents | Not started | A dealer is active at sign-up | A3 |
+| Expert registration with experience, institution and several documents | Must change (SRDS) | Application filled after sign-up, one document, no institution | A3 |
+| Account status PENDING, APPROVED, REJECTED, SUSPENDED for dealers and experts | Must change (SRDS) | Expert `verification_status` only; a pending expert can open the workspace; suspension works for everyone | A3 |
+| Approval and rejection email, then log in again | Not started (hosted email Blocked on G1) | No email is sent on a decision | A3 |
+| Dealer application queue with document review | Not started | Only the expert queue exists | A3 |
+| Admin changes their own email | Not started | Password change and two-factor exist | A3 |
+| Order status `dispatched`; stock leaves at dispatch | Must change (SRDS) | Stock is committed when the seller confirms (row "Atomic stock reduction on confirm") | A4 |
+| Experts and the admin cannot buy (D9) | Must change (decision) | `POST /api/v1/orders/checkout` accepts admin, buyer, dealer, expert and farmer (`authorization_policy.json`) | A4 |
+| Farmer and dealer purchases proven by tests | Unverified | Allowed by the checkout route; no test places an order as a farmer or a dealer | A4 |
+| Conversations only on a legitimate relationship (listing, order, consultation) | Must change (SRDS) | Only participants read and write, but a conversation can be opened with anyone | A5 |
+| AI report with symptoms, treatment, precautions and advisory | Must change (SRDS) | Disease, confidence, description, recommended actions, disclaimer | A6 |
+| Full AI report travels with the consultation | Must change (SRDS) | The consult form is prefilled with text and the photo; no link to the case | A6 |
+| Expert assessment stored apart from the AI assessment | Not started | Free-text messages only | A6 |
+| Who may call the disease API | Works (any signed-in role) | The app offers Scan Disease to farmers; the API accepts all five roles (`authorization_policy.json`, checked by `test_smoke_authorization_matrix.py`). Whether it becomes farmer-only is decided in A6 | A6 |
+| AI failure isolated from the rest of the platform | Unverified | Prediction answers 503 with a retry (`test_predict_model_unavailable_returns_503`); isolation not tested | A6 |
+| Admin moderation of consultations, AI activity and dealer applications | Not started | Users, listings, experts, reviews, reports, messages, categories, reference data, orders, disputes, audit log exist | A3, A7 |
+| Admin has no access to dealer inventory | Must change (SRDS) | Admin policies read `inventory`, `inventory_transactions`, `dealer_stores`, `suppliers` | B0 |
+| SRDS module layout and module-boundary gate | Must change (SRDS) | Layered `src/` and `backend/app/{api,services,repositories,schemas,core,ml}` | A1 |
+| Theme with dimensions, borders and components; no raw sizes | Must change (SRDS) | 74 raw sizes and 24 raw border widths outside the theme | A2 |
+| Only approved dealers reach the IMS | Must change (SRDS) | Every dealer reaches the inventory screens | B0, B4 |
+| IMS as its own app with a dashboard | Not started | Inventory screens live inside the marketplace tabs | B4 |
+| Products/SKUs separate from listings, stock per storage location | Must change (SRDS) | One `inventory` row per listing; `dealer_stores` are shops | B1 |
+| Movement ledger with the nine SRDS sources, order reference, before and after | Must change (SRDS) | `inventory_transactions` with six types, no source or order reference | B1 |
+| Local sales, stock in, stock out, adjustments with reasons | Must change (SRDS) | `adjust_stock` with a type and notes | B1, B2 |
+| Purchase and restock records | Not started | — | B1, B2 |
+| IMS reports, analytics, reconciliation, settings | Not started | Dealer analytics inside the marketplace | B5 |
+| Stock synced at dispatch, idempotent and auditable | Not started | — | B3 |
+| IMS failure isolated from the marketplace | Not started | Confirming an order fails if stock is short | B3 |
 
 ## Authentication
 
@@ -26,7 +66,7 @@ N ids are from the baseline report.
 | Email sign-in, confirmed user | Works (API) | A6 | P4 |
 | Phone sign-up / sign-in / verify | Blocked | `phone_provider_disabled` (A4). Needs an SMS provider (G2) | P4D |
 | Password reset | Works on local, Blocked on hosted | Recovery via a numeric code (VerifyOtpScreen, `type: 'recovery'`), not a deep link (C3 fixed) — no more PKCE/`exchangeCodeForSession` dependency. Proven live: a real password-reset request produces a code that verifies and returns a session (`test_email_otp_templates.py`); after a password change, other sessions are revoked (`supabase.auth.signOut({scope:'others'})`). Same G1 (SMTP) gate as signup blocks this on the hosted project | P4 (done locally) |
-| Role chosen at sign-up | Works | Public signup can only self-select farmer/buyer/dealer/expert; `admin` is never reachable from client metadata (C1, fixed by `20260922080000_role_escalation_fix.sql`). Proven on the real local stack: forged `role: "admin"` signup lands as non-admin, legitimate role choices are unaffected, an invalid role string no longer crashes signup — `tests/integration/test_signup_role_escalation.py` | P3 (done) |
+| Role chosen at sign-up | Works | Public signup can only self-select farmer/buyer/dealer/expert; `admin` is never reachable from client metadata (C1, fixed by `20260922080000_role_escalation_fix.sql`). Proven on the real local stack: forged `role: "admin"` signup lands as non-admin, legitimate role choices are unaffected, an invalid role string no longer crashes signup — `tests/integration/test_signup_role_escalation.py`. Hosted project: fixed 2026-09-27 — all 55 migrations pushed (`npx supabase db push --include-seed`, verified through the Supabase MCP: 55 migrations, reference data loaded, bucket limits on, the 14 definer-function advisor warnings gone); the four earlier test accounts were removed, leaving only the maintainer's admin| P3 (done) |
 | JWT verification | Works | Local JWKS verification (`core/jwt_verifier.py`, PyJWT + `PyJWKClient`) replaces the per-request `GET /auth/v1/user` call — a JWKS outage now returns 503, not 401. Proven live: valid/tampered/`alg:none`/malformed tokens all resolve correctly; role/suspension cached 10s per user (`core/auth.py`) | P4 (done) |
 | Session storage | Works | AES-256-CTR encrypted (`src/services/supabase/encryptedStorage.ts`), key held in `expo-secure-store` (Android Keystore) — the AsyncStorage entry itself is ciphertext (H1 fixed, AT7). `autoRefreshToken` tied to `AppState` | P4 (done) |
 | Global API 401/403/offline handling | Works | `apiFetch` (4B.2): one `refreshSession()` + retry on 401 before signing out; a suspended-account 403 routes to the suspended screen without a sign-out; a network-level failure (not a real response) sets an offline banner instead of either | P4 (done) |
@@ -50,14 +90,15 @@ N ids are from the baseline report.
 | Atomic stock reduction on confirm | Works (API) | Proven under real contention, not just applied — `test_dealer_oversell_rejected_and_stock_stays_atomic`: two buyers race the same inventory row, the second confirm is rejected (BR-03/04), stock lands exactly at 20 − 15 | P5a (done) |
 | Payment: manual / cash on delivery | Works (API) | N1 fixed (`payments_repository.py`); proven live — `test_payment_initiated_and_marked_received` | P5a (done) |
 | Idempotent checkout and payment initiation | Works (API), opt-in | `Idempotency-Key` header: replay, per-user scoping, concurrent-retry safety, key released on failure, reuse with a different body rejected (422) — `test_smoke_idempotency.py` (9 tests). Known limits: clients do not send the header yet (P7), so without it a duplicate is still possible; checkout is not atomic across sellers, so a failure after the first seller's order releases the key and a retry can create that order again; a crashed request leaves the key in flight (409 with `Retry-After`) until the 24 h sweep | P5 (done) |
-| Authorization matrix and admin audit trail | Works (API) | Every route probed as each role, anonymous and an aal1 admin, and its derived roles compared with a reviewed snapshot (`authorization_policy.json`) so a weakened requirement fails — `test_smoke_authorization_matrix.py` (122 tests); every admin-reachable write (14 routes, second-factor or admin-only) leaves an `audit_logs` row and a new one cannot ship without an assertion — `test_smoke_admin_audit.py` (BR-15) | P5 (done) |
+| Authorization matrix and admin audit trail | Works (API) | Every route probed as each role, anonymous and an aal1 admin, and its derived roles compared with a reviewed snapshot (`authorization_policy.json`) so a weakened requirement fails — `test_smoke_authorization_matrix.py` (122 tests); every admin-only write route (14 routes, second-factor or admin-only) leaves an `audit_logs` row and a new one cannot ship without an assertion — `test_smoke_admin_audit.py` (BR-15). Not covered: the 25 write routes open to every signed-in user, the admin included; two of them let an admin change other users' listings unaudited (row "Admin edits and deletes other users' listings") | P5 (done) |
+| Admin edits and deletes other users' listings | Broken (BR-15) | Found in A0 verification (2026-09-27). `PATCH` and `DELETE /api/v1/marketplace/listings/{listing_id}` are open to every signed-in role; `marketplace_service.update_listing` and `delete_listing` write no audit row (only `update_listing_status` does); the policies `listings_owner_update` and `listings_owner_delete` allow `is_admin()`. Proven in the local database with two users, rolled back: another buyer changes 0 rows; an admin without a second factor updates and deletes 1 row each; `audit_logs` stays at 0. The audited admin moderation route (`…/status`) uses the same policy and needs no second factor either, so the fix is a design decision (`docs/plan-ecommerce.md`, A0 status) | Fix before A1 (RLS change: plan mode and the maintainer's approval) |
 | Backend container | Works (local) | `backend/Dockerfile` + `docker-compose.yml`, non-root, healthcheck on `/health/ready`, proven on the local Supabase network. Not hosted (gate G4) | P5 (done) |
 | Health, readiness and version | Works (API) | `/health/live`, `/health/ready` (a real query; 503 when Supabase is unreachable), `/version`; the container healthcheck uses readiness | P5 (done) |
 | Concurrent requests | Works | Requests no longer serialize: authenticated reads about 84 req/s at 10 VUs, 19 ms at 1 VU (was 1.5 s and fully serialized); inference runs in a worker thread. Measured with k6, `docs/architecture/adr/0001-async-supabase-client-migration.md`. One process is CPU-bound; more throughput is a deployment decision (P12) | P5 (done) |
 | Rate limiting and proxy trust | Works (API) | Default per-caller limit on every `/api/v1` route, bucketed by a hash of the caller's token (one bucket per session, nothing read from an unverified token) or by forwarded client IP; a trusted proxy is honoured, an untrusted one cannot choose its bucket — `test_smoke_proxy_headers.py`. Request id, security headers, 413 cap and problem+json — `test_smoke_http_hardening.py` | P5 (done) |
-| Database access rules (RLS) | Works | Every policy, grant and storage bucket proven with real roles in the database itself: 383 pgTAP assertions (`supabase/tests/database`, `npx supabase test db`), and a mutation check that breaks each of the 113 policies in turn and finds no survivor (`scripts/db/policy_mutation.py`) | P6 (done) |
+| Database access rules (RLS) | Works | Every policy, grant and storage bucket proven with real roles in the database itself: 486 pgTAP tests in 9 files (`supabase/tests/database`, `npx supabase test db`, all passing on 2026-09-27), and a mutation check that breaks each of the 111 policies in turn and finds no survivor (`scripts/db/policy_mutation.py`) | P6 (done) |
 | Database performance under RLS | Works | Policies rewritten so `auth.uid()` and the role helpers run once per query, overlapping policies merged, 16 foreign keys indexed. On 60,000 orders and 180,000 messages the hottest queries went from 758 ms to 5 ms (buyer orders) and 1,996 ms to 21 ms (a seller's messages). `docs/status/p6-database-2026-09.md` | P6 (done) |
-| Database advisors and migration rules | Works (CI written, not yet run on GitHub) | Supabase advisors clean except the documented `profiles_public` view; `scripts/check_migrations.py` requires RLS, explicit grants, wrapped `auth.uid()`, indexed foreign keys, `search_path` and a paired pgTAP file on every new migration (from 20260926090000; in place before the 30 Oct 2026 Data API change) | P6 (done) |
+| Database advisors and migration rules | Works (CI, green on GitHub since PR #11) | Supabase advisors clean except the documented `profiles_public` view; `scripts/check_migrations.py` requires RLS, explicit grants, wrapped `auth.uid()`, indexed foreign keys, `search_path` and a paired pgTAP file on every new migration (from 20260926090000; in place before the 30 Oct 2026 Data API change) | P6 (done) |
 | Realtime respects RLS | Works | Messages, notifications and consultation messages reach their participants and not a stranger or anon, over real WebSocket subscriptions (`test_smoke_realtime_rls.py`); the app uses no broadcast or private channels | P6 (done) |
 | Generated schema documentation | Works | `docs/database/schema.md` is generated from the live schema by `scripts/gen_schema_docs.py`; CI fails if it is stale. Prose lives in `docs/database/notes.md` | P6 (done) |
 | Typed API contract | Works (backend + generated client) | `backend/openapi.json` is generated from the code and every response model is typed; `src/api/generated` is generated from it; CI fails on drift. The app's services still call the hand-written `apiFetch` and types; the generated client is not consumed by the app and type drift against `openapi.json` is caught by the contract tests on the server side, not by the compiler on the client (a deliberate non-goal so far) | P7 (7A done) |
@@ -132,14 +173,14 @@ N ids are from the baseline report.
 | Create case and predict, fresh environment | Works (API) | N3 fixed: `20260923080000_service_role_disease_grants.sql` grants the service role exactly the `disease_cases`/`disease_predictions`/`crops` privileges `disease_repository.py` needs. Proven on a database built only from migrations — `test_smoke_business_flows.py::test_disease_pipeline_end_to_end_on_a_database_built_only_from_migrations` | P5a (done) |
 | Create/predict request contract | Fixed | C2 (SSRF): `image_url` replaced with a validated, owner-checked `storage_path`; the private `disease-images` bucket only ever yields a signed URL to a client, the server never fetches a client-supplied URL — `tests/unit/test_disease_case_ssrf_protection.py` | P3 (done) |
 | Predict, privileges present | Works, limited | B10d. No rejection of non-leaf images (H8); 38 PlantVillage classes, none of Pakistan's staple crops | P9 |
-| Prediction on a real photo | Unverified | The integration test fixture does not exist (N4) | P9 |
-| Model weights stored in Supabase | Works (hosted bucket + fetch script) | The 9.3 MB model is in the private `ml-models` bucket of the hosted project (migration `20260928080000`, pgTAP: no client role can list or read it); `scripts/fetch_model_weights.py` downloads it through a signed URL (`MODEL_WEIGHTS_URL`) and checks the pinned SHA-256. Uploaded and downloaded back with a matching checksum. The GitHub release and the old copies in git history are removed. CI needs the `MODEL_WEIGHTS_URL` repository secret | A0 |
+| Prediction on a real photo | Unverified | The integration test fixture does not exist (N4), so `test_classifier_predicts_a_known_class_for_a_real_leaf_photo` is always skipped, in CI too | A6 |
+| Model weights stored in Supabase | Works (hosted bucket + fetch script) | The 9.3 MB model is in the private `ml-models` bucket of the hosted project (migration `20260928080000`, pgTAP: no client role can list or read it); `scripts/fetch_model_weights.py` downloads it through a signed URL (`MODEL_WEIGHTS_URL`) and checks the pinned SHA-256. Uploaded and downloaded back with a matching checksum. The GitHub release and the old copies in git history are removed. The `MODEL_WEIGHTS_URL` repository secret is set (2026-09-26); the Backend and Database CI jobs log "Downloading model.pth from Supabase Storage (ml-models/…) … checksum-verified". Dependabot pull requests cannot read repository secrets, so they need the same value as a Dependabot secret, which is not set yet (no open Dependabot PR touches the backend or database today, so none is blocked by it). The signed URL expires on 2028-09-25 | A0 (done) |
 
 ## Platform
 
 | Capability | Status | Evidence and cause | Fix phase |
 |---|---|---|---|
-| Migrations apply from an empty database | Works | 35 of 35 applied, seed loaded | — |
+| Migrations apply from an empty database | Works | All 55 migrations apply and the seed loads (the CI "Database and real-stack tests" job builds the database from migrations on every run) | — |
 | Dark mode, edge-to-edge on Android 16 | Unverified | Needs a device | P8 |
 | Release build signing | Not ready | Signed with the debug keystore (H3) | P2, P12 |
-| CI | Partial | Lint, typecheck, jest, pytest, migration lint, OSV and other scans, a build of the Android app, and an 85% combined-coverage gate on the backend (written in P5; not yet run on GitHub). No E2E | P1, P5, P12 |
+| CI | Works (GitHub) | Green on PR #11 and on `main` at its merge (run 36273648403, 2026-09-26): change detection, reality gate, lint, typecheck, Jest, backend unit and real-stack tests with the 85% combined-coverage gate, pgTAP, advisors, schema docs, OSV, gitleaks, Semgrep, actionlint and zizmor, and debug and release Android builds. The `ci-required` job now also writes a table of every required job and names the skipped ones (added in A0; runs on GitHub from the next push). Not in CI yet: the app's real-stack Jest tests (local only) and any end-to-end test | A9 |

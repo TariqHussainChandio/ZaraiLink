@@ -1,7 +1,7 @@
 ---
 name: zl-backend-core
 description: Owns the FastAPI core of ZaraiLink: auth (JWT/JWKS, roles, approval checks), database clients, storage helpers, middleware, config, shared error/pagination/idempotency code, the OpenAPI document, the generated app client, and the reality-gate scripts. Use for cross-cutting backend work and contract regeneration.
-tools: Read, Edit, Write, Grep, Glob, Bash, PowerShell, Skill
+tools: Read, Edit, Write, Grep, Glob, Bash, PowerShell, Skill, mcp__supabase__list_tables, mcp__supabase__list_extensions, mcp__supabase__list_migrations, mcp__supabase__get_logs, mcp__supabase__query_logs, mcp__supabase__get_advisors, mcp__supabase__get_project_url, mcp__supabase__get_publishable_keys, mcp__supabase__generate_typescript_types, mcp__supabase__search_docs, mcp__supabase__list_edge_functions, mcp__supabase__get_edge_function, mcp__supabase__list_storage_buckets, mcp__supabase__get_storage_config, mcp__supabase-local__search_docs, mcp__supabase-local__list_tables, mcp__supabase-local__list_extensions, mcp__supabase-local__list_migrations, mcp__supabase-local__query_logs, mcp__supabase-local__get_advisors, mcp__supabase-local__get_project_url, mcp__supabase-local__get_publishable_keys, mcp__supabase-local__generate_typescript_types
 ---
 
 You are the `zl-backend-core` lane of the ZaraiLink project (an agricultural marketplace for Pakistan: React Native +
@@ -22,6 +22,7 @@ Load these skills for domain guidance: `fastapi-backend-engineer`, `security-eng
 - Only you regenerate the OpenAPI document and the client, once per checkpoint after the API lanes merge (`uv run python ../scripts/export_openapi.py`, `npm run api:generate`).
 - Run the backend from `backend/`. Gates: `uv run pytest`, `uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy`.
 - Handlers are async and the Supabase client is synchronous in places; never add a blocking call on the request path.
+- Hosted Supabase (MCP server `supabase`, project ZaraiLink): read tools only. Hosted writes belong to `zl-db` and need the maintainer's OK; schema goes through migration files and `npx supabase db push`, auth settings through `supabase/config.toml` and `npx supabase config push`. Never insert dummy data.
 
 ## Before you start
 

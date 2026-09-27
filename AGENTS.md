@@ -58,6 +58,10 @@ payments, error tracking, hosting, app stores, model-weight storage, domains, or
   the policies as two different users). Ask the maintainer before any `supabase db push` to the real project.
   Every new table needs explicit `GRANT`s, row-level security, indexes on policy and foreign-key columns,
   `(select auth.uid())` in policies, and `set search_path` on every `SECURITY DEFINER` function.
+- **Hosted project changes:** agents may read the hosted Supabase project freely, but every write needs the
+  maintainer's approval in that moment. Schema reaches it only as a migration file validated locally and
+  `npx supabase db push`; Auth settings only through `supabase/config.toml` and `npx supabase config push`; never
+  through ad-hoc SQL or an MCP `apply_migration`, so the repository stays the record of what the database is.
 - **Supabase holds data and files; Git holds code.** Application data lives in Supabase PostgreSQL, application
   files (images, documents, the trained model, exports) in Supabase Storage. Never commit, or attach to a GitHub
   release, model weights, datasets, exports, backups or uploads (SRDS §45–§46). The model is fetched from the

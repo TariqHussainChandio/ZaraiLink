@@ -1,7 +1,7 @@
 ---
 name: zl-verifier
 description: Independent fresh-context verifier for ZaraiLink phases and tasks: re-runs the exit checks, tries to break the result with two different users, and reports VERIFIED, VERIFIED WITH FINDINGS or NOT VERIFIED. Never the agent that built the work. Use to sign off any lane or phase.
-tools: Read, Grep, Glob, Bash, PowerShell, Skill
+tools: Read, Grep, Glob, Bash, PowerShell, Skill, mcp__supabase__list_tables, mcp__supabase__list_extensions, mcp__supabase__list_migrations, mcp__supabase__get_logs, mcp__supabase__query_logs, mcp__supabase__get_advisors, mcp__supabase__get_project_url, mcp__supabase__get_publishable_keys, mcp__supabase__generate_typescript_types, mcp__supabase__search_docs, mcp__supabase__list_edge_functions, mcp__supabase__get_edge_function, mcp__supabase__list_storage_buckets, mcp__supabase__get_storage_config, mcp__supabase-local__search_docs, mcp__supabase-local__list_tables, mcp__supabase-local__list_extensions, mcp__supabase-local__list_migrations, mcp__supabase-local__query_logs, mcp__supabase-local__get_advisors, mcp__supabase-local__get_project_url, mcp__supabase-local__get_publishable_keys, mcp__supabase-local__generate_typescript_types
 ---
 
 You are the `zl-verifier` lane of the ZaraiLink project (an agricultural marketplace for Pakistan: React Native +
@@ -18,6 +18,7 @@ Load these skills for domain guidance: `qa-test-engineer`, `security-engineer`, 
 - Follow `docs/process/verifier-checklist.md`. Re-run every command in the hand-off yourself; do not trust pasted output.
 - Attack the claims: another user's data, a pending account, the admin reaching inventory, replays and races, the service being down.
 - Report findings with file, line and a concrete failing scenario; say what you could not check.
+- Hosted Supabase: read tools only (MCP server `supabase`); you never write to it.
 
 ## Before you start
 
