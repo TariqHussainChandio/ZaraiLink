@@ -93,8 +93,22 @@ the phase ends with the integration checkpoint and a `zl-verifier` sign-off.
 36273648403) with the model downloaded from Supabase and checksum-verified; `npx supabase test db` 486/486 locally;
 the app runs signed in on the Pixel_8 emulator against the local stack; traceability matrix and register rows
 written. Closes when the maintainer commits these documents and CI is green after the push (the new job summary
-first runs then). Open maintainer items that do not block A1: the Dependabot copy of `MODEL_WEIGHTS_URL`, the
-hosted migration push decision, GitHub Support for PR refs #1–#3.
+first runs then). Open maintainer items that do not block A1: the Dependabot copy of `MODEL_WEIGHTS_URL`, GitHub
+Support for PR refs #1–#3.
+
+**Hosted project (2026-09-27, the maintainer's decision):** brought level with the repository: 55 migrations with the
+reference data (`npx supabase db push --include-seed`, checked through the Supabase MCP) and the Auth configuration
+(`npx supabase config push`; gate G1 decided: Gmail SMTP, `docs/process/briefs/g1-smtp.md`). A test password-reset
+email was accepted by the hosted project; its arrival is not yet confirmed. Known effect until A3: a password change
+from a session older than 24 hours fails in the app (Supabase now asks for reauthentication and the app's code step is
+parked with A3); signing in again works around it.
+
+**Found after A0 (2026-09-27) — expert self-approval, fix before A1:** an expert can insert their own `experts` row
+already `approved` through PostgREST and then appears as a verified expert (the verification guard fires on UPDATE
+only), and an admin without a second factor can change `verification_status` directly, unaudited. Both hold on the
+hosted project too. The fix (guard on INSERT and UPDATE, `is_admin_aal2()` in the guard and the policy's admin branch,
+pgTAP for each refused path) is built and tested on the parked branch `wip/a3-account-status`; bring it forward in
+plan mode together with the BR-15 fix below.
 
 **Found in A0 verification — BR-15 defect, fix before A1:** an admin can edit or delete any listing through
 `PATCH`/`DELETE /api/v1/marketplace/listings/{id}` with no audit row and no second factor, because
@@ -172,6 +186,13 @@ app bundles and opens on the emulator; `module-boundary` at zero.
 ### A3 — Accounts, registration and approval
 
 **Goal:** SRDS §3–§13, §50, §53.1–§53.9. Plan mode first (auth, RLS, migrations).
+
+**Parked head start:** branch `wip/a3-account-status` (commit `0d7edd8`, not merged, its migration not pushed) holds an
+early build of this phase's status work: `profiles.account_status` with its guards and helpers, the FastAPI
+`account_not_approved` check, an audited admin decision route, email-only sign-in with Supabase's password rule and
+reauthentication, the Application Status screen and Approve/Reject in User Management. It was verified with findings
+(residuals and the direct-database audit gap are in its commit and documents). A3 starts from it once A2's components
+and shell exist, in plan mode, confirming D10 first; its screens are rebuilt on A2's components rather than kept.
 
 | Lane | Tasks | Needs |
 |---|---|---|

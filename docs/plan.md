@@ -1,8 +1,14 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-09-27): A0 done and independently verified;** its documents wait for the maintainer's commit.
-> Verification found one older defect to fix before A1: an admin can edit or delete any listing unaudited (BR-15;
-> `docs/plan-ecommerce.md`, A0 status). **Next: A1** (modular restructure), which needs decisions D2–D4. The requirements are [`docs/srds.md`](srds.md),
+> **Status (2026-09-27): A0 done and independently verified;** it closes when PR #13 and its follow-up are merged
+> with CI green. The hosted project now matches the repository: 55 migrations and the reference data pushed, and Auth
+> configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
+> Supabase's password rules, reauthentication for old sessions, phone sign-up off). An early build of A3's account
+> status, email-only sign-in and Application Status screen is parked, unmerged, on branch `wip/a3-account-status`
+> (its migration is not pushed); A3 starts from it after A1 and A2. Still to fix before A1 (plan mode): an expert can
+> approve themselves through PostgREST, and an admin can edit or delete any listing unaudited (BR-15); both in
+> `docs/plan-ecommerce.md`, A0 status. **Next: A1** (modular restructure), which
+> needs decisions D2–D4. The requirements are [`docs/srds.md`](srds.md),
 > traced requirement by requirement in [`docs/status/srds-traceability.md`](status/srds-traceability.md); this
 > plan follows it strictly. It is split into two plans that share one module map and one set of agents:
 >
