@@ -1,14 +1,17 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-09-28): A0 closed** (PR #13 merged, CI green on `main`). The hosted project now matches the repository: 55 migrations and the reference data pushed, and Auth
-> configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
-> Supabase's password rules, reauthentication for old sessions, phone sign-up off). An early build of A3's account
-> status, email-only sign-in and Application Status screen is parked, unmerged, on branch `wip/a3-account-status`
-> (its migration is not pushed); A3 starts from it after A1 and A2. The two fixes due before A1 (an expert could
-> approve themselves; an admin could edit or delete any listing unaudited, BR-15) are fixed (PR #14, migration
-> `20260928090000`, pushed to the hosted project 2026-09-27 (56 migrations, advisors unchanged)). **A1 (modular
-> restructure, 2026-09-28): built on branch `a1/restructure` and verified**, every check passing with the same
-> counts, awaiting the maintainer's merge (section 2; `docs/plan-ecommerce.md` A1). **Next: A2 and A3.**
+> **Status (2026-09-28): A0 and A1 closed. Next: A2 and A3.**
+> - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is
+>   configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
+>   Supabase's password rules, reauthentication for old sessions, phone sign-up off).
+> - **Before A1** (PR #14, migration `20260928090000`, pushed to the hosted project): an expert can no longer approve
+>   themselves, and an admin can no longer edit or delete any listing unaudited (BR-15).
+> - **A1, modular restructure** (PR #15, merge commit `8ddd846`): the code is in the SRDS module layout (section 2),
+>   with no behaviour change; the strict `module-boundary` rule is at zero, and `zl-verifier` signed it off after four
+>   rounds (`docs/plan-ecommerce.md` A1).
+> - An early build of A3's account status, email-only sign-in and Application Status screen is parked, unmerged, on
+>   branch `wip/a3-account-status` (its migration is not pushed); A3 ports it by hand with `scripts/a1/moves.json`.
+>
 > D2–D4 decided. The requirements are [`docs/srds.md`](srds.md),
 > traced requirement by requirement in [`docs/status/srds-traceability.md`](status/srds-traceability.md); this
 > plan follows it strictly. It is split into two plans that share one module map and one set of agents:

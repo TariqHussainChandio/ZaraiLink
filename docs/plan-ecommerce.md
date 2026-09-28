@@ -171,10 +171,13 @@ Module map for A1.1 (current → target):
 **Exit:** every existing test passes with imports changed only; the real-stack suites pass; OpenAPI unchanged; the
 app bundles and opens on the emulator; `module-boundary` at zero.
 
-**Status (2026-09-28): built and verified (four rounds; every finding fixed or recorded as a known limit), awaiting
-the maintainer's merge.**
-Run as one scripted pass instead of the three
-lane steps above (maintainer's decision, 2026-09-27), on branch `a1/restructure` in three commits:
+**Status (2026-09-28): done.**
+- PR #15 was merged with a merge commit (`8ddd846`), so the pure move keeps file history.
+- `zl-verifier` verified it in four rounds; every finding is fixed or recorded as a known limit.
+- CI is green on `main` (run 36399545019), including the Android build and the reality gate's first run on Linux.
+
+A1 ran as one scripted pass instead of the three lane steps above (maintainer's decision, 2026-09-27), on branch
+`a1/restructure` in three commits:
 1. The contract preparation: four duplicate schema class names renamed, so that `backend/openapi.json` holds no
    module-path names.
 2. The pure move: 494 renames by `scripts/a1/restructure.py move`, from `scripts/a1/module-map.json`, with the
