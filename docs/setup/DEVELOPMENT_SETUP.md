@@ -82,7 +82,7 @@ Deployment settings worth knowing (all optional locally):
 - Container: `cd backend && docker compose up --build` on the local Supabase network; the image build takes
   `--secret id=gh_token` (a GitHub token) to fetch the model weights.
 
-`backend/app/ml/checkpoints/` holds `model_metadata.json` (tracked) and `model.pth` (not tracked — see
+`backend/app/ai/checkpoints/` holds `model_metadata.json` (tracked) and `model.pth` (not tracked — see
 below). See `docs/architecture/ai-disease-advisory.md` for what the model does and does not cover.
 
 **Model weights (`model.pth`, 9.3 MB):** application data, so it lives in Supabase Storage like every other
@@ -148,7 +148,7 @@ Only development builds have the menu; release builds do not.
 | `npm run typecheck` | TypeScript, no emit |
 | `npm test` | Jest (add `-- --coverage` for a coverage report) |
 | `npm run doctor` | Expo's project checks: package versions match the SDK, app config is valid |
-| `cd backend && uv run pytest tests/unit` | API unit tests (mock only third-party edges) |
+| `cd backend && uv run pytest tests --ignore=tests/integration` | API unit tests, one folder per module (mock only third-party edges) |
 | `cd backend && uv run pytest tests/integration` | Real-stack API tests (needs the local Supabase stack, see below) |
 | `python scripts/check_reality.py` | The reality gate: no stubs, fake behaviour, swallowed errors, or growing debt |
 | `cd backend && uv run python ../scripts/check_reality.py --tools ruff,ruff-format,mypy` | Linter and type-check ratchets |
@@ -179,7 +179,7 @@ not mocks); CI fails below 85%. To reproduce it locally, with the variables abov
 
 ```bash
 cd backend
-ZARAILINK_COVERAGE=1 uv run pytest tests/unit tests/integration --cov --cov-report=term --cov-fail-under=85
+ZARAILINK_COVERAGE=1 uv run pytest tests --cov --cov-report=term --cov-fail-under=85
 ```
 
 `ZARAILINK_COVERAGE=1` runs the test backend under coverage (`tests/integration/smoke/serve_measured.py`) so the
@@ -196,14 +196,14 @@ request or response model:
 
 ```bash
 cd backend && uv run python ../scripts/export_openapi.py     # rewrites backend/openapi.json
-cd .. && npm run api:generate                                # rewrites src/api/generated
+cd .. && npm run api:generate                                # rewrites frontend/services/api/generated
 ```
 
 After a deliberate change to an error response, re-record the client's fixtures from the real API:
 `UPDATE_PROBLEM_FIXTURES=1 python -m pytest tests/integration/smoke/test_smoke_error_contract.py` (from `backend/`).
 The app's query hooks and client are also tested against the real backend (`*.realstack.test.ts[x]`, skipped unless
-`ZARAILINK_REALSTACK=1`; the setup is described at the top of `src/testUtils/realStack.ts`): start the stack and the API (`uvicorn app.main:app --port 8000`,
-with `RATE_LIMIT_DEFAULT` high), then run `npx jest src/services/api/client.realstack.test.ts` with `ZARAILINK_REALSTACK=1`,
+`ZARAILINK_REALSTACK=1`; the setup is described at the top of `frontend/testUtils/realStack.ts`): start the stack and the API (`uvicorn app.main:app --port 8000`,
+with `RATE_LIMIT_DEFAULT` high), then run `npx jest frontend/services/api/client.realstack.test.ts` with `ZARAILINK_REALSTACK=1`,
 `REALSTACK_SUPABASE_URL`, `REALSTACK_ANON_KEY`, `REALSTACK_SERVICE_KEY` and `REALSTACK_API_URL` set.
 
 `export_openapi.py --check` and `npm run api:check` are the CI drift checks. The real-stack tests validate every

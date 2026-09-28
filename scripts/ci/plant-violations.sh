@@ -14,16 +14,20 @@ set -euo pipefail
 
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
-mkdir -p src backend/app .github/workflows
+mkdir -p frontend/admin frontend/farmer backend/app .github/workflows
 
 plant_reality() {   # job: Reality gate
-  printf "export const notReal = () => { throw new Error('not implemented'); };\n" > src/plantedStub.ts
+  printf "export const notReal = () => { throw new Error('not implemented'); };\n" > frontend/plantedStub.ts
+}
+plant_boundary() { # job: Reality gate (module-boundary: one module reaching into another's files)
+  printf "export const planted = 1;\n" > frontend/farmer/plantedInternal.ts
+  printf "import { planted } from '../farmer/plantedInternal';\nexport const reach = planted;\n" > frontend/admin/plantedReach.ts
 }
 plant_eslint() {    # job: Frontend (lint-warning ratchet)
-  printf '/* eslint-disable */\nexport const plantedLint = 1;\n' > src/plantedEslint.ts
+  printf '/* eslint-disable */\nexport const plantedLint = 1;\n' > frontend/plantedEslint.ts
 }
 plant_knip() {      # job: Frontend (dead-code ratchet)
-  printf 'export const plantedOrphan = 1;\n' > src/plantedOrphan.ts
+  printf 'export const plantedOrphan = 1;\n' > frontend/plantedOrphan.ts
 }
 plant_ruff() {      # job: Backend (ruff ratchet)
   printf 'import os\n\nVALUE = 1\n' > backend/app/planted_lint.py
@@ -33,7 +37,7 @@ plant_mypy() {      # job: Backend (mypy ratchet)
 }
 plant_secret() {    # job: Secrets and known vulnerabilities (gitleaks)
   local prefix="ghp_" body="R7kQ2mZx9LpT4vNb8YcD1sWfH6uJ3aXe0GtE"
-  printf 'export const plantedToken = "%s%s";\n' "$prefix" "$body" > src/plantedSecret.ts
+  printf 'export const plantedToken = "%s%s";\n' "$prefix" "$body" > frontend/plantedSecret.ts
 }
 plant_osv() {       # job: Secrets and known vulnerabilities (OSV): drop the torch acceptance
   local py
@@ -63,7 +67,7 @@ jobs:
 EOF
 }
 
-gates=(reality eslint knip ruff mypy secret osv semgrep workflow)
+gates=(reality boundary eslint knip ruff mypy secret osv semgrep workflow)
 [ "$#" -gt 0 ] && gates=("$@")
 for gate in "${gates[@]}"; do
   "plant_${gate}"

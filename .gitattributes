@@ -25,5 +25,5 @@
 *.apk binary
 
 # Generated from backend/openapi.json (npm run api:generate): collapsed in diffs, never edited by hand.
-src/api/generated/** linguist-generated=true
+frontend/services/api/generated/** linguist-generated=true
 backend/openapi.json linguist-generated=true

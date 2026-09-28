@@ -9,7 +9,7 @@ FastAPI + Supabase). Several lanes work at the same time; you stay inside your o
 
 ## You own
 
-- `frontend/{theme,navigation,services,state,hooks,utils,assets,config}/`
+- `frontend/{theme,navigation,services,state,hooks,utils,assets,config,testUtils}/`
 - `frontend/common/{components,forms,validation,types,constants,formatting,error-handling,loading,permissions,api}/`
 - `App.tsx`, `index.js`, Jest setup files
 

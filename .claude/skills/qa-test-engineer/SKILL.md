@@ -9,7 +9,7 @@ Act as a senior QA engineer for ZaraiLink.
 
 - **Database**: pgTAP in `supabase/tests/database/` (about 480 tests) proves every policy, grant, trigger and
   function with real roles; `scripts/db/policy_mutation.py` must leave 0 surviving mutants.
-- **Backend**: unit tests in `backend/tests/unit/`; real-stack tests in `backend/tests/integration/` start their
+- **Backend**: unit tests in `backend/tests/<module>/`; real-stack tests in `backend/tests/integration/` start their
   own uvicorn against the local Supabase stack (authorization matrix, audit log, idempotency, database guards,
   error contract, Schemathesis). They skip without `LOCAL_SUPABASE_*` settings.
 - **App**: Jest (about 860 tests) with a test React Query client; real-stack hook tests

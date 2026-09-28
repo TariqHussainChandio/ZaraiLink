@@ -31,7 +31,7 @@ for _name, _value in (
         os.environ.setdefault(_name, _value)
 
 try:
-    from app.core.auth import declared_roles, require_admin_aal2
+    from app.auth.dependencies import declared_roles, require_admin_aal2
     from app.main import app
 except ValidationError:
     app = None

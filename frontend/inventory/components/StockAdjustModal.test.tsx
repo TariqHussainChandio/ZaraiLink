@@ -1,0 +1,82 @@
+import React from 'react';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { Alert } from 'react-native';
+import { StockAdjustModal } from './StockAdjustModal';
+import { useAuthStore } from '../../state/authStore';
+import { adjustStock } from '../services/inventoryService';
+
+jest.mock('../../services/supabase/client', () => {
+  const { makeSupabaseMock } = jest.requireActual('../../testUtils/supabaseMock');
+  return { supabase: makeSupabaseMock() };
+});
+
+jest.mock('../services/inventoryService', () => ({
+  adjustStock: jest.fn(),
+}));
+
+const mockAdjustStock = adjustStock as jest.Mock;
+
+describe('StockAdjustModal', () => {
+  beforeEach(() => {
+    mockAdjustStock.mockReset();
+    useAuthStore.setState({ user: { id: 'dealer1' } as never });
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('renders the title, quantity field with the unit, and notes field', async () => {
+    await renderWithQuery(
+      <StockAdjustModal visible inventoryId="inv1" unit="bag" onClose={() => {}} />,
+    );
+    expect(screen.getByText('Adjust Stock')).toBeTruthy();
+    expect(screen.getByText('Quantity (bag)')).toBeTruthy();
+    expect(screen.getByText('Notes')).toBeTruthy();
+  });
+
+  it('alerts and does not submit when quantity is empty', async () => {
+    await renderWithQuery(
+      <StockAdjustModal visible inventoryId="inv1" unit="bag" onClose={() => {}} />,
+    );
+    await fireEvent.press(screen.getByText('Save'));
+    expect(Alert.alert).toHaveBeenCalledWith('Enter a valid quantity');
+    expect(mockAdjustStock).not.toHaveBeenCalled();
+  });
+
+  it('submits the default type and entered quantity, then closes', async () => {
+    mockAdjustStock.mockResolvedValue(undefined);
+    const onClose = jest.fn();
+    await renderWithQuery(
+      <StockAdjustModal visible inventoryId="inv1" unit="bag" onClose={onClose} />,
+    );
+    await fireEvent.changeText(screen.getByTestId('stock-adjust-quantity'), '25');
+    await fireEvent.press(screen.getByText('Save'));
+    expect(mockAdjustStock).toHaveBeenCalledWith('inv1', 'addition', 25, null);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the user pick a different transaction type before submitting', async () => {
+    mockAdjustStock.mockResolvedValue(undefined);
+    await renderWithQuery(
+      <StockAdjustModal visible inventoryId="inv1" unit="bag" onClose={() => {}} />,
+    );
+    await fireEvent.press(screen.getByText('Addition (+)'));
+    await fireEvent.press(screen.getByText('Reduction (-)'));
+    await fireEvent.changeText(screen.getByTestId('stock-adjust-quantity'), '5');
+    await fireEvent.press(screen.getByText('Save'));
+    expect(mockAdjustStock).toHaveBeenCalledWith('inv1', 'reduction', 5, null);
+  });
+
+  it('shows a failure alert when the service call rejects', async () => {
+    mockAdjustStock.mockRejectedValue(new Error('Network error'));
+    await renderWithQuery(
+      <StockAdjustModal visible inventoryId="inv1" unit="bag" onClose={() => {}} />,
+    );
+    await fireEvent.changeText(screen.getByTestId('stock-adjust-quantity'), '25');
+    await fireEvent.press(screen.getByText('Save'));
+    expect(Alert.alert).toHaveBeenCalledWith('Failed to adjust stock', 'Network error');
+  });
+});

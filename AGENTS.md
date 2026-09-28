@@ -106,12 +106,15 @@ Run the backend from `backend/`, not the repository root, or it loads the wrong 
 
 `app.config.ts` holds every native Android setting: permissions, SDK levels, plugins. `android/` is
 **generated output, git-ignored, never edited**: the next prebuild erases the edit.
-Today: `src/screens/<role or domain>/`, `src/components/{ui,features/<domain>}/`, `src/services/modules/<domain>/`,
-`src/store/`, `src/types/<domain>.ts`, `src/constants/` (shared display labels);
-`backend/app/{api/v1/endpoints,services,repositories,schemas,core,ml}/`. Plan A phase A1 moves everything to the
-SRDS module layout (`docs/plan.md` §2): `frontend/` and `backend/app/` with `admin`, `farmer`, `dealer`, `buyer`,
-`expert`, `ai`, `inventory`, `common` (shared features and utilities) and the core folders; new code written before
-A1 follows today's layout. `supabase/migrations/` (timestamped, never edited after being pushed);
+The SRDS module layout (`docs/plan.md` §2, since A1). App: `frontend/<module>/{screens,components,services,hooks,types}/`
+with a public `index.ts`, for `admin`, `farmer`, `dealer`, `buyer`, `expert`, `ai`, `inventory` and the shared features in
+`frontend/common/<feature>/` (auth, profile, marketplace, orders, payments, reviews, messaging, notifications,
+consultations, analytics, reference-data); shared code in `frontend/{theme,navigation,services,state,hooks,utils,config,
+assets}` and `frontend/common/{components,constants,types}`. Backend: `backend/app/<module>/{router,service,repository,
+schemas}.py` with the same modules (`common/<feature>/` for shared features), and `backend/app/{auth,database,middleware,
+config}/` plus `backend/app/common/*.py` for the core. Another module is reached only through its `index.ts` or
+`service.py`/`schemas.py`; the `module-boundary` rule of the reality gate enforces it. Backend tests mirror the modules
+(`backend/tests/<module>/`, integration tests in `backend/tests/integration/`). `supabase/migrations/` (timestamped, never edited after being pushed);
 `docs/{architecture,database,setup,process,status}/`; the plans are `docs/plan*.md`.
 
 ## Learned the hard way
@@ -126,7 +129,7 @@ A1 follows today's layout. `supabase/migrations/` (timestamped, never edited aft
 - Each Expo SDK pins exact versions of React Native and several native libraries. Bumping one alone breaks the
   build; `npx expo install --check` lists the mismatches and `--fix` applies them. Dependabot ignores them.
 - Expo replaces only the literal `process.env.EXPO_PUBLIC_NAME`. Destructuring or computed access reads
-  `undefined` on the device. `src/config/env.ts` is the one place that reads them and validates the result.
+  `undefined` on the device. `frontend/config/env.ts` is the one place that reads them and validates the result.
 - To test a deep link, run the real flow: request the reset in the app, read the email from the local mail
   catcher, open its link. A made-up `?code=` proves nothing: with no stored PKCE verifier, supabase-js rejects it
   locally, so the app shows nothing and the server sees nothing, whether or not the link was delivered.

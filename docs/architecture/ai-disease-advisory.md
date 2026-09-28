@@ -8,17 +8,17 @@
 - **Training**: fine-tuned externally on the PlantVillage dataset (two-stage: a frozen-backbone
   warmup, then a full unfreeze — see `training_history_stage1_best_val_acc`/`stage2_best_val_acc`
   in the metadata below), not in this repo. The trained weights (a `state_dict`, not a full model
-  pickle) live at `backend/app/ml/checkpoints/model.pth`, loaded with `weights_only=True` (safe
+  pickle) live at `backend/app/ai/checkpoints/model.pth`, loaded with `weights_only=True` (safe
   against arbitrary pickle code execution, since a plain state_dict never needs anything else).
 - **Current status**: real, live, and loading successfully — `classifier.available` is `True`.
   `POST /api/v1/disease/predict` returns real 38-class predictions, not the earlier placeholder's
   designed-to-fail `503`.
 - **Classes**: 38 real PlantVillage classes (14 crops × disease/healthy variants), loaded at
-  startup from `backend/app/ml/checkpoints/model_metadata.json`'s `class_names` list — not
-  hardcoded in `core/config.py` anymore. This makes the checkpoint's own metadata file the single
+  startup from `backend/app/ai/checkpoints/model_metadata.json`'s `class_names` list — not
+  hardcoded in `config/settings.py` anymore. This makes the checkpoint's own metadata file the single
   source of truth for the class list (and, see below, the version string): a future retrain only
   needs new `model.pth`/`class_names.json`/`model_metadata.json` files dropped in at the same
-  path, no code change. If `model_metadata.json` is missing/corrupt, `core/config.py` falls back
+  path, no code change. If `model_metadata.json` is missing/corrupt, `config/settings.py` falls back
   to the original 5-class placeholder list, which degrades the same way a missing/corrupt
   `model.pth` already does (`classifier.available` → `False`), not a crash.
 - **Model version**: `settings.model_version` is likewise derived from `model_metadata.json`
@@ -33,7 +33,7 @@
   expert-consultation handoff subject line) get a clean label with no frontend changes needed.
   The `DESCRIPTIONS` lookup happens against the **raw** label first, before humanizing — the two
   must not be reordered, or every lookup would miss.
-- **Per-class copy**: `disease_service.py`'s `DESCRIPTIONS` dict has a real, non-empty
+- **Per-class copy**: `backend/app/ai/service.py`'s `DESCRIPTIONS` dict has a real, non-empty
   description/recommended-actions entry for all 38 raw classes (a
   `test_descriptions_covers_every_configured_model_class` regression test enforces this stays
   true as `model_classes` changes). Any class not yet in `DESCRIPTIONS` — e.g. after a future
@@ -50,7 +50,7 @@
 Every result screen shows a persistent disclaimer: this is an AI advisory, not a replacement
 for professional consultation. The "Consult an Expert" action is always available (not gated
 behind a low-confidence result), though it's visually emphasized when confidence falls below
-`LOW_CONFIDENCE_THRESHOLD` (`src/types/disease.ts`, currently `0.6`).
+`LOW_CONFIDENCE_THRESHOLD` (`frontend/ai/types/disease.ts`, currently `0.6`).
 
 ## Marketplace mapping (§17.4)
 
@@ -65,7 +65,7 @@ presented as a specific cure for the predicted disease.
    (`supabase/migrations/20260901080000_disease_images_bucket.sql`, made private by
    `20260922080100_disease_images_private.sql` — security fix C2), then calls
    `POST /api/v1/disease/cases` (`diseaseService.createDiseaseCase`) with the object's storage
-   **path**, never a URL. `CreateCaseRequest.storage_path` (`backend/app/schemas/disease.py`) is
+   **path**, never a URL. `CreateCaseRequest.storage_path` (`backend/app/ai/schemas.py`) is
    regex-validated to a single `<folder>/<filename>` shape, and `disease_service.create_case`
    additionally checks the folder segment equals the caller's own id — a client can never point a
    case at another user's uploaded object. Previously the client sent the bucket's *public* URL
@@ -96,7 +96,7 @@ presented as a specific cure for the predicted disease.
 
 ## Testing
 
-`backend/tests/unit/test_disease_service.py` mocks `ai_engine.classifier` entirely — it verifies
+`backend/tests/ai/test_disease_service.py` mocks the classifier (`app.ai.service.get_classifier`) entirely — it verifies
 ownership/authorization/error-handling logic and is intentionally insensitive to whether a real
 model is loaded, plus table-driven coverage of `_humanize_class_name` and the `DESCRIPTIONS`
 fallback behavior. The one suite that exercises the **real** checkpoint through **real**

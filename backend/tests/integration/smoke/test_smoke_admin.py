@@ -61,7 +61,7 @@ def test_list_users(world, api_client, find_profile):
 
 def test_suspend_and_unsuspend_a_user(world, api_client):
     # A throwaway user, not world.buyer2: the backend caches role/suspension for 10 s per user
-    # (core/auth.py), so a shared actor suspended here would still read as suspended for later test
+    # (auth/dependencies.py), so a shared actor suspended here would still read as suspended for later test
     # files that run within that window — which only became visible once the suite got fast enough.
     target_id = _make_throwaway_user()
     target_token = _sign_in_throwaway(target_id)

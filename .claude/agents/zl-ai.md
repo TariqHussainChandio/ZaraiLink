@@ -12,7 +12,7 @@ FastAPI + Supabase). Several lanes work at the same time; you stay inside your o
 - `frontend/ai/`
 - `backend/app/ai/`
 - `scripts/fetch_model_weights.py`
-- `backend/app/ml/checkpoints/model_metadata.json` (moves to `backend/app/ai/` in A1)
+- `backend/app/ai/checkpoints/model_metadata.json`
 
 Load these skills for domain guidance: `ai-ml-engineer`, `fastapi-backend-engineer`, `qa-test-engineer`.
 

@@ -45,7 +45,7 @@ alongside each migration — update it in the same commit that adds/changes a ta
 | `reports` | User reports for moderation | `reporter_id`, `target_type`, `target_id`, `reason`, `status`, `resolution_notes` | Reporter (+ admin) read; reporter insert; admin-only update |
 | `notifications` | In-app notifications (§19, Module 13; see `docs/architecture/notifications.md`) | `user_id`, `type`, `payload`, `read` | Owner-only read/update; written only by triggers via `create_notification` (no client insert path exists) |
 | `audit_logs` | Admin/system action log (BR-15) | `actor_id`, `action`, `target_entity`, `target_id`, `previous_state`, `new_state` | Admin-only, insert-only |
-| `idempotency_keys` | `Idempotency-Key` claims for order checkout and payment initiation (P5; `core/idempotency.py`) | `user_id`, `key` (8 to 128 chars), `endpoint`, `request_hash`, `response_status`, `response_body`, `created_at`; unique on (`user_id`, `key`, `endpoint`) | Owner-only (`user_id = (select auth.uid())`); rows older than 24 h are swept on each new claim |
+| `idempotency_keys` | `Idempotency-Key` claims for order checkout and payment initiation (P5; `common/idempotency.py`) | `user_id`, `key` (8 to 128 chars), `endpoint`, `request_hash`, `response_status`, `response_body`, `created_at`; unique on (`user_id`, `key`, `endpoint`) | Owner-only (`user_id = (select auth.uid())`); rows older than 24 h are swept on each new claim |
 | `currencies` / `units` | Reference data, admin-curated | see §22 | Public read; admin write |
 
 ## Views
@@ -175,7 +175,7 @@ profiles 1─* audit_logs (actor_id)
   non-admin update to the `status` column only — `amount`/`method`/`provider`/
   `provider_transaction_ref` stay fixed once the buyer creates the payment row. Swapping in a
   real gateway later only changes who calls `markPaymentReceived`/`markPaymentFailed`
-  (`src/services/modules/payments/paymentsService.ts`), not this schema.
+  (`frontend/common/payments/services/paymentsService.ts`), not this schema.
 - `public.available_stock(listing_ids uuid[])` — a `security definer` RPC (same bypass pattern
   as `is_admin()`) that lets any authenticated session look up available stock for a set of
   listings without being able to read `inventory` directly. Returns only `{listing_id,

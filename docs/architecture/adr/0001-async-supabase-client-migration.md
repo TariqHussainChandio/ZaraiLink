@@ -30,7 +30,7 @@ is about 0.28 s of synchronous CPU. One Supabase client builds several httpx cli
 user-scoped client is built on every repository call. This cost existed before the migration too, and it is
 the more likely origin of P0's number than the blocking `.execute()` itself.
 
-Fix, in `core/supabase_client.py`: memoize httpx's `create_ssl_context` so the CA bundle loads once per
+Fix, in `database/supabase_client.py`: memoize httpx's `create_ssl_context` so the CA bundle loads once per
 process. An `SSLContext` is safe to share. Warm client creation plus one query went from 0.60 s to 0.017 s.
 This patches a private httpx name (`httpx._transports.default`), pinned to `httpx==0.28.1`; revisit on upgrade.
 Still in place, and still needed, on supabase-py 2.31 (which pins the same httpx).
@@ -69,7 +69,7 @@ Authenticated `POST /api/v1/orders/checkout` (after only): 19.5 req/s at 1 VU (4
 - Public reads (`GET /marketplace/listings`, shared client) were about 150-180 req/s before and about 20%
   slower after 5A. Cause found by removing layers one at a time (100 VUs, 15 s): all middleware cost about 15%
   and JSON logging setup about 8% more. The three `BaseHTTPMiddleware` classes and slowapi's were rewritten as
-  pure ASGI middleware (`core/middleware.py`, `core/rate_limit.py`), and public reads returned to about 150
+  pure ASGI middleware (`middleware/http_middleware.py`, `middleware/rate_limit.py`), and public reads returned to about 150
   req/s (102 req/s on the upgraded stack before the rewrite, 150 after). The remaining logging cost was left.
 - The dependency refresh (FastAPI 0.141.1 / Starlette 1.7 / pydantic 2.13 / supabase-py 2.31) ran through the same
   k6 script: authenticated reads 84 req/s at 10 VUs and 71 at 50 VUs, in line with the 87 and 74 above.

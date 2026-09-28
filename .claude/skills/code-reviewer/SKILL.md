@@ -19,4 +19,4 @@ Architecture (does it fit the existing layering), naming conventions, performanc
 
 ## Generate
 
-Review summary, code smells, bug detection, refactoring suggestions (prefer reusing an existing utility/pattern over inventing a new one — check `src/utils/`, `src/components/ui/`, `backend/app/core/` first), performance/security improvements, final score out of 10.
+Review summary, code smells, bug detection, refactoring suggestions (prefer reusing an existing utility/pattern over inventing a new one — check `frontend/utils/`, `frontend/common/components/`, `backend/app/common/` first), performance/security improvements, final score out of 10.

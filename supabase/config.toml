@@ -171,7 +171,7 @@ jwt_expiry = 3600
 # jwt_issuer = ""
 # Path to JWT signing key (P4, 4A.2): switches the local stack to asymmetric ES256 signing keys
 # with a real JWKS endpoint (GET /auth/v1/.well-known/jwks.json), so FastAPI can verify tokens
-# locally (core/jwt_verifier.py) instead of calling /auth/v1/user on every request. Generated with
+# locally (auth/jwt_verifier.py) instead of calling /auth/v1/user on every request. Generated with
 # `supabase gen signing-key --algorithm ES256`; the file itself is gitignored (private key
 # material) — see supabase/signing_keys.json. The hosted project's key type is a separate,
 # dashboard-driven migration, not pushed by `supabase config push` — coordinate with 4C.

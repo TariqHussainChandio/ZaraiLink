@@ -555,6 +555,34 @@
         "title": "Consultation",
         "type": "object"
       },
+      "ConsultationListingRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "price",
+          "unit"
+        ],
+        "title": "ConsultationListingRef",
+        "type": "object"
+      },
       "ConsultationMessageWithListing": {
         "properties": {
           "attachments": {
@@ -583,7 +611,7 @@
           "recommended_listing": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/app__schemas__consultations__ListingRef"
+                "$ref": "#/components/schemas/ConsultationListingRef"
               },
               {
                 "type": "null"
@@ -618,6 +646,35 @@
         "title": "ConsultationMessageWithListing",
         "type": "object"
       },
+      "ConsultationProfileRef": {
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "full_name"
+        ],
+        "title": "ConsultationProfileRef",
+        "type": "object"
+      },
       "ConsultationWithRelations": {
         "properties": {
           "created_at": {
@@ -648,7 +705,7 @@
           "expert": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/app__schemas__consultations__ProfileRef"
+                "$ref": "#/components/schemas/ConsultationProfileRef"
               },
               {
                 "type": "null"
@@ -733,7 +790,7 @@
           "user": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/app__schemas__consultations__ProfileRef"
+                "$ref": "#/components/schemas/ConsultationProfileRef"
               },
               {
                 "type": "null"
@@ -3768,7 +3825,7 @@
           "listing": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/app__schemas__orders__ListingRef"
+                "$ref": "#/components/schemas/OrderListingRef"
               },
               {
                 "type": "null"
@@ -3808,6 +3865,42 @@
           "created_at"
         ],
         "title": "OrderItemWithListing",
+        "type": "object"
+      },
+      "OrderListingRef": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "unit"
+        ],
+        "title": "OrderListingRef",
+        "type": "object"
+      },
+      "OrderProfileRef": {
+        "properties": {
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "full_name"
+        ],
+        "title": "OrderProfileRef",
         "type": "object"
       },
       "OrderStatusHistoryEntry": {
@@ -3893,7 +3986,7 @@
           "buyer": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/app__schemas__orders__ProfileRef"
+                "$ref": "#/components/schemas/OrderProfileRef"
               },
               {
                 "type": "null"
@@ -3931,7 +4024,7 @@
           "seller": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/app__schemas__orders__ProfileRef"
+                "$ref": "#/components/schemas/OrderProfileRef"
               },
               {
                 "type": "null"
@@ -5605,99 +5698,6 @@
           "listing_ids"
         ],
         "title": "ViewCountsRequest",
-        "type": "object"
-      },
-      "app__schemas__consultations__ListingRef": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "price": {
-            "title": "Price",
-            "type": "number"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "unit": {
-            "title": "Unit",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "price",
-          "unit"
-        ],
-        "title": "ListingRef",
-        "type": "object"
-      },
-      "app__schemas__consultations__ProfileRef": {
-        "properties": {
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "full_name": {
-            "title": "Full Name",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "full_name"
-        ],
-        "title": "ProfileRef",
-        "type": "object"
-      },
-      "app__schemas__orders__ListingRef": {
-        "properties": {
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "unit": {
-            "title": "Unit",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "unit"
-        ],
-        "title": "ListingRef",
-        "type": "object"
-      },
-      "app__schemas__orders__ProfileRef": {
-        "properties": {
-          "full_name": {
-            "title": "Full Name",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "full_name"
-        ],
-        "title": "ProfileRef",
         "type": "object"
       }
     },

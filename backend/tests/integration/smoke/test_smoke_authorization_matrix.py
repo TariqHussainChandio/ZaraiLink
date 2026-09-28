@@ -39,7 +39,7 @@ for _name, _local in (
         os.environ.setdefault(_name, os.environ[_local])
 
 try:
-    from app.core.auth import declared_roles, get_current_user, require_admin_aal2
+    from app.auth.dependencies import declared_roles, get_current_user, require_admin_aal2
     from app.main import app
 except ValidationError:  # no Supabase settings available: the tests below skip via backend_url
     app = None

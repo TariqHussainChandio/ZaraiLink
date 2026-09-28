@@ -2,7 +2,7 @@
 # P5 (item 9). Build context is the REPOSITORY ROOT, not backend/, because the model-weight fetch
 # script lives in scripts/:
 #   docker build -f backend/Dockerfile -t zarailink-api .
-# The 9 MB checkpoint is not in git (finding C5). If backend/app/ml/checkpoints/model.pth is already on
+# The 9 MB checkpoint is not in git (finding C5). If backend/app/ai/checkpoints/model.pth is already on
 # disk (a local build) the fetch below sees a matching checksum and downloads nothing. Otherwise it needs a
 # token while the repo is private, passed as a build SECRET so it never lands in an image layer:
 #   docker build --secret id=gh_token,env=GH_TOKEN -f backend/Dockerfile -t zarailink-api .

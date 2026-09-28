@@ -5,7 +5,7 @@
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import App from '../App';
-import { queryClient } from '../src/hooks/api/queryClient';
+import { queryClient } from '../frontend/hooks/queryClient';
 
 test('renders correctly', async () => {
   let renderer: ReactTestRenderer.ReactTestRenderer | undefined;

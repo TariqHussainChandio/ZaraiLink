@@ -3,7 +3,11 @@
 *                       @TariqHussainChandio
 
 /supabase/              @TariqHussainChandio
-/backend/app/core/      @TariqHussainChandio
+/backend/app/auth/      @TariqHussainChandio
+/backend/app/config/    @TariqHussainChandio
+/backend/app/database/  @TariqHussainChandio
+/backend/app/middleware/ @TariqHussainChandio
+/backend/app/common/*.py @TariqHussainChandio
 /.github/               @TariqHussainChandio
 /scripts/               @TariqHussainChandio
 /AGENTS.md              @TariqHussainChandio

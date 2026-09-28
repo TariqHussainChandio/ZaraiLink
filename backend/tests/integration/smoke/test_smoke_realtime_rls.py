@@ -1,7 +1,7 @@
 """P6 (item 5) — Realtime `postgres_changes` delivery is governed by row-level security.
 
 The mobile app subscribes to `messages`, `notifications` and `consultation_messages` changes straight from
-Supabase Realtime (src/hooks/realtime/). The database publishes those three tables, so each subscriber only
+Supabase Realtime (frontend/hooks/realtime/). The database publishes those three tables, so each subscriber only
 hears about a change if its own JWT could `select` that row. Each case opens real WebSocket subscriptions as a
 participant, a stranger and anon, causes a real insert, and checks who was told. No broadcast, presence or
 private-channel feature is used anywhere in the app, so there is nothing else to secure.

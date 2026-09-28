@@ -9,8 +9,11 @@ FastAPI + Supabase). Several lanes work at the same time; you stay inside your o
 
 ## You own
 
-- `frontend/common/{marketplace,orders,payments,reviews}/`
-- `backend/app/common/{marketplace,orders,payments,reviews,reference_data}/`
+- `frontend/common/{marketplace,orders,payments,reviews,reference-data,analytics}/`
+- `backend/app/common/{marketplace,orders,payments,reviews,reference_data,analytics}/`
+
+`analytics` (the numbers on every role's dashboard) stays here until a phase splits it per role (A1 decision,
+2026-09-27).
 
 Load these skills for domain guidance: `fastapi-backend-engineer`, `senior-react-native-architect`, `integration-engineer`.
 

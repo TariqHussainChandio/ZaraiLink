@@ -1,0 +1,265 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  dismissReport,
+  fetchAllOrders,
+  fetchAllProfiles,
+  fetchAuditLogs,
+  fetchPlatformStats,
+  fetchReports,
+  resolveReport,
+  setProfileSuspended,
+  updateUserRole,
+} from '../services/adminService';
+import { fetchAdminAnalytics } from '../../common/analytics';
+import {
+  fetchExpertById,
+  fetchExpertForAdminById,
+  fetchExpertsForAdmin,
+  resolveExpertDocumentUrl,
+  reviewExpertVerification,
+  type VerificationStatus,
+} from '../../expert';
+import {
+  createCategory,
+  deleteCategory,
+  fetchAllListingsForModeration,
+  fetchListingById,
+  updateCategory,
+  updateListingStatus,
+  type CategoryInput,
+  type ListingStatus,
+} from '../../common/marketplace';
+import { fetchMessageById, redactMessage } from '../../common/messaging';
+import { deleteReview, fetchReviewById } from '../../common/reviews';
+import type { Role } from '../../common/constants/roles';
+import type { ReportStatus, ReportWithReporter } from '../types/reports';
+import { queryKeys } from '../../hooks/keys';
+
+/*
+ * Every admin write below is audit-logged by the API (BR-15); the hooks only decide what refetches afterwards. The
+ * admin data is never written to the on-disk cache (queryClient.ts persists public marketplace reads only).
+ */
+
+export function useAdminAnalytics() {
+  return useQuery({ queryKey: queryKeys.admin.analytics(), queryFn: fetchAdminAnalytics });
+}
+
+export function usePlatformStats() {
+  return useQuery({ queryKey: queryKeys.admin.stats(), queryFn: fetchPlatformStats });
+}
+
+export function useAuditLogs() {
+  return useQuery({ queryKey: queryKeys.admin.auditLogs(), queryFn: () => fetchAuditLogs(), staleTime: 0 });
+}
+
+export function useAllOrders() {
+  return useQuery({ queryKey: queryKeys.admin.orders(), queryFn: fetchAllOrders, staleTime: 0 });
+}
+
+function useInvalidateAdmin() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.all });
+}
+
+// ---- users
+
+export function useProfiles() {
+  return useQuery({ queryKey: queryKeys.admin.profiles(), queryFn: fetchAllProfiles, staleTime: 0 });
+}
+
+export function useSetProfileSuspended() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: ({ id, suspended }: { id: string; suspended: boolean }) => setProfileSuspended(id, suspended),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateUserRole() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: ({ id, role }: { id: string; role: Role }) => updateUserRole(id, role),
+    onSuccess: invalidate,
+  });
+}
+
+// ---- listings
+
+export function useModerationListings() {
+  return useQuery({
+    queryKey: queryKeys.admin.moderationListings(),
+    queryFn: fetchAllListingsForModeration,
+    staleTime: 0,
+  });
+}
+
+/** A moderation change to a listing shows in the marketplace as well as in the admin list. */
+export function useSetListingStatus() {
+  const invalidateAdmin = useInvalidateAdmin();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ListingStatus }) => updateListingStatus(id, status),
+    onSuccess: () =>
+      Promise.all([invalidateAdmin(), queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.all })]),
+  });
+}
+
+// ---- categories (reads use `useCategories` in marketplace.ts)
+
+function useInvalidateCategories() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.categories() });
+}
+
+export function useSaveCategory() {
+  const invalidate = useInvalidateCategories();
+  return useMutation({
+    mutationFn: ({ id, input }: { id?: string; input: CategoryInput }) =>
+      id ? updateCategory(id, input) : createCategory(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteCategory() {
+  const invalidate = useInvalidateCategories();
+  return useMutation({ mutationFn: (id: string) => deleteCategory(id), onSuccess: invalidate });
+}
+
+// ---- expert verification
+
+export function useExpertVerifications(status: VerificationStatus | undefined) {
+  return useQuery({
+    queryKey: queryKeys.admin.verifications(status),
+    queryFn: () => fetchExpertsForAdmin(status),
+    staleTime: 0,
+  });
+}
+
+export function useReviewVerification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      expertId,
+      verificationId,
+      decision,
+      notes,
+    }: {
+      expertId: string;
+      verificationId: string;
+      decision: VerificationStatus;
+      notes: string;
+    }) => reviewExpertVerification(expertId, verificationId, decision, notes),
+    // A decision changes who shows up as a verified expert, not only the admin list.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.experts.all }),
+      ]),
+  });
+}
+
+/** A short-lived signed link to the expert's certificate, opened on demand rather than kept in the cache. */
+export function useExpertDocumentUrl() {
+  return useMutation({ mutationFn: (expertId: string) => resolveExpertDocumentUrl(expertId) });
+}
+
+// ---- reports
+
+export function useReports(status: ReportStatus | undefined) {
+  return useQuery({ queryKey: queryKeys.admin.reports(status), queryFn: () => fetchReports(status), staleTime: 0 });
+}
+
+/**
+ * Best-effort one-line preview of what a report is about, fetched per report's target type. A preview that cannot be
+ * loaded (the content was deleted, or is not visible) shows a placeholder instead of failing the list.
+ */
+async function fetchPreview(report: ReportWithReporter): Promise<string> {
+  try {
+    switch (report.target_type) {
+      case 'listing':
+      case 'product':
+        return (await fetchListingById(report.target_id)).title;
+      case 'review':
+        return (await fetchReviewById(report.target_id)).comment ?? '(no comment)';
+      case 'message':
+        return (await fetchMessageById(report.target_id)).body;
+      case 'expert':
+        return (await fetchExpertById(report.target_id)).profile?.full_name ?? 'Unknown expert';
+      case 'user': {
+        const profiles = await fetchAllProfiles();
+        return profiles.find(p => p.id === report.target_id)?.full_name ?? 'Unknown user';
+      }
+      default:
+        return report.target_id;
+    }
+  } catch {
+    return '(content unavailable — may have been removed)';
+  }
+}
+
+/** Previews for a list of reports, by report id. */
+export function useReportPreviews(reports: ReportWithReporter[]) {
+  const ids = reports.map(report => report.id);
+  return useQuery({
+    queryKey: queryKeys.admin.reportPreviews(ids),
+    queryFn: async () => {
+      const entries = await Promise.all(reports.map(async report => [report.id, await fetchPreview(report)] as const));
+      return Object.fromEntries(entries) as Record<string, string>;
+    },
+    enabled: reports.length > 0,
+    staleTime: 60 * 1000,
+  });
+}
+
+/** The action that removes what a report is about; the report is then marked resolved. */
+async function applyReportAction(report: ReportWithReporter) {
+  switch (report.target_type) {
+    case 'listing':
+    case 'product':
+      return updateListingStatus(report.target_id, 'inactive');
+    case 'user':
+      return setProfileSuspended(report.target_id, true);
+    case 'review':
+      return deleteReview(report.target_id);
+    case 'message':
+      return redactMessage(report.target_id);
+    case 'expert': {
+      const expert = await fetchExpertForAdminById(report.target_id);
+      const latestVerification = expert.expert_verifications[0];
+      if (latestVerification) {
+        await reviewExpertVerification(
+          report.target_id,
+          latestVerification.id,
+          'suspended',
+          'Suspended via report resolution',
+        );
+      }
+      return undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** Takes the action a report calls for, then resolves the report. */
+export function useModerateReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ report }: { report: ReportWithReporter }) => {
+      await applyReportAction(report);
+      await resolveReport(report.id, null);
+    },
+    // The action can remove a listing, review or message, or suspend a user or an expert, so those refetch too.
+    onSuccess: () =>
+      Promise.all(
+        [queryKeys.admin.all, queryKeys.marketplace.all, queryKeys.reviews.all, queryKeys.experts.all].map(queryKey =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
+  });
+}
+
+export function useDismissReport() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({ mutationFn: (reportId: string) => dismissReport(reportId, null), onSuccess: invalidate });
+}

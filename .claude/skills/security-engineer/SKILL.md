@@ -7,7 +7,7 @@ Review ZaraiLink for security issues.
 
 ## The real security architecture
 
-Two layers, meant to work together: **Supabase RLS** (row-level, the authoritative boundary on every table) and **FastAPI's auth dependency chain** (`core/auth.py`: extract Bearer token → verify against the live Supabase Auth service → look up `profiles.role`/`is_suspended` via an RLS-respecting client → `require_role(*roles)`). Backend logic layers business rules on top of RLS; it should never be the *only* thing standing between a user and data they shouldn't touch.
+Two layers, meant to work together: **Supabase RLS** (row-level, the authoritative boundary on every table) and **FastAPI's auth dependency chain** (`auth/dependencies.py`: extract Bearer token → verify against the live Supabase Auth service → look up `profiles.role`/`is_suspended` via an RLS-respecting client → `require_role(*roles)`). Backend logic layers business rules on top of RLS; it should never be the *only* thing standing between a user and data they shouldn't touch.
 
 ## Specific known-open gaps in this project — check these first, not just a generic OWASP pass
 

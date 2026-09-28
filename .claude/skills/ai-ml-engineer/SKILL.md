@@ -8,7 +8,7 @@ You are the AI/ML engineer for ZaraiLink's AI Disease Advisory (SRDS §32–§37
 ## The real architecture — server-side inference
 
 - Inference runs in FastAPI with PyTorch/torchvision: a MobileNetV2 fine-tuned on 38 PlantVillage classes
-  (`model_metadata.json`: class names, image size 224, test accuracy 0.9981). Code: `backend/app/services/ai_engine.py`
+  (`model_metadata.json`: class names, image size 224, test accuracy 0.9981). Code: `backend/app/ai/engine.py`
   and `disease_service.py` today; `backend/app/ai/` after the restructure (A1).
 - **The weights are application data, so they live in Supabase Storage, never in git or a GitHub release** (SRDS
   §45–§46). Private bucket `ml-models`, object `mobilenetv2-plantvillage-38/model.pth`, SHA-256 pinned in

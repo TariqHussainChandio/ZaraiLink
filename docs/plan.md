@@ -1,12 +1,14 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-09-27): A0 closed** (PR #13 merged, CI green on `main`). The hosted project now matches the repository: 55 migrations and the reference data pushed, and Auth
+> **Status (2026-09-28): A0 closed** (PR #13 merged, CI green on `main`). The hosted project now matches the repository: 55 migrations and the reference data pushed, and Auth
 > configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
 > Supabase's password rules, reauthentication for old sessions, phone sign-up off). An early build of A3's account
 > status, email-only sign-in and Application Status screen is parked, unmerged, on branch `wip/a3-account-status`
 > (its migration is not pushed); A3 starts from it after A1 and A2. The two fixes due before A1 (an expert could
-> approve themselves; an admin could edit or delete any listing unaudited, BR-15) are built and tested on branch
-> `fix/admin-write-scope`, migration `20260928090000` (hosted push after merge). **Next: A1** (modular restructure);
+> approve themselves; an admin could edit or delete any listing unaudited, BR-15) are fixed (PR #14, migration
+> `20260928090000`, pushed to the hosted project 2026-09-27 (56 migrations, advisors unchanged)). **A1 (modular
+> restructure, 2026-09-28): built on branch `a1/restructure` and verified**, every check passing with the same
+> counts, awaiting the maintainer's merge (section 2; `docs/plan-ecommerce.md` A1). **Next: A2 and A3.**
 > D2–D4 decided. The requirements are [`docs/srds.md`](srds.md),
 > traced requirement by requirement in [`docs/status/srds-traceability.md`](status/srds-traceability.md); this
 > plan follows it strictly. It is split into two plans that share one module map and one set of agents:
@@ -40,8 +42,10 @@ Rules that keep parallel lanes from colliding:
    a schema request: tables, columns, policies, and the two-user proof they need.
 3. **One contract writer.** Only `zl-backend-core` regenerates `backend/openapi.json` and the generated client
    (`npm run api:generate`), once per checkpoint, after the API lanes have merged.
-4. **Public entry points.** Code outside a module imports only its `index.ts` (frontend) or `service.py`
-   (backend). The module-boundary gate added in A1 fails anything else.
+4. **Public entry points.** Code outside a module imports only its `index.ts` (frontend) or `service.py` and
+   `schemas.py` (backend). Shared layers (`navigation/`, `services/`, `state/`, `hooks/`, `common/components/`)
+   see modules as types only; `navigation/` may also mount a module's screens. The strict `module-boundary` rule
+   of `scripts/check_reality.py` (A1) fails anything else.
 5. **Branch per lane, merge at the checkpoint.** Each lane works on `<phase>/<lane>` and rebases on the phase
    branch; the orchestrator merges lanes in the task card's order (database, then API, then app).
 6. **Nothing but code in git.** Model weights, exports, backups, uploads and test data never go into the
@@ -79,6 +83,14 @@ code they test (frontend) or mirror the module (`backend/tests/<module>/`). pgTA
 `supabase/tests/database/` and `supabase/config.toml` stays where it is, because the Supabase CLI requires both.
 Cross-stack real-path tests go in a top-level `tests/<module>/`.
 
+**Built in A1 (2026-09-28)** for the code that exists today; each module folder has a `README.md` (what it owns, its
+public API, the tables it uses). Three shared folders the tree above does not show: `common/analytics` (every
+role's dashboard numbers, until a phase splits it per role), frontend `common/reference-data` (backend
+`common/reference_data`) and frontend `testUtils/`. Folders with no code yet appear in the phase that fills them:
+backend `buyer/`, `storage/` and `inventory/` (B0 carves it out of `dealer/`), and frontend
+`common/{forms,validation,formatting,error-handling,loading,permissions,api}` (A2). The explicit old-to-new file
+list is `scripts/a1/moves.json`, kept for porting older branches (A3, B0).
+
 ## 3. Lanes and agents
 
 Agents are defined in `.claude/agents/` (one file each, listing the folders they own). Skills in `.claude/skills/`
@@ -89,9 +101,9 @@ give them domain know-how; `CLAUDE.md` maps work types to skills.
 | `zl-orchestrator` | task cards, phase branches, `docs/plan*.md`, merge order | A, B |
 | `zl-db` | `supabase/migrations/`, `supabase/tests/`, `supabase/seed.sql`, `docs/database/` | A, B |
 | `zl-backend-core` | `backend/app/{auth,database,storage,middleware,config}`, backend core in `backend/app/common/`, `backend/app/main.py`, `backend/openapi.json`, the generated client, `scripts/` gates | A, B |
-| `zl-app-core` | `frontend/{theme,navigation,services,state,hooks,utils,assets,config}`, `frontend/common/{components,forms,validation,types,constants,formatting,error-handling,loading,permissions,api}` | A, B |
+| `zl-app-core` | `frontend/{theme,navigation,services,state,hooks,utils,assets,config,testUtils}`, `frontend/common/{components,forms,validation,types,constants,formatting,error-handling,loading,permissions,api}` | A, B |
 | `zl-accounts` | `frontend/common/{auth,profile}`, `backend/app/common/profile` (sign-in, registration, application status, account security) | A |
-| `zl-commerce` | `frontend/common/{marketplace,orders,payments,reviews}`, `backend/app/common/{marketplace,orders,payments,reviews,reference_data}` | A, B |
+| `zl-commerce` | `frontend/common/{marketplace,orders,payments,reviews,reference-data,analytics}`, `backend/app/common/{marketplace,orders,payments,reviews,reference_data,analytics}` | A, B |
 | `zl-comms` | `frontend/common/{messaging,notifications}`, `backend/app/common/{messaging,notifications}`, email templates | A |
 | `zl-farmer` | `frontend/farmer`, `backend/app/farmer` | A |
 | `zl-buyer` | `frontend/buyer`, `backend/app/buyer` | A |

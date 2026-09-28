@@ -99,7 +99,7 @@ __pycache__/
 # Model weights are application data: they live in Supabase Storage (private `ml-models` bucket) and
 # are fetched by scripts/fetch_model_weights.py, never tracked in git or attached to a GitHub release
 # (SRDS §45-§46). model_metadata.json (bucket, path and pinned SHA-256) stays tracked.
-backend/app/ml/checkpoints/model.pth
+backend/app/ai/checkpoints/model.pth
 *.pth
 *.onnx
 # Ruby Bundler

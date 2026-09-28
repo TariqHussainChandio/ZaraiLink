@@ -12,7 +12,7 @@ other modules implement against — it does not change enforcement by itself.
    not just an application-level check.
 2. **Backend mirror** (`backend/app/`, Module 19) re-implements the same rule wherever an
    endpoint uses the Supabase service-role key and therefore bypasses RLS — exactly **one** case
-   today, disease inference (`disease_repository.py`); see backend-architecture.md's "Three
+   today, disease inference (`backend/app/ai/repository.py`); see backend-architecture.md's "Three
    Supabase client modes" section for why the three domains that might look like other
    candidates (audit logging, the notifications trigger domain, the `available_stock` checkout
    RPC) deliberately don't use it — each either already has RLS permission as the calling admin,
@@ -50,7 +50,7 @@ other modules implement against — it does not change enforcement by itself.
 ownership check across 24 tables (`20260901110000_rls_suspension_enforcement.sql`). A suspended
 user can still read their own profile (so the app can render the suspension banner) but can't
 write to farms, dealer_stores, orders, or anything else in the table above. The backend mirrors
-the same check server-side (`core/auth.py`, 403 on a suspended token) — see
+the same check server-side (`auth/dependencies.py`, 403 on a suspended token) — see
 [backend-architecture.md](backend-architecture.md).
 
 ## Status

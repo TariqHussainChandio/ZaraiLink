@@ -56,8 +56,8 @@ jobs:
           changed="$(git diff --name-only "$BASE_SHA" HEAD)"
           match() { if printf '%s\n' "$changed" | grep -Eq "$1"; then echo true; else echo false; fi; }
           {
-            echo "frontend=$(match '^(src/|__tests__/|__mocks__/|App\.tsx$|index\.js$|app\.config\.ts$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|jest\.config\.js$|jest\.env\.js$|eslint\.config\.js$|\.prettierrc\.js$|knip\.jsonc$|scripts/|\.github/)')"
-            echo "android=$(match '^(src/|App\.tsx$|index\.js$|app\.config\.ts$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|\.github/)')"
+            echo "frontend=$(match '^(frontend/|__tests__/|__mocks__/|App\.tsx$|index\.js$|app\.config\.ts$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|jest\.config\.js$|jest\.env\.js$|eslint\.config\.js$|\.prettierrc\.js$|knip\.jsonc$|scripts/|\.github/)')"
+            echo "android=$(match '^(frontend/|App\.tsx$|index\.js$|app\.config\.ts$|package(-lock)?\.json$|tsconfig\.json$|babel\.config\.js$|metro\.config\.js$|\.github/)')"
             echo "backend=$(match '^(backend/|scripts/|osv-scanner\.toml$|\.github/)')"
             echo "database=$(match '^(supabase/|backend/|\.github/)')"
           } >> "$GITHUB_OUTPUT"
@@ -107,7 +107,8 @@ jobs:
         run: npm run lint
       - name: Type check
         run: npm run typecheck
-      # P7: src/api/generated is generated from backend/openapi.json (npm run api:generate); it must match what is committed.
+      # P7: frontend/services/api/generated is generated from backend/openapi.json (npm run api:generate); it must match
+      # what is committed (scripts/ci/check_generated_clean.py also fails if the folder is missing).
       - name: API client is current
         run: npm run api:check
       - name: Tests with coverage
@@ -210,7 +211,7 @@ jobs:
       - name: OpenAPI document is current
         run: uv run python ../scripts/export_openapi.py --check
       - name: Tests for the reality gate itself
-        run: uv run pytest ../scripts/test_check_reality.py ../scripts/test_check_migrations.py ../scripts/test_check_advisors.py -q -p no:cacheprovider
+        run: uv run pytest ../scripts/test_check_reality.py ../scripts/test_check_migrations.py ../scripts/test_check_advisors.py ../scripts/test_ci_paths.py -q -p no:cacheprovider
       - name: Tests with coverage
         run: uv run pytest --cov --cov-report=term --cov-report=json:coverage.json -q
       - name: Coverage summary
@@ -288,7 +289,8 @@ jobs:
           # the real database, not mocks, so unit tests alone cannot honestly reach the bar. The smoke
           # backend runs under coverage (ZARAILINK_COVERAGE, tests/integration/smoke/serve_measured.py).
           export ZARAILINK_COVERAGE=1
-          uv run pytest tests/unit --cov -q
+          # Unit tests mirror the modules (tests/<module>/, A1); integration tests are the other folder.
+          uv run pytest tests --ignore=tests/integration --cov -q
           uv run pytest tests/integration --cov --cov-append --cov-report=term --cov-fail-under=85 -rxs -q
       - name: Stop local Supabase
         if: always()
@@ -337,7 +339,7 @@ jobs:
           uvx --from semgrep==1.177.0 semgrep scan
           --config p/owasp-top-ten --config p/typescript --config p/python
           --metrics=off --error --quiet
-          src backend/app scripts App.tsx index.js
+          frontend backend/app scripts App.tsx index.js
 
   workflow-lint:
     name: Workflow lint
