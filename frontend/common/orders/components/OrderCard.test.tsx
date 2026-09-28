@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { OrderCard } from './OrderCard';
-import type { OrderWithItems } from '../../../types/orders';
+import type { OrderWithItems } from '../types/orders';
 
 const order = (overrides: Partial<OrderWithItems> = {}): OrderWithItems =>
   ({

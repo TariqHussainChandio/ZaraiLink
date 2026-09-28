@@ -1,4 +1,4 @@
-// src/config/env.ts validates process.env when it is first imported, so each test loads a fresh copy
+// frontend/config/env.ts validates process.env when it is first imported, so each test loads a fresh copy
 // of the module under a controlled environment.
 
 const VALID = {

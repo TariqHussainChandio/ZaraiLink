@@ -1,4 +1,4 @@
-import type { GeoLocation } from './referenceData';
+import type { GeoLocation } from '../../types/referenceData';
 
 export interface Category {
   id: string;

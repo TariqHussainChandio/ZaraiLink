@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
-import { useThemeStore } from '../store/themeStore';
+import { useThemeStore } from '../state/themeStore';
 import { darkTheme, lightTheme, type Theme } from './themes';
 
 const ThemeReactContext = createContext<Theme>(lightTheme);

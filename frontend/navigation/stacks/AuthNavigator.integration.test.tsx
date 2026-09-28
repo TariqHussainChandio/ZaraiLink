@@ -3,13 +3,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AuthNavigator } from './AuthNavigator';
-import { signUp, verifySignupOtp } from '../../services/modules/auth/authService';
+import { signUp, verifySignupOtp } from '../../common/auth/services/authService';
 
 // Real NavigationContainer + AuthNavigator stack — proves RegisterScreen actually hands the
 // channel/identifier the user typed to VerifyOtpScreen via real route params, not just that
 // each screen calls navigation.navigate with the right mocked arguments in isolation.
 
-jest.mock('../../services/modules/auth/authService', () => ({
+jest.mock('../../common/auth/services/authService', () => ({
   signIn: jest.fn(),
   signUp: jest.fn(),
   verifySignupOtp: jest.fn(),

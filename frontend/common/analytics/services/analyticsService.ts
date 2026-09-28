@@ -1,14 +1,14 @@
-import { apiFetch } from '../../api/client';
+import { apiFetch } from '../../../services/api/client';
 import type {
   AdminAnalytics,
   DealerAnalytics,
   ExpertAnalytics,
   FarmerAnalytics,
-} from '../../../types/analytics';
+} from '../types/analytics';
 
 /**
  * All aggregation (product-stat accumulation, month-bucketing, completed-orders-only sales
- * filtering, etc.) moved server-side (`backend/app/services/analytics_service.py`), reusing
+ * filtering, etc.) moved server-side (`backend/app/common/analytics/service.py`), reusing
  * the other domains' repository functions in-process rather than duplicating their queries —
  * this file is now a thin wrapper. No id params — every endpoint scopes to the caller's own
  * data via their role (`require_farmer`/`require_dealer`/`require_expert`/`require_admin`).

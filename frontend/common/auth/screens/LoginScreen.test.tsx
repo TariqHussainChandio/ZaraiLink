@@ -1,13 +1,13 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { AuthApiError } from '@supabase/supabase-js';
 import { LoginScreen } from './LoginScreen';
-import { signIn } from '../../services/modules/auth/authService';
+import { signIn } from '../services/authService';
 import { AUTH_ROUTES } from '../../constants/routes';
-import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
+import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
-jest.mock('../../services/modules/auth/authService', () => ({
+jest.mock('../services/authService', () => ({
   signIn: jest.fn(),
 }));
 

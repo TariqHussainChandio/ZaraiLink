@@ -1,10 +1,10 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { PaymentResultScreen } from './PaymentResultScreen';
-import { fetchPaymentById } from '../../services/modules/payments/paymentsService';
+import { fetchPaymentById } from '../services/paymentsService';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -21,7 +21,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/payments/paymentsService', () => ({
+jest.mock('../services/paymentsService', () => ({
   fetchPaymentById: jest.fn(),
 }));
 

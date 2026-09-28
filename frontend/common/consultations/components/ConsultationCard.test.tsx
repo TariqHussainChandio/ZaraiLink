@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ConsultationCard } from './ConsultationCard';
-import type { ConsultationWithRelations } from '../../../types/expert';
+import type { ConsultationWithRelations } from '../../../expert/types/expert';
 
 const baseConsultation: ConsultationWithRelations = {
   id: 'c1',

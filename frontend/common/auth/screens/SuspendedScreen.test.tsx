@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SuspendedScreen } from './SuspendedScreen';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore } from '../../../state/authStore';
 
 describe('SuspendedScreen', () => {
   it('renders the suspension message', async () => {

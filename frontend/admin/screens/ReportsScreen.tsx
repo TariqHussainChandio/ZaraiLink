@@ -2,11 +2,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, Button, EmptyState, FilterChips, Spinner } from '../../components/ui';
-import { useDismissReport, useModerateReport, useReportPreviews, useReports } from '../../hooks/api/admin';
-import { useAuthStore } from '../../store/authStore';
+import { Badge, Button, EmptyState, FilterChips, Spinner } from '../../common/components';
+import { useDismissReport, useModerateReport, useReportPreviews, useReports } from '../hooks/admin';
+import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { ReportStatus, ReportTargetType, ReportWithReporter } from '../../types/reports';
+import type { ReportStatus, ReportTargetType, ReportWithReporter } from '../types/reports';
 import { errorMessage } from '../../utils/errorMessage';
 
 type FilterValue = ReportStatus | 'all';

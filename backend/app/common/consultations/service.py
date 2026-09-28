@@ -1,9 +1,9 @@
 from fastapi import HTTPException
 
-from ..core.auth import AuthenticatedUser
-from ..core.errors import AppHTTPException
-from ..repositories import consultations_repository as repo
-from ..repositories import expert_repository
+from app.auth.dependencies import AuthenticatedUser
+from app.common.consultations import repository as repo
+from app.common.errors import AppHTTPException
+from app.expert import service as expert_service
 
 # requested -> accepted/rejected/cancelled; accepted -> in_progress/cancelled; in_progress ->
 # resolved; resolved -> closed. `expired` has no in-edge yet (nothing sets it — schema-ready,
@@ -39,7 +39,7 @@ async def create_request(user: AuthenticatedUser, fields: dict) -> dict:
     # Only a verified expert can be asked. The public read below shows `approved` experts only (row-level security),
     # so a pending, rejected or suspended expert, or an id that is not an expert at all, is refused here rather than
     # only being left out of the app's expert list.
-    if await expert_repository.fetch_expert_by_id(fields["expert_id"]) is None:
+    if await expert_service.find_expert(fields["expert_id"]) is None:
         raise HTTPException(status_code=404, detail="Expert not found or not verified")
     return await repo.create_request(user.access_token, user.id, fields)
 

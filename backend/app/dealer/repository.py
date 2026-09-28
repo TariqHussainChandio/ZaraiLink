@@ -1,8 +1,8 @@
 from typing import Any
 
-from ..core.pagination import page_range
-from ..core.rows import as_rows, first_row, rpc_row
-from ..core.supabase_client import get_user_scoped_client
+from app.common.pagination import page_range
+from app.common.rows import as_rows, first_row, rpc_row
+from app.database.supabase_client import get_user_scoped_client
 
 INVENTORY_SELECT = "*, listing:listings(id,title)"
 
@@ -45,7 +45,7 @@ async def fetch_dealer_listings(access_token: str, dealer_id: str) -> list[dict]
 
 async def create_inventory_item(access_token: str, dealer_id: str, fields: dict[str, Any]) -> dict:
     # N1 fix: insert() returns a builder with no .select() on the pinned postgrest-py client
-    # (see disease_repository.py's original P3 fix); the write's own returning=representation
+    # (see ai/repository.py's original P3 fix); the write's own returning=representation
     # default already includes the full row, so plain .execute() is enough.
     client = await get_user_scoped_client(access_token)
     response = await client.table("inventory").insert({"dealer_id": dealer_id, **fields}).execute()

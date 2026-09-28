@@ -1,6 +1,6 @@
 from starlette.requests import Request
 
-from app.core.rate_limit import rate_limit_key
+from app.middleware.rate_limit import rate_limit_key
 
 
 def _request(authorization: str | None = None, client: str = "203.0.113.7") -> Request:

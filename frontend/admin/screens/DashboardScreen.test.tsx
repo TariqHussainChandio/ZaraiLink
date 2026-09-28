@@ -2,8 +2,8 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AdminDashboardScreen } from './DashboardScreen';
-import { fetchPlatformStats, type PlatformStats } from '../../services/modules/admin/adminService';
-import { ADMIN_HOME_ROUTES } from '../../constants/routes';
+import { fetchPlatformStats, type PlatformStats } from '../services/adminService';
+import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
 import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
 
 jest.mock('@react-navigation/native', () => {
@@ -19,7 +19,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/admin/adminService', () => ({
+jest.mock('../services/adminService', () => ({
   fetchPlatformStats: jest.fn(),
 }));
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { NotificationRow } from './NotificationRow';
-import type { Notification } from '../../../types/notifications';
+import type { Notification } from '../types/notifications';
 
 const baseNotification: Notification = {
   id: 'n1',

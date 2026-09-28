@@ -22,10 +22,10 @@ from fastapi import HTTPException
 from postgrest.exceptions import APIError
 from pydantic import BaseModel
 
-from .auth import AuthenticatedUser
-from .errors import AppHTTPException
-from .rows import as_rows
-from .supabase_client import get_user_scoped_client
+from app.auth.dependencies import AuthenticatedUser
+from app.common.errors import AppHTTPException
+from app.common.rows import as_rows
+from app.database.supabase_client import get_user_scoped_client
 
 _TTL = timedelta(hours=24)
 

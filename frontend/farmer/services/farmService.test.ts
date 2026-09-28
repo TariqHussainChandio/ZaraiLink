@@ -1,4 +1,4 @@
-import { apiFetch } from '../../api/client';
+import { apiFetch } from '../../services/api/client';
 import {
   createFarm,
   createFarmCrop,
@@ -14,7 +14,7 @@ import {
   upsertFarmerProfile,
 } from './farmService';
 
-jest.mock('../../api/client');
+jest.mock('../../services/api/client');
 
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
 

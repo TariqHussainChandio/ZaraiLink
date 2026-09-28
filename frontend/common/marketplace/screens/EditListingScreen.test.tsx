@@ -1,21 +1,21 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
-import { queryKeys } from '../../hooks/api/keys';
+import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
+import { queryKeys } from '../../../hooks/keys';
 import { EditListingScreen } from './EditListingScreen';
 import {
   deleteListing,
   fetchListingById,
   updateListing,
   uploadListingImages,
-} from '../../services/modules/marketplace/listingsService';
-import { useAuthStore } from '../../store/authStore';
-import { useMarketplaceStore } from '../../store/marketplaceStore';
-import type { ListingWithRelations } from '../../types/marketplace';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+} from '../services/listingsService';
+import { useAuthStore } from '../../../state/authStore';
+import { useMarketplaceStore } from '../../../state/marketplaceStore';
+import type { ListingWithRelations } from '../types/marketplace';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../services/listingsService', () => ({
   fetchListingById: jest.fn(),
   updateListing: jest.fn(),
   deleteListing: jest.fn(),

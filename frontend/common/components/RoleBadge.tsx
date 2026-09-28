@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme, type Theme } from '../../theme';
-import { ROLE_LABELS, type Role } from '../../constants/roles';
+import { ROLE_LABELS, type Role } from '../constants/roles';
 
 export interface RoleBadgeProps {
   role: Role;

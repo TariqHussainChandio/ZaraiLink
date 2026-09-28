@@ -1,8 +1,8 @@
-import type { PickedPhoto } from '../../../utils/photoPicker';
-import { extensionFromMimeType } from '../../../utils/mimeExtension';
-import { supabase } from '../../supabase/client';
-import { apiFetch } from '../../api/client';
-import type { DiseaseCase, DiseaseCaseWithPrediction, DiseasePrediction } from '../../../types/disease';
+import type { PickedPhoto } from '../../utils/photoPicker';
+import { extensionFromMimeType } from '../../utils/mimeExtension';
+import { supabase } from '../../services/supabase/client';
+import { apiFetch } from '../../services/api/client';
+import type { DiseaseCase, DiseaseCaseWithPrediction, DiseasePrediction } from '../types/disease';
 
 /**
  * Uploads the photo and returns its storage PATH, not a URL — the disease-images bucket is

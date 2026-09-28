@@ -1,9 +1,9 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { CartScreen } from './CartScreen';
-import { useCartStore, type CartItem } from '../../store/cartStore';
+import { useCartStore, type CartItem } from '../../../state/cartStore';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
 const item = (overrides: Partial<CartItem> = {}): CartItem => ({
   listingId: 'listing-1',

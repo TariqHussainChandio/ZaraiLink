@@ -3,9 +3,9 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.auth import AuthenticatedUser
+from app.auth.dependencies import AuthenticatedUser
+from app.expert import service
 from app.main import app
-from app.services import expert_service as service
 
 client = TestClient(app)
 
@@ -15,7 +15,7 @@ ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_to
 @pytest.mark.asyncio
 async def test_document_url_returns_none_when_no_verification_exists():
     with patch(
-        "app.services.expert_service.fetch_expert_for_admin_by_id",
+        "app.expert.service.fetch_expert_for_admin_by_id",
         return_value={"expert_verifications": []},
     ):
         assert await service.get_document_url(ADMIN, "expert-1") is None
@@ -28,9 +28,9 @@ async def test_document_url_uses_newest_verifications_document_path_not_a_client
             {"document_url": "expert-1/newest.pdf", "created_at": "2026-02-01T00:00:00Z"},
         ]
     }
-    with patch("app.services.expert_service.fetch_expert_for_admin_by_id", return_value=expert):
+    with patch("app.expert.service.fetch_expert_for_admin_by_id", return_value=expert):
         with patch(
-            "app.services.expert_service.repo.create_document_signed_url", return_value="https://signed/newest.pdf"
+            "app.expert.service.repo.create_document_signed_url", return_value="https://signed/newest.pdf"
         ) as mock_sign:
             url = await service.get_document_url(ADMIN, "expert-1")
 
@@ -57,7 +57,7 @@ def test_document_url_route_requires_admin():
 
 
 def test_list_experts_route_is_public():
-    with patch("app.api.v1.endpoints.expert.service.fetch_experts", return_value=[]):
+    with patch("app.expert.router.service.fetch_experts", return_value=[]):
         response = client.get("/api/v1/expert")
     assert response.status_code == 200
 

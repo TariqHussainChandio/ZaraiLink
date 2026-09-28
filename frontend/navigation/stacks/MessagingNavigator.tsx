@@ -1,9 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { MESSAGING_ROUTES } from '../../constants/routes';
-import { ChatScreen } from '../../screens/messaging/ChatScreen';
-import { ConversationListScreen } from '../../screens/messaging/ConversationListScreen';
+import { MESSAGING_ROUTES } from '../../common/constants/routes';
+import { ChatScreen } from '../../common/messaging/screens/ChatScreen';
+import { ConversationListScreen } from '../../common/messaging/screens/ConversationListScreen';
 
 export type MessagingStackParamList = {
   [MESSAGING_ROUTES.ConversationList]: undefined;

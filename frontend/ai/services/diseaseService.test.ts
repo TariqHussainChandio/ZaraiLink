@@ -1,15 +1,15 @@
-import { apiFetch } from '../../api/client';
+import { apiFetch } from '../../services/api/client';
 
-jest.mock('../../api/client');
-jest.mock('../../supabase/client', () => {
-  const { makeSupabaseMock } = jest.requireActual('../../../testUtils/supabaseMock');
+jest.mock('../../services/api/client');
+jest.mock('../../services/supabase/client', () => {
+  const { makeSupabaseMock } = jest.requireActual('../../testUtils/supabaseMock');
   // No storagePublicUrl option — the disease-images bucket is private (security fix C2), so
   // this module never calls getPublicUrl.
   return { supabase: makeSupabaseMock() };
 });
 
-import { supabase } from '../../supabase/client';
-import { makeSupabaseMock } from '../../../testUtils/supabaseMock';
+import { supabase } from '../../services/supabase/client';
+import { makeSupabaseMock } from '../../testUtils/supabaseMock';
 import { createDiseaseCase, fetchDiseaseCaseWithPrediction, predictDisease, uploadDiseaseImage } from './diseaseService';
 
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;

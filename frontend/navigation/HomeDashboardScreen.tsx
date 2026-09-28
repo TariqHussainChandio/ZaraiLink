@@ -1,8 +1,8 @@
 import React from 'react';
-import { useAuthStore } from '../store/authStore';
-import { BuyerDashboardScreen } from './buyer/DashboardScreen';
-import { DealerDashboardScreen } from './dealer/DashboardScreen';
-import { FarmerDashboardScreen } from './farmer/DashboardScreen';
+import { useAuthStore } from '../state/authStore';
+import { BuyerDashboardScreen } from '../buyer/screens/DashboardScreen';
+import { DealerDashboardScreen } from '../dealer/screens/DashboardScreen';
+import { FarmerDashboardScreen } from '../farmer/screens/DashboardScreen';
 
 // Admin and Expert render their own dedicated dashboards inside AdminNavigator/ExpertNavigator
 // and never reach this component.

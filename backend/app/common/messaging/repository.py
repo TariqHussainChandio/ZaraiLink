@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
-from ..core.pagination import page_range
-from ..core.rows import as_rows, first_row
-from ..core.supabase_client import get_user_scoped_client
+from app.common.pagination import page_range
+from app.common.rows import as_rows, first_row
+from app.database.supabase_client import get_user_scoped_client
 
 # Both hops read profiles_public (20260923080100_profiles_public_view.sql), not profiles
 # directly — profiles' own RLS only lets a caller see their own row, so a participant could never

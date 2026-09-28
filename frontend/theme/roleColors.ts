@@ -1,4 +1,4 @@
-import type { Role } from '../constants/roles';
+import type { Role } from '../common/constants/roles';
 
 // Per-role accent colors (SRDS v4.0 §"Role-Based Color Coding"). These are secondary
 // identifiers only — badges, dashboard indicators, icons, charts, status labels — and

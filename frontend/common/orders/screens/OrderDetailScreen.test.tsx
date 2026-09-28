@@ -7,18 +7,18 @@ import {
   fetchOrderById,
   fetchOrderStatusHistory,
   updateOrderStatus,
-} from '../../services/modules/orders/ordersService';
-import { findOrCreateConversation } from '../../services/modules/messaging/messagingService';
+} from '../services/ordersService';
+import { findOrCreateConversation } from '../../messaging/services/messagingService';
 import {
   fetchPaymentByOrderId,
   markPaymentFailed,
   markPaymentReceived,
-} from '../../services/modules/payments/paymentsService';
-import { fetchReviewByOrderId } from '../../services/modules/reviews/reviewsService';
-import { useAuthStore } from '../../store/authStore';
-import { createTestQueryClient } from '../../testUtils/renderWithProviders';
+} from '../../payments/services/paymentsService';
+import { fetchReviewByOrderId } from '../../reviews/services/reviewsService';
+import { useAuthStore } from '../../../state/authStore';
+import { createTestQueryClient } from '../../../testUtils/renderWithProviders';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
-import type { OrderWithItems } from '../../types/orders';
+import type { OrderWithItems } from '../types/orders';
 
 const mockNavigate = jest.fn();
 const mockTabNavigate = jest.fn();
@@ -36,20 +36,20 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/orders/ordersService', () => ({
+jest.mock('../services/ordersService', () => ({
   fetchOrderById: jest.fn(),
   fetchOrderStatusHistory: jest.fn(),
   updateOrderStatus: jest.fn(),
 }));
-jest.mock('../../services/modules/messaging/messagingService', () => ({
+jest.mock('../../messaging/services/messagingService', () => ({
   findOrCreateConversation: jest.fn(),
 }));
-jest.mock('../../services/modules/payments/paymentsService', () => ({
+jest.mock('../../payments/services/paymentsService', () => ({
   fetchPaymentByOrderId: jest.fn(),
   markPaymentReceived: jest.fn(),
   markPaymentFailed: jest.fn(),
 }));
-jest.mock('../../services/modules/reviews/reviewsService', () => ({
+jest.mock('../../reviews/services/reviewsService', () => ({
   fetchReviewByOrderId: jest.fn(),
 }));
 

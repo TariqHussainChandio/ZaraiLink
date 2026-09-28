@@ -3,7 +3,7 @@ from functools import lru_cache
 import httpx._transports.default as _httpx_transport
 from supabase import AsyncClient, create_async_client
 
-from .config import settings
+from app.config.settings import settings
 
 # Found by profiling the k6 benchmark (docs/architecture/adr/0001-...): every `httpx.AsyncClient`
 # construction builds a fresh SSL context, and loading the CA bundle costs ~0.28s of *synchronous*
@@ -45,7 +45,7 @@ def get_service_role_client() -> AsyncClient:
     """Bypasses RLS entirely. Reserved for the narrow, explicitly documented cases where that's
     actually required (see docs/architecture/backend-architecture.md) — never the default
     DB-access path. Every call site using this MUST derive any user/owner-identifying filter from
-    a verified `AuthenticatedUser` (core/auth.py), never from an untrusted request value."""
+    a verified `AuthenticatedUser` (auth/dependencies.py), never from an untrusted request value."""
     if _service_role_client is None:
         raise RuntimeError("Supabase clients not initialized — the FastAPI lifespan did not run")
     return _service_role_client

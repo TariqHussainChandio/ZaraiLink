@@ -8,9 +8,9 @@ import {
   deleteCategory,
   fetchCategories,
   updateCategory,
-} from '../../services/modules/marketplace/listingsService';
-import { useAuthStore } from '../../store/authStore';
-import type { Category } from '../../types/marketplace';
+} from '../../common/marketplace/services/listingsService';
+import { useAuthStore } from '../../state/authStore';
+import type { Category } from '../../common/marketplace/types/marketplace';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -25,7 +25,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../../common/marketplace/services/listingsService', () => ({
   fetchCategories: jest.fn(),
   createCategory: jest.fn(),
   updateCategory: jest.fn(),

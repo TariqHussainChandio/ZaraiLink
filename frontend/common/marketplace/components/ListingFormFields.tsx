@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { Controller, type Control, type FieldErrors, type UseFormSetValue, type UseFormWatch } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Input, LocationPicker } from '../../../components/ui';
-import { useCategories, useCrops } from '../../../hooks/api/marketplace';
+import { Input, LocationPicker } from '../../components';
+import { useCategories, useCrops } from '../hooks/marketplace';
 import { useTheme, type Theme } from '../../../theme';
 import { CategoryChip } from './CategoryChip';
 

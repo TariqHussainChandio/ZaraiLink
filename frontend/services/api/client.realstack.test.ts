@@ -1,6 +1,6 @@
 /**
  * P7 (7B) real-stack test: the client against the real FastAPI and the real local Supabase, not fakes.
- * Setup and how to run it: see src/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
+ * Setup and how to run it: see frontend/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
  */
 import type { ApiError as ApiErrorType } from './errors';
 import { API_URL, installNodeFetch, realStackEnabled, signUp } from '../../testUtils/realStack';
@@ -23,8 +23,8 @@ async function loadClient(apiUrl: string, token: string | null) {
   }));
   return {
     client: jest.requireActual<typeof import('./client')>('./client'),
-    network: jest.requireActual<typeof import('../../store/networkStore')>('../../store/networkStore').useNetworkStore,
-    generated: jest.requireActual<typeof import('../../api/generated')>('../../api/generated'),
+    network: jest.requireActual<typeof import('../../state/networkStore')>('../../state/networkStore').useNetworkStore,
+    generated: jest.requireActual<typeof import('./generated')>('./generated'),
   };
 }
 

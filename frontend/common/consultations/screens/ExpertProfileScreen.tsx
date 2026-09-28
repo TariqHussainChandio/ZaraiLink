@@ -1,16 +1,15 @@
 import React, { useMemo } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, EmptyState, Spinner } from '../../components/ui';
-import { RatingSummary } from '../../components/features/reviews/RatingSummary';
-import { ReviewCard } from '../../components/features/reviews/ReviewCard';
+import { Avatar, Button, EmptyState, Spinner } from '../../components';
+import { RatingSummary, ReviewCard } from '../../reviews';
 import { APP_TABS, CONSULTATIONS_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
-import { useExpertProfile } from '../../hooks/api/experts';
-import { useOpenConversation } from '../../hooks/api/messaging';
-import { useAuthStore } from '../../store/authStore';
-import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
-import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
-import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
+import { useExpertProfile } from '../../../expert';
+import { useOpenConversation } from '../../messaging';
+import { useAuthStore } from '../../../state/authStore';
+import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
+import { useTheme, type Theme } from '../../../theme';
+import { errorMessage } from '../../../utils/errorMessage';
+import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
 import { SPECIALIZATION_LABELS } from '../../constants/labels';
 
 export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenProps<'ExpertProfile'>) {

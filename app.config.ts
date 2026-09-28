@@ -41,7 +41,7 @@ const config: ExpoConfig = {
     'expo-dev-client',
     // P4 (4B.1): the Supabase session (access + refresh token) is stored here instead of plain
     // AsyncStorage — Android Keystore / iOS Keychain backed, so it's encrypted at rest with no
-    // extra key-management code needed (src/services/supabase/client.ts's storage adapter).
+    // extra key-management code needed (frontend/services/supabase/client.ts's storage adapter).
     'expo-secure-store',
     // Photos come from the system picker and the camera path needs CAMERA. Nothing records audio,
     // and the plugin adds RECORD_AUDIO unless told not to.
@@ -61,7 +61,7 @@ const config: ExpoConfig = {
           // Expo derives the JavaScript error code of a native error from its Kotlin class name (for
           // example ERR_USER_REJECTED_PERMISSIONS). R8 renames those classes in release builds, which
           // turns the code into something like ERR_X and breaks any JavaScript that checks for it
-          // (see src/utils/photoPicker.ts). This keeps the names.
+          // (see frontend/utils/photoPicker.ts). This keeps the names.
           extraProguardRules: '-keepnames class * extends expo.modules.kotlin.exception.CodedException',
         },
       },

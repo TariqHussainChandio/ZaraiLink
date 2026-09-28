@@ -8,8 +8,8 @@ import {
   resolveExpertDocumentUrl,
   reviewExpertVerification,
   type ExpertWithVerifications,
-} from '../../services/modules/expert/expertService';
-import { useAuthStore } from '../../store/authStore';
+} from '../../expert/services/expertService';
+import { useAuthStore } from '../../state/authStore';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -23,7 +23,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/expert/expertService', () => ({
+jest.mock('../../expert/services/expertService', () => ({
   fetchExpertsForAdmin: jest.fn(),
   resolveExpertDocumentUrl: jest.fn(),
   reviewExpertVerification: jest.fn(),

@@ -2,7 +2,7 @@ from typing import Any
 
 from supabase import AuthError
 
-from ..core.supabase_client import get_reauth_client, get_service_role_client, get_user_scoped_client
+from app.database.supabase_client import get_reauth_client, get_service_role_client, get_user_scoped_client
 
 # P4 (4A.5), account deletion: buckets whose objects are stored under a `{user_id}/...` prefix,
 # so a sweep-by-owner is just a `list(user_id)` + `remove(...)` per bucket. `message-attachments`

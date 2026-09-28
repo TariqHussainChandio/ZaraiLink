@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
 import type { StatusColorKey } from '../../../theme/statusColors';
-import type { PaymentStatus } from '../../../types/payments';
+import type { PaymentStatus } from '../types/payments';
 
 const STATUS_COLOR_KEY: Record<PaymentStatus, StatusColorKey> = {
   pending: 'pending',

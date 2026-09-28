@@ -2,25 +2,25 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
-import { queryKeys } from '../../hooks/api/keys';
+import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
+import { queryKeys } from '../../../hooks/keys';
 import { EditProfileScreen } from './EditProfileScreen';
-import { fetchFarmerProfile, upsertFarmerProfile } from '../../services/modules/farmer/farmService';
-import { updateProfile, uploadAvatar } from '../../services/modules/profile/profileService';
-import { useAuthStore } from '../../store/authStore';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+import { fetchFarmerProfile, upsertFarmerProfile } from '../../../farmer/services/farmService';
+import { updateProfile, uploadAvatar } from '../services/profileService';
+import { useAuthStore } from '../../../state/authStore';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 import type { Profile } from '../../types/profile';
 
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
 }));
 
-jest.mock('../../services/modules/farmer/farmService', () => ({
+jest.mock('../../../farmer/services/farmService', () => ({
   fetchFarmerProfile: jest.fn(),
   upsertFarmerProfile: jest.fn(),
 }));
 
-jest.mock('../../services/modules/profile/profileService', () => ({
+jest.mock('../services/profileService', () => ({
   updateProfile: jest.fn(),
   uploadAvatar: jest.fn(),
 }));

@@ -1,6 +1,6 @@
 """Write the backend's OpenAPI document to backend/openapi.json (P7 7A). No server and no database are needed.
 
-The mobile client in src/api/generated is generated from this file, and CI regenerates both and fails if either differs
+The mobile client in frontend/services/api/generated is generated from this file, and CI regenerates both and fails if either differs
 from what is committed, so the API and the app cannot drift apart. Run from `backend/` so its virtualenv is used:
 
     cd backend && uv run python ../scripts/export_openapi.py            # rewrite backend/openapi.json

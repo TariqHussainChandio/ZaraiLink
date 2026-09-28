@@ -5,10 +5,10 @@ from fastapi import HTTPException
 from PIL import Image, UnidentifiedImageError
 from storage3.utils import StorageException
 
-from ..core.auth import AuthenticatedUser
-from ..core.config import settings
-from ..repositories import disease_repository
-from .ai_engine import ModelUnavailableError, get_classifier
+from app.ai import repository as disease_repository
+from app.ai.engine import ModelUnavailableError, get_classifier
+from app.auth.dependencies import AuthenticatedUser
+from app.config.settings import settings
 
 # Security fix C2: the server used to fetch whatever URL the client sent (a blind SSRF, confirmed
 # in the P0 baseline). The image now always comes from our own private storage bucket, addressed
@@ -18,7 +18,7 @@ from .ai_engine import ModelUnavailableError, get_classifier
 _IMAGE_FETCH_ERROR = "Could not process the case image."
 _MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB, matches the disease-images bucket's file_size_limit
 
-# Advisory copy for the 38-class PlantVillage taxonomy the real model (backend/app/ml/checkpoints/)
+# Advisory copy for the 38-class PlantVillage taxonomy the real model (backend/app/ai/checkpoints/)
 # is trained on. Keyed by the RAW taxonomy string exactly as it appears in class_names.json/
 # model_metadata.json (e.g. "Tomato___Late_blight") — this dict is a curated table, not something
 # generated from metadata, so keys were copy-pasted from class_names.json rather than retyped, to
@@ -350,7 +350,7 @@ def _assert_owner_or_admin(user: AuthenticatedUser, case: dict | None) -> dict:
 
 
 async def create_case(user: AuthenticatedUser, crop_id: str | None, storage_path: str) -> dict:
-    # Server-side ownership check beyond the schema's regex (Field pattern in schemas/disease.py
+    # Server-side ownership check beyond the schema's regex (Field pattern in ai/schemas.py
     # can validate shape, not identity): the folder segment must be the caller's own id, so one
     # user can never create a case pointing at another user's uploaded object.
     if not storage_path.startswith(f"{user.id}/"):

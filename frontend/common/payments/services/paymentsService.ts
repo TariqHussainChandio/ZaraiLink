@@ -1,6 +1,6 @@
-import { apiFetch } from '../../api/client';
-import { idempotencyKeyFor, releaseIdempotencyKey } from '../../api/idempotency';
-import type { Payment, PaymentMethod, PaymentTransaction } from '../../../types/payments';
+import { apiFetch } from '../../../services/api/client';
+import { idempotencyKeyFor, releaseIdempotencyKey } from '../../../services/api/idempotency';
+import type { Payment, PaymentMethod, PaymentTransaction } from '../types/payments';
 
 /**
  * No `amount`/`buyerId` params — the backend always prices the payment from the order's own

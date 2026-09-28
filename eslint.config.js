@@ -73,7 +73,7 @@ module.exports = [
       'dist/',
       'backend/',
       // P7: the API client generated from backend/openapi.json (npm run api:generate); never edited by hand.
-      'src/api/generated/',
+      'frontend/services/api/generated/',
       '**/.venv/',
       '.claude/',
       '.idea/',

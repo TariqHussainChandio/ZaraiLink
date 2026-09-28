@@ -13,10 +13,10 @@ from fastapi.testclient import TestClient
 from sentry_sdk.transport import Transport
 from sentry_sdk.types import Event
 
-from app.core.config import Settings
-from app.core.middleware import RequestIDMiddleware
-from app.core.observability import init_sentry, scrub_event
-from app.core.problem_details import unhandled_exception_handler
+from app.common.observability import init_sentry, scrub_event
+from app.common.problem_details import unhandled_exception_handler
+from app.config.settings import Settings
+from app.middleware.http_middleware import RequestIDMiddleware
 
 
 class _Capture(Transport):

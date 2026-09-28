@@ -1,12 +1,12 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useMemo } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Badge, Button, Card, EmptyState, Spinner } from '../../components/ui';
-import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
-import { useDiseaseCase } from '../../hooks/api/disease';
-import { useRelatedListings } from '../../hooks/api/marketplace';
+import { Badge, Button, Card, EmptyState, Spinner } from '../../common/components';
+import { APP_TABS, MARKETPLACE_ROUTES } from '../../common/constants/routes';
+import { useDiseaseCase } from '../hooks/disease';
+import { useRelatedListings } from '../../common/marketplace';
 import { useTheme, type Theme } from '../../theme';
-import { LOW_CONFIDENCE_THRESHOLD } from '../../types/disease';
+import { LOW_CONFIDENCE_THRESHOLD } from '../types/disease';
 import { navigateToConsultExpert } from './expertHandoff';
 
 // Only ever reached by Farmer — Disease Advisory is farmer-only (like Inventory is

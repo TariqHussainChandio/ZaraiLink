@@ -1,9 +1,9 @@
-from ..core.rows import as_rows, first_row
-from ..core.supabase_client import get_service_role_client
+from app.common.rows import as_rows, first_row
+from app.database.supabase_client import get_service_role_client
 
 # Uses the service-role client, not the request-scoped one — documented exception #3 in
 # docs/architecture/backend-architecture.md. Safe only because every call site in
-# services/disease_service.py verifies ownership (case.user_id == caller.id, or admin) against
+# ai/service.py verifies ownership (case.user_id == caller.id, or admin) against
 # the verified AuthenticatedUser before trusting anything this module returns — never against a
 # client-supplied id. create_signed_url/download_case_image extend that same exception: the
 # service layer never lets an unowned storage_path reach either of them.
@@ -43,7 +43,7 @@ async def create_case(user_id: str, crop_id: str | None, storage_path: str) -> d
 async def create_signed_url(storage_path: str, expires_in: int = 3600) -> str | None:
     """Mints a time-limited URL for display — the bucket is private (security fix C2), so this
     is the only way a case's photo is ever handed back to a client. Same shape as the existing
-    expert-documents pattern (repositories/expert_repository.py:create_document_signed_url)."""
+    expert-documents pattern (expert/repository.py:create_document_signed_url)."""
     response = (
         await get_service_role_client().storage.from_("disease-images").create_signed_url(storage_path, expires_in)
     )

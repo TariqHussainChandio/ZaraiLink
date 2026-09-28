@@ -6,7 +6,7 @@ FastAPI does not do on its own:
 - readable operation ids (`orders_list_orders`, not `list_orders_api_v1_orders_get`), through
   `generate_unique_id_function`;
 - authentication described as a bearer scheme applied to the operations that need it, not as an optional
-  `Authorization` header parameter on every call (the header is read by `core/auth.py:get_bearer_token`, which
+  `Authorization` header parameter on every call (the header is read by `auth/dependencies.py:get_bearer_token`, which
   deliberately takes it as an optional header so a missing token is our own 401, not FastAPI's 422);
 - the responses the code really produces but FastAPI cannot infer: the problem+json error body (with a stable
   `code`), the `Link` header on paginated lists, and the `X-Request-ID` header on every response.
@@ -17,7 +17,7 @@ from typing import Any, cast
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from .errors import ERROR_CODES
+from app.common.errors import ERROR_CODES
 
 BEARER = "bearerAuth"
 
@@ -93,7 +93,7 @@ def customize(app: FastAPI) -> None:
                                 "schema": {"type": "string"},
                             }
                 problem = {"application/problem+json": {"schema": {"$ref": "#/components/schemas/ProblemDetail"}}}
-                # Every error, validation failures included, is problem+json (core/problem_details.py); FastAPI's own
+                # Every error, validation failures included, is problem+json (common/problem_details.py); FastAPI's own
                 # 422 entry documents a different body that this API never sends.
                 if "422" in operation["responses"]:
                     operation["responses"]["422"] = {"description": "Request validation failed", "content": problem}

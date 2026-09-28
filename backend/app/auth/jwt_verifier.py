@@ -1,7 +1,7 @@
 """P4 (4A.2): local JWT verification against Supabase's JWKS endpoint, replacing the per-request
-`GET /auth/v1/user` call in `core/auth.py`. `PyJWKClient` caches keys and refreshes automatically
+`GET /auth/v1/user` call in `auth/dependencies.py`. `PyJWKClient` caches keys and refreshes automatically
 on an unknown `kid` (e.g. after a key rotation) — see its own `PyJWKClientCache`. A JWKS-fetch
-failure (Supabase unreachable) raises `JWKSUnavailableError`, which `core/auth.py` maps to a 503,
+failure (Supabase unreachable) raises `JWKSUnavailableError`, which `auth/dependencies.py` maps to a 503,
 not a 401 — an outage is not the same failure mode as a bad token.
 
 Only meaningful once the local stack runs asymmetric signing keys (`supabase/config.toml`'s
@@ -16,7 +16,7 @@ import jwt
 from jwt import PyJWKClient
 from jwt.exceptions import PyJWKClientConnectionError
 
-from .config import settings
+from app.config.settings import settings
 
 # One client per process, matching the "cached, refresh on unknown kid" requirement — PyJWKClient
 # keeps its own in-memory key cache and re-fetches automatically when asked for a `kid` it hasn't

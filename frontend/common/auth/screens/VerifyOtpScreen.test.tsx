@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { AuthError } from '@supabase/supabase-js';
 import { VerifyOtpScreen } from './VerifyOtpScreen';
 import {
@@ -8,10 +8,10 @@ import {
   resendSignupOtp,
   verifyRecoveryOtp,
   verifySignupOtp,
-} from '../../services/modules/auth/authService';
-import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
+} from '../services/authService';
+import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
-jest.mock('../../services/modules/auth/authService', () => ({
+jest.mock('../services/authService', () => ({
   verifySignupOtp: jest.fn(),
   resendSignupOtp: jest.fn(),
   verifyRecoveryOtp: jest.fn(),

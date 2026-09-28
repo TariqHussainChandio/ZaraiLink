@@ -1,13 +1,13 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button, Spinner } from '../../components/ui';
-import { PaymentStatusBadge } from '../../components/features/payments/PaymentStatusBadge';
+import { Button, Spinner } from '../../components';
+import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import { usePayment } from '../../hooks/api/payments';
-import { useTheme, type Theme } from '../../theme';
-import type { Payment, PaymentMethod } from '../../types/payments';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
+import { usePayment } from '../hooks/payments';
+import { useTheme, type Theme } from '../../../theme';
+import type { Payment, PaymentMethod } from '../types/payments';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 import { PAYMENT_METHOD_LABELS } from '../../constants/labels';
 
 // A payment row stores the method as text; one this build does not know is shown as stored.

@@ -2,11 +2,11 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertDashboardScreen } from './DashboardScreen';
-import { fetchExpertProfile } from '../../services/modules/expert/expertService';
-import { fetchConsultationsForExpert } from '../../services/modules/expert/consultationService';
-import { EXPERT_HOME_ROUTES, EXPERT_TABS, CONSULTATIONS_ROUTES } from '../../constants/routes';
-import { useAuthStore } from '../../store/authStore';
-import type { ConsultationWithRelations, ExpertWithProfile } from '../../types/expert';
+import { fetchExpertProfile } from '../services/expertService';
+import { fetchConsultationsForExpert } from '../../common/consultations/services/consultationService';
+import { EXPERT_HOME_ROUTES, EXPERT_TABS, CONSULTATIONS_ROUTES } from '../../common/constants/routes';
+import { useAuthStore } from '../../state/authStore';
+import type { ConsultationWithRelations, ExpertWithProfile } from '../types/expert';
 
 const mockNavigate = jest.fn();
 
@@ -24,10 +24,10 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/expert/expertService', () => ({
+jest.mock('../services/expertService', () => ({
   fetchExpertProfile: jest.fn(),
 }));
-jest.mock('../../services/modules/expert/consultationService', () => ({
+jest.mock('../../common/consultations/services/consultationService', () => ({
   fetchConsultationsForExpert: jest.fn(),
 }));
 

@@ -3,16 +3,16 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, SelectField } from '../../components/ui';
-import { useRequestConsultation } from '../../hooks/api/consultations';
-import { useAuthStore } from '../../store/authStore';
-import { useFarms } from '../../hooks/api/farmer';
-import { useCrops } from '../../hooks/api/marketplace';
-import { useTheme, type Theme } from '../../theme';
-import type { ConsultationPriority } from '../../types/expert';
-import { pickFromLibrary, type PickedPhoto } from '../../utils/photoPicker';
-import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
-import { errorMessage } from '../../utils/errorMessage';
+import { Button, Input, SelectField } from '../../components';
+import { useRequestConsultation } from '../hooks/consultations';
+import { useAuthStore } from '../../../state/authStore';
+import { useFarms } from '../../../farmer';
+import { useCrops } from '../../marketplace';
+import { useTheme, type Theme } from '../../../theme';
+import type { ConsultationPriority } from '../../../expert';
+import { pickFromLibrary, type PickedPhoto } from '../../../utils/photoPicker';
+import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
+import { errorMessage } from '../../../utils/errorMessage';
 
 const PRIORITY_IDS: ConsultationPriority[] = ['low', 'medium', 'high'];
 

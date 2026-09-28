@@ -2,17 +2,17 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
-import { queryKeys } from '../../hooks/api/keys';
+import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
+import { queryKeys } from '../../../hooks/keys';
 import { RequestConsultationScreen } from './RequestConsultationScreen';
-import { fetchFarms } from '../../services/modules/farmer/farmService';
+import { fetchFarms } from '../../../farmer/services/farmService';
 import {
   createConsultationRequest,
   updateConsultationImages,
   uploadConsultationAttachments,
-} from '../../services/modules/expert/consultationService';
-import { useAuthStore } from '../../store/authStore';
-import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
+} from '../services/consultationService';
+import { useAuthStore } from '../../../state/authStore';
+import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
 
 const queryClient = createTestQueryClient();
 
@@ -20,10 +20,10 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
 }));
 
-jest.mock('../../services/modules/farmer/farmService', () => ({
+jest.mock('../../../farmer/services/farmService', () => ({
   fetchFarms: jest.fn(),
 }));
-jest.mock('../../services/modules/expert/consultationService', () => ({
+jest.mock('../services/consultationService', () => ({
   createConsultationRequest: jest.fn(),
   updateConsultationImages: jest.fn(),
   uploadConsultationAttachments: jest.fn(),

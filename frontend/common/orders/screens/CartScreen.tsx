@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, EmptyState } from '../../components/ui';
-import { CartItemRow } from '../../components/features/orders/CartItemRow';
+import { Button, EmptyState } from '../../components';
+import { CartItemRow } from '../components/CartItemRow';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
-import { cartTotal, useCartStore } from '../../store/cartStore';
-import { useTheme, type Theme } from '../../theme';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import { cartTotal, useCartStore } from '../../../state/cartStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
 export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
   const theme = useTheme();

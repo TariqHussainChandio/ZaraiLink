@@ -1,4 +1,4 @@
-import type { FetchListingsParams } from '../../services/modules/marketplace/listingsService';
+import type { FetchListingsParams } from '../common/marketplace';
 
 /**
  * Every React Query key in the app is built here, so an invalidation can never miss a query because of a typo

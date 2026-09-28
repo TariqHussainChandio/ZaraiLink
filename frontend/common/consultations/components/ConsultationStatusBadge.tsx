@@ -1,6 +1,6 @@
 import React from 'react';
-import { Badge, type BadgeTone } from '../../ui';
-import type { ConsultationStatus } from '../../../types/expert';
+import { Badge, type BadgeTone } from '../../components';
+import type { ConsultationStatus } from '../../../expert';
 
 const STATUS_TONE: Record<ConsultationStatus, BadgeTone> = {
   requested: 'warning',

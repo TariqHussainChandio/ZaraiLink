@@ -3,13 +3,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { Avatar, Button, Input, LocationPicker, PhoneInput, isValidE164 } from '../../components/ui';
-import { useFarmerProfile, useUpdateProfile, useUploadAvatar, useUpsertFarmerProfile } from '../../hooks/api/profile';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import { pickFromLibrary, type PickedPhoto } from '../../utils/photoPicker';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
-import { errorMessage } from '../../utils/errorMessage';
+import { Avatar, Button, Input, LocationPicker, PhoneInput, isValidE164 } from '../../components';
+import { useFarmerProfile, useUpdateProfile, useUploadAvatar, useUpsertFarmerProfile } from '../hooks/profile';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import { pickFromLibrary, type PickedPhoto } from '../../../utils/photoPicker';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
+import { errorMessage } from '../../../utils/errorMessage';
 
 function makeEditProfileSchema() {
   return z.object({

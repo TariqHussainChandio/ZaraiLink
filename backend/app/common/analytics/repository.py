@@ -1,5 +1,5 @@
-from ..core.rows import as_rows
-from ..core.supabase_client import get_user_scoped_client
+from app.common.rows import as_rows
+from app.database.supabase_client import get_user_scoped_client
 
 
 async def fetch_own_listings(access_token: str, owner_id: str) -> list[dict]:

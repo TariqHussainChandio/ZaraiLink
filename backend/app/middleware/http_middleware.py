@@ -10,8 +10,8 @@ from starlette.datastructures import Headers, MutableHeaders
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from .problem_details import problem_response
-from .request_context import request_id_var
+from app.common.problem_details import problem_response
+from app.middleware.request_context import request_id_var
 
 # These are written as plain ASGI callables, not `BaseHTTPMiddleware` subclasses: each BaseHTTPMiddleware
 # layer re-wraps the request and response streams, and three of them (plus slowapi's) cost about 15% of
@@ -73,7 +73,7 @@ class SecurityHeadersMiddleware:
 
 class MaxBodySizeMiddleware:
     """Rejects an oversized request body before it is buffered. Comfortably above the largest legitimate
-    upload today (the disease-images bucket's own 8 MB limit, enforced separately in disease_service.py) so
+    upload today (the disease-images bucket's own 8 MB limit, enforced separately in ai/service.py) so
     this is a backstop against a deliberately huge body consuming memory, not a normal-usage limit.
 
     Two checks, because `Content-Length` is only a claim: a declared size over the cap is refused outright,

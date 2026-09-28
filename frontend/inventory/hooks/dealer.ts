@@ -8,23 +8,23 @@ import {
   fetchInventoryById,
   fetchInventoryTransactions,
   updateInventoryItem,
-} from '../../services/modules/dealer/inventoryService';
+} from '../services/inventoryService';
 import {
   createStore,
   deleteStore,
   fetchStoreById,
   fetchStores,
   updateStore,
-} from '../../services/modules/dealer/storeService';
+} from '../services/storeService';
 import {
   createSupplier,
   deleteSupplier,
   fetchSupplierById,
   fetchSuppliers,
   updateSupplier,
-} from '../../services/modules/dealer/supplierService';
-import type { InventoryTransactionType } from '../../types/dealer';
-import { queryKeys } from './keys';
+} from '../services/supplierService';
+import type { InventoryTransactionType } from '../types/dealer';
+import { queryKeys } from '../../hooks/keys';
 
 type InventoryInput = Parameters<typeof createInventoryItem>[0];
 type StoreInput = Parameters<typeof createStore>[0];

@@ -1,6 +1,6 @@
-from ..core.pagination import page_range
-from ..core.rows import as_rows, first_row
-from ..core.supabase_client import get_user_scoped_client
+from app.common.pagination import page_range
+from app.common.rows import as_rows, first_row
+from app.database.supabase_client import get_user_scoped_client
 
 
 async def get_order_for_payment(access_token: str, order_id: str) -> dict | None:

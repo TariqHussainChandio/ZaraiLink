@@ -33,6 +33,12 @@ def main() -> int:
         return 2
     title, path = sys.argv[1], Path(sys.argv[2])
     data = json.loads(path.read_text(encoding="utf-8"))
+    # A report over zero statements means the collection globs no longer match the source tree (A1 moved it), not
+    # that nothing needs testing; fail rather than print a meaningless 100%.
+    statements = data["total"]["statements"]["total"] if "total" in data else data["totals"]["num_statements"]
+    if not statements:
+        print(f"{title}: the coverage report measured no statements; check the coverage paths", file=sys.stderr)
+        return 1
     rows = rows_from_jest(data) if "total" in data else rows_from_coverage_py(data)
     print(f"### {title} coverage\n")
     print("| Measure | Covered |\n|---|---|")

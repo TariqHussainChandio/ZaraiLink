@@ -1,9 +1,9 @@
 from typing import Any
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import reference_data_repository as repo
-from ..repositories.reference_data_repository import RefDataTable
-from .audit_log_service import log_admin_action
+from app.auth.dependencies import AuthenticatedUser
+from app.common.audit_log import log_admin_action
+from app.common.reference_data import repository as repo
+from app.common.reference_data.repository import RefDataTable
 
 
 async def fetch_currencies() -> list[dict]:

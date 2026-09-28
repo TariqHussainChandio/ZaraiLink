@@ -1,16 +1,16 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { SettingsScreen } from './SettingsScreen';
-import { updateProfile } from '../../services/modules/profile/profileService';
+import { updateProfile } from '../services/profileService';
 import { PROFILE_ROUTES } from '../../constants/routes';
-import { useAuthStore } from '../../store/authStore';
-import { useThemeStore } from '../../store/themeStore';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+import { useAuthStore } from '../../../state/authStore';
+import { useThemeStore } from '../../../state/themeStore';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 import type { Profile } from '../../types/profile';
 
-jest.mock('../../services/modules/profile/profileService', () => ({
+jest.mock('../services/profileService', () => ({
   updateProfile: jest.fn(),
 }));
 

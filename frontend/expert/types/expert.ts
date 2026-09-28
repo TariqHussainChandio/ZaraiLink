@@ -1,4 +1,4 @@
-import type { GeoLocation } from './referenceData';
+import type { GeoLocation } from '../../common/types/referenceData';
 
 export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 

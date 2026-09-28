@@ -38,7 +38,7 @@ Secret and variable names:     EXPO_TOKEN (GitHub Environment: staging, producti
                                eas.json, never a secret.
 
 Where it is used in code:      eas.json (new), app.config.ts (project ID, update channel, runtime version
-                               policy), .github/workflows (release job). Nothing in src/.
+                               policy), .github/workflows (release job). Nothing in frontend/.
 
 How I prove it without the real service:
                                Already proven. `npm run prebuild` plus `./gradlew assembleRelease` builds the

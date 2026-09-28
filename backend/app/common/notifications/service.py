@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import notifications_repository as repo
+from app.auth.dependencies import AuthenticatedUser
+from app.common.notifications import repository as repo
 
 
 async def fetch_notifications(user: AuthenticatedUser) -> list[dict]:

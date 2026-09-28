@@ -3,8 +3,8 @@ import {
   fetchDealerAnalytics,
   fetchExpertAnalytics,
   fetchFarmerAnalytics,
-} from '../../services/modules/analytics/analyticsService';
-import { queryKeys } from './keys';
+} from '../services/analyticsService';
+import { queryKeys } from '../../../hooks/keys';
 
 /** The farmer dashboard's numbers. `enabled` is false for other roles: the endpoint is farmer-only (403 otherwise). */
 export function useFarmerAnalytics(enabled: boolean) {

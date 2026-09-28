@@ -1,15 +1,15 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ExpertProfileScreen } from './ExpertProfileScreen';
-import { fetchExpertById } from '../../services/modules/expert/expertService';
-import { findOrCreateConversation } from '../../services/modules/messaging/messagingService';
-import { fetchReviewsForExpert } from '../../services/modules/reviews/reviewsService';
+import { fetchExpertById } from '../../../expert/services/expertService';
+import { findOrCreateConversation } from '../../messaging/services/messagingService';
+import { fetchReviewsForExpert } from '../../reviews/services/reviewsService';
 import { APP_TABS, CONSULTATIONS_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
-import { useAuthStore } from '../../store/authStore';
-import type { ExpertWithProfile } from '../../types/expert';
-import type { ReviewWithBuyer } from '../../types/reviews';
-import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
+import { useAuthStore } from '../../../state/authStore';
+import type { ExpertWithProfile } from '../../../expert/types/expert';
+import type { ReviewWithBuyer } from '../../reviews/types/reviews';
+import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
 
 const mockTabNavigate = jest.fn();
 const mockGetParent = jest.fn(() => ({ navigate: mockTabNavigate }));
@@ -22,13 +22,13 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/expert/expertService', () => ({
+jest.mock('../../../expert/services/expertService', () => ({
   fetchExpertById: jest.fn(),
 }));
-jest.mock('../../services/modules/messaging/messagingService', () => ({
+jest.mock('../../messaging/services/messagingService', () => ({
   findOrCreateConversation: jest.fn(),
 }));
-jest.mock('../../services/modules/reviews/reviewsService', () => ({
+jest.mock('../../reviews/services/reviewsService', () => ({
   fetchReviewsForExpert: jest.fn(),
 }));
 

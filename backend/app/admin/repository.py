@@ -2,9 +2,9 @@ from datetime import UTC, datetime
 
 from postgrest.types import CountMethod
 
-from ..core.pagination import page_range
-from ..core.rows import as_rows
-from ..core.supabase_client import get_user_scoped_client
+from app.common.pagination import page_range
+from app.common.rows import as_rows
+from app.database.supabase_client import get_user_scoped_client
 
 REPORT_SELECT = "*, reporter:profiles!reports_reporter_id_fkey(id,full_name)"
 AUDIT_LOG_SELECT = "*, actor:profiles!audit_logs_actor_id_fkey(id,full_name)"

@@ -1,6 +1,6 @@
 """P5a smoke matrix — messaging domain. Also exercises the participant-embed half of the
 profiles_public fix (see conftest.py's world fixture comment and the repository-level comments in
-messaging_repository.py)."""
+common/messaging/repository.py)."""
 
 from __future__ import annotations
 

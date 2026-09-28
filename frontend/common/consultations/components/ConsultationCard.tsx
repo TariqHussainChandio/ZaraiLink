@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Card } from '../../ui';
+import { Card } from '../../components';
 import { ConsultationStatusBadge } from './ConsultationStatusBadge';
 import { useTheme, type Theme } from '../../../theme';
-import type { ConsultationWithRelations } from '../../../types/expert';
+import type { ConsultationWithRelations } from '../../../expert';
 
 export interface ConsultationCardProps {
   consultation: ConsultationWithRelations;

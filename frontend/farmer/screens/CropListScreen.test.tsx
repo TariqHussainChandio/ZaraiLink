@@ -2,8 +2,8 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { CropListScreen } from './CropListScreen';
-import { fetchFarmCrops } from '../../services/modules/farmer/farmService';
-import { HOME_ROUTES } from '../../constants/routes';
+import { fetchFarmCrops } from '../services/farmService';
+import { HOME_ROUTES } from '../../common/constants/routes';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 jest.mock('@react-navigation/native', () => {
@@ -19,7 +19,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/farmer/farmService', () => ({
+jest.mock('../services/farmService', () => ({
   fetchFarmCrops: jest.fn(),
 }));
 

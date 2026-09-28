@@ -1,5 +1,5 @@
-import { apiFetch } from '../../api/client';
-import type { DealerEntityStatus, DealerStore } from '../../../types/dealer';
+import { apiFetch } from '../../services/api/client';
+import type { DealerEntityStatus, DealerStore } from '../types/dealer';
 
 export interface StoreInput {
   name: string;

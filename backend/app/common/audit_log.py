@@ -1,7 +1,7 @@
 from typing import Any
 
-from ..core.auth import AuthenticatedUser
-from ..core.supabase_client import get_user_scoped_client
+from app.auth.dependencies import AuthenticatedUser
+from app.database.supabase_client import get_user_scoped_client
 
 
 async def log_admin_action(
@@ -14,11 +14,11 @@ async def log_admin_action(
     metadata: dict[str, Any] | None = None,
 ) -> None:
     """
-    Mirrors the frontend's existing logAdminAction (src/services/admin/adminService.ts). Kept
-    as its own low-level module rather than inside services/admin_service.py so every domain
+    Replaces the frontend's former logAdminAction (see frontend/admin/services/adminService.ts). Kept
+    as its own low-level module rather than inside admin/service.py so every domain
     that needs it (reference-data, listings, expert, admin itself, ...) can import it without a
     circular/forward dependency on the Admin domain, which is built later in the migration
-    order — admin_service.py imports from here too once it exists, it doesn't duplicate this.
+    order — admin/service.py imports from here too once it exists, it doesn't duplicate this.
 
     Uses the caller's own user-scoped client, not service-role: every caller of this function
     has already passed a `require_admin` dependency upstream, and `audit_logs`' insert policy is

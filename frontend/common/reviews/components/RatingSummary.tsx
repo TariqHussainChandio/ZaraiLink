@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { RatingStars } from './RatingStars';
 import { useTheme, type Theme } from '../../../theme';
-import type { Review } from '../../../types/reviews';
+import type { Review } from '../types/reviews';
 
 export interface RatingSummaryProps {
   reviews: Review[];

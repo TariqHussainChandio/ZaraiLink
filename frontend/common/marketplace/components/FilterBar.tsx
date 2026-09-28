@@ -1,10 +1,10 @@
 import { SlidersHorizontal } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, Input, LocationPicker, Sheet } from '../../../components/ui';
-import { useCrops } from '../../../hooks/api/marketplace';
+import { Button, Input, LocationPicker, Sheet } from '../../components';
+import { useCrops } from '../hooks/marketplace';
 import { useTheme, type Theme } from '../../../theme';
-import type { Category } from '../../../types/marketplace';
+import type { Category } from '../types/marketplace';
 import { CategoryChip } from './CategoryChip';
 
 export interface FilterBarProps {

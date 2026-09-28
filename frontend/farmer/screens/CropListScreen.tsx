@@ -2,9 +2,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Card, EmptyState, Spinner } from '../../components/ui';
-import { HOME_ROUTES } from '../../constants/routes';
-import { useFarmCrops } from '../../hooks/api/farmer';
+import { Card, EmptyState, Spinner } from '../../common/components';
+import { HOME_ROUTES } from '../../common/constants/routes';
+import { useFarmCrops } from '../hooks/farmer';
 import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 

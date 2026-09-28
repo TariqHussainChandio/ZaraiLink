@@ -2,14 +2,14 @@ import React from 'react';
 import { screen } from '@testing-library/react-native';
 import { DealerDashboardScreen } from './DashboardScreen';
 import { renderWithProviders } from '../../testUtils/renderWithProviders';
-import { useAuthStore } from '../../store/authStore';
-import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
-import { fetchDealerAnalytics } from '../../services/modules/analytics/analyticsService';
+import { useAuthStore } from '../../state/authStore';
+import { fetchOrdersForUser } from '../../common/orders/services/ordersService';
+import { fetchDealerAnalytics } from '../../common/analytics/services/analyticsService';
 
 // DealerDashboardScreen is a thin wrapper around SellerDashboard, which reads useNavigation() directly and needs a
 // real navigator context.
-jest.mock('../../services/modules/orders/ordersService', () => ({ fetchOrdersForUser: jest.fn() }));
-jest.mock('../../services/modules/analytics/analyticsService', () => ({
+jest.mock('../../common/orders/services/ordersService', () => ({ fetchOrdersForUser: jest.fn() }));
+jest.mock('../../common/analytics/services/analyticsService', () => ({
   fetchFarmerAnalytics: jest.fn(),
   fetchDealerAnalytics: jest.fn(),
 }));

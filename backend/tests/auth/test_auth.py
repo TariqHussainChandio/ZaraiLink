@@ -1,7 +1,7 @@
 """
-Unit tests for backend/app/core/auth.py's get_current_user dependency — the single gate every
+Unit tests for backend/app/auth/dependencies.py's get_current_user dependency — the single gate every
 protected endpoint in this backend goes through. No live Supabase project is available in this
-environment, so JWT verification (core/jwt_verifier.py) and the profiles-table lookup are mocked;
+environment, so JWT verification (auth/jwt_verifier.py) and the profiles-table lookup are mocked;
 what's under test is get_current_user's own branching logic (token parsing, verification failure
 handling, missing profile, suspended flag, role passthrough, caching), not Supabase's or PyJWT's
 behavior itself — those are exercised for real by the P4 real-stack smoke tests.
@@ -13,8 +13,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.core.auth import AuthenticatedUser, _profile_cache, get_bearer_token, get_current_user, require_admin_aal2
-from app.core.jwt_verifier import JWKSUnavailableError, TokenVerificationError, VerifiedClaims
+from app.auth.dependencies import (
+    AuthenticatedUser,
+    _profile_cache,
+    get_bearer_token,
+    get_current_user,
+    require_admin_aal2,
+)
+from app.auth.jwt_verifier import JWKSUnavailableError, TokenVerificationError, VerifiedClaims
 
 
 @pytest.fixture(autouse=True)
@@ -28,8 +34,8 @@ def _clear_profile_cache():
 
 def _mock_verify(claims: VerifiedClaims | None = None, exc: Exception | None = None):
     if exc is not None:
-        return patch("app.core.auth.verify_access_token", side_effect=exc)
-    return patch("app.core.auth.verify_access_token", return_value=claims)
+        return patch("app.auth.dependencies.verify_access_token", side_effect=exc)
+    return patch("app.auth.dependencies.verify_access_token", return_value=claims)
 
 
 def _mock_profile_lookup(rows: list[dict]):
@@ -44,7 +50,7 @@ def _mock_profile_lookup(rows: list[dict]):
 
     fake_client = MagicMock()
     fake_client.table.return_value = fake_query
-    return patch("app.core.auth.get_user_scoped_client", new_callable=AsyncMock, return_value=fake_client)
+    return patch("app.auth.dependencies.get_user_scoped_client", new_callable=AsyncMock, return_value=fake_client)
 
 
 @pytest.mark.asyncio

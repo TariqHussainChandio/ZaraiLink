@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Header
 
-from ....core import idempotency
-from ....core.auth import AuthenticatedUser, require_authenticated_user
-from ....core.pagination import Page, paginate
-from ....schemas.payments import InitiatePaymentRequest, MarkPaymentFailedRequest, Payment, PaymentTransaction
-from ....services import payments_service as service
+from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
+from app.common import idempotency
+from app.common.pagination import Page, paginate
+from app.common.payments import service
+from app.common.payments.schemas import InitiatePaymentRequest, MarkPaymentFailedRequest, Payment, PaymentTransaction
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 

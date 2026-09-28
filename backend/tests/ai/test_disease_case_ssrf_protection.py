@@ -20,7 +20,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.auth import AuthenticatedUser, require_authenticated_user
+from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
 from app.main import app
 
 CALLER_ID = "00000000-0000-0000-0000-000000000001"
@@ -54,7 +54,7 @@ def buyer_client():
 
 @pytest.mark.parametrize("payload", SSRF_PAYLOADS)
 def test_create_case_rejects_url_shaped_payloads(buyer_client, payload):
-    with patch("app.services.disease_service.disease_repository.create_case") as create:
+    with patch("app.ai.service.disease_repository.create_case") as create:
         response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": payload})
 
     assert response.status_code in (400, 422)
@@ -71,7 +71,7 @@ def test_create_case_rejects_url_shaped_payloads(buyer_client, payload):
     ],
 )
 def test_create_case_rejects_path_traversal_and_malformed_paths(buyer_client, payload):
-    with patch("app.services.disease_service.disease_repository.create_case") as create:
+    with patch("app.ai.service.disease_repository.create_case") as create:
         response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": payload})
 
     assert response.status_code in (400, 422)
@@ -82,7 +82,7 @@ def test_create_case_rejects_an_excessively_long_storage_path(buyer_client):
     # Found by this phase's verifier: the regex alone has no length bound, so a 100,000+ char
     # string passed shape validation. Not exploitable for SSRF (it never reaches an outbound
     # request), but a defense-in-depth gap versus every other validated field in this codebase.
-    with patch("app.services.disease_service.disease_repository.create_case") as create:
+    with patch("app.ai.service.disease_repository.create_case") as create:
         response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": f"{CALLER_ID}/" + "a" * 300})
 
     assert response.status_code == 422
@@ -92,7 +92,7 @@ def test_create_case_rejects_an_excessively_long_storage_path(buyer_client):
 def test_create_case_rejects_a_storage_path_under_a_different_users_id(buyer_client):
     # Shape-valid (passes the schema's regex) but points at another user's uploaded object — the
     # regex alone can't express ownership, so disease_service.create_case checks it directly.
-    with patch("app.services.disease_service.disease_repository.create_case") as create:
+    with patch("app.ai.service.disease_repository.create_case") as create:
         response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": f"{OTHER_USER_ID}/photo.jpg"})
 
     assert response.status_code == 422
@@ -108,9 +108,9 @@ def test_create_case_accepts_a_storage_path_under_the_callers_own_id(buyer_clien
         "created_at": "2026-09-22T00:00:00Z",
     }
     with (
-        patch("app.services.disease_service.disease_repository.create_case", return_value=stored) as create,
+        patch("app.ai.service.disease_repository.create_case", return_value=stored) as create,
         patch(
-            "app.services.disease_service.disease_repository.create_signed_url",
+            "app.ai.service.disease_repository.create_signed_url",
             return_value="https://example.supabase.co/storage/signed?token=abc",
         ),
     ):

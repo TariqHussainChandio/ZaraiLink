@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ExpertCard } from './ExpertCard';
-import type { ExpertWithProfile } from '../../../types/expert';
+import type { ExpertWithProfile } from '../../../expert/types/expert';
 
 const baseExpert: ExpertWithProfile = {
   id: 'e1',

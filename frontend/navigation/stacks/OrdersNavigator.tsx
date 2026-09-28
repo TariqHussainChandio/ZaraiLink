@@ -1,13 +1,13 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { ORDERS_ROUTES } from '../../constants/routes';
-import { OrderDetailScreen } from '../../screens/orders/OrderDetailScreen';
-import { OrderHistoryScreen } from '../../screens/orders/OrderHistoryScreen';
-import { PaymentMethodScreen } from '../../screens/payments/PaymentMethodScreen';
-import { PaymentProcessingScreen } from '../../screens/payments/PaymentProcessingScreen';
-import { PaymentResultScreen } from '../../screens/payments/PaymentResultScreen';
-import { WriteReviewScreen } from '../../screens/reviews/WriteReviewScreen';
+import { ORDERS_ROUTES } from '../../common/constants/routes';
+import { OrderDetailScreen } from '../../common/orders/screens/OrderDetailScreen';
+import { OrderHistoryScreen } from '../../common/orders/screens/OrderHistoryScreen';
+import { PaymentMethodScreen } from '../../common/payments/screens/PaymentMethodScreen';
+import { PaymentProcessingScreen } from '../../common/payments/screens/PaymentProcessingScreen';
+import { PaymentResultScreen } from '../../common/payments/screens/PaymentResultScreen';
+import { WriteReviewScreen } from '../../common/reviews/screens/WriteReviewScreen';
 
 export type OrdersStackParamList = {
   [ORDERS_ROUTES.OrderHistory]: undefined;

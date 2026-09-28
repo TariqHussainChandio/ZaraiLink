@@ -1,5 +1,5 @@
-import { apiFetch } from '../../api/client';
-import type { Notification } from '../../../types/notifications';
+import { apiFetch } from '../../../services/api/client';
+import type { Notification } from '../types/notifications';
 
 // No userId params — the backend always scopes these to the caller's own notifications
 // (derived from the verified session token), never from a client-supplied id.

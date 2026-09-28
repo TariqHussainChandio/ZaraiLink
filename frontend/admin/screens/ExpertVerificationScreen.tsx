@@ -2,11 +2,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, Button, EmptyState, FilterChips, Input, Spinner } from '../../components/ui';
-import { useExpertDocumentUrl, useExpertVerifications, useReviewVerification } from '../../hooks/api/admin';
-import { useAuthStore } from '../../store/authStore';
+import { Badge, Button, EmptyState, FilterChips, Input, Spinner } from '../../common/components';
+import { useExpertDocumentUrl, useExpertVerifications, useReviewVerification } from '../hooks/admin';
+import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { VerificationStatus } from '../../types/expert';
+import type { VerificationStatus } from '../../expert';
 import { errorMessage } from '../../utils/errorMessage';
 
 type FilterValue = VerificationStatus | 'all';

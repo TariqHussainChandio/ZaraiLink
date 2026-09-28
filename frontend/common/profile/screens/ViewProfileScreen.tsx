@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Avatar, Badge, Button } from '../../components/ui';
+import { Avatar, Badge, Button } from '../../components';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS } from '../../constants/roles';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 
 export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfile'>) {
   const theme = useTheme();

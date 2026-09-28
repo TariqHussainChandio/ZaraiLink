@@ -2,8 +2,8 @@ import React from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AdminAnalyticsScreen } from './AnalyticsScreen';
-import { fetchAdminAnalytics } from '../../services/modules/analytics/analyticsService';
-import type { AdminAnalytics } from '../../types/analytics';
+import { fetchAdminAnalytics } from '../../common/analytics/services/analyticsService';
+import type { AdminAnalytics } from '../../common/analytics/types/analytics';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -18,7 +18,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/analytics/analyticsService', () => ({
+jest.mock('../../common/analytics/services/analyticsService', () => ({
   fetchAdminAnalytics: jest.fn(),
 }));
 

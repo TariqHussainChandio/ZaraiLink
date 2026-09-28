@@ -1,5 +1,5 @@
-import { apiFetch } from '../../api/client';
-import type { CartItem } from '../../../store/cartStore';
+import { apiFetch } from '../../../services/api/client';
+import type { CartItem } from '../../../state/cartStore';
 import {
   checkout,
   fetchOrderById,
@@ -8,7 +8,7 @@ import {
   updateOrderStatus,
 } from './ordersService';
 
-jest.mock('../../api/client');
+jest.mock('../../../services/api/client');
 
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
 

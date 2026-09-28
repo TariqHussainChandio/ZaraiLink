@@ -5,9 +5,9 @@ import {
   fetchDiseaseCaseWithPrediction,
   predictDisease,
   uploadDiseaseImage,
-} from '../../services/modules/ai/diseaseService';
+} from '../services/diseaseService';
 import type { PickedPhoto } from '../../utils/photoPicker';
-import { queryKeys } from './keys';
+import { queryKeys } from '../../hooks/keys';
 
 /** A disease case with its prediction (BR-13: the prediction is advisory; the screen routes to an expert). */
 export function useDiseaseCase(diseaseCaseId: string) {

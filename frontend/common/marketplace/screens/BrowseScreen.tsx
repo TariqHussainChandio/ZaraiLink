@@ -8,17 +8,17 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { ShoppingCart } from 'lucide-react-native';
-import { EmptyState, SkeletonCard, StaggeredItem } from '../../components/ui';
-import { FilterBar } from '../../components/features/marketplace/FilterBar';
-import { ListingCard } from '../../components/features/marketplace/ListingCard';
+import { EmptyState, SkeletonCard, StaggeredItem } from '../../components';
+import { FilterBar } from '../components/FilterBar';
+import { ListingCard } from '../components/ListingCard';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
-import { useCategories, useListings } from '../../hooks/api/marketplace';
-import { cartItemCount, useCartStore } from '../../store/cartStore';
-import { useAuthStore } from '../../store/authStore';
-import { useMarketplaceStore } from '../../store/marketplaceStore';
-import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import { useCategories, useListings } from '../hooks/marketplace';
+import { cartItemCount, useCartStore } from '../../../state/cartStore';
+import { useAuthStore } from '../../../state/authStore';
+import { useMarketplaceStore } from '../../../state/marketplaceStore';
+import { useTheme, type Theme } from '../../../theme';
+import { errorMessage } from '../../../utils/errorMessage';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
 function CartHeaderButton({ onPress }: { onPress: () => void }) {
   const theme = useTheme();

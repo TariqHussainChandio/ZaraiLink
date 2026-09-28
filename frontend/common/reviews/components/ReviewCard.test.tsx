@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { ReviewCard } from './ReviewCard';
-import type { ReviewWithBuyer } from '../../../types/reviews';
+import type { ReviewWithBuyer } from '../types/reviews';
 
 const review = (overrides: Partial<ReviewWithBuyer> = {}): ReviewWithBuyer =>
   ({

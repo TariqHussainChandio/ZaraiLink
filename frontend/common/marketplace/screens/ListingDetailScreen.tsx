@@ -1,19 +1,17 @@
 import React, { useEffect, useMemo } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, EmptyState, Spinner } from '../../components/ui';
-import { RatingSummary } from '../../components/features/reviews/RatingSummary';
-import { ReviewCard } from '../../components/features/reviews/ReviewCard';
+import { Avatar, Button, EmptyState, Spinner } from '../../components';
+import { RatingSummary, ReviewCard, useListingReviews } from '../../reviews';
 import { APP_TABS, MARKETPLACE_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
-import { useListing, useRecordListingView } from '../../hooks/api/marketplace';
-import { useOpenConversation } from '../../hooks/api/messaging';
-import { useListingReviews } from '../../hooks/api/reviews';
-import { useAuthStore } from '../../store/authStore';
-import { useCartStore } from '../../store/cartStore';
-import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
-import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
-import { hapticTap } from '../../utils/haptics';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import { useListing, useRecordListingView } from '../hooks/marketplace';
+import { useOpenConversation } from '../../messaging';
+import { useAuthStore } from '../../../state/authStore';
+import { useCartStore } from '../../../state/cartStore';
+import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
+import { useTheme, type Theme } from '../../../theme';
+import { errorMessage } from '../../../utils/errorMessage';
+import { hapticTap } from '../../../utils/haptics';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
 export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProps<'ListingDetail'>) {
   const theme = useTheme();

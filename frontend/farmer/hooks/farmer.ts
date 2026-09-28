@@ -10,8 +10,8 @@ import {
   fetchFarms,
   updateFarm,
   updateFarmCrop,
-} from '../../services/modules/farmer/farmService';
-import { queryKeys } from './keys';
+} from '../services/farmService';
+import { queryKeys } from '../../hooks/keys';
 
 type FarmInput = Parameters<typeof createFarm>[0];
 type FarmCropInput = Parameters<typeof createFarmCrop>[1];

@@ -2,12 +2,12 @@ import React from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { OrderHistoryScreen } from './OrderHistoryScreen';
-import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
-import { useAuthStore } from '../../store/authStore';
-import { createTestQueryClient } from '../../testUtils/renderWithProviders';
+import { fetchOrdersForUser } from '../services/ordersService';
+import { useAuthStore } from '../../../state/authStore';
+import { createTestQueryClient } from '../../../testUtils/renderWithProviders';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import type { OrderWithItems } from '../../types/orders';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
+import type { OrderWithItems } from '../types/orders';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -22,7 +22,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/orders/ordersService', () => ({
+jest.mock('../services/ordersService', () => ({
   fetchOrdersForUser: jest.fn(),
 }));
 

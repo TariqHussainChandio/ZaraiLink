@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ChatScreen } from './ChatScreen';
 import {
   fetchMessages,
@@ -8,11 +8,11 @@ import {
   resolveAttachmentUrls,
   sendMessage,
   uploadMessageAttachments,
-} from '../../services/modules/messaging/messagingService';
-import { useRealtimeMessages } from '../../hooks/realtime/useRealtimeMessages';
-import { useAuthStore } from '../../store/authStore';
-import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavigator';
-import type { Message } from '../../types/messaging';
+} from '../services/messagingService';
+import { useRealtimeMessages } from '../../../hooks/realtime/useRealtimeMessages';
+import { useAuthStore } from '../../../state/authStore';
+import type { MessagingScreenProps } from '../../../navigation/stacks/MessagingNavigator';
+import type { Message } from '../types/messaging';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -29,7 +29,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/messaging/messagingService', () => ({
+jest.mock('../services/messagingService', () => ({
   fetchMessages: jest.fn(),
   markConversationRead: jest.fn(),
   resolveAttachmentUrls: jest.fn(),
@@ -37,7 +37,7 @@ jest.mock('../../services/modules/messaging/messagingService', () => ({
   uploadMessageAttachments: jest.fn(),
 }));
 
-jest.mock('../../hooks/realtime/useRealtimeMessages', () => ({
+jest.mock('../../../hooks/realtime/useRealtimeMessages', () => ({
   useRealtimeMessages: jest.fn(),
 }));
 

@@ -1,9 +1,9 @@
-import { supabase } from '../../supabase/client';
+import { supabase } from '../../../services/supabase/client';
 
 // P4 (4A.4/4B): admin MFA enrolment goes straight through the Supabase Auth SDK, the same way
 // every other auth operation in this app does (signup, signin, OTP, password reset) — FastAPI
 // never brokers this, it only ever consumes the resulting session's `aal` claim
-// (core/auth.py:require_admin_aal2).
+// (auth/dependencies.py:require_admin_aal2).
 
 export interface TotpEnrollment {
   factorId: string;

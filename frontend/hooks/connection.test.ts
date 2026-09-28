@@ -1,6 +1,6 @@
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 import { onlineManager } from '@tanstack/react-query';
-import { useNetworkStore } from '../../store/networkStore';
+import { useNetworkStore } from '../state/networkStore';
 import { connectQueryManagers } from './queryClient';
 
 jest.mock('@react-native-community/netinfo', () => ({

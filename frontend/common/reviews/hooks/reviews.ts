@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createReview, fetchReviewsForListing } from '../../services/modules/reviews/reviewsService';
-import { queryKeys } from './keys';
+import { createReview, fetchReviewsForListing } from '../services/reviewsService';
+import { queryKeys } from '../../../hooks/keys';
 
 export function useListingReviews(listingId: string) {
   return useQuery({

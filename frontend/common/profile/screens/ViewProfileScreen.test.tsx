@@ -1,10 +1,10 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ViewProfileScreen } from './ViewProfileScreen';
 import { PROFILE_ROUTES } from '../../constants/routes';
-import { useAuthStore } from '../../store/authStore';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+import { useAuthStore } from '../../../state/authStore';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 import type { Profile } from '../../types/profile';
 
 const profile = (overrides: Partial<Profile> = {}): Profile =>

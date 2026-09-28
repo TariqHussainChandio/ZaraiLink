@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin, require_admin_aal2, require_authenticated_user
-from ....core.pagination import Page, paginate, paginate_feed
-from ....schemas.marketplace import (
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2, require_authenticated_user
+from app.common.marketplace import service
+from app.common.marketplace.schemas import (
     Category,
     CategoryInput,
     CategoryUpdateInput,
@@ -14,7 +14,7 @@ from ....schemas.marketplace import (
     UpdateListingStatusRequest,
     ViewCountsRequest,
 )
-from ....services import marketplace_service as service
+from app.common.pagination import Page, paginate, paginate_feed
 
 router = APIRouter(prefix="/api/v1/marketplace", tags=["marketplace"])
 

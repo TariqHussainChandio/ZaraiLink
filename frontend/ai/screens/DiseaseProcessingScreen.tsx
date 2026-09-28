@@ -1,9 +1,9 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button, Spinner } from '../../components/ui';
-import { useRunDiseaseAnalysis } from '../../hooks/api/disease';
-import { useAuthStore } from '../../store/authStore';
+import { Button, Spinner } from '../../common/components';
+import { useRunDiseaseAnalysis } from '../hooks/disease';
+import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { navigateToConsultExpert } from './expertHandoff';
 import { errorMessage } from '../../utils/errorMessage';

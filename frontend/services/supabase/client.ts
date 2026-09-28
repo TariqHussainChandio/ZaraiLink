@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { ENV } from '../../config/env';
 import { EncryptedStorage } from './encryptedStorage';
 
-// ENV is validated at import time (src/config/env.ts), so a missing URL or key never reaches here.
+// ENV is validated at import time (frontend/config/env.ts), so a missing URL or key never reaches here.
 export const supabase = createClient(ENV.supabaseUrl, ENV.supabaseAnonKey, {
   auth: {
     // P4 (4B.1): AES-256-CTR encrypted, key held in expo-secure-store — see encryptedStorage.ts.

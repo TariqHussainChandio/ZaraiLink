@@ -23,7 +23,7 @@ export function createTestQueryClient(): QueryClient {
  * bare `render()` used for leaf UI components. `getParent()` resolves to `undefined` here
  * (no surrounding tab navigator) — call sites that chain off it are written with `?.` for
  * exactly this reason. It also provides a fresh React Query client, so screens that read through
- * the hooks in `src/hooks/api` work; pass one in to inspect or pre-seed the cache.
+ * the React Query hooks in each module's `hooks/` work; pass one in to inspect or pre-seed the cache.
  */
 export function renderWithProviders(
   ui: React.ReactElement,

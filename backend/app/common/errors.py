@@ -1,6 +1,6 @@
 """P7 (7B): the stable error codes of the API.
 
-Every error response is RFC 9457 problem+json (core/problem_details.py) and carries a `code`: a short machine-readable
+Every error response is RFC 9457 problem+json (common/problem_details.py) and carries a `code`: a short machine-readable
 identifier the mobile app maps to its own message and to behaviour (a suspended account, an expired session, a
 rate limit). `title` stays English text for logs and developers; clients must never parse it.
 

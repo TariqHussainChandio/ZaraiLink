@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin, require_admin_aal2
-from ....core.pagination import Page, paginate
-from ....schemas.admin import (
+from app.admin import service
+from app.admin.schemas import (
     AuditLogEntryWithActor,
     PlatformStats,
     Profile,
@@ -11,8 +10,9 @@ from ....schemas.admin import (
     SuspendUserRequest,
     UpdateUserRoleRequest,
 )
-from ....schemas.orders import OrderWithItems
-from ....services import admin_service as service
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2
+from app.common.orders.schemas import OrderWithItems
+from app.common.pagination import Page, paginate
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 

@@ -1,19 +1,19 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { HomeDashboardScreen } from './HomeDashboardScreen';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../state/authStore';
 
-jest.mock('./buyer/DashboardScreen', () => {
+jest.mock('../buyer/screens/DashboardScreen', () => {
   const ReactActual = require('react');
   const { Text } = require('react-native');
   return { BuyerDashboardScreen: () => ReactActual.createElement(Text, null, 'Buyer Dashboard Screen') };
 });
-jest.mock('./dealer/DashboardScreen', () => {
+jest.mock('../dealer/screens/DashboardScreen', () => {
   const ReactActual = require('react');
   const { Text } = require('react-native');
   return { DealerDashboardScreen: () => ReactActual.createElement(Text, null, 'Dealer Dashboard Screen') };
 });
-jest.mock('./farmer/DashboardScreen', () => {
+jest.mock('../farmer/screens/DashboardScreen', () => {
   const ReactActual = require('react');
   const { Text } = require('react-native');
   return { FarmerDashboardScreen: () => ReactActual.createElement(Text, null, 'Farmer Dashboard Screen') };

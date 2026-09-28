@@ -2,12 +2,12 @@ import React from 'react';
 import { screen, waitFor } from '@testing-library/react-native';
 import { SellerDashboard } from './SellerDashboard';
 import { renderWithProviders } from '../../../testUtils/renderWithProviders';
-import { useAuthStore } from '../../../store/authStore';
-import { fetchOrdersForUser } from '../../../services/modules/orders/ordersService';
-import { fetchDealerAnalytics, fetchFarmerAnalytics } from '../../../services/modules/analytics/analyticsService';
+import { useAuthStore } from '../../../state/authStore';
+import { fetchOrdersForUser } from '../../orders/services/ordersService';
+import { fetchDealerAnalytics, fetchFarmerAnalytics } from '../services/analyticsService';
 
-jest.mock('../../../services/modules/orders/ordersService', () => ({ fetchOrdersForUser: jest.fn() }));
-jest.mock('../../../services/modules/analytics/analyticsService', () => ({
+jest.mock('../../orders/services/ordersService', () => ({ fetchOrdersForUser: jest.fn() }));
+jest.mock('../services/analyticsService', () => ({
   fetchFarmerAnalytics: jest.fn(),
   fetchDealerAnalytics: jest.fn(),
 }));

@@ -8,12 +8,12 @@ import {
   deleteSupplier,
   fetchSupplierById,
   updateSupplier,
-} from '../../services/modules/dealer/supplierService';
-import { useAuthStore } from '../../store/authStore';
-import type { Supplier } from '../../types/dealer';
+} from '../services/supplierService';
+import { useAuthStore } from '../../state/authStore';
+import type { Supplier } from '../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
-jest.mock('../../services/modules/dealer/supplierService', () => ({
+jest.mock('../services/supplierService', () => ({
   createSupplier: jest.fn(),
   deleteSupplier: jest.fn(),
   fetchSupplierById: jest.fn(),

@@ -1,10 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EmptyState, Spinner } from '../../components/ui';
-import { BarChart } from '../../components/features/dashboards/BarChart';
-import { StatCard } from '../../components/features/dashboards/StatCard';
-import { useAdminAnalytics } from '../../hooks/api/admin';
+import { EmptyState, Spinner } from '../../common/components';
+import { BarChart } from '../../common/components/dashboards/BarChart';
+import { StatCard } from '../../common/components/dashboards/StatCard';
+import { useAdminAnalytics } from '../hooks/admin';
 import { useTheme, type Theme } from '../../theme';
 
 function capitalize(value: string): string {

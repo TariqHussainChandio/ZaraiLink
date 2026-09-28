@@ -1,16 +1,16 @@
 import React from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
-import { queryKeys } from '../../hooks/api/keys';
-import { ApiError } from '../../services/api/errors';
+import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
+import { queryKeys } from '../../../hooks/keys';
+import { ApiError } from '../../../services/api/errors';
 import { BrowseScreen } from './BrowseScreen';
-import { fetchListings } from '../../services/modules/marketplace/listingsService';
-import { useAuthStore } from '../../store/authStore';
-import { useCartStore } from '../../store/cartStore';
-import { useMarketplaceStore } from '../../store/marketplaceStore';
+import { fetchListings } from '../services/listingsService';
+import { useAuthStore } from '../../../state/authStore';
+import { useCartStore } from '../../../state/cartStore';
+import { useMarketplaceStore } from '../../../state/marketplaceStore';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
-import type { ListingWithRelations } from '../../types/marketplace';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import type { ListingWithRelations } from '../types/marketplace';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -25,7 +25,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../services/listingsService', () => ({
   fetchListings: jest.fn(),
   fetchCategories: jest.fn().mockResolvedValue([]),
   fetchCrops: jest.fn().mockResolvedValue([]),

@@ -8,8 +8,7 @@ only.
 
 ## The real stack — do not introduce alternatives unless asked
 
-- **Server data: TanStack React Query.** Screens read and write only through hooks (`src/hooks/api/*` today; each
-  module's `hooks/` after the restructure) built on the shared query client and key factory; the layer-boundary
+- **Server data: TanStack React Query.** Screens read and write only through hooks (each module's `hooks/`) built on the shared query client and key factory; the layer-boundary
   gate fails any screen that imports the service layer.
 - **App state: Zustand** (auth, cart, marketplace filters, network, theme) — only for real cross-screen client state.
 - **Forms:** react-hook-form + zod. **Navigation:** React Navigation 7 (bottom tabs + native stack). **Lists:**
@@ -18,7 +17,7 @@ only.
 - No NativeWind, Redux Toolkit, Formik/Yup or Axios; the API client is the typed `apiFetch` pipeline plus the
   OpenAPI-generated client.
 - Native settings live in `app.config.ts`; `android/` is generated. Expo replaces only literal
-  `process.env.EXPO_PUBLIC_*`, read in one place (`src/config/env.ts`).
+  `process.env.EXPO_PUBLIC_*`, read in one place (`frontend/config/env.ts`).
 
 ## Structure (SRDS §38–§43; `docs/plan.md` §2)
 

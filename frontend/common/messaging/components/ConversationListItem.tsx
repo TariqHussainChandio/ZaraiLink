@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Avatar } from '../../../components/ui';
+import { Avatar } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
-import type { ConversationWithPreview } from '../../../types/messaging';
+import type { ConversationWithPreview } from '../types/messaging';
 
 export interface ConversationListItemProps {
   conversation: ConversationWithPreview;

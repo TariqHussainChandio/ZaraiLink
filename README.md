@@ -19,8 +19,9 @@ admins on one mobile app, with an AI-assisted crop-disease advisory that always 
 ## Repository layout
 
 ```
-src/          React Native app (screens, components, services, stores, theme)
-backend/      FastAPI service (api, services, repositories, schemas, ml) and its tests
+frontend/     React Native app: one folder per SRDS module (admin, farmer, dealer, buyer, expert, ai, inventory,
+              common/<feature>) plus shared theme, navigation, services, state, hooks, utils
+backend/      FastAPI service: the same modules (router, service, repository, schemas each) and its tests
 supabase/     Migrations, seed data (reference data only), local stack config
 scripts/      Quality gates (check_reality.py) and CI helpers
 docs/         Architecture, database, setup, process, status

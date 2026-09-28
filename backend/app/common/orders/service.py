@@ -4,10 +4,10 @@ from datetime import UTC, datetime, timedelta
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
-from ..core.auth import AuthenticatedUser
-from ..core.errors import AppHTTPException
-from ..repositories import orders_repository as repo
-from .audit_log_service import log_admin_action
+from app.auth.dependencies import AuthenticatedUser
+from app.common.audit_log import log_admin_action
+from app.common.errors import AppHTTPException
+from app.common.orders import repository as repo
 
 # Full SRDS v4.0 §12.2 lifecycle. `payment_failed` is reachable from `pending`/`confirmed` —
 # Payments' manual flow moves an order there when the seller records non-payment before
@@ -148,6 +148,17 @@ async def checkout(
 async def fetch_orders_for_user(user: AuthenticatedUser, as_: str) -> list[dict]:
     await _expire_stale_pending_orders(user)
     return await repo.fetch_orders_for_user(user.access_token, user.id, as_)
+
+
+async def read_orders_for_user(user: AuthenticatedUser, as_: str) -> list[dict]:
+    """The orders as fetch_orders_for_user returns them, without first expiring stale pending orders: for
+    read-only summaries (analytics), which must not change order state as a side effect."""
+    return await repo.fetch_orders_for_user(user.access_token, user.id, as_)
+
+
+async def fetch_all_orders(user: AuthenticatedUser) -> list[dict]:
+    """Every order on the platform, for the admin console (row-level security admits only an admin)."""
+    return await repo.fetch_all_orders(user.access_token)
 
 
 async def fetch_order_by_id(user: AuthenticatedUser, order_id: str) -> dict:

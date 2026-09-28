@@ -1,9 +1,9 @@
 import React from 'react';
-import { ResetPasswordScreen } from '../../screens/common/ResetPasswordScreen';
-import { SplashScreen } from '../../screens/common/SplashScreen';
-import { SuspendedScreen } from '../../screens/common/SuspendedScreen';
-import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
-import { useAuthStore } from '../../store/authStore';
+import { ResetPasswordScreen } from '../../common/auth/screens/ResetPasswordScreen';
+import { SplashScreen } from '../../common/auth/screens/SplashScreen';
+import { SuspendedScreen } from '../../common/auth/screens/SuspendedScreen';
+import { ErrorBoundary } from '../../common/components/ErrorBoundary';
+import { useAuthStore } from '../../state/authStore';
 import { AdminNavigator } from './AdminNavigator';
 import { AppNavigator } from './AppNavigator';
 import { AuthNavigator } from './AuthNavigator';

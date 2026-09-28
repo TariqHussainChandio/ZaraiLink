@@ -2,12 +2,12 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components/ui';
-import { ConsultationCard } from '../../components/features/expert/ConsultationCard';
+import { EmptyState, Spinner } from '../../components';
+import { ConsultationCard } from '../components/ConsultationCard';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
-import { useConsultations } from '../../hooks/api/consultations';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
+import { useConsultations } from '../hooks/consultations';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
 
 // Registered in two different navigators (the requester-side ConsultationsNavigator and
 // ExpertNavigator's own consultations stack) with the same route names but different param

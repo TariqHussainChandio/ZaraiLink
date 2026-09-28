@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { CartItemRow } from './CartItemRow';
-import type { CartItem } from '../../../store/cartStore';
+import type { CartItem } from '../../../state/cartStore';
 
 const item: CartItem = {
   listingId: 'listing-1',

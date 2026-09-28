@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Input } from '../../components/ui';
-import { RatingStars } from '../../components/features/reviews/RatingStars';
-import { useCreateReview } from '../../hooks/api/reviews';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
-import { errorMessage } from '../../utils/errorMessage';
+import { Button, Input } from '../../components';
+import { RatingStars } from '../components/RatingStars';
+import { useCreateReview } from '../hooks/reviews';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
+import { errorMessage } from '../../../utils/errorMessage';
 
 export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'WriteReview'>) {
   const theme = useTheme();

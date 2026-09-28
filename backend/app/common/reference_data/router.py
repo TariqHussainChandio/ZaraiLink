@@ -2,11 +2,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin_aal2
-from ....core.pagination import Page, paginate
-from ....repositories.reference_data_repository import RefDataTable
-from ....schemas.reference_data import Currency, Unit
-from ....services import reference_data_service as service
+from app.auth.dependencies import AuthenticatedUser, require_admin_aal2
+from app.common.pagination import Page, paginate
+from app.common.reference_data import service
+from app.common.reference_data.repository import RefDataTable
+from app.common.reference_data.schemas import Currency, Unit
 
 router = APIRouter(prefix="/api/v1/reference-data", tags=["reference-data"])
 

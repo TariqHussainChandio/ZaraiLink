@@ -8,7 +8,7 @@ import {
   verifyRecoveryOtp,
   verifySignupOtp,
   type AuthChannel,
-} from '../../services/modules/auth/authService';
+} from '../services/authService';
 
 export type { AuthChannel };
 

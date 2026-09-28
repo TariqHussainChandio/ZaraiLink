@@ -2,15 +2,15 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
-import { queryKeys } from '../../hooks/api/keys';
+import { queryKeys } from '../../hooks/keys';
 import { CreateFarmScreen } from './CreateFarmScreen';
-import { createFarm } from '../../services/modules/farmer/farmService';
-import { useAuthStore } from '../../store/authStore';
+import { createFarm } from '../services/farmService';
+import { useAuthStore } from '../../state/authStore';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 const queryClient = createTestQueryClient();
 
-jest.mock('../../services/modules/farmer/farmService', () => ({
+jest.mock('../services/farmService', () => ({
   createFarm: jest.fn(),
 }));
 

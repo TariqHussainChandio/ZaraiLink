@@ -4,20 +4,20 @@ import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { MarketplaceNavigator } from './MarketplaceNavigator';
-import { fetchListingById, fetchListings } from '../../services/modules/marketplace/listingsService';
-import { fetchReviewsForListing } from '../../services/modules/reviews/reviewsService';
-import { checkout } from '../../services/modules/orders/ordersService';
-import { useAuthStore } from '../../store/authStore';
-import { useCartStore } from '../../store/cartStore';
+import { fetchListingById, fetchListings } from '../../common/marketplace/services/listingsService';
+import { fetchReviewsForListing } from '../../common/reviews/services/reviewsService';
+import { checkout } from '../../common/orders/services/ordersService';
+import { useAuthStore } from '../../state/authStore';
+import { useCartStore } from '../../state/cartStore';
 import { createTestQueryClient } from '../../testUtils/renderWithProviders';
-import type { ListingWithRelations } from '../../types/marketplace';
+import type { ListingWithRelations } from '../../common/marketplace/types/marketplace';
 
 // A full multi-screen flow through the real MarketplaceNavigator (real NavigationContainer +
 // stack, real Zustand cart store) — proves Browse -> ListingDetail -> Cart -> Checkout actually
 // hand off route params and cart state to each other, not just that each screen works in
 // isolation with a mocked `navigation` prop.
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../../common/marketplace/services/listingsService', () => ({
   fetchListings: jest.fn(),
   fetchListingById: jest.fn(),
   recordListingView: jest.fn().mockResolvedValue(undefined),
@@ -28,13 +28,13 @@ jest.mock('../../services/modules/marketplace/listingsService', () => ({
   fetchCategories: jest.fn().mockResolvedValue([]),
   fetchCrops: jest.fn().mockResolvedValue([]),
 }));
-jest.mock('../../services/modules/reviews/reviewsService', () => ({
+jest.mock('../../common/reviews/services/reviewsService', () => ({
   fetchReviewsForListing: jest.fn().mockResolvedValue([]),
 }));
-jest.mock('../../services/modules/messaging/messagingService', () => ({
+jest.mock('../../common/messaging/services/messagingService', () => ({
   findOrCreateConversation: jest.fn(),
 }));
-jest.mock('../../services/modules/orders/ordersService', () => ({
+jest.mock('../../common/orders/services/ordersService', () => ({
   checkout: jest.fn(),
 }));
 jest.mock('@react-navigation/native', () => {

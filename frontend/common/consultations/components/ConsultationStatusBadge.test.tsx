@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { ConsultationStatusBadge } from './ConsultationStatusBadge';
-import type { ConsultationStatus } from '../../../types/expert';
+import type { ConsultationStatus } from '../../../expert/types/expert';
 
 const EXPECTED_LABEL: Record<ConsultationStatus, string> = {
   requested: 'Requested',

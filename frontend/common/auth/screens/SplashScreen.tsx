@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '../../components/ui';
-import { useTheme, type Theme } from '../../theme';
+import { Spinner } from '../../components';
+import { useTheme, type Theme } from '../../../theme';
 
 export function SplashScreen() {
   const theme = useTheme();

@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { Button } from '../../components/ui';
+import { Button } from '../../components';
 import { PROFILE_ROUTES } from '../../constants/routes';
-import { useUpdateProfile } from '../../hooks/api/profile';
-import { useAuthStore } from '../../store/authStore';
-import { useThemeStore, type ThemeMode } from '../../store/themeStore';
-import { useTheme, type Theme } from '../../theme';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
-import { errorMessage } from '../../utils/errorMessage';
+import { useUpdateProfile } from '../hooks/profile';
+import { useAuthStore } from '../../../state/authStore';
+import { useThemeStore, type ThemeMode } from '../../../state/themeStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
+import { errorMessage } from '../../../utils/errorMessage';
 
 const THEME_MODES: ThemeMode[] = ['light', 'dark', 'system'];
 const THEME_MODE_LABELS: Record<ThemeMode, string> = { light: 'Light', dark: 'Dark', system: 'System' };

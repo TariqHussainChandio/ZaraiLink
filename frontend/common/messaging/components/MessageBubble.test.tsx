@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { MessageBubble } from './MessageBubble';
-import type { Message } from '../../../types/messaging';
+import type { Message } from '../types/messaging';
 
 const baseMessage: Message = {
   id: 'm1',

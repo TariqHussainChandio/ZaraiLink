@@ -3,10 +3,10 @@ jest.mock('../supabase/client', () => {
   return { supabase: makeSupabaseMock({ session: { access_token: 'token-1', user: { id: 'user-1' } } }) };
 });
 
-import { adminGetPlatformStats } from '../../api/generated';
+import { adminGetPlatformStats } from './generated';
 import { makeSupabaseMock } from '../../testUtils/supabaseMock';
-import { useAuthStore } from '../../store/authStore';
-import { useNetworkStore } from '../../store/networkStore';
+import { useAuthStore } from '../../state/authStore';
+import { useNetworkStore } from '../../state/networkStore';
 import { setBreadcrumbSink, type ApiBreadcrumb } from '../observability/breadcrumbs';
 import { supabase } from '../supabase/client';
 import { apiFetch, apiFetchPage, ApiError, configureGeneratedClient, parseNextLink } from './client';

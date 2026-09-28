@@ -1,5 +1,5 @@
-import { apiFetch } from '../../api/client';
-import type { Farm, FarmCrop, FarmCropWithCrop, FarmerProfile } from '../../../types/farmer';
+import { apiFetch } from '../../services/api/client';
+import type { Farm, FarmCrop, FarmCropWithCrop, FarmerProfile } from '../types/farmer';
 
 export interface FarmInput {
   name: string;

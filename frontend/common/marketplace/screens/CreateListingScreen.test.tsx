@@ -1,21 +1,21 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { CreateListingScreen } from './CreateListingScreen';
-import { createListing, uploadListingImages } from '../../services/modules/marketplace/listingsService';
-import { pickPhotos } from '../../utils/photoPicker';
-import { useAuthStore } from '../../store/authStore';
-import { useMarketplaceStore } from '../../store/marketplaceStore';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import { createListing, uploadListingImages } from '../services/listingsService';
+import { pickPhotos } from '../../../utils/photoPicker';
+import { useAuthStore } from '../../../state/authStore';
+import { useMarketplaceStore } from '../../../state/marketplaceStore';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../services/listingsService', () => ({
   createListing: jest.fn(),
   uploadListingImages: jest.fn(),
   fetchCategories: jest.fn().mockResolvedValue([]),
   fetchCrops: jest.fn().mockResolvedValue([]),
 }));
-jest.mock('../../utils/photoPicker', () => ({
+jest.mock('../../../utils/photoPicker', () => ({
   pickPhotos: jest.fn(),
 }));
 

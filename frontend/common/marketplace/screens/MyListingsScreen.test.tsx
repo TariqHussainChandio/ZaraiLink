@@ -1,11 +1,11 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { MyListingsScreen } from './MyListingsScreen';
-import { fetchListings } from '../../services/modules/marketplace/listingsService';
-import { useAuthStore } from '../../store/authStore';
+import { fetchListings } from '../services/listingsService';
+import { useAuthStore } from '../../../state/authStore';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
-import type { ListingWithRelations } from '../../types/marketplace';
+import type { ListingWithRelations } from '../types/marketplace';
 
 const mockTabNavigate = jest.fn();
 
@@ -25,7 +25,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../services/listingsService', () => ({
   fetchListings: jest.fn(),
 }));
 

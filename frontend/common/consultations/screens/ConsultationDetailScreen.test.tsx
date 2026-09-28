@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ConsultationDetailScreen } from './ConsultationDetailScreen';
 import {
   fetchConsultationById,
@@ -9,12 +9,12 @@ import {
   resolveConsultationAttachmentUrls,
   sendConsultationMessage,
   updateConsultationStatus,
-} from '../../services/modules/expert/consultationService';
-import { fetchListings } from '../../services/modules/marketplace/listingsService';
-import { createConsultationReview, fetchReviewByConsultationId } from '../../services/modules/reviews/reviewsService';
+} from '../services/consultationService';
+import { fetchListings } from '../../marketplace/services/listingsService';
+import { createConsultationReview, fetchReviewByConsultationId } from '../../reviews/services/reviewsService';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
-import { useAuthStore } from '../../store/authStore';
-import type { ConsultationMessageWithListing, ConsultationWithRelations } from '../../types/expert';
+import { useAuthStore } from '../../../state/authStore';
+import type { ConsultationMessageWithListing, ConsultationWithRelations } from '../../../expert/types/expert';
 
 const mockRouteParams = { consultationId: 'c1' };
 const mockGetParent = jest.fn();
@@ -35,7 +35,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/expert/consultationService', () => ({
+jest.mock('../services/consultationService', () => ({
   fetchConsultationById: jest.fn(),
   fetchConsultationMessages: jest.fn(),
   resolveConsultationAttachmentUrls: jest.fn(),
@@ -43,14 +43,14 @@ jest.mock('../../services/modules/expert/consultationService', () => ({
   updateConsultationStatus: jest.fn(),
   uploadConsultationAttachments: jest.fn(),
 }));
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../../marketplace/services/listingsService', () => ({
   fetchListings: jest.fn(),
 }));
-jest.mock('../../services/modules/reviews/reviewsService', () => ({
+jest.mock('../../reviews/services/reviewsService', () => ({
   createConsultationReview: jest.fn(),
   fetchReviewByConsultationId: jest.fn(),
 }));
-jest.mock('../../hooks/realtime/useRealtimeConsultationMessages', () => ({
+jest.mock('../../../hooks/realtime/useRealtimeConsultationMessages', () => ({
   useRealtimeConsultationMessages: jest.fn(),
 }));
 

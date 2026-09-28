@@ -11,13 +11,13 @@ import {
   View,
 } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, PhoneInput, isValidE164 } from '../../components/ui';
+import { Button, Input, PhoneInput, isValidE164 } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS, ROLES, type Role } from '../../constants/roles';
-import { useSignUp, type AuthChannel } from '../../hooks/api/auth';
-import { useTheme, type Theme } from '../../theme';
+import { useSignUp, type AuthChannel } from '../hooks/auth';
+import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
-import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
+import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
 const REGISTRABLE_ROLES = ROLES.filter(role => role !== 'admin') as Exclude<Role, 'admin'>[];
 

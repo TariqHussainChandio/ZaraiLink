@@ -2,20 +2,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, EmptyState, Spinner } from '../../components/ui';
+import { Button, EmptyState, Spinner } from '../../components';
 import {
   ListingFormFields,
   listingFormDefaults,
   listingSchema,
   type ListingFormInput,
   type ListingFormValues,
-} from '../../components/features/marketplace/ListingFormFields';
-import { useDeleteListing, useListing, useUpdateListing } from '../../hooks/api/marketplace';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
-import { errorMessage } from '../../utils/errorMessage';
+} from '../components/ListingFormFields';
+import { useDeleteListing, useListing, useUpdateListing } from '../hooks/marketplace';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
+import { errorMessage } from '../../../utils/errorMessage';
 
 export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<'EditListing'>) {
   const theme = useTheme();

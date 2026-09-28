@@ -5,8 +5,8 @@ import {
   unenrollTotp,
   verifyTotpEnrollment,
   type TotpEnrollment,
-} from '../../services/modules/auth/mfaService';
-import { queryKeys } from './keys';
+} from '../services/mfaService';
+import { queryKeys } from '../../../hooks/keys';
 
 export type { TotpEnrollment };
 

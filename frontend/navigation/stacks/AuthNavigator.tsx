@@ -1,11 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { AUTH_ROUTES } from '../../constants/routes';
-import { ForgotPasswordScreen } from '../../screens/auth/ForgotPasswordScreen';
-import { LoginScreen } from '../../screens/auth/LoginScreen';
-import { RegisterScreen } from '../../screens/auth/RegisterScreen';
-import { VerifyOtpScreen } from '../../screens/auth/VerifyOtpScreen';
+import { AUTH_ROUTES } from '../../common/constants/routes';
+import { ForgotPasswordScreen } from '../../common/auth/screens/ForgotPasswordScreen';
+import { LoginScreen } from '../../common/auth/screens/LoginScreen';
+import { RegisterScreen } from '../../common/auth/screens/RegisterScreen';
+import { VerifyOtpScreen } from '../../common/auth/screens/VerifyOtpScreen';
 
 export type AuthStackParamList = {
   [AUTH_ROUTES.Login]: undefined;

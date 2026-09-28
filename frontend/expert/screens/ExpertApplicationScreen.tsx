@@ -3,14 +3,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { Button, EmptyState, Input, LocationPicker, Spinner } from '../../components/ui';
-import { useOwnExpertProfile, useSaveExpertProfile } from '../../hooks/api/experts';
-import { useAuthStore } from '../../store/authStore';
+import { Button, EmptyState, Input, LocationPicker, Spinner } from '../../common/components';
+import { useOwnExpertProfile, useSaveExpertProfile } from '../hooks/experts';
+import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { ExpertSpecialization } from '../../types/expert';
+import type { ExpertSpecialization } from '../types/expert';
 import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 import { errorMessage } from '../../utils/errorMessage';
-import { SPECIALIZATION_LABELS } from '../../constants/labels';
+import { SPECIALIZATION_LABELS } from '../../common/constants/labels';
 
 const SPECIALIZATION_IDS: ExpertSpecialization[] = [
   'crop_management',

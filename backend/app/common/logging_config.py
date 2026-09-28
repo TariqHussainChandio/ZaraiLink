@@ -1,5 +1,5 @@
 """P5 (item 4): structured (JSON) logs carrying the current request id, using stdlib `logging`
-only — the codebase has zero structured-logging today (`ai_engine.py`/`config.py` use plain
+only — the codebase has zero structured-logging today (`ai/engine.py`/`config/settings.py` use plain
 `logging`, nothing else), and a formatter is all this need (JSON lines, one field for correlation)
 actually requires. `structlog` would be a new dependency for capability not yet needed; adopt it
 later only if a future phase needs contextual binding beyond a single request id."""
@@ -7,7 +7,7 @@ later only if a future phase needs contextual binding beyond a single request id
 import json
 import logging
 
-from .request_context import request_id_var
+from app.middleware.request_context import request_id_var
 
 
 class JSONFormatter(logging.Formatter):

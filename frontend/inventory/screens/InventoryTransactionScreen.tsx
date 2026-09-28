@@ -2,11 +2,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
-import { StockAdjustModal } from '../../components/features/dealer/StockAdjustModal';
-import { useInventoryItem, useInventoryTransactions } from '../../hooks/api/dealer';
+import { Badge, Card, EmptyState, Spinner } from '../../common/components';
+import { StockAdjustModal } from '../components/StockAdjustModal';
+import { useInventoryItem, useInventoryTransactions } from '../hooks/dealer';
 import { useTheme, type Theme } from '../../theme';
-import type { InventoryTransaction } from '../../types/dealer';
+import type { InventoryTransaction } from '../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 const TYPE_LABELS: Record<InventoryTransaction['type'], string> = {

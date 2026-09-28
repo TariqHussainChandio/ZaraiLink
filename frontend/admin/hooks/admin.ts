@@ -9,15 +9,16 @@ import {
   resolveReport,
   setProfileSuspended,
   updateUserRole,
-} from '../../services/modules/admin/adminService';
-import { fetchAdminAnalytics } from '../../services/modules/analytics/analyticsService';
+} from '../services/adminService';
+import { fetchAdminAnalytics } from '../../common/analytics';
 import {
   fetchExpertById,
   fetchExpertForAdminById,
   fetchExpertsForAdmin,
   resolveExpertDocumentUrl,
   reviewExpertVerification,
-} from '../../services/modules/expert/expertService';
+  type VerificationStatus,
+} from '../../expert';
 import {
   createCategory,
   deleteCategory,
@@ -26,14 +27,13 @@ import {
   updateCategory,
   updateListingStatus,
   type CategoryInput,
-} from '../../services/modules/marketplace/listingsService';
-import { fetchMessageById, redactMessage } from '../../services/modules/messaging/messagingService';
-import { deleteReview, fetchReviewById } from '../../services/modules/reviews/reviewsService';
-import type { Role } from '../../constants/roles';
-import type { ListingStatus } from '../../types/marketplace';
-import type { VerificationStatus } from '../../types/expert';
-import type { ReportStatus, ReportWithReporter } from '../../types/reports';
-import { queryKeys } from './keys';
+  type ListingStatus,
+} from '../../common/marketplace';
+import { fetchMessageById, redactMessage } from '../../common/messaging';
+import { deleteReview, fetchReviewById } from '../../common/reviews';
+import type { Role } from '../../common/constants/roles';
+import type { ReportStatus, ReportWithReporter } from '../types/reports';
+import { queryKeys } from '../../hooks/keys';
 
 /*
  * Every admin write below is audit-logged by the API (BR-15); the hooks only decide what refetches afterwards. The

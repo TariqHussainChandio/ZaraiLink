@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin_aal2, require_authenticated_user
-from ....core.pagination import Page, paginate
-from ....schemas.messaging import (
+from app.auth.dependencies import AuthenticatedUser, require_admin_aal2, require_authenticated_user
+from app.common.messaging import service
+from app.common.messaging.schemas import (
     Conversation,
     ConversationWithPreview,
     FindOrCreateConversationRequest,
     Message,
     SendMessageRequest,
 )
-from ....services import messaging_service as service
+from app.common.pagination import Page, paginate
 
 router = APIRouter(prefix="/api/v1/messaging", tags=["messaging"])
 

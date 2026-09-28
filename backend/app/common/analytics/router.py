@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin, require_dealer, require_expert, require_farmer
-from ....schemas.analytics import AdminAnalytics, DealerAnalytics, ExpertAnalytics, FarmerAnalytics
-from ....services import analytics_service as service
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_dealer, require_expert, require_farmer
+from app.common.analytics import service
+from app.common.analytics.schemas import AdminAnalytics, DealerAnalytics, ExpertAnalytics, FarmerAnalytics
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 

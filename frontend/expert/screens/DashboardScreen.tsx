@@ -1,14 +1,13 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { EmptyState, Spinner } from '../../components/ui';
-import { ConsultationCard } from '../../components/features/expert/ConsultationCard';
-import { QuickActions } from '../../components/features/dashboards/QuickActions';
-import { StatCard } from '../../components/features/dashboards/StatCard';
-import { CONSULTATIONS_ROUTES, EXPERT_HOME_ROUTES, EXPERT_TABS } from '../../constants/routes';
-import { useConsultations } from '../../hooks/api/consultations';
-import { useOwnExpertProfile } from '../../hooks/api/experts';
-import { useAuthStore } from '../../store/authStore';
+import { EmptyState, Spinner } from '../../common/components';
+import { ConsultationCard, useConsultations } from '../../common/consultations';
+import { QuickActions } from '../../common/components/dashboards/QuickActions';
+import { StatCard } from '../../common/components/dashboards/StatCard';
+import { CONSULTATIONS_ROUTES, EXPERT_HOME_ROUTES, EXPERT_TABS } from '../../common/constants/routes';
+import { useOwnExpertProfile } from '../hooks/experts';
+import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 
 const OPEN_STATUSES = ['requested', 'accepted', 'in_progress'];

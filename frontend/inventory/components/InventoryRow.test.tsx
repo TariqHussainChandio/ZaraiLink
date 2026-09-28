@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { InventoryRow } from './InventoryRow';
-import type { InventoryItemWithListing } from '../../../types/dealer';
+import type { InventoryItemWithListing } from '../types/dealer';
 
 const baseItem: InventoryItemWithListing = {
   id: 'i1',

@@ -1,6 +1,6 @@
-import type { ExpertSpecialization } from '../types/expert';
-import type { OrderStatus } from '../types/orders';
-import type { PaymentMethod } from '../types/payments';
+import type { ExpertSpecialization } from '../../expert';
+import type { OrderStatus } from '../orders';
+import type { PaymentMethod } from '../payments';
 
 // Display names for values the database stores as codes, shared by every screen that shows them.
 

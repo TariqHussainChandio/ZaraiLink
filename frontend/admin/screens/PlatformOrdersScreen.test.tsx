@@ -2,9 +2,9 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { PlatformOrdersScreen } from './PlatformOrdersScreen';
-import { fetchAllOrders } from '../../services/modules/admin/adminService';
-import { ADMIN_HOME_ROUTES } from '../../constants/routes';
-import type { OrderWithItems } from '../../types/orders';
+import { fetchAllOrders } from '../services/adminService';
+import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
+import type { OrderWithItems } from '../../common/orders/types/orders';
 
 const mockNavigate = jest.fn();
 
@@ -22,7 +22,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/admin/adminService', () => ({
+jest.mock('../services/adminService', () => ({
   fetchAllOrders: jest.fn(),
 }));
 

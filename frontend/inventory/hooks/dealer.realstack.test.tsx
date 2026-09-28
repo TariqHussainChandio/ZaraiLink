@@ -1,13 +1,13 @@
 /**
  * P7 (7D) real-stack test: the farmer and dealer hooks against the real FastAPI and the real local Supabase, for real
  * users of different roles: what an owner can do, and what another farmer or the wrong role is refused.
- * Setup and how to run it: see src/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
+ * Setup and how to run it: see frontend/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
  */
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { API_URL, installNodeFetch, realStackEnabled, signUp } from '../../testUtils/realStack';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore } from '../../state/authStore';
 import { createTestQueryClient } from '../../testUtils/renderWithProviders';
 
 installNodeFetch();
@@ -32,10 +32,10 @@ describeReal('farmer and dealer hooks against the real backend', () => {
   let farmerToken = '';
   let otherFarmerToken = '';
   let dealerToken = '';
-  let farmer: typeof import('./farmer');
+  let farmer: typeof import('../../farmer/hooks/farmer');
   let dealer: typeof import('./dealer');
-  let analytics: typeof import('./analytics');
-  let market: typeof import('./marketplace');
+  let analytics: typeof import('../../common/analytics/hooks/analytics');
+  let market: typeof import('../../common/marketplace/hooks/marketplace');
   let queryClient: QueryClient;
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -54,10 +54,10 @@ describeReal('farmer and dealer hooks against the real backend', () => {
     farmerToken = await signUp('farmer');
     otherFarmerToken = await signUp('farmer');
     dealerToken = await signUp('dealer');
-    farmer = require('./farmer');
+    farmer = require('../../farmer/hooks/farmer');
     dealer = require('./dealer');
-    analytics = require('./analytics');
-    market = require('./marketplace');
+    analytics = require('../../common/analytics/hooks/analytics');
+    market = require('../../common/marketplace/hooks/marketplace');
   }, 60_000);
 
   afterEach(() => queryClient.clear());

@@ -6,8 +6,8 @@ import {
   fetchUnits,
   updateRefDataRow,
   type RefDataTable,
-} from '../../services/modules/reference-data/referenceDataService';
-import { queryKeys } from './keys';
+} from '../services/referenceDataService';
+import { queryKeys } from '../../../hooks/keys';
 
 export type { RefDataTable };
 

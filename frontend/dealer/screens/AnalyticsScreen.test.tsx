@@ -2,9 +2,9 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { DealerAnalyticsScreen } from './AnalyticsScreen';
-import { fetchDealerAnalytics } from '../../services/modules/analytics/analyticsService';
-import { useAuthStore } from '../../store/authStore';
-import type { DealerAnalytics } from '../../types/analytics';
+import { fetchDealerAnalytics } from '../../common/analytics/services/analyticsService';
+import { useAuthStore } from '../../state/authStore';
+import type { DealerAnalytics } from '../../common/analytics/types/analytics';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -19,7 +19,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/analytics/analyticsService', () => ({
+jest.mock('../../common/analytics/services/analyticsService', () => ({
   fetchDealerAnalytics: jest.fn(),
 }));
 

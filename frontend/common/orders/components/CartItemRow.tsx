@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
-import type { CartItem } from '../../../store/cartStore';
+import type { CartItem } from '../../../state/cartStore';
 
 export interface CartItemRowProps {
   item: CartItem;

@@ -12,7 +12,7 @@ import sentry_sdk
 from sentry_sdk.transport import Transport
 from sentry_sdk.types import Event, Hint
 
-from .config import Settings
+from app.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 

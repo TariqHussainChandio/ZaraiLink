@@ -1,14 +1,14 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { CONSULTATIONS_ROUTES } from '../../constants/routes';
-import { ConsultationDetailScreen } from '../../screens/expert/ConsultationDetailScreen';
-import { ConsultationListScreen } from '../../screens/expert/ConsultationListScreen';
-import { ExpertListScreen } from '../../screens/expert/ExpertListScreen';
-import { ExpertProfileScreen } from '../../screens/expert/ExpertProfileScreen';
-import { RequestConsultationScreen } from '../../screens/expert/RequestConsultationScreen';
-import type { ExpertSpecialization } from '../../types/expert';
-import type { DiseasePrefill } from '../../types/disease';
+import { CONSULTATIONS_ROUTES } from '../../common/constants/routes';
+import { ConsultationDetailScreen } from '../../common/consultations/screens/ConsultationDetailScreen';
+import { ConsultationListScreen } from '../../common/consultations/screens/ConsultationListScreen';
+import { ExpertListScreen } from '../../common/consultations/screens/ExpertListScreen';
+import { ExpertProfileScreen } from '../../common/consultations/screens/ExpertProfileScreen';
+import { RequestConsultationScreen } from '../../common/consultations/screens/RequestConsultationScreen';
+import type { ExpertSpecialization } from '../../expert';
+import type { DiseasePrefill } from '../../ai';
 
 export type ConsultationsStackParamList = {
   [CONSULTATIONS_ROUTES.ConsultationList]: undefined;

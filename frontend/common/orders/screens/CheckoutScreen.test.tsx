@@ -1,14 +1,14 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { CheckoutScreen } from './CheckoutScreen';
-import { checkout } from '../../services/modules/orders/ordersService';
-import { useAuthStore } from '../../store/authStore';
-import { useCartStore, type CartItem } from '../../store/cartStore';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import { checkout } from '../services/ordersService';
+import { useAuthStore } from '../../../state/authStore';
+import { useCartStore, type CartItem } from '../../../state/cartStore';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
-jest.mock('../../services/modules/orders/ordersService', () => ({
+jest.mock('../services/ordersService', () => ({
   checkout: jest.fn(),
 }));
 

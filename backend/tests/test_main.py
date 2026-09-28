@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.core.auth import AuthenticatedUser, get_current_user
+from app.auth.dependencies import AuthenticatedUser, get_current_user
 from app.main import app
 
 client = TestClient(app)
@@ -38,7 +38,7 @@ def test_predict_rate_limit_returns_429_after_ten_requests_per_minute():
         "created_at": "2026-01-01T00:00:00Z",
     }
     try:
-        with patch("app.services.disease_service.predict", return_value=mock_prediction):
+        with patch("app.ai.service.predict", return_value=mock_prediction):
             statuses = [
                 client.post("/api/v1/disease/predict", json={"disease_case_id": "c1"}).status_code for _ in range(11)
             ]

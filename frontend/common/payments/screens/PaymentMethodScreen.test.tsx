@@ -1,18 +1,18 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { PaymentMethodScreen } from './PaymentMethodScreen';
-import { fetchOrderById } from '../../services/modules/orders/ordersService';
-import { fetchPaymentByOrderId, initiatePayment } from '../../services/modules/payments/paymentsService';
-import { useAuthStore } from '../../store/authStore';
+import { fetchOrderById } from '../../orders/services/ordersService';
+import { fetchPaymentByOrderId, initiatePayment } from '../services/paymentsService';
+import { useAuthStore } from '../../../state/authStore';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 
-jest.mock('../../services/modules/orders/ordersService', () => ({
+jest.mock('../../orders/services/ordersService', () => ({
   fetchOrderById: jest.fn(),
 }));
-jest.mock('../../services/modules/payments/paymentsService', () => ({
+jest.mock('../services/paymentsService', () => ({
   fetchPaymentByOrderId: jest.fn(),
   initiatePayment: jest.fn(),
 }));

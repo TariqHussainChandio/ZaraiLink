@@ -1,22 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { Button, Input } from '../../components/ui';
+import { Button, Input } from '../../components';
 import {
   useEnrollTotp,
   useUnenrollTotp,
   useVerifiedTotpFactor,
   useVerifyTotpEnrollment,
   type TotpEnrollment,
-} from '../../hooks/api/mfa';
-import { useTheme, type Theme } from '../../theme';
-import { mapMfaErrorMessage } from '../auth/mapAuthError';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+  mapMfaErrorMessage,
+} from '../../auth';
+import { useTheme, type Theme } from '../../../theme';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 
 type ScreenState = 'loading' | 'enrolled' | 'not-enrolled' | 'enrolling';
 
 // P4 (4A.4). Only meaningful for admins today — every admin *write* endpoint requires a verified
-// second factor (core/auth.py:require_admin_aal2, plus the matching RLS check) — but any account
+// second factor (auth/dependencies.py:require_admin_aal2, plus the matching RLS check) — but any account
 // can reach and use this screen; it isn't gated to the admin role here, since a second factor is
 // never a bad idea and other roles may need it once P5's authorization matrix widens what it
 // covers.

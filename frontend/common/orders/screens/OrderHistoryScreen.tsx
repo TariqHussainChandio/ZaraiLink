@@ -2,13 +2,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, SkeletonList, StaggeredItem } from '../../components/ui';
-import { OrderCard } from '../../components/features/orders/OrderCard';
+import { EmptyState, SkeletonList, StaggeredItem } from '../../components';
+import { OrderCard } from '../components/OrderCard';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import { useOrders } from '../../hooks/api/orders';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
+import { useOrders } from '../hooks/orders';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 
 type Segment = 'buyer' | 'seller';
 

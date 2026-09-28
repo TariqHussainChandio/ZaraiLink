@@ -2,10 +2,10 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { BuyerDashboardScreen } from './DashboardScreen';
-import { fetchOrdersForUser } from '../../services/modules/orders/ordersService';
-import { APP_TABS, CONSULTATIONS_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
-import { useAuthStore } from '../../store/authStore';
-import type { OrderWithItems } from '../../types/orders';
+import { fetchOrdersForUser } from '../../common/orders/services/ordersService';
+import { APP_TABS, CONSULTATIONS_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../common/constants/routes';
+import { useAuthStore } from '../../state/authStore';
+import type { OrderWithItems } from '../../common/orders/types/orders';
 
 const mockTabNavigate = jest.fn();
 
@@ -27,7 +27,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/orders/ordersService', () => ({
+jest.mock('../../common/orders/services/ordersService', () => ({
   fetchOrdersForUser: jest.fn(),
 }));
 

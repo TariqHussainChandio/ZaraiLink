@@ -1,6 +1,6 @@
 /**
  * P7 (7C) real-stack test: the marketplace query hooks against the real FastAPI and the real local Supabase.
- * Setup and how to run it: see src/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
+ * Setup and how to run it: see frontend/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
  *
  * It proves what the mocked screen tests cannot: that the hooks, the services and the client agree with the real
  * API on shapes, paging, errors and permissions, for two different users (the owner and a stranger).
@@ -8,15 +8,15 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import React from 'react';
-import { API_URL, installNodeFetch, realStackEnabled, signUp } from '../../testUtils/realStack';
-import { createTestQueryClient } from '../../testUtils/renderWithProviders';
-import type { ApiError } from '../../services/api/errors';
+import { API_URL, installNodeFetch, realStackEnabled, signUp } from '../../../testUtils/realStack';
+import { createTestQueryClient } from '../../../testUtils/renderWithProviders';
+import type { ApiError } from '../../../services/api/errors';
 
 installNodeFetch();
 
 // The token the (real) client will attach; each test says which real user is calling.
 let mockToken: string | null = null;
-jest.mock('../../services/supabase/client', () => ({
+jest.mock('../../../services/supabase/client', () => ({
   supabase: {
     auth: {
       getSession: async () => ({ data: { session: mockToken ? { access_token: mockToken } : null } }),

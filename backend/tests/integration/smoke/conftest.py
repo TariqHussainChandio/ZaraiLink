@@ -172,7 +172,7 @@ def make_user(role: str) -> tuple[str, str, str]:
 
 def enrol_totp_and_get_aal2_token(access_token: str) -> str:
     """P4 (4A.4): `world`'s shared admin needs aal2 for the same reason a real admin does — every
-    admin-write endpoint now requires it (core/auth.py:require_admin_aal2). Drives the same 3-call
+    admin-write endpoint now requires it (auth/dependencies.py:require_admin_aal2). Drives the same 3-call
     sequence a mobile enrolment screen would (enrol -> challenge -> verify) straight against
     Supabase Auth's REST API, matching how every other auth operation in this codebase bypasses
     FastAPI entirely. `pyotp` stands in for the user's authenticator app."""
@@ -281,7 +281,7 @@ def world(backend_url: str) -> World:
     admin_id, admin_email, admin_tok = make_user("buyer")  # promoted below — admin is never self-selected
     promote_to_admin(admin_id)
     # The admin token was minted before the promotion; GoTrue tokens carry no role claim the
-    # backend trusts anyway (core/auth.py re-reads profiles.role per request), so the existing
+    # backend trusts anyway (auth/dependencies.py re-reads profiles.role per request), so the existing
     # token is still valid — only the database row's role matters.
     # P4 (4A.4): every admin-write endpoint now requires aal2 (require_admin_aal2), so world's
     # shared admin must actually enrol a second factor — replacing admin_tok with the
@@ -294,7 +294,7 @@ def world(backend_url: str) -> World:
     category_id = cats.json()[0]["id"]
 
     # Consultations reference `experts(id)`, not just any profile (see N2's fix comment in
-    # consultations_repository.py) — the expert user needs a real `experts` row before anything
+    # common/consultations/repository.py) — the expert user needs a real `experts` row before anything
     # can be assigned to them, which only exists after they submit an application. Done here in
     # the shared world (not in a per-domain test file) so it happens before every test file
     # regardless of alphabetical collection order.

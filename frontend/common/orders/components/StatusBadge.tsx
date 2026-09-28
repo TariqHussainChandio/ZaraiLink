@@ -1,7 +1,7 @@
 import React from 'react';
-import { Badge, type BadgeTone } from '../../../components/ui';
-import type { OrderStatus } from '../../../types/orders';
-import { ORDER_STATUS_LABELS } from '../../../constants/labels';
+import { Badge, type BadgeTone } from '../../components';
+import type { OrderStatus } from '../types/orders';
+import { ORDER_STATUS_LABELS } from '../../constants/labels';
 
 const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   pending: 'warning',

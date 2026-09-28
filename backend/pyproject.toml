@@ -17,7 +17,7 @@ dependencies = [
   "httpx==0.28.1",
   "slowapi==0.1.10",
   # torch>=2.6 closes CVE-2025-32434 (RCE via torch.load, even with weights_only=True, in every
-  # version before 2.6.0 — ai_engine.py already passed weights_only=True, which is necessary but
+  # version before 2.6.0 — app/ai/engine.py already passed weights_only=True, which is necessary but
   # was not sufficient on 2.5.x). torchvision pinned to the version PyTorch's own compatibility
   # matrix pairs with 2.6.0.
   "torch==2.6.0",

@@ -1,17 +1,17 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { Alert } from 'react-native';
 import { StockAdjustModal } from './StockAdjustModal';
-import { useAuthStore } from '../../../store/authStore';
-import { adjustStock } from '../../../services/modules/dealer/inventoryService';
+import { useAuthStore } from '../../state/authStore';
+import { adjustStock } from '../services/inventoryService';
 
-jest.mock('../../../services/supabase/client', () => {
-  const { makeSupabaseMock } = jest.requireActual('../../../testUtils/supabaseMock');
+jest.mock('../../services/supabase/client', () => {
+  const { makeSupabaseMock } = jest.requireActual('../../testUtils/supabaseMock');
   return { supabase: makeSupabaseMock() };
 });
 
-jest.mock('../../../services/modules/dealer/inventoryService', () => ({
+jest.mock('../services/inventoryService', () => ({
   adjustStock: jest.fn(),
 }));
 

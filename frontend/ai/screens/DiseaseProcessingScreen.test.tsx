@@ -2,9 +2,9 @@ import React from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { DiseaseProcessingScreen } from './DiseaseProcessingScreen';
-import { createDiseaseCase, predictDisease, uploadDiseaseImage } from '../../services/modules/ai/diseaseService';
-import { CONSULTATIONS_ROUTES, APP_TABS } from '../../constants/routes';
-import { useAuthStore } from '../../store/authStore';
+import { createDiseaseCase, predictDisease, uploadDiseaseImage } from '../services/diseaseService';
+import { CONSULTATIONS_ROUTES, APP_TABS } from '../../common/constants/routes';
+import { useAuthStore } from '../../state/authStore';
 
 const mockReplace = jest.fn();
 const mockGetParent = jest.fn();
@@ -19,7 +19,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/ai/diseaseService', () => ({
+jest.mock('../services/diseaseService', () => ({
   createDiseaseCase: jest.fn(),
   predictDisease: jest.fn(),
   uploadDiseaseImage: jest.fn(),

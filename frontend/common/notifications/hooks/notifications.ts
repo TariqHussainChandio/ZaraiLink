@@ -4,10 +4,10 @@ import {
   fetchUnreadCount,
   markAllRead,
   markRead,
-} from '../../services/modules/notifications/notificationsService';
-import { useAuthStore } from '../../store/authStore';
-import { useRealtimeNotifications } from '../realtime/useRealtimeNotifications';
-import { queryKeys } from './keys';
+} from '../services/notificationsService';
+import { useAuthStore } from '../../../state/authStore';
+import { useRealtimeNotifications } from '../../../hooks/realtime/useRealtimeNotifications';
+import { queryKeys } from '../../../hooks/keys';
 
 export function useNotifications(enabled: boolean) {
   return useQuery({ queryKey: queryKeys.notifications.list(), queryFn: fetchNotifications, enabled, staleTime: 0 });

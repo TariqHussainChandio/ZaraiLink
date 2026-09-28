@@ -1,12 +1,12 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EmptyState, Spinner } from '../../components/ui';
-import { QuickActions } from '../../components/features/dashboards/QuickActions';
-import { StatCard } from '../../components/features/dashboards/StatCard';
-import { ADMIN_HOME_ROUTES } from '../../constants/routes';
-import { ROLE_LABELS, ROLES } from '../../constants/roles';
-import { usePlatformStats } from '../../hooks/api/admin';
+import { EmptyState, Spinner } from '../../common/components';
+import { QuickActions } from '../../common/components/dashboards/QuickActions';
+import { StatCard } from '../../common/components/dashboards/StatCard';
+import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
+import { ROLE_LABELS, ROLES } from '../../common/constants/roles';
+import { usePlatformStats } from '../hooks/admin';
 import { useTheme, type Theme } from '../../theme';
 import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
 

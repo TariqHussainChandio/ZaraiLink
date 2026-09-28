@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, EmptyState, Spinner } from '../../components/ui';
+import { Badge, EmptyState, Spinner } from '../../components';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
-import { useMyListings } from '../../hooks/api/marketplace';
-import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
+import { useMyListings } from '../hooks/marketplace';
+import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import { errorMessage } from '../../../utils/errorMessage';
 
 /** Shared by Farmer's "My Listings" and Dealer's "Products" — both are the same underlying
  * need (view my own marketplace listings), just reached from different role dashboards. */

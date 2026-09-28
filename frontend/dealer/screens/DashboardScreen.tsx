@@ -1,5 +1,5 @@
 import React from 'react';
-import { SellerDashboard } from '../../components/features/dashboards/SellerDashboard';
+import { SellerDashboard } from '../../common/analytics';
 
 export function DealerDashboardScreen() {
   return <SellerDashboard />;

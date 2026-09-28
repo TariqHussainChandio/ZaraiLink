@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_authenticated_user
-from ....schemas.profile import DeleteAccountRequest, ProfileUpdateRequest
-from ....services import profile_service as service
+from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
+from app.common.profile import service
+from app.common.profile.schemas import DeleteAccountRequest, ProfileUpdateRequest
 
 router = APIRouter(prefix="/api/v1/profile", tags=["profile"])
 

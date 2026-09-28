@@ -1,5 +1,5 @@
-import { apiFetch } from '../../api/client';
-import type { InventoryItem, InventoryItemWithListing, InventoryTransaction, InventoryTransactionType } from '../../../types/dealer';
+import { apiFetch } from '../../services/api/client';
+import type { InventoryItem, InventoryItemWithListing, InventoryTransaction, InventoryTransactionType } from '../types/dealer';
 
 // No dealerId param — always the caller's own inventory.
 export async function fetchInventory(): Promise<InventoryItemWithListing[]> {
@@ -53,7 +53,7 @@ export async function fetchInventoryTransactions(inventoryId: string): Promise<I
 
 /**
  * Records a stock movement and updates `inventory.stock_quantity` to match — the delta/absolute
- * math now lives in `backend/app/services/dealer_service.py` (moved verbatim). No `actorId`
+ * math now lives in `backend/app/dealer/service.py` (moved verbatim). No `actorId`
  * param — the backend derives the acting dealer from the verified session token.
  */
 export async function adjustStock(

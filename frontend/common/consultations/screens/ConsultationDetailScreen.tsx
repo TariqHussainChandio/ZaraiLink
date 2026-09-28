@@ -1,6 +1,6 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import type { PickedPhoto } from '../../utils/photoPicker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import {
   Alert,
   Image,
@@ -11,11 +11,11 @@ import {
   View,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, Card, Input, SelectField, Sheet, Spinner } from '../../components/ui';
-import { ConsultationStatusBadge } from '../../components/features/expert/ConsultationStatusBadge';
-import { ConsultationMessageBubble } from '../../components/features/expert/ConsultationMessageBubble';
-import { ChatInput } from '../../components/features/messaging/ChatInput';
-import { RatingStars } from '../../components/features/reviews/RatingStars';
+import { Button, Card, Input, SelectField, Sheet, Spinner } from '../../components';
+import { ConsultationStatusBadge } from '../components/ConsultationStatusBadge';
+import { ConsultationMessageBubble } from '../components/ConsultationMessageBubble';
+import { ChatInput } from '../../messaging';
+import { RatingStars } from '../../reviews';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
 import {
   useConsultation,
@@ -25,12 +25,12 @@ import {
   useCreateConsultationReview,
   useSendConsultationMessage,
   useUpdateConsultationStatus,
-} from '../../hooks/api/consultations';
-import { useListingOptions } from '../../hooks/api/marketplace';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import type { ConsultationStatus } from '../../types/expert';
-import { errorMessage } from '../../utils/errorMessage';
+} from '../hooks/consultations';
+import { useListingOptions } from '../../marketplace';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { ConsultationStatus } from '../../../expert';
+import { errorMessage } from '../../../utils/errorMessage';
 
 export function ConsultationDetailScreen() {
   const theme = useTheme();

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Card } from '../../../components/ui';
+import { Card } from '..';
 import { useTheme, type Theme } from '../../../theme';
 
 export interface StatCardProps {

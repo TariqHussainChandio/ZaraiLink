@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ConversationListItem } from './ConversationListItem';
-import type { ConversationWithPreview } from '../../../types/messaging';
+import type { ConversationWithPreview } from '../types/messaging';
 
 const baseConversation: ConversationWithPreview = {
   id: 'conv1',

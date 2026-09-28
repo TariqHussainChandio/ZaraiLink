@@ -1,13 +1,13 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { AuthApiError } from '@supabase/supabase-js';
 import { ChangePasswordScreen } from './ChangePasswordScreen';
-import { updatePassword } from '../../services/modules/profile/profileService';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+import { updatePassword } from '../services/profileService';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 
-jest.mock('../../services/modules/profile/profileService', () => ({
+jest.mock('../services/profileService', () => ({
   updatePassword: jest.fn(),
 }));
 

@@ -1,9 +1,9 @@
-jest.mock('../../supabase/client', () => {
+jest.mock('../../../services/supabase/client', () => {
   const { makeSupabaseMock } = jest.requireActual('../../../testUtils/supabaseMock');
   return { supabase: makeSupabaseMock() };
 });
 
-import { supabase } from '../../supabase/client';
+import { supabase } from '../../../services/supabase/client';
 import { makeSupabaseMock } from '../../../testUtils/supabaseMock';
 import {
   resendRecoveryOtp,

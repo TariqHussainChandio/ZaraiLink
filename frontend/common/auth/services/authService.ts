@@ -1,5 +1,5 @@
-import { supabase } from '../../supabase/client';
-import type { Role } from '../../../constants/roles';
+import { supabase } from '../../../services/supabase/client';
+import type { Role } from '../../constants/roles';
 
 /** Which identifier the user chose at sign-up/sign-in — both send a numeric OTP. */
 export type AuthChannel = 'email' | 'phone';

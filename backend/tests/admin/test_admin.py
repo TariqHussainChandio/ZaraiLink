@@ -3,9 +3,9 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.auth import AuthenticatedUser, get_current_user
+from app.admin import service
+from app.auth.dependencies import AuthenticatedUser, get_current_user
 from app.main import app
-from app.services import admin_service as service
 
 client = TestClient(app)
 
@@ -15,9 +15,9 @@ FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access
 
 @pytest.mark.asyncio
 async def test_update_user_role_logs_the_real_previous_role_not_a_client_supplied_one():
-    with patch("app.services.admin_service.repo.fetch_profile_role", return_value="farmer") as mock_fetch:
-        with patch("app.services.admin_service.repo.update_profile_role") as mock_update:
-            with patch("app.services.admin_service.log_admin_action") as mock_log:
+    with patch("app.admin.service.repo.fetch_profile_role", return_value="farmer") as mock_fetch:
+        with patch("app.admin.service.repo.update_profile_role") as mock_update:
+            with patch("app.admin.service.log_admin_action") as mock_log:
                 await service.update_user_role(ADMIN, "user-1", "dealer")
 
     mock_fetch.assert_called_once_with(ADMIN.access_token, "user-1")
@@ -30,7 +30,7 @@ async def test_update_user_role_logs_the_real_previous_role_not_a_client_supplie
 @pytest.mark.asyncio
 async def test_fetch_all_orders_returns_every_order_not_scoped_to_the_caller():
     orders = [{"id": "o-1", "buyer_id": "buyer-1", "seller_id": "seller-1"}]
-    with patch("app.services.admin_service.orders_repo.fetch_all_orders", return_value=orders) as mock_fetch:
+    with patch("app.common.orders.service.repo.fetch_all_orders", return_value=orders) as mock_fetch:
         result = await service.fetch_all_orders(ADMIN)
 
     mock_fetch.assert_called_once_with(ADMIN.access_token)
@@ -50,7 +50,7 @@ def test_platform_stats_route_allows_admin():
     app.dependency_overrides[get_current_user] = lambda: ADMIN
     try:
         with patch(
-            "app.api.v1.endpoints.admin.service.fetch_platform_stats",
+            "app.admin.router.service.fetch_platform_stats",
             return_value={"total_users": 0, "users_by_role": {}, "total_listings": 0, "total_orders": 0},
         ):
             response = client.get("/api/v1/admin/stats")
@@ -90,7 +90,7 @@ def test_platform_orders_route_rejects_non_admin():
 def test_platform_orders_route_returns_orders_for_admin():
     app.dependency_overrides[get_current_user] = lambda: ADMIN
     try:
-        with patch("app.api.v1.endpoints.admin.service.fetch_all_orders", return_value=[]):
+        with patch("app.admin.router.service.fetch_all_orders", return_value=[]):
             response = client.get("/api/v1/admin/orders")
     finally:
         app.dependency_overrides.pop(get_current_user, None)

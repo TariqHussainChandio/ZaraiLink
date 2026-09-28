@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { AuthApiError } from '@supabase/supabase-js';
 import { MfaEnrollmentScreen } from './MfaEnrollmentScreen';
 import {
@@ -8,10 +8,10 @@ import {
   getVerifiedTotpFactorId,
   unenrollTotp,
   verifyTotpEnrollment,
-} from '../../services/modules/auth/mfaService';
-import type { ProfileScreenProps } from '../../navigation/stacks/ProfileNavigator';
+} from '../../auth/services/mfaService';
+import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 
-jest.mock('../../services/modules/auth/mfaService', () => ({
+jest.mock('../../auth/services/mfaService', () => ({
   getVerifiedTotpFactorId: jest.fn(),
   enrollTotp: jest.fn(),
   verifyTotpEnrollment: jest.fn(),

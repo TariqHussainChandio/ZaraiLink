@@ -1,11 +1,11 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ForgotPasswordScreen } from './ForgotPasswordScreen';
-import { resetPassword } from '../../services/modules/auth/authService';
-import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
+import { resetPassword } from '../services/authService';
+import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
-jest.mock('../../services/modules/auth/authService', () => ({
+jest.mock('../services/authService', () => ({
   resetPassword: jest.fn(),
 }));
 

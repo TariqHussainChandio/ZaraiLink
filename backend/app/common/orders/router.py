@@ -2,17 +2,17 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, Query
 
-from ....core import idempotency
-from ....core.auth import AuthenticatedUser, require_authenticated_user
-from ....core.pagination import Page, paginate
-from ....schemas.orders import (
+from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
+from app.common import idempotency
+from app.common.orders import service
+from app.common.orders.schemas import (
     CheckoutRequest,
     Order,
     OrderStatusHistoryEntry,
     OrderWithItems,
     UpdateOrderStatusRequest,
 )
-from ....services import orders_service as service
+from app.common.pagination import Page, paginate
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 

@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_dealer
-from ....core.pagination import Page, paginate
-from ....schemas.dealer import (
+from app.auth.dependencies import AuthenticatedUser, require_dealer
+from app.common.pagination import Page, paginate
+from app.dealer import service
+from app.dealer.schemas import (
     AdjustStockRequest,
     DealerStore,
     InventoryInput,
@@ -17,7 +18,6 @@ from ....schemas.dealer import (
     SupplierInput,
     SupplierUpdateInput,
 )
-from ....services import dealer_service as service
 
 router = APIRouter(prefix="/api/v1/dealer", tags=["dealer"])
 

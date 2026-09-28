@@ -1,13 +1,13 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { WriteReviewScreen } from './WriteReviewScreen';
-import { createReview } from '../../services/modules/reviews/reviewsService';
-import { useAuthStore } from '../../store/authStore';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
+import { createReview } from '../services/reviewsService';
+import { useAuthStore } from '../../../state/authStore';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 
-jest.mock('../../services/modules/reviews/reviewsService', () => ({
+jest.mock('../services/reviewsService', () => ({
   createReview: jest.fn(),
 }));
 

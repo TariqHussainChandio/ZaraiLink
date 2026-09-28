@@ -1,4 +1,4 @@
-import type { ProblemDetail } from '../../api/generated';
+import type { ProblemDetail } from './generated';
 
 /** Codes the backend sends (documented in backend/openapi.json), plus the ones only the client can produce. */
 export type ErrorCode = ProblemDetail['code'] | 'network' | 'timeout' | 'session_expired' | 'unknown';

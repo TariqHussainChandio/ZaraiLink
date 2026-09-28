@@ -1,18 +1,18 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Card, EmptyState, Skeleton, SkeletonList } from '../../components/ui';
-import { ActivityFeed } from '../../components/features/dashboards/ActivityFeed';
-import { QuickActions } from '../../components/features/dashboards/QuickActions';
-import { StatCard } from '../../components/features/dashboards/StatCard';
+import { Card, EmptyState, Skeleton, SkeletonList } from '../../common/components';
+import { ActivityFeed } from '../../common/components/dashboards/ActivityFeed';
+import { QuickActions } from '../../common/components/dashboards/QuickActions';
+import { StatCard } from '../../common/components/dashboards/StatCard';
 import {
   APP_TABS,
   CONSULTATIONS_ROUTES,
   MARKETPLACE_ROUTES,
   ORDERS_ROUTES,
-} from '../../constants/routes';
-import { useOrders } from '../../hooks/api/orders';
-import { useAuthStore } from '../../store/authStore';
+} from '../../common/constants/routes';
+import { useOrders } from '../../common/orders';
+import { useAuthStore } from '../../state/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../theme';
 

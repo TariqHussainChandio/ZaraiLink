@@ -1,7 +1,7 @@
-import { apiFetch } from '../../api/client';
+import { apiFetch } from '../../services/api/client';
 import { createSupplier, deleteSupplier, fetchSupplierById, fetchSuppliers, updateSupplier } from './supplierService';
 
-jest.mock('../../api/client');
+jest.mock('../../services/api/client');
 
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
 

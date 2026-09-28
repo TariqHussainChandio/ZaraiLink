@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import marketplace_repository as repo
-from .audit_log_service import log_admin_action
+from app.auth.dependencies import AuthenticatedUser
+from app.common.audit_log import log_admin_action
+from app.common.marketplace import repository as repo
 
 
 def _location(country: str | None, province: str | None, city: str | None) -> dict | None:

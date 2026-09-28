@@ -2,15 +2,15 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { NotificationBellButton } from './NotificationBellButton';
-import { useAuthStore } from '../../../store/authStore';
-import { fetchUnreadCount } from '../../../services/modules/notifications/notificationsService';
+import { useAuthStore } from '../../../state/authStore';
+import { fetchUnreadCount } from '../services/notificationsService';
 
 jest.mock('../../../services/supabase/client', () => {
   const { makeSupabaseMock } = jest.requireActual('../../../testUtils/supabaseMock');
   return { supabase: makeSupabaseMock() };
 });
 
-jest.mock('../../../services/modules/notifications/notificationsService', () => ({
+jest.mock('../services/notificationsService', () => ({
   fetchUnreadCount: jest.fn(),
 }));
 

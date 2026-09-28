@@ -11,7 +11,7 @@ from starlette.responses import Response
 from starlette.routing import Match
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from .config import settings
+from app.config.settings import settings
 
 
 def rate_limit_key(request: Request) -> str:
@@ -24,7 +24,7 @@ def rate_limit_key(request: Request) -> str:
     token again would mean a blocking JWKS fetch in a sync context). The token is therefore hashed, not
     decoded: nothing read from an unverified token is trusted, and the raw token never becomes a
     storage key. A session keeps one bucket until its token is refreshed. A made-up token at worst buys
-    its sender a separate bucket, and core/auth.py's signature-checked `get_current_user` still rejects
+    its sender a separate bucket, and auth/dependencies.py's signature-checked `get_current_user` still rejects
     it with a 401 on the same request.
     """
     authorization = request.headers.get("authorization", "")

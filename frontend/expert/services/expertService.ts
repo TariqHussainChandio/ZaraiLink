@@ -1,14 +1,14 @@
-import type { PickedPhoto } from '../../../utils/photoPicker';
-import { extensionFromMimeType } from '../../../utils/mimeExtension';
-import { apiFetch } from '../../api/client';
-import { supabase } from '../../supabase/client';
+import type { PickedPhoto } from '../../utils/photoPicker';
+import { extensionFromMimeType } from '../../utils/mimeExtension';
+import { apiFetch } from '../../services/api/client';
+import { supabase } from '../../services/supabase/client';
 import type {
   Expert,
   ExpertSpecialization,
   ExpertVerification,
   ExpertWithProfile,
   VerificationStatus,
-} from '../../../types/expert';
+} from '../types/expert';
 
 export interface ExpertProfileInput {
   qualifications: string;

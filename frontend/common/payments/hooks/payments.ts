@@ -4,10 +4,10 @@ import {
   initiatePayment,
   markPaymentFailed,
   markPaymentReceived,
-} from '../../services/modules/payments/paymentsService';
-import type { PaymentMethod } from '../../types/payments';
-import { queryKeys } from './keys';
-import { useInvalidateOrders } from './invalidation';
+} from '../services/paymentsService';
+import type { PaymentMethod } from '../types/payments';
+import { queryKeys } from '../../../hooks/keys';
+import { useInvalidateOrders } from '../../../hooks/invalidation';
 
 /** A payment by id. The seller changes its status, so it is always refetched when a screen shows it. */
 export function usePayment(paymentId: string) {

@@ -11,7 +11,7 @@
     "test:ci": "jest --ci --coverage",
     "deadcode": "knip",
     "api:generate": "openapi-ts",
-    "api:check": "openapi-ts && git diff --exit-code -- src/api/generated",
+    "api:check": "openapi-ts && python scripts/ci/check_generated_clean.py frontend/services/api/generated",
     "reality": "python scripts/check_reality.py --tools knip,eslint",
     "hooks:install": "lefthook install",
     "prebuild": "expo prebuild --platform android",

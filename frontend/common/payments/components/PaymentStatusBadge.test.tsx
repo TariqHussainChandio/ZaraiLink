@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
-import type { PaymentStatus } from '../../../types/payments';
+import type { PaymentStatus } from '../types/payments';
 
 const EXPECTED_LABEL: Record<PaymentStatus, string> = {
   pending: 'Pending',

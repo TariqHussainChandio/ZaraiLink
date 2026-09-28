@@ -1,12 +1,12 @@
 from fastapi import HTTPException
 
-from ..core.auth import AuthenticatedUser
-from ..core.errors import AppHTTPException
-from ..repositories import profile_repository as repo
+from app.auth.dependencies import AuthenticatedUser
+from app.common.errors import AppHTTPException
+from app.common.profile import repository as repo
 
 
 async def update_profile(user: AuthenticatedUser, patch: dict) -> None:
-    # `role`/`is_suspended` are simply not fields on ProfileUpdateRequest (schemas/profile.py) —
+    # `role`/`is_suspended` are simply not fields on ProfileUpdateRequest (common/profile/schemas.py) —
     # a self-service profile update has no way to even attempt setting them, on top of
     # `guard_profiles_role`'s own trigger-level block for `role` specifically.
     await repo.update_profile(user.access_token, user.id, patch)

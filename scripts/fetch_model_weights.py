@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetches backend/app/ml/checkpoints/model.pth from Supabase Storage if it is missing or does not match the pinned
+"""Fetches backend/app/ai/checkpoints/model.pth from Supabase Storage if it is missing or does not match the pinned
 checksum.
 
 Why this exists. The trained model (9.3 MB) is application data, and application files live in Supabase Storage
@@ -34,7 +34,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CHECKPOINTS_DIR = ROOT / "backend" / "app" / "ml" / "checkpoints"
+CHECKPOINTS_DIR = ROOT / "backend" / "app" / "ai" / "checkpoints"
 METADATA_PATH = CHECKPOINTS_DIR / "model_metadata.json"
 WEIGHTS_PATH = CHECKPOINTS_DIR / "model.pth"
 BACKEND_ENV = ROOT / "backend" / ".env"

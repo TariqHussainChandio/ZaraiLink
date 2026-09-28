@@ -2,9 +2,9 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { FilterBar } from './FilterBar';
-import type { Category } from '../../../types/marketplace';
+import type { Category } from '../types/marketplace';
 
-jest.mock('../../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../services/listingsService', () => ({
   fetchCrops: jest.fn().mockResolvedValue([]),
   fetchCategories: jest.fn().mockResolvedValue([]),
 }));

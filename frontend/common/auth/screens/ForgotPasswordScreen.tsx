@@ -3,12 +3,12 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input } from '../../components/ui';
+import { Button, Input } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
-import { useResetPassword } from '../../hooks/api/auth';
-import { useTheme, type Theme } from '../../theme';
+import { useResetPassword } from '../hooks/auth';
+import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
-import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
+import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
 function makeForgotPasswordSchema() {
   return z.object({

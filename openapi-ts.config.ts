@@ -4,7 +4,7 @@ import { defineConfig } from '@hey-api/openapi-ts';
 // after `cd backend && uv run python ../scripts/export_openapi.py`; CI regenerates both and fails on any difference.
 export default defineConfig({
   input: './backend/openapi.json',
-  output: { path: './src/api/generated', postProcess: [] },
+  output: { path: './frontend/services/api/generated', postProcess: [] },
   plugins: [
     '@hey-api/typescript',
     '@hey-api/client-fetch',

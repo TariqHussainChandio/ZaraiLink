@@ -2,13 +2,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components/ui';
-import { ConversationListItem } from '../../components/features/messaging/ConversationListItem';
+import { EmptyState, Spinner } from '../../components';
+import { ConversationListItem } from '../components/ConversationListItem';
 import { MESSAGING_ROUTES } from '../../constants/routes';
-import { useConversations } from '../../hooks/api/messaging';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavigator';
+import { useConversations } from '../hooks/messaging';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { MessagingScreenProps } from '../../../navigation/stacks/MessagingNavigator';
 
 export function ConversationListScreen({ navigation }: MessagingScreenProps<'ConversationList'>) {
   const theme = useTheme();

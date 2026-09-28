@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '../../services/supabase/client';
-import type { Notification } from '../../types/notifications';
+import type { Notification } from '../../common/notifications';
 
 /** Subscribes to inserts/updates on the signed-in user's own notifications via Supabase
  * Realtime. Requires `public.notifications` in the `supabase_realtime` publication (Module 13). */

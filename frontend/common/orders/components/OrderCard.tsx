@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Card } from '../../../components/ui';
+import { Card } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
-import type { OrderWithItems } from '../../../types/orders';
+import type { OrderWithItems } from '../types/orders';
 import { StatusBadge } from './StatusBadge';
 
 export interface OrderCardProps {

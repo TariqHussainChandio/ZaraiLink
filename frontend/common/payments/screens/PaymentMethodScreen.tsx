@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Spinner } from '../../components/ui';
+import { Button, Card, Spinner } from '../../components';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import { useOrderPaymentContext } from '../../hooks/api/orders';
-import { useInitiatePayment } from '../../hooks/api/payments';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import type { PaymentMethod } from '../../types/payments';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
-import { errorMessage } from '../../utils/errorMessage';
+import { useOrderPaymentContext } from '../../orders';
+import { useInitiatePayment } from '../hooks/payments';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { PaymentMethod } from '../types/payments';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
+import { errorMessage } from '../../../utils/errorMessage';
 import { PAYMENT_METHOD_LABELS } from '../../constants/labels';
 
 const METHOD_IDS: PaymentMethod[] = ['cod', 'bank_transfer'];

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '../../services/supabase/client';
-import type { Message } from '../../types/messaging';
+import type { Message } from '../../common/messaging';
 
 /** Subscribes to new messages in a conversation via Supabase Realtime. Requires `public.messages`
  * to be added to the `supabase_realtime` publication (see the phase3 migration). */

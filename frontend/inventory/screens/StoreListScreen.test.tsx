@@ -2,10 +2,10 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { StoreListScreen } from './StoreListScreen';
-import { fetchStores } from '../../services/modules/dealer/storeService';
-import { useAuthStore } from '../../store/authStore';
-import { HOME_ROUTES } from '../../constants/routes';
-import type { DealerStore } from '../../types/dealer';
+import { fetchStores } from '../services/storeService';
+import { useAuthStore } from '../../state/authStore';
+import { HOME_ROUTES } from '../../common/constants/routes';
+import type { DealerStore } from '../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 jest.mock('@react-navigation/native', () => {
@@ -21,7 +21,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/dealer/storeService', () => ({
+jest.mock('../services/storeService', () => ({
   fetchStores: jest.fn(),
 }));
 

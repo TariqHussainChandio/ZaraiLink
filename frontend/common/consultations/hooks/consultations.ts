@@ -12,12 +12,12 @@ import {
   updateConsultationStatus,
   uploadConsultationAttachments,
   type ConsultationRequestInput,
-} from '../../services/modules/expert/consultationService';
-import { createConsultationReview, fetchReviewByConsultationId } from '../../services/modules/reviews/reviewsService';
-import type { ConsultationMessageWithListing, ConsultationStatus } from '../../types/expert';
-import type { PickedPhoto } from '../../utils/photoPicker';
-import { useRealtimeConsultationMessages } from '../realtime/useRealtimeConsultationMessages';
-import { queryKeys } from './keys';
+} from '../services/consultationService';
+import { createConsultationReview, fetchReviewByConsultationId } from '../../reviews';
+import type { ConsultationMessageWithListing, ConsultationStatus } from '../../../expert';
+import type { PickedPhoto } from '../../../utils/photoPicker';
+import { useRealtimeConsultationMessages } from '../../../hooks/realtime/useRealtimeConsultationMessages';
+import { queryKeys } from '../../../hooks/keys';
 
 /** A farmer or buyer sees the consultations they asked for; an expert sees the ones addressed to them. */
 export function useConsultations(asExpert: boolean, enabled: boolean) {

@@ -6,10 +6,10 @@ import { ListingModerationScreen } from './ListingModerationScreen';
 import {
   fetchAllListingsForModeration,
   updateListingStatus,
-} from '../../services/modules/marketplace/listingsService';
-import { useAuthStore } from '../../store/authStore';
+} from '../../common/marketplace/services/listingsService';
+import { useAuthStore } from '../../state/authStore';
 import { ApiError } from '../../services/api/errors';
-import type { ListingWithRelations } from '../../types/marketplace';
+import type { ListingWithRelations } from '../../common/marketplace/types/marketplace';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -24,7 +24,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../../common/marketplace/services/listingsService', () => ({
   fetchAllListingsForModeration: jest.fn(),
   updateListingStatus: jest.fn(),
 }));

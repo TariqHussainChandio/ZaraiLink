@@ -1,12 +1,12 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ConversationListScreen } from './ConversationListScreen';
-import { fetchConversations } from '../../services/modules/messaging/messagingService';
+import { fetchConversations } from '../services/messagingService';
 import { MESSAGING_ROUTES } from '../../constants/routes';
-import { useAuthStore } from '../../store/authStore';
-import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavigator';
-import type { ConversationWithPreview } from '../../types/messaging';
+import { useAuthStore } from '../../../state/authStore';
+import type { MessagingScreenProps } from '../../../navigation/stacks/MessagingNavigator';
+import type { ConversationWithPreview } from '../types/messaging';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -23,7 +23,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/messaging/messagingService', () => ({
+jest.mock('../services/messagingService', () => ({
   fetchConversations: jest.fn(),
 }));
 

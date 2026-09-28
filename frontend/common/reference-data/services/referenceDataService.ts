@@ -1,5 +1,5 @@
-import { apiFetch } from '../../api/client';
-import type { Currency, Unit } from '../../../types/referenceData';
+import { apiFetch } from '../../../services/api/client';
+import type { Currency, Unit } from '../../types/referenceData';
 
 export async function fetchCurrencies(): Promise<Currency[]> {
   return apiFetch('/api/v1/reference-data/currencies');

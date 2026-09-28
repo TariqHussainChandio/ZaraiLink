@@ -1,11 +1,11 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { NotificationListScreen } from './NotificationListScreen';
-import { fetchNotifications, markAllRead, markRead } from '../../services/modules/notifications/notificationsService';
-import { useAuthStore } from '../../store/authStore';
+import { fetchNotifications, markAllRead, markRead } from '../services/notificationsService';
+import { useAuthStore } from '../../../state/authStore';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
-import type { Notification } from '../../types/notifications';
+import type { Notification } from '../types/notifications';
 
 const mockGetParentNavigate = jest.fn();
 
@@ -26,7 +26,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/notifications/notificationsService', () => ({
+jest.mock('../services/notificationsService', () => ({
   fetchNotifications: jest.fn(),
   markRead: jest.fn(),
   markAllRead: jest.fn(),

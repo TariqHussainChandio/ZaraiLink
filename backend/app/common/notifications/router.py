@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_authenticated_user
-from ....core.pagination import Page, paginate
-from ....schemas.notifications import Notification, UnreadCountResponse
-from ....services import notifications_service as service
+from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
+from app.common.notifications import service
+from app.common.notifications.schemas import Notification, UnreadCountResponse
+from app.common.pagination import Page, paginate
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 

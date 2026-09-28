@@ -2,15 +2,15 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
-import { queryKeys } from '../../hooks/api/keys';
+import { queryKeys } from '../../hooks/keys';
 import { ReferenceDataScreen } from './ReferenceDataScreen';
 import {
   createRefDataRow,
   deleteRefDataRow,
   fetchRefDataRows,
   updateRefDataRow,
-} from '../../services/modules/reference-data/referenceDataService';
-import { useAuthStore } from '../../store/authStore';
+} from '../../common/reference-data/services/referenceDataService';
+import { useAuthStore } from '../../state/authStore';
 
 const queryClient = createTestQueryClient();
 
@@ -25,7 +25,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/reference-data/referenceDataService', () => ({
+jest.mock('../../common/reference-data/services/referenceDataService', () => ({
   fetchRefDataRows: jest.fn(),
   createRefDataRow: jest.fn(),
   updateRefDataRow: jest.fn(),

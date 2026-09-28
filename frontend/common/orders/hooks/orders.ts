@@ -5,13 +5,13 @@ import {
   fetchOrdersForUser,
   fetchOrderStatusHistory,
   updateOrderStatus,
-} from '../../services/modules/orders/ordersService';
-import { fetchPaymentByOrderId } from '../../services/modules/payments/paymentsService';
-import { fetchReviewByOrderId } from '../../services/modules/reviews/reviewsService';
-import type { CartItem } from '../../store/cartStore';
-import type { OrderStatus } from '../../types/orders';
-import { useInvalidateOrders } from './invalidation';
-import { queryKeys } from './keys';
+} from '../services/ordersService';
+import { fetchPaymentByOrderId } from '../../payments';
+import { fetchReviewByOrderId } from '../../reviews';
+import type { CartItem } from '../../../state/cartStore';
+import type { OrderStatus } from '../types/orders';
+import { useInvalidateOrders } from '../../../hooks/invalidation';
+import { queryKeys } from '../../../hooks/keys';
 
 /** The signed-in user's orders as buyer or as seller (the same cache entry the order history screen reads). */
 export function useOrders(segment: 'buyer' | 'seller', enabled = true) {

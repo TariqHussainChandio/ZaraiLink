@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { EmptyState } from '../../../components/ui';
+import { EmptyState } from '..';
 import { useTheme, type Theme } from '../../../theme';
 
 export interface ActivityItem {

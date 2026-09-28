@@ -4,9 +4,9 @@ import pytest
 from fastapi.testclient import TestClient
 from postgrest.exceptions import APIError
 
-from app.core.auth import AuthenticatedUser
+from app.auth.dependencies import AuthenticatedUser
+from app.common.messaging import service
 from app.main import app
-from app.services import messaging_service as service
 
 client = TestClient(app)
 
@@ -15,7 +15,7 @@ USER = AuthenticatedUser(id="user-1", email="u@x.com", role="buyer", access_toke
 
 @pytest.mark.asyncio
 async def test_send_message_uses_callers_own_id_as_sender_not_a_client_supplied_one():
-    with patch("app.services.messaging_service.repo.send_message", return_value={"id": "m-1"}) as mock_send:
+    with patch("app.common.messaging.service.repo.send_message", return_value={"id": "m-1"}) as mock_send:
         await service.send_message(USER, "conv-1", "hello", [])
     # sender_id argument (3rd positional) is USER.id — there is no sender_id parameter on
     # send_message at all, so it can only ever be the authenticated caller.
@@ -25,8 +25,8 @@ async def test_send_message_uses_callers_own_id_as_sender_not_a_client_supplied_
 
 @pytest.mark.asyncio
 async def test_find_or_create_conversation_returns_existing_without_inserting():
-    with patch("app.services.messaging_service.repo.find_conversation", return_value={"id": "conv-1"}):
-        with patch("app.services.messaging_service.repo.create_conversation") as mock_create:
+    with patch("app.common.messaging.service.repo.find_conversation", return_value={"id": "conv-1"}):
+        with patch("app.common.messaging.service.repo.create_conversation") as mock_create:
             result = await service.find_or_create_conversation(USER, "other-1")
     mock_create.assert_not_called()
     assert result == {"id": "conv-1"}
@@ -42,8 +42,8 @@ async def test_find_or_create_conversation_retries_on_unique_violation_race():
             raise APIError({"code": "23505", "message": "duplicate key"})
         return {"id": "conv-1"}
 
-    with patch("app.services.messaging_service.repo.find_conversation", side_effect=[None, {"id": "conv-1"}]):
-        with patch("app.services.messaging_service.repo.create_conversation", side_effect=create_side_effect):
+    with patch("app.common.messaging.service.repo.find_conversation", side_effect=[None, {"id": "conv-1"}]):
+        with patch("app.common.messaging.service.repo.create_conversation", side_effect=create_side_effect):
             result = await service.find_or_create_conversation(USER, "other-1")
 
     assert result == {"id": "conv-1"}
@@ -52,9 +52,9 @@ async def test_find_or_create_conversation_retries_on_unique_violation_race():
 
 @pytest.mark.asyncio
 async def test_find_or_create_conversation_reraises_non_race_errors():
-    with patch("app.services.messaging_service.repo.find_conversation", return_value=None):
+    with patch("app.common.messaging.service.repo.find_conversation", return_value=None):
         with patch(
-            "app.services.messaging_service.repo.create_conversation",
+            "app.common.messaging.service.repo.create_conversation",
             side_effect=APIError({"code": "42501", "message": "permission denied"}),
         ):
             with pytest.raises(APIError):

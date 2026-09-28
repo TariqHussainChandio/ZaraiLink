@@ -1,10 +1,10 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
-import { queryKeys } from '../../hooks/api/keys';
+import { queryKeys } from '../../hooks/keys';
 import { DiseaseUploadScreen } from './DiseaseUploadScreen';
 import { pickPhotos } from '../../utils/photoPicker';
-import type { Crop } from '../../types/marketplace';
+import type { Crop } from '../../common/marketplace/types/marketplace';
 
 const mockNavigate = jest.fn();
 

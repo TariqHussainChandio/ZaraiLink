@@ -12,11 +12,11 @@ module.exports = {
   // untested screen shows up as 0% instead of being invisible. There is no threshold yet: phase
   // P11 sets them once the tests exercise real behaviour rather than mocks.
   collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.test.{ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/testUtils/**',
-    '!src/**/__mocks__/**',
+    'frontend/**/*.{ts,tsx}',
+    '!frontend/**/*.test.{ts,tsx}',
+    '!frontend/**/*.d.ts',
+    '!frontend/testUtils/**',
+    '!frontend/**/__mocks__/**',
   ],
   // lucide-react-native ships .mjs; jest-expo's transform only matches js/ts/tsx, so it is added
   // here. Jest merges this with the preset's transform map rather than replacing it.

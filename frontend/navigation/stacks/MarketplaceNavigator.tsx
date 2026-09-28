@@ -1,13 +1,13 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { MARKETPLACE_ROUTES } from '../../constants/routes';
-import { BrowseScreen } from '../../screens/marketplace/BrowseScreen';
-import { CartScreen } from '../../screens/orders/CartScreen';
-import { CheckoutScreen } from '../../screens/orders/CheckoutScreen';
-import { CreateListingScreen } from '../../screens/marketplace/CreateListingScreen';
-import { EditListingScreen } from '../../screens/marketplace/EditListingScreen';
-import { ListingDetailScreen } from '../../screens/marketplace/ListingDetailScreen';
+import { MARKETPLACE_ROUTES } from '../../common/constants/routes';
+import { BrowseScreen } from '../../common/marketplace/screens/BrowseScreen';
+import { CartScreen } from '../../common/orders/screens/CartScreen';
+import { CheckoutScreen } from '../../common/orders/screens/CheckoutScreen';
+import { CreateListingScreen } from '../../common/marketplace/screens/CreateListingScreen';
+import { EditListingScreen } from '../../common/marketplace/screens/EditListingScreen';
+import { ListingDetailScreen } from '../../common/marketplace/screens/ListingDetailScreen';
 
 export type MarketplaceStackParamList = {
   [MARKETPLACE_ROUTES.Browse]: undefined;

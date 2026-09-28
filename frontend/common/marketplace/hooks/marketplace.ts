@@ -11,9 +11,9 @@ import {
   uploadListingImages,
   type FetchListingsParams,
   type ListingInput,
-} from '../../services/modules/marketplace/listingsService';
-import type { PickedPhoto } from '../../utils/photoPicker';
-import { queryKeys } from './keys';
+} from '../services/listingsService';
+import type { PickedPhoto } from '../../../utils/photoPicker';
+import { queryKeys } from '../../../hooks/keys';
 
 /** Categories and crops are admin-curated reference data: they change rarely, so a day-old copy is fine. */
 const REFERENCE_STALE_TIME = 24 * 60 * 60 * 1000;

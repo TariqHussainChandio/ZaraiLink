@@ -1,7 +1,7 @@
 import { dehydrate, type QueryClient } from '@tanstack/react-query';
-import { ApiError } from '../../services/api/errors';
-import { useAuthStore } from '../../store/authStore';
-import { createTestQueryClient } from '../../testUtils/renderWithProviders';
+import { ApiError } from '../services/api/errors';
+import { useAuthStore } from '../state/authStore';
+import { createTestQueryClient } from '../testUtils/renderWithProviders';
 import { queryKeys } from './keys';
 import { connectQueryManagers, queryClient, shouldPersist, shouldRetry } from './queryClient';
 

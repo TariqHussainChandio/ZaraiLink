@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ListingCard } from './ListingCard';
-import type { ListingWithRelations } from '../../../types/marketplace';
+import type { ListingWithRelations } from '../types/marketplace';
 
 const baseListing: ListingWithRelations = {
   id: 'l1',

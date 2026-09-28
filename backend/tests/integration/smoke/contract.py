@@ -26,7 +26,7 @@ def spec() -> dict:
     ):
         if os.environ.get(local):
             os.environ.setdefault(name, os.environ[local])
-    from app.main import app  # imported here: it needs the settings set just above
+    from app.main import app
 
     return app.openapi()
 

@@ -5,10 +5,10 @@ from typing import Any, Literal
 from cachetools import TTLCache
 from fastapi import Depends, Header, HTTPException
 
-from .errors import AppHTTPException
-from .jwt_verifier import JWKSUnavailableError, TokenVerificationError, verify_access_token
-from .rows import as_rows
-from .supabase_client import get_user_scoped_client
+from app.auth.jwt_verifier import JWKSUnavailableError, TokenVerificationError, verify_access_token
+from app.common.errors import AppHTTPException
+from app.common.rows import as_rows
+from app.database.supabase_client import get_user_scoped_client
 
 Role = Literal["admin", "expert", "dealer", "farmer", "buyer"]
 
@@ -61,7 +61,7 @@ async def _fetch_profile_state(token: str, user_id: str) -> _ProfileState:
 async def get_current_user(token: str = Depends(get_bearer_token)) -> AuthenticatedUser:
     """
     Authorization: Bearer <supabase_access_token>
-            -> local JWT verification against Supabase's JWKS (core/jwt_verifier.py) — P4 (4A.2),
+            -> local JWT verification against Supabase's JWKS (auth/jwt_verifier.py) — P4 (4A.2),
                replaces the old per-request GET /auth/v1/user call
             -> verified Supabase user id
             -> profiles lookup (role, is_suspended), via a client authenticated as THAT SAME

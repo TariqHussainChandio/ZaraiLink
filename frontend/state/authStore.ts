@@ -1,9 +1,9 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
-import type { Role } from '../constants/roles';
-import { fetchOwnProfile } from '../services/modules/auth/profileLoader';
+import type { Role } from '../common/constants/roles';
+import { fetchOwnProfile } from './profileLoader';
 import { supabase } from '../services/supabase/client';
-import type { Profile } from '../types/profile';
+import type { Profile } from '../common/types/profile';
 import { logger } from '../utils/logger';
 
 // 'passwordRecovery': the user tapped a password-reset email link. A real session now exists

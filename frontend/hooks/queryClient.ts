@@ -4,9 +4,9 @@ import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persi
 import { focusManager, onlineManager, QueryClient, type Query } from '@tanstack/react-query';
 import type { PersistQueryClientProviderProps } from '@tanstack/react-query-persist-client';
 import { AppState, type AppStateStatus } from 'react-native';
-import { isApiError } from '../../services/api/errors';
-import { useAuthStore } from '../../store/authStore';
-import { useNetworkStore } from '../../store/networkStore';
+import { isApiError } from '../services/api/errors';
+import { useAuthStore } from '../state/authStore';
+import { useNetworkStore } from '../state/networkStore';
 
 const HOUR = 60 * 60 * 1000;
 

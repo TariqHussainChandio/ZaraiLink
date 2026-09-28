@@ -1,12 +1,14 @@
 import asyncio
 from collections import defaultdict
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import analytics_repository as repo
-from ..repositories import consultations_repository as consultations_repo
-from ..repositories import dealer_repository, farmer_repository, marketplace_repository
-from ..repositories import orders_repository as orders_repo
-from ..repositories import reviews_repository as reviews_repo
+from app.auth.dependencies import AuthenticatedUser
+from app.common.analytics import repository as repo
+from app.common.consultations import service as consultations_service
+from app.common.marketplace import service as marketplace_service
+from app.common.orders import service as orders_service
+from app.common.reviews import service as reviews_service
+from app.dealer import service as dealer_service
+from app.farmer import service as farmer_service
 
 
 def _month_key(iso: str) -> str:
@@ -59,16 +61,16 @@ async def fetch_farmer_analytics(user: AuthenticatedUser) -> dict:
     # Each read below is independent of the others (none depends on another's result), so they
     # run concurrently rather than as four sequential round trips.
     farms, orders, consultations, listings = await asyncio.gather(
-        farmer_repository.fetch_farms(user.access_token, user.id),
-        orders_repo.fetch_orders_for_user(user.access_token, user.id, "seller"),
-        consultations_repo.fetch_for_user(user.access_token, user.id),
+        farmer_service.fetch_farms(user),
+        orders_service.read_orders_for_user(user, "seller"),
+        consultations_service.fetch_for_user(user),
         repo.fetch_own_listings(user.access_token, user.id),
     )
     listing_ids = [row["id"] for row in listings]
 
     view_counts, *crop_lists = await asyncio.gather(
-        marketplace_repository.fetch_listing_view_counts(user.access_token, listing_ids),
-        *(farmer_repository.fetch_farm_crops(user.access_token, farm["id"]) for farm in farms),
+        marketplace_service.fetch_listing_view_counts(user, listing_ids),
+        *(farmer_service.fetch_farm_crops(user, farm["id"]) for farm in farms),
     )
     total_listing_views = sum(view_counts.values())
     crop_count = sum(len(crops) for crops in crop_lists)
@@ -95,10 +97,10 @@ async def fetch_farmer_analytics(user: AuthenticatedUser) -> dict:
 
 async def fetch_dealer_analytics(user: AuthenticatedUser) -> dict:
     orders, inventory, stores, suppliers, sale_tx, listings = await asyncio.gather(
-        orders_repo.fetch_orders_for_user(user.access_token, user.id, "seller"),
-        dealer_repository.fetch_inventory(user.access_token, user.id),
-        dealer_repository.fetch_stores(user.access_token, user.id),
-        dealer_repository.fetch_suppliers(user.access_token, user.id),
+        orders_service.read_orders_for_user(user, "seller"),
+        dealer_service.fetch_inventory(user),
+        dealer_service.fetch_stores(user),
+        dealer_service.fetch_suppliers(user),
         repo.fetch_dealer_sale_transactions(user.access_token, user.id),
         repo.fetch_own_listings(user.access_token, user.id),
     )
@@ -130,8 +132,8 @@ async def fetch_dealer_analytics(user: AuthenticatedUser) -> dict:
 
 async def fetch_expert_analytics(user: AuthenticatedUser) -> dict:
     consultations, reviews = await asyncio.gather(
-        consultations_repo.fetch_for_expert(user.access_token, user.id),
-        reviews_repo.fetch_reviews_for_expert(user.id),
+        consultations_service.fetch_for_expert(user),
+        reviews_service.fetch_reviews_for_expert(user.id),
     )
 
     completed = [c for c in consultations if c["status"] in ("resolved", "closed")]

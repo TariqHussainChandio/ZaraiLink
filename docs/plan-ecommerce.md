@@ -171,6 +171,98 @@ Module map for A1.1 (current → target):
 **Exit:** every existing test passes with imports changed only; the real-stack suites pass; OpenAPI unchanged; the
 app bundles and opens on the emulator; `module-boundary` at zero.
 
+**Status (2026-09-28): built and verified (four rounds; every finding fixed or recorded as a known limit), awaiting
+the maintainer's merge.**
+Run as one scripted pass instead of the three
+lane steps above (maintainer's decision, 2026-09-27), on branch `a1/restructure` in three commits:
+1. The contract preparation: four duplicate schema class names renamed, so that `backend/openapi.json` holds no
+   module-path names.
+2. The pure move: 494 renames by `scripts/a1/restructure.py move`, from `scripts/a1/module-map.json`, with the
+   explicit list in `scripts/a1/moves.json`.
+3. The rewrite:
+   - imports, config and CI paths;
+   - the strict `module-boundary` rule with its tests;
+   - checks that fail loudly if a path moves again: zero scanned files, a stale baseline key, a missing generated
+     client, zero coverage statements, `scripts/test_ci_paths.py`;
+   - the module READMEs and the docs.
+
+Behaviour-preserving edits, the only ones that are not path changes:
+- admin and analytics read orders through `common.orders.service` (`fetch_all_orders`, `read_orders_for_user`,
+  without the stale-order sweep, as before);
+- consultations look up an expert through `expert.service.find_expert`;
+- `useInvalidateOrders` moved to `frontend/hooks/invalidation.ts`, and `useOrderPaymentContext` moved from the
+  payments hooks to the orders hooks (unchanged code). Together they break the one orders↔payments cycle through a
+  barrel.
+
+Evidence, in the maintainer's repository:
+
+| Check | Result |
+|---|---|
+| `tsc` and lint | clean |
+| Reality gates | pass; `module-boundary` and `layer-boundary` at 0; knip, ESLint, ruff and mypy counts unchanged (27, 16, 53, 0) |
+| Jest | 858 passed, 16 skipped |
+| Backend unit | 197 |
+| Gate and script tests | 145 (107, plus 38 for the verifier's findings) |
+| pgTAP | 520, unchanged |
+| Backend real stack (`tests/integration`) | 387 passed, 3 skipped |
+| App real stack | 16 of 16 |
+| `backend/openapi.json` | byte-identical (`export_openapi.py --check`) |
+| `api:check` | clean |
+| `expo export` | bundles 3,322 modules |
+
+On the Pixel_8 emulator against the local stack, each of farmer, buyer, dealer, expert and admin signed in, saw
+their home screen and signed out. The moved screens tried were marketplace, disease advisory, consultations,
+inventory, dealer and expert analytics, admin orders and the audit log; the session's 31 API calls all returned 2xx.
+
+Folder ownership added: `common/analytics` and frontend `common/reference-data` go to `zl-commerce`, `testUtils/`
+to `zl-app-core`.
+
+**Verification (`zl-verifier`, 2026-09-28): four rounds, verified with findings; each fixed or recorded below.**
+- The verifier found no behaviour change:
+  - all 2,242 frontend import bindings resolve to the same definitions as before the move;
+  - the only Python binding changes are the repository-to-service swaps above;
+  - test collection counts match `34c6f3a` exactly.
+- Round 1 findings and fixes:
+  - **F1 (medium).** Ten import forms passed `module-boundary` unseen: `require()`, `import()`, a bare `import '…'`,
+    a deep import in `App.tsx`, a namespace import of a barrel in a screen, a module importing its own barrel, a
+    runtime import hidden by the `type` of the line before (no semicolons), and on the backend `import app.x`,
+    relative imports and `from app import x`. None occurred in the code; the rule now catches each.
+  - **F1b.** The scan guard now needs at least one scanned `frontend/` file; `App.tsx` alone does not count.
+  - **F2.** The backend real-stack count was mislabelled (584 is unit plus real stack); corrected above.
+  - **F3.** Nine old paths left in comments and a setup doc; corrected.
+  - **F4.** The §47 traceability row now names every cross-module read and the one cross-module write.
+  - **F5.** The `useOrderPaymentContext` move is now listed above.
+- Round 2 confirmed those fixes and found more forms (F7, low); none occurred in the code:
+  - an `import()` or `require()` whose argument is not one plain quoted string, and an escaped specifier: the gate
+    cannot tell where these lead (Metro still can), so it now refuses them;
+  - quoted import names (`import { 'a' as b }`), and a regular expression such as `/^\/*/` read as the start of a
+    comment that hid the rest of the file;
+  - shared code re-exporting a module's exports (through `navigation/`);
+  - on the backend, a module's repository reached through its service (`from app.farmer.service import repo`,
+    `farmer_service.repo.…`), a module file reached as an attribute, and `importlib` / `__import__`;
+  - old flat file names (`disease_service.py`, `ai_engine.py`) in comments and architecture docs; corrected.
+- Round 3 confirmed those fixes: the gate's import reader agrees with Babel's on all 232 production files. It found:
+  - a regression from the regular-expression fix (a JSX `} /><Text>{'km/h'}` left the reader inside a string until a
+    URL further down was read as a comment); a quoted string now ends at its line, and `}` no longer starts a
+    regular expression;
+  - false alarms on UI copy ("Documents we require (CNIC …)"); a computed `import(`/`require(` now counts only in
+    code position, and a model a service imports from a schemas module stays reachable through it;
+  - a two-step re-export in shared code (`import { x } from '../farmer'`, then `export { x }`) and
+    `builtins.__import__`, now refused; two old paths in `backend-architecture.md`, corrected.
+- Round 4 confirmed those fixes and closed the hardening: one form remained outside the known limits, a computed
+  `import(FARM)` straight after `if (…)`, now counted. Everything else it found is caught by lint or the ESLint
+  ratchet, cannot be bundled, or falls inside the limits below.
+- Every form the verifier found has a case in `scripts/test_check_reality.py` that fails on the rule as it stood
+  before the fix.
+- **Known limits.** The rule reads imports; it does not follow values. These still pass: shared code that imports a
+  module's function and hands it on as a value (`export const f = x`, `export default x`), a `/` after `x++` read as
+  the start of a regular expression (the misread stays on its line), and on the backend `sys.modules[…]`,
+  `getattr(service, "repo")` or a service bound to a second name. In the other direction, import-shaped text inside
+  a string fails the gate, and so does UI copy with a lowercase `import (` or `require (` after punctuation or at the
+  start of a line ("Step 2: import (CSV) …"); the strict rule has no suppression, so reword such copy. The older
+  `layer-boundary` text rule still reads comments in `screens/` and `components/`. The rule is a tripwire for the
+  common mistakes, not a proof; review still applies.
+
 ### A2 — Design system and app shell
 
 **Goal:** SRDS §43–§44 theme and a shared component set, from the approved Claude Design prototype.

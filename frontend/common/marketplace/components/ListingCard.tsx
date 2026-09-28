@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { RoleBadge } from '../../ui';
+import { RoleBadge } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
-import type { ListingWithRelations } from '../../../types/marketplace';
+import type { ListingWithRelations } from '../types/marketplace';
 
 export interface ListingCardProps {
   listing: ListingWithRelations;

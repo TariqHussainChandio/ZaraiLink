@@ -2,7 +2,7 @@ import { ShoppingBag } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
-import type { ConsultationMessageWithListing } from '../../../types/expert';
+import type { ConsultationMessageWithListing } from '../../../expert';
 
 export interface ConsultationMessageBubbleProps {
   message: ConsultationMessageWithListing;

@@ -3,11 +3,11 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input } from '../../components/ui';
-import { useDeleteOwnAccount } from '../../hooks/api/profile';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
+import { Button, Input } from '../../components';
+import { useDeleteOwnAccount } from '../hooks/profile';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import { errorMessage } from '../../../utils/errorMessage';
 
 function makeDeleteAccountSchema() {
   return z.object({ password: z.string().min(1, 'Enter your password to confirm') });

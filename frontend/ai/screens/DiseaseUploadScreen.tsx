@@ -1,9 +1,9 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { Button, SelectField } from '../../components/ui';
+import { Button, SelectField } from '../../common/components';
 import { useTheme, type Theme } from '../../theme';
-import { useCrops } from '../../hooks/api/marketplace';
+import { useCrops } from '../../common/marketplace';
 import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 
 // Registered in the shared `HomeNavigator` (Buyer/Farmer/Dealer's Home stack), but farmer-only

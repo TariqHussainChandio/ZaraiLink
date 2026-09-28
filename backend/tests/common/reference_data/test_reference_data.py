@@ -13,9 +13,9 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.auth import AuthenticatedUser
+from app.auth.dependencies import AuthenticatedUser
+from app.common.reference_data import service
 from app.main import app
-from app.services import reference_data_service as service
 
 client = TestClient(app)
 
@@ -28,9 +28,9 @@ ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_to
 @pytest.mark.asyncio
 async def test_create_row_logs_admin_action_with_new_state():
     with patch(
-        "app.services.reference_data_service.repo.create_row", return_value={"id": "row-1", "code": "PKR"}
+        "app.common.reference_data.service.repo.create_row", return_value={"id": "row-1", "code": "PKR"}
     ) as mock_create:
-        with patch("app.services.reference_data_service.log_admin_action") as mock_log:
+        with patch("app.common.reference_data.service.log_admin_action") as mock_log:
             result = await service.create_row(
                 ADMIN, "currencies", {"code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"}
             )
@@ -50,8 +50,8 @@ async def test_create_row_logs_admin_action_with_new_state():
 
 @pytest.mark.asyncio
 async def test_delete_row_logs_admin_action():
-    with patch("app.services.reference_data_service.repo.delete_row") as mock_delete:
-        with patch("app.services.reference_data_service.log_admin_action") as mock_log:
+    with patch("app.common.reference_data.service.repo.delete_row") as mock_delete:
+        with patch("app.common.reference_data.service.log_admin_action") as mock_log:
             await service.delete_row(ADMIN, "units", "unit-1")
 
     mock_delete.assert_called_once_with(ADMIN.access_token, "units", "unit-1")
@@ -63,7 +63,7 @@ async def test_delete_row_logs_admin_action():
 
 def test_list_currencies_requires_no_authorization_header():
     with patch(
-        "app.api.v1.endpoints.reference_data.service.fetch_currencies",
+        "app.common.reference_data.router.service.fetch_currencies",
         return_value=[{"id": "1", "code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"}],
     ):
         response = client.get("/api/v1/reference-data/currencies")
@@ -79,7 +79,7 @@ def test_create_row_without_authorization_header_is_rejected():
 
 def test_generic_rows_read_is_public_too():
     with patch(
-        "app.api.v1.endpoints.reference_data.service.fetch_rows",
+        "app.common.reference_data.router.service.fetch_rows",
         return_value=[{"id": "1", "code": "kg", "label": "Kilogram", "applies_to": None}],
     ):
         response = client.get("/api/v1/reference-data/units/rows")

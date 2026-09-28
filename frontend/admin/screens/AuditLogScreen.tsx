@@ -2,8 +2,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, EmptyState, FilterChips, Spinner } from '../../components/ui';
-import { useAuditLogs } from '../../hooks/api/admin';
+import { Badge, EmptyState, FilterChips, Spinner } from '../../common/components';
+import { useAuditLogs } from '../hooks/admin';
 import { useTheme, type Theme } from '../../theme';
 
 export function AuditLogScreen() {

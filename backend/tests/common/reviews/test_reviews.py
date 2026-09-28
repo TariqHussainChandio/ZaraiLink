@@ -4,9 +4,9 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app.core.auth import AuthenticatedUser
+from app.auth.dependencies import AuthenticatedUser
+from app.common.reviews import service
 from app.main import app
-from app.services import reviews_service as service
 
 client = TestClient(app)
 
@@ -24,7 +24,7 @@ COMPLETED_ORDER = {
 
 @pytest.mark.asyncio
 async def test_create_review_rejects_non_owner_of_order():
-    with patch("app.services.reviews_service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
+    with patch("app.common.reviews.service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
         with pytest.raises(HTTPException) as exc_info:
             await service.create_review(OTHER_BUYER, "order-1", None, 5, "great")
     assert exc_info.value.status_code == 404
@@ -33,7 +33,7 @@ async def test_create_review_rejects_non_owner_of_order():
 @pytest.mark.asyncio
 async def test_create_review_rejects_incomplete_order():
     incomplete = {**COMPLETED_ORDER, "status": "pending"}
-    with patch("app.services.reviews_service.repo.get_order_for_review", return_value=incomplete):
+    with patch("app.common.reviews.service.repo.get_order_for_review", return_value=incomplete):
         with pytest.raises(HTTPException) as exc_info:
             await service.create_review(BUYER, "order-1", None, 5, "great")
     assert exc_info.value.status_code == 404
@@ -41,7 +41,7 @@ async def test_create_review_rejects_incomplete_order():
 
 @pytest.mark.asyncio
 async def test_create_review_rejects_listing_not_in_order():
-    with patch("app.services.reviews_service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
+    with patch("app.common.reviews.service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
         with pytest.raises(HTTPException) as exc_info:
             await service.create_review(BUYER, "order-1", "listing-not-in-this-order", 5, "great")
     assert exc_info.value.status_code == 422
@@ -49,8 +49,8 @@ async def test_create_review_rejects_listing_not_in_order():
 
 @pytest.mark.asyncio
 async def test_create_review_derives_seller_id_from_order_not_client():
-    with patch("app.services.reviews_service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
-        with patch("app.services.reviews_service.repo.create_review", return_value={"id": "r-1"}) as mock_create:
+    with patch("app.common.reviews.service.repo.get_order_for_review", return_value=COMPLETED_ORDER):
+        with patch("app.common.reviews.service.repo.create_review", return_value={"id": "r-1"}) as mock_create:
             await service.create_review(BUYER, "order-1", "listing-1", 5, "great")
 
     # seller_id passed to the repository comes from COMPLETED_ORDER["seller_id"], never from any

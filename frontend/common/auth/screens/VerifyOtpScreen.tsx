@@ -7,16 +7,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Button, Input } from '../../components/ui';
+import { Button, Input } from '../../components';
 import {
   useResendRecoveryOtp,
   useResendSignupOtp,
   useVerifyRecoveryOtp,
   useVerifySignupOtp,
-} from '../../hooks/api/auth';
-import { useTheme, type Theme } from '../../theme';
+} from '../hooks/auth';
+import { useTheme, type Theme } from '../../../theme';
 import { mapAuthErrorMessage } from './mapAuthError';
-import type { AuthScreenProps } from '../../navigation/stacks/AuthNavigator';
+import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 

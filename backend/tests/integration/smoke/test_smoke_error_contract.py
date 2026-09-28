@@ -1,9 +1,9 @@
 """P7 (7B) — the error contract: every kind of API failure arrives as problem+json with the documented stable `code`.
 
 The mobile client decides what to do from `code` (sign out, show the suspended screen, retry, show its own message), so
-the exact bodies the real API sends are recorded in src/services/api/__fixtures__/problems.json and the client's unit
-tests replay them. This test produces each failure for real and fails if the API's answer no longer matches its fixture,
-so the client tests can never drift from what the server does. After a deliberate change:
+the exact bodies the real API sends are recorded in frontend/services/api/__fixtures__/problems.json and the
+client's unit tests replay them. This test produces each failure for real and fails if the API's answer no longer
+matches its fixture, so the client tests can never drift from what the server does. After a deliberate change:
     UPDATE_PROBLEM_FIXTURES=1 python -m pytest tests/integration/smoke/test_smoke_error_contract.py
 """
 
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-FIXTURES = Path(__file__).resolve().parents[4] / "src" / "services" / "api" / "__fixtures__" / "problems.json"
+FIXTURES = Path(__file__).resolve().parents[4] / "frontend" / "services" / "api" / "__fixtures__" / "problems.json"
 # Failures this test cannot provoke cheaply or safely are asserted where they happen and recorded here by hand:
 # rate_limited (test_smoke_proxy_headers.py), payload_too_large (test_smoke_http_hardening.py), and the two server-side
 # ones (a Supabase outage and an unexpected exception) which would need the stack broken on purpose.
@@ -110,5 +110,5 @@ def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_a
         FIXTURES.write_text(json.dumps({**existing, **stable}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     recorded = json.loads(FIXTURES.read_text(encoding="utf-8"))
     for name, result in stable.items():
-        assert recorded[name] == result, f"{name} no longer matches src/services/api/__fixtures__/problems.json"
+        assert recorded[name] == result, f"{name} no longer matches {FIXTURES}"
     assert set(recorded) == set(stable) | HAND_WRITTEN, "the fixture file has entries this test does not produce"

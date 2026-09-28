@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button } from '../../components/ui';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
+import { Button } from '../../components';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
 
 export function SuspendedScreen() {
   const theme = useTheme();

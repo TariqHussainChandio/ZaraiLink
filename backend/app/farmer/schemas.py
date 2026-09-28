@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from .common import Location
+from app.common.schemas import Location
 
 
 class FarmInput(BaseModel):

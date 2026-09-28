@@ -2,19 +2,19 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
-import { queryKeys } from '../../hooks/api/keys';
+import { queryKeys } from '../../hooks/keys';
 import { AddCropScreen } from './AddCropScreen';
 import {
   createFarmCrop,
   deleteFarmCrop,
   fetchFarmCropById,
   updateFarmCrop,
-} from '../../services/modules/farmer/farmService';
+} from '../services/farmService';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 const queryClient = createTestQueryClient();
 
-jest.mock('../../services/modules/farmer/farmService', () => ({
+jest.mock('../services/farmService', () => ({
   createFarmCrop: jest.fn(),
   updateFarmCrop: jest.fn(),
   deleteFarmCrop: jest.fn(),

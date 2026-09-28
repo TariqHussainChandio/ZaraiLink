@@ -1,18 +1,18 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import React from 'react';
-import { ApiError } from '../../services/api/errors';
-import { createTestQueryClient } from '../../testUtils/renderWithProviders';
-import { queryKeys } from './keys';
+import { ApiError } from '../../../services/api/errors';
+import { createTestQueryClient } from '../../../testUtils/renderWithProviders';
+import { queryKeys } from '../../../hooks/keys';
 import { useCreateListing, useDeleteListing, useListings, useMyListings } from './marketplace';
 import {
   createListing,
   deleteListing,
   fetchListings,
   uploadListingImages,
-} from '../../services/modules/marketplace/listingsService';
+} from '../services/listingsService';
 
-jest.mock('../../services/modules/marketplace/listingsService');
+jest.mock('../services/listingsService');
 
 const mockFetchListings = fetchListings as jest.Mock;
 const mockCreateListing = createListing as jest.Mock;

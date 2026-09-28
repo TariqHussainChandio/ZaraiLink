@@ -2,11 +2,11 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { DiseaseResultScreen } from './DiseaseResultScreen';
-import { fetchDiseaseCaseWithPrediction } from '../../services/modules/ai/diseaseService';
-import { fetchListings } from '../../services/modules/marketplace/listingsService';
-import { APP_TABS, CONSULTATIONS_ROUTES, MARKETPLACE_ROUTES } from '../../constants/routes';
-import type { DiseaseCaseWithPrediction } from '../../types/disease';
-import type { ListingWithRelations } from '../../types/marketplace';
+import { fetchDiseaseCaseWithPrediction } from '../services/diseaseService';
+import { fetchListings } from '../../common/marketplace/services/listingsService';
+import { APP_TABS, CONSULTATIONS_ROUTES, MARKETPLACE_ROUTES } from '../../common/constants/routes';
+import type { DiseaseCaseWithPrediction } from '../types/disease';
+import type { ListingWithRelations } from '../../common/marketplace/types/marketplace';
 
 const mockNavigate = jest.fn();
 const mockGetParent = jest.fn();
@@ -27,11 +27,11 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/ai/diseaseService', () => ({
+jest.mock('../services/diseaseService', () => ({
   fetchDiseaseCaseWithPrediction: jest.fn(),
 }));
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../../common/marketplace/services/listingsService', () => ({
   fetchListings: jest.fn(),
 }));
 

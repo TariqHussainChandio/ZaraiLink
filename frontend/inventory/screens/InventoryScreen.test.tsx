@@ -10,10 +10,10 @@ import {
   fetchInventory,
   updateInventoryItem,
   adjustStock,
-} from '../../services/modules/dealer/inventoryService';
-import { useAuthStore } from '../../store/authStore';
-import { HOME_ROUTES } from '../../constants/routes';
-import type { InventoryItemWithListing } from '../../types/dealer';
+} from '../services/inventoryService';
+import { useAuthStore } from '../../state/authStore';
+import { HOME_ROUTES } from '../../common/constants/routes';
+import type { InventoryItemWithListing } from '../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 jest.mock('@react-navigation/native', () => {
@@ -31,7 +31,7 @@ jest.mock('@react-navigation/native', () => {
 
 // Covers both InventoryScreen's own calls and the calls made by the StockAdjustModal it
 // mounts (adjustStock) — same module, one mock factory.
-jest.mock('../../services/modules/dealer/inventoryService', () => ({
+jest.mock('../services/inventoryService', () => ({
   fetchInventory: jest.fn(),
   fetchDealerListings: jest.fn(),
   createInventoryItem: jest.fn(),

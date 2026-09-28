@@ -1,4 +1,4 @@
-import { apiFetch } from '../../api/client';
+import { apiFetch } from '../../services/api/client';
 import {
   dismissReport,
   fetchAllOrders,
@@ -11,7 +11,7 @@ import {
   updateUserRole,
 } from './adminService';
 
-jest.mock('../../api/client');
+jest.mock('../../services/api/client');
 
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
 

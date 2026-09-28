@@ -1,4 +1,4 @@
-import { APP_TABS, CONSULTATIONS_ROUTES } from '../../constants/routes';
+import { APP_TABS, CONSULTATIONS_ROUTES } from '../../common/constants/routes';
 
 interface HandoffContext {
   cropId: string | null;

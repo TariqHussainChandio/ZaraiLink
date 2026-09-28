@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNetworkStore } from '../../store/networkStore';
+import { useNetworkStore } from '../../state/networkStore';
 import { useTheme, type Theme } from '../../theme';
 
 // P4 (4B.2): a network-level apiFetch failure (offline, unreachable host) shows this instead of

@@ -2,12 +2,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components/ui';
-import { ExpertCard } from '../../components/features/expert/ExpertCard';
+import { EmptyState, Spinner } from '../../components';
+import { ExpertCard } from '../components/ExpertCard';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
-import { useExperts } from '../../hooks/api/experts';
-import { useTheme, type Theme } from '../../theme';
-import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
+import { useExperts } from '../../../expert';
+import { useTheme, type Theme } from '../../../theme';
+import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
 
 export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps<'ExpertList'>) {
   const theme = useTheme();

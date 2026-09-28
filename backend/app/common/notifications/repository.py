@@ -1,8 +1,8 @@
 from postgrest.types import CountMethod
 
-from ..core.pagination import page_range
-from ..core.rows import as_rows
-from ..core.supabase_client import get_user_scoped_client
+from app.common.pagination import page_range
+from app.common.rows import as_rows
+from app.database.supabase_client import get_user_scoped_client
 
 
 async def fetch_notifications(access_token: str, user_id: str) -> list[dict]:

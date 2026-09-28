@@ -1,5 +1,5 @@
-import { supabase } from '../../supabase/client';
-import type { Profile } from '../../../types/profile';
+import { supabase } from '../services/supabase/client';
+import type { Profile } from '../common/types/profile';
 
 /**
  * Loads the signed-in user's own profile row (its role and account status decide what the app shows). This is the

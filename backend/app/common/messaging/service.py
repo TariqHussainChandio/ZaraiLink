@@ -1,9 +1,9 @@
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import messaging_repository as repo
-from .audit_log_service import log_admin_action
+from app.auth.dependencies import AuthenticatedUser
+from app.common.audit_log import log_admin_action
+from app.common.messaging import repository as repo
 
 
 async def fetch_conversations(user: AuthenticatedUser) -> list[dict]:

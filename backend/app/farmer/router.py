@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_farmer
-from ....core.pagination import Page, paginate
-from ....schemas.farmer import (
+from app.auth.dependencies import AuthenticatedUser, require_farmer
+from app.common.pagination import Page, paginate
+from app.farmer import service
+from app.farmer.schemas import (
     Farm,
     FarmCrop,
     FarmCropInput,
@@ -12,7 +13,6 @@ from ....schemas.farmer import (
     FarmInput,
     FarmUpdateInput,
 )
-from ....services import farmer_service as service
 
 router = APIRouter(prefix="/api/v1/farmer", tags=["farmer"])
 

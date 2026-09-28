@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin, require_admin_aal2, require_expert
-from ....core.pagination import Page, paginate
-from ....schemas.expert import (
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2, require_expert
+from app.common.pagination import Page, paginate
+from app.expert import service
+from app.expert.schemas import (
     DocumentUrlResponse,
     Expert,
     ExpertForAdmin,
@@ -10,7 +11,6 @@ from ....schemas.expert import (
     ReviewVerificationRequest,
     SubmitApplicationRequest,
 )
-from ....services import expert_service as service
 
 router = APIRouter(prefix="/api/v1/expert", tags=["expert"])
 

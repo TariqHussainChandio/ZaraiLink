@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_authenticated_user
-from ....core.pagination import Page, paginate
-from ....schemas.consultations import (
+from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
+from app.common.consultations import service
+from app.common.consultations.schemas import (
     Consultation,
     ConsultationMessageWithListing,
     ConsultationWithRelations,
@@ -11,7 +11,7 @@ from ....schemas.consultations import (
     UpdateImagesRequest,
     UpdateStatusRequest,
 )
-from ....services import consultations_service as service
+from app.common.pagination import Page, paginate
 
 router = APIRouter(prefix="/api/v1/consultations", tags=["consultations"])
 

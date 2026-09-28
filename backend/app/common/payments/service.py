@@ -2,9 +2,9 @@ import logging
 
 from fastapi import HTTPException
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import payments_repository as repo
-from . import orders_service
+from app.auth.dependencies import AuthenticatedUser
+from app.common.orders import service as orders_service
+from app.common.payments import repository as repo
 
 logger = logging.getLogger(__name__)
 

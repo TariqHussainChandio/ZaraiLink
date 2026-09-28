@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '../../services/supabase/client';
-import type { ConsultationMessage } from '../../types/expert';
+import type { ConsultationMessage } from '../../expert';
 
 /** Mirrors `useRealtimeMessages`. Requires `public.consultation_messages` in the
  * `supabase_realtime` publication (added in Module 14's migration). */

@@ -8,8 +8,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from postgrest.exceptions import APIError
 
-from app.core.problem_details import database_error_handler, http_exception_handler, unhandled_exception_handler
-from app.core.rows import first_row
+from app.common.problem_details import database_error_handler, http_exception_handler, unhandled_exception_handler
+from app.common.rows import first_row
 
 
 def _client(raises: Exception) -> TestClient:

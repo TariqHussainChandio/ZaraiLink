@@ -14,7 +14,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
 import type { ModuleAccentKey } from '../../../theme/moduleAccents';
-import type { Notification } from '../../../types/notifications';
+import type { Notification } from '../types/notifications';
 
 type TypeMeta = { icon: LucideIcon; accentKey: ModuleAccentKey; label: string };
 

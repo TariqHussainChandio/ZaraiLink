@@ -1,16 +1,16 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { DeleteAccountScreen } from './DeleteAccountScreen';
-import { deleteOwnAccount } from '../../services/modules/profile/profileService';
+import { deleteOwnAccount } from '../services/profileService';
 
-jest.mock('../../services/modules/profile/profileService', () => ({
+jest.mock('../services/profileService', () => ({
   deleteOwnAccount: jest.fn(),
 }));
 
 const mockSignOut = jest.fn();
-jest.mock('../../store/authStore', () => ({
+jest.mock('../../../state/authStore', () => ({
   useAuthStore: (selector: (state: { signOut: () => Promise<void> }) => unknown) =>
     selector({ signOut: mockSignOut }),
 }));

@@ -9,13 +9,13 @@ import {
   fetchReports,
   resolveReport,
   setProfileSuspended,
-} from '../../services/modules/admin/adminService';
-import { reviewExpertVerification, fetchExpertById, fetchExpertForAdminById } from '../../services/modules/expert/expertService';
-import { fetchListingById, updateListingStatus } from '../../services/modules/marketplace/listingsService';
-import { fetchMessageById, redactMessage } from '../../services/modules/messaging/messagingService';
-import { deleteReview, fetchReviewById } from '../../services/modules/reviews/reviewsService';
-import { useAuthStore } from '../../store/authStore';
-import type { ReportWithReporter } from '../../types/reports';
+} from '../services/adminService';
+import { reviewExpertVerification, fetchExpertById, fetchExpertForAdminById } from '../../expert/services/expertService';
+import { fetchListingById, updateListingStatus } from '../../common/marketplace/services/listingsService';
+import { fetchMessageById, redactMessage } from '../../common/messaging/services/messagingService';
+import { deleteReview, fetchReviewById } from '../../common/reviews/services/reviewsService';
+import { useAuthStore } from '../../state/authStore';
+import type { ReportWithReporter } from '../types/reports';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -26,27 +26,27 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/admin/adminService', () => ({
+jest.mock('../services/adminService', () => ({
   dismissReport: jest.fn(),
   fetchAllProfiles: jest.fn(),
   fetchReports: jest.fn(),
   resolveReport: jest.fn(),
   setProfileSuspended: jest.fn(),
 }));
-jest.mock('../../services/modules/expert/expertService', () => ({
+jest.mock('../../expert/services/expertService', () => ({
   reviewExpertVerification: jest.fn(),
   fetchExpertById: jest.fn(),
   fetchExpertForAdminById: jest.fn(),
 }));
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../../common/marketplace/services/listingsService', () => ({
   fetchListingById: jest.fn(),
   updateListingStatus: jest.fn(),
 }));
-jest.mock('../../services/modules/messaging/messagingService', () => ({
+jest.mock('../../common/messaging/services/messagingService', () => ({
   fetchMessageById: jest.fn(),
   redactMessage: jest.fn(),
 }));
-jest.mock('../../services/modules/reviews/reviewsService', () => ({
+jest.mock('../../common/reviews/services/reviewsService', () => ({
   deleteReview: jest.fn(),
   fetchReviewById: jest.fn(),
 }));

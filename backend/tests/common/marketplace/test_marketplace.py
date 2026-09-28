@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.core.auth import AuthenticatedUser, get_current_user
+from app.auth.dependencies import AuthenticatedUser, get_current_user
 from app.main import app
 
 client = TestClient(app)
@@ -12,13 +12,13 @@ FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access
 
 
 def test_list_listings_is_public():
-    with patch("app.api.v1.endpoints.marketplace.service.fetch_listings", return_value=[]):
+    with patch("app.common.marketplace.router.service.fetch_listings", return_value=[]):
         response = client.get("/api/v1/marketplace/listings")
     assert response.status_code == 200
 
 
 def test_list_listings_passes_owner_id_filter_through_to_the_service():
-    with patch("app.api.v1.endpoints.marketplace.service.fetch_listings", return_value=[]) as mock_fetch:
+    with patch("app.common.marketplace.router.service.fetch_listings", return_value=[]) as mock_fetch:
         response = client.get("/api/v1/marketplace/listings", params={"owner_id": "farmer-1"})
     assert response.status_code == 200
     mock_fetch.assert_called_once_with(None, None, None, None, None, None, None, 0, "farmer-1")
@@ -28,7 +28,7 @@ def test_moderation_route_matched_before_generic_listing_id_route():
     app.dependency_overrides[get_current_user] = lambda: ADMIN
     try:
         with patch(
-            "app.api.v1.endpoints.marketplace.service.fetch_all_listings_for_moderation", return_value=[]
+            "app.common.marketplace.router.service.fetch_all_listings_for_moderation", return_value=[]
         ) as mock_fetch:
             response = client.get("/api/v1/marketplace/listings/moderation")
     finally:

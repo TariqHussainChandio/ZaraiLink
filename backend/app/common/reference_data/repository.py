@@ -1,8 +1,8 @@
 from typing import Any, Literal
 
-from ..core.pagination import page_range
-from ..core.rows import as_rows, first_row
-from ..core.supabase_client import get_public_client, get_user_scoped_client
+from app.common.pagination import page_range
+from app.common.rows import as_rows, first_row
+from app.database.supabase_client import get_public_client, get_user_scoped_client
 
 RefDataTable = Literal["currencies", "units"]
 

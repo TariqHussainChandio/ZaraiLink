@@ -6,9 +6,9 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from postgrest.exceptions import APIError
 
-from app.core.auth import AuthenticatedUser, get_current_user
+from app.auth.dependencies import AuthenticatedUser, get_current_user
+from app.common.orders import service
 from app.main import app
-from app.services import orders_service as service
 
 client = TestClient(app)
 
@@ -17,7 +17,7 @@ def _mock_no_expiry_sweep():
     # `_expire_stale_pending_orders` runs at the top of every status-mutating/order-reading
     # service function; tests that aren't specifically exercising expiry stub it out to an empty
     # result so they don't need to care about it.
-    return patch("app.services.orders_service.repo.fetch_stale_pending_order_ids", return_value=[])
+    return patch("app.common.orders.service.repo.fetch_stale_pending_order_ids", return_value=[])
 
 
 BUYER = AuthenticatedUser(id="buyer-1", email="b@x.com", role="buyer", access_token="tok")
@@ -37,7 +37,7 @@ def _mock_checkout_reads():
     # AsyncMock, not a plain lambda — _assert_available awaits both of these concurrently via
     # asyncio.gather, which requires each to actually be awaitable.
     return patch.multiple(
-        "app.services.orders_service.repo",
+        "app.common.orders.service.repo",
         fetch_listings_for_checkout=AsyncMock(return_value=LISTINGS),
         get_available_stock=AsyncMock(return_value=AVAILABILITY),
         # The order is read again after its items exist, because the database prices them (subtotal 100 here).
@@ -56,8 +56,8 @@ async def test_checkout_prices_from_the_listing_not_the_client():
     cart_items = [{"listing_id": "l-1", "quantity": 2}]
 
     with _mock_checkout_reads():
-        with patch("app.services.orders_service.repo.insert_order", return_value={"id": "order-1"}) as mock_insert:
-            with patch("app.services.orders_service.repo.insert_order_items") as mock_items:
+        with patch("app.common.orders.service.repo.insert_order", return_value={"id": "order-1"}) as mock_insert:
+            with patch("app.common.orders.service.repo.insert_order_items") as mock_items:
                 created = await service.checkout(BUYER, cart_items, {})
 
     # the response carries the priced order, not the empty row the insert returned
@@ -77,9 +77,9 @@ async def test_checkout_splits_multi_seller_cart_into_separate_orders():
 
     with _mock_checkout_reads():
         with patch(
-            "app.services.orders_service.repo.insert_order", side_effect=[{"id": "order-a"}, {"id": "order-b"}]
+            "app.common.orders.service.repo.insert_order", side_effect=[{"id": "order-a"}, {"id": "order-b"}]
         ) as mock_insert:
-            with patch("app.services.orders_service.repo.insert_order_items"):
+            with patch("app.common.orders.service.repo.insert_order_items"):
                 orders = await service.checkout(BUYER, cart_items, {})
 
     assert len(orders) == 2
@@ -90,8 +90,8 @@ async def test_checkout_splits_multi_seller_cart_into_separate_orders():
 @pytest.mark.asyncio
 async def test_checkout_rejects_inactive_listing():
     inactive_listings = [{**LISTINGS[0], "status": "inactive"}]
-    with patch("app.services.orders_service.repo.fetch_listings_for_checkout", return_value=inactive_listings):
-        with patch("app.services.orders_service.repo.get_available_stock", return_value=[]):
+    with patch("app.common.orders.service.repo.fetch_listings_for_checkout", return_value=inactive_listings):
+        with patch("app.common.orders.service.repo.get_available_stock", return_value=[]):
             with pytest.raises(HTTPException) as exc_info:
                 await service.checkout(BUYER, [{"listing_id": "l-1", "quantity": 1}], {})
     assert exc_info.value.status_code == 422
@@ -100,8 +100,8 @@ async def test_checkout_rejects_inactive_listing():
 @pytest.mark.asyncio
 async def test_checkout_rejects_over_available_stock():
     low_stock = [{"listing_id": "l-1", "available": 1}]
-    with patch("app.services.orders_service.repo.fetch_listings_for_checkout", return_value=LISTINGS):
-        with patch("app.services.orders_service.repo.get_available_stock", return_value=low_stock):
+    with patch("app.common.orders.service.repo.fetch_listings_for_checkout", return_value=LISTINGS):
+        with patch("app.common.orders.service.repo.get_available_stock", return_value=low_stock):
             with pytest.raises(HTTPException) as exc_info:
                 await service.checkout(BUYER, [{"listing_id": "l-1", "quantity": 5}], {})
     assert exc_info.value.status_code == 422
@@ -116,8 +116,8 @@ async def test_update_status_ignores_any_client_notion_of_current_state():
     # for the client to assert at all; the service always re-reads the real status itself.
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "pending"}
     with _mock_no_expiry_sweep():
-        with patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order):
-            with patch("app.services.orders_service.repo.update_order_status") as mock_update:
+        with patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order):
+            with patch("app.common.orders.service.repo.update_order_status") as mock_update:
                 await service.update_order_status(BUYER, "o-1", "cancelled")
     mock_update.assert_called_once_with(BUYER.access_token, "o-1", "cancelled")
 
@@ -130,8 +130,8 @@ def _order_in_status_for(order: dict, update_error: Exception | None = None):
     """A given order whose status update is captured (or raises `update_error`)."""
     with (
         _mock_no_expiry_sweep(),
-        patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order),
-        patch("app.services.orders_service.repo.update_order_status", side_effect=update_error) as mock_update,
+        patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order),
+        patch("app.common.orders.service.repo.update_order_status", side_effect=update_error) as mock_update,
     ):
         yield mock_update
 
@@ -142,8 +142,8 @@ def _order_in_status(status: str):
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": status}
     with (
         _mock_no_expiry_sweep(),
-        patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order),
-        patch("app.services.orders_service.repo.update_order_status") as mock_update,
+        patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order),
+        patch("app.common.orders.service.repo.update_order_status") as mock_update,
     ):
         yield mock_update
 
@@ -207,7 +207,7 @@ async def test_update_status_rejects_non_participant():
     stranger = AuthenticatedUser(id="stranger-1", email="s@x.com", role="buyer", access_token="tok2")
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "pending"}
     with _mock_no_expiry_sweep():
-        with patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order):
+        with patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order):
             with pytest.raises(HTTPException) as exc_info:
                 await service.update_order_status(stranger, "o-1", "cancelled")
     assert exc_info.value.status_code == 403
@@ -221,7 +221,7 @@ async def test_update_status_rejects_non_participant_admin_on_pending_order():
     # silently write another dealer's stock if this were allowed.
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "pending"}
     with _mock_no_expiry_sweep():
-        with patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order):
+        with patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order):
             with pytest.raises(HTTPException) as exc_info:
                 await service.update_order_status(ADMIN, "o-1", "confirmed")
     assert exc_info.value.status_code == 403
@@ -235,9 +235,9 @@ async def test_update_status_allows_non_participant_admin_to_resolve_dispute():
     # pending -> confirmed).
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "disputed"}
     with _mock_no_expiry_sweep():
-        with patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order):
-            with patch("app.services.orders_service.repo.update_order_status") as mock_update:
-                with patch("app.services.orders_service.log_admin_action", new_callable=AsyncMock) as mock_audit:
+        with patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order):
+            with patch("app.common.orders.service.repo.update_order_status") as mock_update:
+                with patch("app.common.orders.service.log_admin_action", new_callable=AsyncMock) as mock_audit:
                     await service.update_order_status(ADMIN, "o-1", "refunded")
     mock_update.assert_called_once_with(ADMIN.access_token, "o-1", "refunded")
     # BR-15: the admin's decision leaves an audit row
@@ -257,7 +257,7 @@ async def test_update_status_rejects_non_participant_admin_on_wrong_transition_e
     # still can't move a disputed order anywhere except refunded/completed.
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "disputed"}
     with _mock_no_expiry_sweep():
-        with patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order):
+        with patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order):
             with pytest.raises(HTTPException) as exc_info:
                 await service.update_order_status(ADMIN, "o-1", "pending")
     assert exc_info.value.status_code == 422
@@ -267,7 +267,7 @@ async def test_update_status_rejects_non_participant_admin_on_wrong_transition_e
 async def test_update_status_rejects_illegal_transition():
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "completed"}
     with _mock_no_expiry_sweep():
-        with patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order):
+        with patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order):
             with pytest.raises(HTTPException) as exc_info:
                 await service.update_order_status(BUYER, "o-1", "pending")
     assert exc_info.value.status_code == 422
@@ -279,7 +279,7 @@ async def test_update_status_rejects_expired_as_a_manual_target():
     # participant on their own pending order.
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "pending"}
     with _mock_no_expiry_sweep():
-        with patch("app.services.orders_service.repo.fetch_order_by_id", return_value=order):
+        with patch("app.common.orders.service.repo.fetch_order_by_id", return_value=order):
             with pytest.raises(HTTPException) as exc_info:
                 await service.update_order_status(BUYER, "o-1", "expired")
     assert exc_info.value.status_code == 422
@@ -318,9 +318,9 @@ async def test_confirming_an_order_rejects_when_stock_insufficient():
 
 @pytest.mark.asyncio
 async def test_fetching_orders_expires_stale_pending_orders_first():
-    with patch("app.services.orders_service.repo.fetch_stale_pending_order_ids", return_value=["o-1", "o-2"]):
-        with patch("app.services.orders_service.repo.update_order_status") as mock_update:
-            with patch("app.services.orders_service.repo.fetch_orders_for_user", return_value=[]):
+    with patch("app.common.orders.service.repo.fetch_stale_pending_order_ids", return_value=["o-1", "o-2"]):
+        with patch("app.common.orders.service.repo.update_order_status") as mock_update:
+            with patch("app.common.orders.service.repo.fetch_orders_for_user", return_value=[]):
                 await service.fetch_orders_for_user(BUYER, "buyer")
 
     assert mock_update.call_args_list == [
@@ -333,9 +333,9 @@ async def test_fetching_orders_expires_stale_pending_orders_first():
 
 @pytest.mark.asyncio
 async def test_fetching_orders_with_no_stale_orders_does_not_touch_status():
-    with patch("app.services.orders_service.repo.fetch_stale_pending_order_ids", return_value=[]):
-        with patch("app.services.orders_service.repo.update_order_status") as mock_update:
-            with patch("app.services.orders_service.repo.fetch_orders_for_user", return_value=[]):
+    with patch("app.common.orders.service.repo.fetch_stale_pending_order_ids", return_value=[]):
+        with patch("app.common.orders.service.repo.update_order_status") as mock_update:
+            with patch("app.common.orders.service.repo.fetch_orders_for_user", return_value=[]):
                 await service.fetch_orders_for_user(BUYER, "buyer")
 
     mock_update.assert_not_called()
@@ -350,7 +350,7 @@ def test_checkout_without_authorization_header_is_rejected():
 
 
 def test_update_status_request_schema_has_no_from_field():
-    from app.schemas.orders import UpdateOrderStatusRequest
+    from app.common.orders.schemas import UpdateOrderStatusRequest
 
     assert "from" not in UpdateOrderStatusRequest.model_fields
     assert set(UpdateOrderStatusRequest.model_fields) == {"to"}

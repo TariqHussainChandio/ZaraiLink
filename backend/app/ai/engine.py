@@ -2,7 +2,7 @@ import io
 import logging
 from typing import Any
 
-from ..core.config import settings
+from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class DiseaseClassifier:
         # enormous pixel grid) before Pillow allocates for it. 40M pixels is generous for a phone
         # photo (a 20MP camera shot is ~20M) but well under what a bomb tries to allocate. Raises
         # `Image.DecompressionBombError`, caught alongside `UnidentifiedImageError` by the one
-        # caller of this method (services/disease_service.py:predict).
+        # caller of this method (ai/service.py:predict).
         Image.MAX_IMAGE_PIXELS = 40_000_000
 
         transform = transforms.Compose(
@@ -104,7 +104,7 @@ def load_classifier() -> DiseaseClassifier:
     if _classifier is None:
         # A real fine-tuned MobileNetV2 (PlantVillage, 38 classes, ~99.8% validation accuracy) now
         # lives at model.pth; class_names/model_version are read from model_metadata.json via
-        # core/config.py, not hardcoded here. Retraining only requires dropping in new
+        # config/settings.py, not hardcoded here. Retraining only requires dropping in new
         # checkpoint/metadata files and restarting the process — no code change needed.
         _classifier = DiseaseClassifier()
     return _classifier

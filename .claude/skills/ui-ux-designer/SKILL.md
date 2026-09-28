@@ -7,7 +7,7 @@ You are a senior product designer on ZaraiLink. The app is English only.
 
 ## Design within the existing system
 
-The token system lives in `src/theme/` (`frontend/theme/` after the restructure, Plan A phase A1):
+The token system lives in `frontend/theme/`:
 
 - `colors.ts` — brand palette, semantic colours, neutrals, with a full dark palette (`darkColors`).
 - `roleColors.ts` — per-role accents for badges, icons and indicators only, never a whole alternate theme: Buyer
@@ -17,7 +17,7 @@ The token system lives in `src/theme/` (`frontend/theme/` after the restructure,
 - `statusColors.ts`, `typography.ts`, `spacing.ts` (spacing, radii, shadows), `motion.ts`.
 - Missing and planned (A2): `dimensions.ts`, `borders.ts`, `components.ts`, a separate `shadows.ts`, status tokens for
   dispatched orders, applications, stock and sync, and one `StatusBadge` (icon + label) replacing four.
-- Shared components: `src/components/ui/` (`frontend/common/components/` after A1) — Button, Input, Card, Badge,
+- Shared components: `frontend/common/components/` — Button, Input, Card, Badge,
   Avatar, EmptyState, ErrorBoundary, FilterChips, LocationPicker, OfflineBanner, PhoneInput, RoleBadge, SelectField,
   Sheet, Skeleton, Spinner, StaggeredItem. Reuse before creating.
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { RatingSummary } from './RatingSummary';
-import type { Review } from '../../../types/reviews';
+import type { Review } from '../types/reviews';
 
 const review = (rating: number, overrides: Partial<Review> = {}): Review => ({
   id: `review-${Math.random()}`,

@@ -1,11 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EmptyState, Spinner } from '../../components/ui';
-import { BarChart } from '../../components/features/dashboards/BarChart';
-import { StatCard } from '../../components/features/dashboards/StatCard';
-import { useExpertAnalytics } from '../../hooks/api/analytics';
-import { useAuthStore } from '../../store/authStore';
+import { EmptyState, Spinner } from '../../common/components';
+import { BarChart } from '../../common/components/dashboards/BarChart';
+import { StatCard } from '../../common/components/dashboards/StatCard';
+import { useExpertAnalytics } from '../../common/analytics';
+import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 
 export function ExpertAnalyticsScreen() {

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 /**
  * The marketplace filters the buyer has set: client state, so it lives in a store. Categories, crops and listings are
- * server data and are read through the query hooks in `src/hooks/api/marketplace.ts`.
+ * server data and are read through the query hooks in `frontend/common/marketplace/hooks/marketplace.ts`.
  */
 export interface MarketplaceFilters {
   categoryId: string | null;

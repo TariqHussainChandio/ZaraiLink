@@ -1,8 +1,8 @@
 import * as Crypto from 'expo-crypto';
-import { client as generatedClient } from '../../api/generated/client.gen';
+import { client as generatedClient } from './generated/client.gen';
 import { ENV } from '../../config/env';
-import { useAuthStore } from '../../store/authStore';
-import { useNetworkStore } from '../../store/networkStore';
+import { useAuthStore } from '../../state/authStore';
+import { useNetworkStore } from '../../state/networkStore';
 import { addApiBreadcrumb } from '../observability/breadcrumbs';
 import { supabase } from '../supabase/client';
 import { ApiError, apiErrorFromNetwork, apiErrorFromResponse } from './errors';
@@ -261,7 +261,7 @@ async function generatedTransport(input: RequestInfo | URL, init?: RequestInit):
   });
 }
 
-/** Points the generated client (src/api/generated) at our backend and through our pipeline. Call once at startup. */
+/** Points the generated client (frontend/services/api/generated) at our backend and through our pipeline. Call once at startup. */
 export function configureGeneratedClient(): void {
   generatedClient.setConfig({ baseUrl: ENV.apiBaseUrl, fetch: generatedTransport, throwOnError: true });
 }

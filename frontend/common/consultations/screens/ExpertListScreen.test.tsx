@@ -1,11 +1,11 @@
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ExpertListScreen } from './ExpertListScreen';
-import { fetchExperts } from '../../services/modules/expert/expertService';
+import { fetchExperts } from '../../../expert/services/expertService';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
-import type { ExpertWithProfile } from '../../types/expert';
-import type { ConsultationsScreenProps } from '../../navigation/stacks/ConsultationsNavigator';
+import type { ExpertWithProfile } from '../../../expert/types/expert';
+import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -20,7 +20,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/expert/expertService', () => ({
+jest.mock('../../../expert/services/expertService', () => ({
   fetchExperts: jest.fn(),
 }));
 

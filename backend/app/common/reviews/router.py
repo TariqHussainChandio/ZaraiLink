@@ -1,14 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from ....core.auth import AuthenticatedUser, require_admin, require_authenticated_user
-from ....core.pagination import Page, paginate
-from ....schemas.reviews import (
-    CreateConsultationReviewRequest,
-    CreateReviewRequest,
-    Review,
-    ReviewWithBuyer,
-)
-from ....services import reviews_service as service
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_authenticated_user
+from app.common.pagination import Page, paginate
+from app.common.reviews import service
+from app.common.reviews.schemas import CreateConsultationReviewRequest, CreateReviewRequest, Review, ReviewWithBuyer
 
 router = APIRouter(prefix="/api/v1/reviews", tags=["reviews"])
 

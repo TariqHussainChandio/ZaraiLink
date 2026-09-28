@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Avatar, Card } from '../../ui';
+import { Avatar, Card } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
-import type { ExpertWithProfile } from '../../../types/expert';
-import { SPECIALIZATION_LABELS } from '../../../constants/labels';
+import type { ExpertWithProfile } from '../../../expert';
+import { SPECIALIZATION_LABELS } from '../../constants/labels';
 
 export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onPress: () => void }) {
   const theme = useTheme();

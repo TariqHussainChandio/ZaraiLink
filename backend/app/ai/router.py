@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, Request
 
-from ....core.auth import AuthenticatedUser, require_authenticated_user
-from ....core.rate_limit import limiter
-from ....schemas.disease import (
+from app.ai import service as disease_service
+from app.ai.schemas import (
     CreateCaseRequest,
     DiseaseCaseResponse,
     DiseaseCaseWithPredictionResponse,
     PredictRequest,
     PredictResponse,
 )
-from ....services import disease_service
+from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
+from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/api/v1/disease", tags=["disease"])
 

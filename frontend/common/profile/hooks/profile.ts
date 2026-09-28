@@ -1,13 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { fetchFarmerProfile, upsertFarmerProfile } from '../../services/modules/farmer/farmService';
+import { fetchFarmerProfile, upsertFarmerProfile } from '../../../farmer';
 import {
   deleteOwnAccount,
   updatePassword,
   updateProfile,
   uploadAvatar,
-} from '../../services/modules/profile/profileService';
-import type { PickedPhoto } from '../../utils/photoPicker';
-import { queryKeys } from './keys';
+} from '../services/profileService';
+import type { PickedPhoto } from '../../../utils/photoPicker';
+import { queryKeys } from '../../../hooks/keys';
 
 export function useUpdatePassword() {
   return useMutation({ mutationFn: (newPassword: string) => updatePassword(newPassword) });

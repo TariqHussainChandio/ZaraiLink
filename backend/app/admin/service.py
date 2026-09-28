@@ -1,9 +1,9 @@
 import asyncio
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import admin_repository as repo
-from ..repositories import orders_repository as orders_repo
-from .audit_log_service import log_admin_action
+from app.admin import repository as repo
+from app.auth.dependencies import AuthenticatedUser
+from app.common.audit_log import log_admin_action
+from app.common.orders import service as orders_service
 
 
 async def fetch_platform_stats(user: AuthenticatedUser) -> dict:
@@ -80,4 +80,4 @@ async def fetch_audit_logs(user: AuthenticatedUser, target_entity: str | None, a
 
 
 async def fetch_all_orders(user: AuthenticatedUser) -> list[dict]:
-    return await orders_repo.fetch_all_orders(user.access_token)
+    return await orders_service.fetch_all_orders(user)

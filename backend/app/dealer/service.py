@@ -1,9 +1,9 @@
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
-from ..core.auth import AuthenticatedUser
-from ..core.errors import AppHTTPException
-from ..repositories import dealer_repository as repo
+from app.auth.dependencies import AuthenticatedUser
+from app.common.errors import AppHTTPException
+from app.dealer import repository as repo
 
 
 def _location(country: str | None, province: str | None, city: str | None) -> dict | None:

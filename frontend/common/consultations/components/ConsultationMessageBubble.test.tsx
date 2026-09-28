@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ConsultationMessageBubble } from './ConsultationMessageBubble';
-import type { ConsultationMessageWithListing } from '../../../types/expert';
+import type { ConsultationMessageWithListing } from '../../../expert/types/expert';
 
 const baseMessage: ConsultationMessageWithListing = {
   id: 'm1',

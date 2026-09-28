@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import expert_repository as repo
-from .audit_log_service import log_admin_action
+from app.auth.dependencies import AuthenticatedUser
+from app.common.audit_log import log_admin_action
+from app.expert import repository as repo
 
 
 def _to_location(country: str | None, province: str | None, city: str | None) -> dict | None:
@@ -34,6 +34,11 @@ async def update_profile(user: AuthenticatedUser, profile) -> dict:
 
 async def fetch_my_profile(user: AuthenticatedUser) -> dict | None:
     return await repo.fetch_own_expert_profile(user.access_token, user.id)
+
+
+async def find_expert(expert_id: str) -> dict | None:
+    """A verified expert, or None: for callers that decide themselves what a missing expert means."""
+    return await repo.fetch_expert_by_id(expert_id)
 
 
 async def fetch_expert_by_id(expert_id: str) -> dict:

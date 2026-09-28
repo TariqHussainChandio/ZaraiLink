@@ -1,4 +1,4 @@
-// Full SRDS v4.0 §12.2 lifecycle. See ALLOWED_TRANSITIONS in backend/app/services/orders_service.py
+// Full SRDS v4.0 §12.2 lifecycle. See ALLOWED_TRANSITIONS in backend/app/common/orders/service.py
 // for which moves are reachable and by whom. `expired` is system-only — a `pending` order the
 // seller never acts on gets flipped to it lazily (no user-facing action ever requests it).
 export type OrderStatus =

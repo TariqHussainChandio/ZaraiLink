@@ -1,6 +1,6 @@
 /**
  * P7 (7D) real-stack test: the expert and admin hooks against the real FastAPI and the real local Supabase.
- * Setup and how to run it: see src/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
+ * Setup and how to run it: see frontend/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
  *
  * The admin write paths need a second factor (aal2) and a database-side role promotion, which the backend smoke
  * suite already drives with a real admin (`world.admin`); what this test adds is what the app's hooks see: an expert
@@ -10,7 +10,7 @@ import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { API_URL, installNodeFetch, realStackEnabled, signUp } from '../../testUtils/realStack';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore } from '../../state/authStore';
 import { createTestQueryClient } from '../../testUtils/renderWithProviders';
 
 installNodeFetch();
@@ -37,8 +37,8 @@ describeReal('expert and admin hooks against the real backend', () => {
   let expertToken = '';
   let farmerToken = '';
   let experts: typeof import('./experts');
-  let consultations: typeof import('./consultations');
-  let admin: typeof import('./admin');
+  let consultations: typeof import('../../common/consultations/hooks/consultations');
+  let admin: typeof import('../../admin/hooks/admin');
   let queryClient: QueryClient;
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -56,8 +56,8 @@ describeReal('expert and admin hooks against the real backend', () => {
     expertToken = await signUp('expert');
     farmerToken = await signUp('farmer');
     experts = require('./experts');
-    consultations = require('./consultations');
-    admin = require('./admin');
+    consultations = require('../../common/consultations/hooks/consultations');
+    admin = require('../../admin/hooks/admin');
   }, 60_000);
 
   afterEach(() => queryClient.clear());

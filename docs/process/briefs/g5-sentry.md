@@ -35,12 +35,12 @@ Secret and variable names:     SENTRY_DSN (backend). A DSN is a write-only ident
                                still gets its own so environments do not mix. Later: SENTRY_AUTH_TOKEN
                                (source-map upload, CI only).
 
-Where it is used in code:      backend/app/core/observability.py (init and scrubbing), called from the
-                               lifespan in backend/app/main.py; request-id tag in core/middleware.py;
-                               capture in core/problem_details.py:unhandled_exception_handler.
+Where it is used in code:      backend/app/common/observability.py (init and scrubbing), called from the
+                               lifespan in backend/app/main.py; request-id tag in middleware/http_middleware.py;
+                               capture in common/problem_details.py:unhandled_exception_handler.
 
 How I prove it without the real service:
-                               backend/tests/unit/test_observability.py swaps in an in-memory transport and
+                               backend/tests/common/test_observability.py swaps in an in-memory transport and
                                drives a real request that raises: the event is captured, carries the request
                                id, and contains no bearer token or request body. Off by default: no DSN
                                means no client is created, so tests, CI and local runs never call out.

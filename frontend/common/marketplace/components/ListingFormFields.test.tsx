@@ -11,7 +11,7 @@ import {
   type ListingFormValues,
 } from './ListingFormFields';
 
-jest.mock('../../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../services/listingsService', () => ({
   fetchCategories: jest.fn().mockResolvedValue([
     { id: 'c1', name: 'Seeds', slug: 'seeds', icon: null, created_at: '' },
   ]),

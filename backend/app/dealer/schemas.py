@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from .common import Location
+from app.common.schemas import Location
 
 DealerEntityStatus = Literal["active", "inactive"]
 InventoryTransactionType = Literal["addition", "reduction", "adjustment", "sale", "restock", "correction"]

@@ -46,22 +46,22 @@ def baseline(repo: Path) -> dict:
 
 
 STRICT_CASES = [
-    ("stub-marker", "src/a.ts", "export const f = () => { throw new Error('Not implemented'); };\n"),
-    ("stub-marker", "src/a.tsx", "export const Label = () => 'Coming soon';\n"),
+    ("stub-marker", "frontend/a.ts", "export const f = () => { throw new Error('Not implemented'); };\n"),
+    ("stub-marker", "frontend/a.tsx", "export const Label = () => 'Coming soon';\n"),
     ("stub-marker", "backend/app/a.py", "def f():\n    raise NotImplementedError\n"),
-    ("todo-without-issue", "src/a.ts", "// TODO: fix this later\nexport const x = 1;\n"),
+    ("todo-without-issue", "frontend/a.ts", "// TODO: fix this later\nexport const x = 1;\n"),
     ("todo-without-issue", "backend/app/a.py", "# FIXME make this real\nx = 1\n"),
-    ("empty-catch", "src/a.ts", "export const f = () => { try { g(); } catch (e) {} };\n"),
+    ("empty-catch", "frontend/a.ts", "export const f = () => { try { g(); } catch (e) {} };\n"),
     ("empty-catch", "backend/app/a.py", "try:\n    f()\nexcept ValueError:\n    pass\n"),
-    ("ts-suppression", "src/a.ts", "// @ts-ignore\nexport const x: number = 'a';\n"),
-    ("test-double-in-prod", "src/a.ts", "export const send = jest.fn();\n"),
+    ("ts-suppression", "frontend/a.ts", "// @ts-ignore\nexport const x: number = 'a';\n"),
+    ("test-double-in-prod", "frontend/a.ts", "export const send = jest.fn();\n"),
     ("test-double-in-prod", "backend/app/a.py", "from unittest.mock import MagicMock\nclient = MagicMock()\n"),
     ("py-print", "backend/app/a.py", "print('debugging')\n"),
-    ("as-any", "src/a.ts", "export const a = 1 as any;\n"),
-    ("console-call", "src/a.ts", "console.log('x');\n"),
-    ("empty-handler", "src/a.tsx", "export const p = { onPress: () => {} };\n"),
-    ("layer-boundary", "src/screens/A.tsx", "import { x } from '../services/modules/a/b';\nexport const y = x;\n"),
-    ("layer-boundary", "src/components/A.tsx", "import { supabase } from '../services/supabase/client';\nexport const s = supabase;\n"),
+    ("as-any", "frontend/a.ts", "export const a = 1 as any;\n"),
+    ("console-call", "frontend/a.ts", "console.log('x');\n"),
+    ("empty-handler", "frontend/a.tsx", "export const p = { onPress: () => {} };\n"),
+    ("layer-boundary", "frontend/farmer/screens/A.tsx", "import { x } from '../services/modules/a/b';\nexport const y = x;\n"),
+    ("layer-boundary", "frontend/common/components/A.tsx", "import { supabase } from '../services/supabase/client';\nexport const s = supabase;\n"),
 ]
 
 
@@ -74,13 +74,13 @@ def test_strict_rules_reject_production_code(repo, rule, rel, content):
 
 
 def test_todo_with_an_issue_reference_is_allowed(repo):
-    write(repo, "src/a.ts", "// TODO(#123): replace once the API exposes it\nexport const x = 1;\n")
+    write(repo, "frontend/a.ts", "// TODO(#123): replace once the API exposes it\nexport const x = 1;\n")
     assert gate(repo).returncode == 0
 
 
 @pytest.mark.parametrize(
     "rel",
-    ["src/a.test.ts", "src/__tests__/a.ts", "src/__mocks__/a.ts", "src/testUtils/a.ts", "backend/tests/a.py"],
+    ["frontend/a.test.ts", "frontend/__tests__/a.ts", "frontend/__mocks__/a.ts", "frontend/testUtils/a.ts", "backend/tests/a.py"],
 )
 def test_test_code_is_exempt(repo, rel):
     write(repo, rel, "export const f = jest.fn();\nconst x = 1; // eslint-disable-line\nconsole.log(x);\n// TODO later\n")
@@ -88,7 +88,7 @@ def test_test_code_is_exempt(repo, rel):
 
 
 def test_a_strict_hit_blocks_creating_a_baseline(repo):
-    write(repo, "src/a.ts", "throw new Error('not implemented');\n")
+    write(repo, "frontend/a.ts", "throw new Error('not implemented');\n")
     result = gate(repo, "--init")
     assert result.returncode == 1
     assert not (repo / "scripts" / "reality-baseline.json").exists()
@@ -98,57 +98,57 @@ def test_a_strict_hit_blocks_creating_a_baseline(repo):
 
 
 def test_ratchet_allows_recorded_debt_but_not_growth_in_a_file(repo):
-    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\n")
+    write(repo, "frontend/a.ts", "export const a = 1; // eslint-disable-line\n")
     assert gate(repo, "--init").returncode == 0
     assert gate(repo).returncode == 0
 
-    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\nexport const b = 2; // eslint-disable-line\n")
+    write(repo, "frontend/a.ts", "export const a = 1; // eslint-disable-line\nexport const b = 2; // eslint-disable-line\n")
     result = gate(repo)
     assert result.returncode == 1
-    assert "[lint-disable] src/a.ts: 2 now, 1 allowed" in result.stderr
+    assert "[lint-disable] frontend/a.ts: 2 now, 1 allowed" in result.stderr
 
 
 def test_a_new_file_starts_at_zero(repo):
-    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\n")
+    write(repo, "frontend/a.ts", "export const a = 1; // eslint-disable-line\n")
     assert gate(repo, "--init").returncode == 0
 
-    write(repo, "src/new.ts", "export const n = 1; // eslint-disable-line\n")
+    write(repo, "frontend/new.ts", "export const n = 1; // eslint-disable-line\n")
     result = gate(repo)
     assert result.returncode == 1
-    assert "src/new.ts: 1 now, 0 allowed" in result.stderr
+    assert "frontend/new.ts: 1 now, 0 allowed" in result.stderr
 
 
 def test_fixing_one_file_cannot_mask_a_new_problem_in_another(repo):
-    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
+    write(repo, "frontend/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
     assert gate(repo, "--init").returncode == 0
 
-    write(repo, "src/a.ts", "export const a = 1;\n")  # two fewer
-    write(repo, "src/b.ts", "export const b = 1; // eslint-disable-line\n")  # one new
+    write(repo, "frontend/a.ts", "export const a = 1;\n")  # two fewer
+    write(repo, "frontend/b.ts", "export const b = 1; // eslint-disable-line\n")  # one new
     assert gate(repo).returncode == 1  # total went down, but the new file is still refused
 
 
 def test_update_baseline_records_improvements_and_refuses_increases(repo):
-    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
+    write(repo, "frontend/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
     assert gate(repo, "--init").returncode == 0
 
-    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\n")
+    write(repo, "frontend/a.ts", "export const a = 1; // eslint-disable-line\n")
     assert gate(repo, "--update-baseline").returncode == 0
-    assert baseline(repo)["rules"]["lint-disable"] == {"src/a.ts": 1}
+    assert baseline(repo)["rules"]["lint-disable"] == {"frontend/a.ts": 1}
 
-    write(repo, "src/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
+    write(repo, "frontend/a.ts", "export const a = 1; // eslint-disable-line\nexport const a2 = 1; // eslint-disable-line\n")
     assert gate(repo, "--update-baseline").returncode == 1
-    assert baseline(repo)["rules"]["lint-disable"] == {"src/a.ts": 1}
+    assert baseline(repo)["rules"]["lint-disable"] == {"frontend/a.ts": 1}
 
 
 @pytest.mark.parametrize(
     ("rule", "rel", "content"),
     [
-        ("lint-disable", "src/a.ts", "// eslint-disable-next-line no-console\nexport const x = 1;\n"),
+        ("lint-disable", "frontend/a.ts", "// eslint-disable-next-line no-console\nexport const x = 1;\n"),
         ("broad-except", "backend/app/a.py", "try:\n    f()\nexcept Exception as exc:\n    log(exc)\n"),
     ],
 )
 def test_each_ratchet_rule_detects_new_debt(repo, rule, rel, content):
-    write(repo, "src/clean.ts", "export const ok = 1;\n")
+    write(repo, "frontend/clean.ts", "export const ok = 1;\n")
     assert gate(repo, "--init").returncode == 0
     write(repo, rel, content)
     result = gate(repo)
@@ -171,7 +171,7 @@ def forget_rule(repo: Path, rule: str) -> None:
     (repo / "scripts" / "reality-baseline.json").write_text(json.dumps(recorded), encoding="utf-8")
 
 
-@pytest.mark.parametrize("rel", ["src/hooks/api/a.ts", "src/store/a.ts", "src/services/modules/a/b.ts"])
+@pytest.mark.parametrize("rel", ["frontend/hooks/a.ts", "frontend/state/a.ts", "frontend/farmer/services/b.ts"])
 def test_hooks_stores_and_services_are_outside_the_boundary(repo, rel):
     write(repo, rel, LAYER_IMPORT)
     assert gate(repo).returncode == 0
@@ -190,41 +190,41 @@ def test_hooks_stores_and_services_are_outside_the_boundary(repo, rel):
     ],
 )
 def test_every_way_of_reaching_the_service_layer_is_caught(repo, statement):
-    write(repo, "src/screens/A.tsx", statement)
+    write(repo, "frontend/farmer/screens/A.tsx", statement)
     result = gate(repo)
     assert result.returncode == 1
     assert "[layer-boundary]" in result.stderr
 
 
 def test_importing_the_error_types_is_allowed_from_a_screen(repo):
-    write(repo, "src/screens/A.tsx", "import type { ApiError } from '../services/api/errors';\nexport type E = ApiError;\n")
+    write(repo, "frontend/farmer/screens/A.tsx", "import type { ApiError } from '../services/api/errors';\nexport type E = ApiError;\n")
     assert gate(repo).returncode == 0
 
 
 def test_the_layer_boundary_has_no_baseline_to_hide_behind(repo):
-    write(repo, "src/screens/A.tsx", LAYER_IMPORT)
+    write(repo, "frontend/farmer/screens/A.tsx", LAYER_IMPORT)
     assert gate(repo, "--init").returncode == 1  # a strict rule blocks even the first baseline
 
 
 def test_the_logger_is_the_only_file_that_may_use_the_console(repo):
-    write(repo, "src/utils/logger.ts", "export const log = () => console.warn('x');\n")
+    write(repo, "frontend/utils/logger.ts", "export const log = () => console.warn('x');\n")
     assert gate(repo).returncode == 0
-    write(repo, "src/utils/other.ts", "export const log = () => console.warn('x');\n")
+    write(repo, "frontend/utils/other.ts", "export const log = () => console.warn('x');\n")
     result = gate(repo)
     assert result.returncode == 1
     assert "[console-call]" in result.stderr
-    assert "src/utils/other.ts" in result.stderr
+    assert "frontend/utils/other.ts" in result.stderr
 
 
 def test_a_rule_added_later_records_its_existing_debt_only_when_asked(repo):
-    write(repo, "src/a.ts", DEBT)
+    write(repo, "frontend/a.ts", DEBT)
     assert gate(repo, "--init").returncode == 0
     forget_rule(repo, "lint-disable")
 
     assert gate(repo).returncode == 1  # the debt is unrecorded, so the rule fails
     assert gate(repo, "--update-baseline").returncode == 1  # and a plain update refuses to record it
     assert gate(repo, "--update-baseline", "--adopt-new-rules").returncode == 0
-    assert baseline(repo)["rules"]["lint-disable"] == {"src/a.ts": 1}
+    assert baseline(repo)["rules"]["lint-disable"] == {"frontend/a.ts": 1}
     assert gate(repo).returncode == 0
 
 
@@ -241,15 +241,15 @@ def test_adopting_a_new_rule_never_forgives_growth_in_an_existing_one(repo):
 
 
 def test_files_mode_only_checks_the_named_files(repo):
-    write(repo, "src/bad.ts", "throw new Error('not implemented');\n")
-    write(repo, "src/good.ts", "export const ok = 1;\n")
-    assert gate(repo, "--files", "src/good.ts").returncode == 0
-    assert gate(repo, "--files", "src/bad.ts").returncode == 1
+    write(repo, "frontend/bad.ts", "throw new Error('not implemented');\n")
+    write(repo, "frontend/good.ts", "export const ok = 1;\n")
+    assert gate(repo, "--files", "frontend/good.ts").returncode == 0
+    assert gate(repo, "--files", "frontend/bad.ts").returncode == 1
 
 
 def test_a_partial_scan_never_writes_a_baseline(repo):
-    write(repo, "src/good.ts", "export const ok = 1;\n")
-    assert gate(repo, "--files", "src/good.ts", "--init").returncode == 2
+    write(repo, "frontend/good.ts", "export const ok = 1;\n")
+    assert gate(repo, "--files", "frontend/good.ts", "--init").returncode == 2
 
 
 # ------------------------------------------------------------------ tool ratchets
@@ -284,3 +284,318 @@ def test_mypy_ratchet_rejects_a_new_type_error(repo):
     result = gate(repo, "--tools", "mypy")
     assert result.returncode == 1
     assert "assignment:app/bad.py" in result.stderr
+
+
+# ------------------------------------------------------------------ module boundary (A1)
+
+
+def boundary(repo: Path) -> subprocess.CompletedProcess[str]:
+    return gate(repo)
+
+
+def test_a_module_may_use_another_only_through_its_index(repo):
+    write(repo, "frontend/farmer/hooks/farms.ts", "export const useFarms = () => 1;\n")
+    write(repo, "frontend/farmer/index.ts", "export { useFarms } from './hooks/farms';\n")
+    write(repo, "frontend/admin/screens/A.tsx", "import { useFarms } from '../../farmer';\nexport const a = useFarms;\n")
+    assert boundary(repo).returncode == 0  # allowed: the public entry point
+
+    write(repo, "frontend/admin/screens/A.tsx", "import { useFarms } from '../../farmer/hooks/farms';\nexport const a = useFarms;\n")
+    result = boundary(repo)
+    assert result.returncode == 1
+    assert "[module-boundary]" in result.stderr
+    assert "frontend/admin/screens/A.tsx" in result.stderr
+
+
+def test_shared_code_uses_a_module_only_as_types(repo):
+    write(repo, "frontend/common/orders/types/orders.ts", "export interface Order { id: string }\n")
+    write(repo, "frontend/common/orders/hooks/orders.ts", "export const useOrders = () => 1;\n")
+    write(
+        repo,
+        "frontend/common/orders/index.ts",
+        "export { useOrders } from './hooks/orders';\nexport type { Order } from './types/orders';\n",
+    )
+    write(repo, "frontend/state/cart.ts", "import type { Order } from '../common/orders';\nexport type O = Order;\n")
+    assert boundary(repo).returncode == 0
+
+    write(repo, "frontend/state/cart.ts", "import { useOrders } from '../common/orders';\nexport const u = useOrders;\n")
+    assert "[module-boundary]" in boundary(repo).stderr
+
+
+def test_navigation_mounts_module_screens_directly(repo):
+    write(repo, "frontend/farmer/screens/Farm.tsx", "export const Farm = () => null;\n")
+    write(repo, "frontend/navigation/stacks/App.tsx", "import { Farm } from '../../farmer/screens/Farm';\nexport const s = Farm;\n")
+    assert boundary(repo).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "barrel",
+    [
+        "export * from './hooks/farms';\n",
+        "export { useOrders } from '../common/orders/hooks/orders';\n",
+    ],
+)
+def test_a_barrel_re_exports_only_its_own_files_by_name(repo, barrel):
+    write(repo, "frontend/farmer/hooks/farms.ts", "export const useFarms = () => 1;\n")
+    write(repo, "frontend/common/orders/hooks/orders.ts", "export const useOrders = () => 1;\n")
+    write(repo, "frontend/farmer/index.ts", barrel)
+    assert "[module-boundary]" in boundary(repo).stderr
+
+
+def test_no_runtime_cycle_runs_through_a_barrel(repo):
+    write(repo, "frontend/common/orders/hooks/orders.ts", "import { pay } from '../../payments';\nexport const order = () => pay;\n")
+    write(repo, "frontend/common/orders/index.ts", "export { order } from './hooks/orders';\n")
+    write(repo, "frontend/common/payments/hooks/payments.ts", "import { order } from '../../orders';\nexport const pay = () => order;\n")
+    write(repo, "frontend/common/payments/index.ts", "export { pay } from './hooks/payments';\n")
+    result = boundary(repo)
+    assert "runtime import cycle through this barrel" in result.stderr
+
+
+def test_a_screen_cannot_reach_a_service_through_another_modules_barrel(repo):
+    write(repo, "frontend/farmer/services/farmService.ts", "export const fetchFarms = () => 1;\n")
+    write(repo, "frontend/farmer/index.ts", "export { fetchFarms } from './services/farmService';\n")
+    write(repo, "frontend/admin/hooks/admin.ts", "import { fetchFarms } from '../../farmer';\nexport const f = fetchFarms;\n")
+    assert boundary(repo).returncode == 0  # hooks may call another module's service
+    write(repo, "frontend/admin/screens/A.tsx", "import { fetchFarms } from '../../farmer';\nexport const f = fetchFarms;\n")
+    assert "[module-boundary]" in boundary(repo).stderr
+
+
+def test_a_backend_module_uses_another_only_through_its_service_or_schemas(repo):
+    write(repo, "backend/app/common/orders/service.py", "def orders():\n    return []\n")
+    write(repo, "backend/app/common/orders/repository.py", "def rows():\n    return []\n")
+    write(repo, "backend/app/admin/service.py", "from app.common.orders import service as orders_service\n\nX = orders_service\n")
+    assert boundary(repo).returncode == 0
+
+    write(repo, "backend/app/admin/service.py", "from app.common.orders import repository as orders_repo\n\nX = orders_repo\n")
+    result = boundary(repo)
+    assert result.returncode == 1
+    assert "backend/app/admin/service.py" in result.stderr
+
+
+def test_shared_backend_code_never_imports_a_module(repo):
+    write(repo, "backend/app/common/orders/service.py", "def orders():\n    return []\n")
+    write(repo, "backend/app/common/rows.py", "from app.common.orders import service\n\nX = service\n")
+    assert "[module-boundary]" in boundary(repo).stderr
+
+
+# Each form below once passed the rule unseen (found by the A1 verification, 2026-09-28).
+FARMER_SERVICE = ("frontend/farmer/services/farmService.ts", "export const fetchFarms = () => 1;\n")
+FARMER_BARREL = ("frontend/farmer/index.ts", "export { fetchFarms } from './services/farmService';\n")
+
+
+@pytest.mark.parametrize(
+    "rel, text",
+    [
+        ("frontend/admin/x.ts", "const m = require('../farmer/services/farmService');\nexport const f = m;\n"),
+        ("frontend/admin/x.ts", "export const load = () => import('../farmer/services/farmService');\n"),
+        ("frontend/admin/x.ts", "import '../farmer/services/farmService';\n"),
+        ("App.tsx", "import { fetchFarms } from './frontend/farmer/services/farmService';\nexport const f = fetchFarms;\n"),
+        # A namespace import may use every name, services included.
+        ("frontend/admin/screens/A.tsx", "import * as Farmer from '../../farmer';\nexport const f = Farmer.fetchFarms;\n"),
+        # A module's own files import each other directly, never through its barrel.
+        ("frontend/farmer/screens/F.tsx", "import { fetchFarms } from '..';\nexport const f = fetchFarms;\n"),
+        # No semicolons: the runtime import must not hide behind the `type` of the line before.
+        (
+            "frontend/state/x.ts",
+            "import type { ReactNode } from 'react'\nimport { fetchFarms } from '../farmer'\nexport const f = fetchFarms\n",
+        ),
+    ],
+    ids=["require", "dynamic-import", "bare-import", "entry-file", "namespace-import", "own-barrel", "no-semicolons"],
+)
+def test_every_way_of_loading_a_frontend_file_is_checked(repo, rel, text):
+    write(repo, *FARMER_SERVICE)
+    write(repo, *FARMER_BARREL)
+    write(repo, rel, text)
+    result = boundary(repo)
+    assert result.returncode == 1
+    assert "[module-boundary]" in result.stderr
+
+
+# Found by the second round of the A1 verification: forms Metro still resolves but the gate could not read.
+@pytest.mark.parametrize(
+    "rel, text",
+    [
+        ("frontend/admin/x.ts", "export const load = () => import(`../farmer/services/farmService`);\n"),
+        ("frontend/admin/x.ts", "export const load = () => import('../farmer/' + 'services/farmService');\n"),
+        ("frontend/admin/x.ts", "const FARM = '../farmer/services/farmService';\nexport const load = () => import(FARM);\n"),
+        (
+            "frontend/admin/x.ts",
+            "const FARM = '../farmer/services/farmService';\nexport function load(flag: boolean) {\n  if (flag) import(FARM);\n}\n",
+        ),
+        ("frontend/admin/x.ts", "const m = require(`../farmer/services/farmService`);\nexport const f = m;\n"),
+        ("frontend/admin/x.ts", "import { 'fetchFarms' as f } from '../farmer/services/farmService';\nexport const g = f;\n"),
+        ("frontend/admin/x.ts", "import { fetchFarms } from '..\\u002Ffarmer/services/farmService';\nexport const f = fetchFarms;\n"),
+        # `/*` inside a regular expression once read as a comment that ran to the end of the file.
+        (
+            "frontend/admin/x.ts",
+            "export const trim = (p: string) => p.replace(/^\\/*/, '');\n"
+            "export { fetchFarms } from '../farmer/services/farmService';\n",
+        ),
+        # Shared code may not pass a module's exports on to modules that may not import them.
+        ("frontend/navigation/farm.ts", "export { fetchFarms } from '../farmer';\n"),
+    ],
+    ids=["template", "concatenated", "variable", "after-if", "require-template", "quoted-name", "escaped",
+         "regex-literal", "navigation-re-export"],
+)
+def test_an_import_the_gate_cannot_read_or_follow_is_refused(repo, rel, text):
+    write(repo, *FARMER_SERVICE)
+    write(repo, *FARMER_BARREL)
+    write(repo, rel, text)
+    result = boundary(repo)
+    assert result.returncode == 1
+    assert "[module-boundary]" in result.stderr
+
+
+# Third round of the A1 verification: a JSX line that once flipped the reader's quote state, and a two-step re-export.
+JSX_THEN_URL = (
+    "import React from 'react';\n"
+    "import { Text, View } from 'react-native';\n"
+    "export const Row = ({ n }: { n: number }) => (\n"
+    "  <View>\n"
+    "    <View style={{ width: n }} /><Text>{'km/h'}</Text>\n"
+    "  </View>\n"
+    ");\n"
+)
+
+
+@pytest.mark.parametrize(
+    "rel, text",
+    [
+        (
+            "frontend/admin/Row.tsx",
+            JSX_THEN_URL + "const HELP = 'https://zarailink.example/help'; "
+            "export { fetchFarms } from '../farmer/services/farmService';\nexport const help = HELP;\n",
+        ),
+        ("frontend/navigation/farm.ts", "import { fetchFarms } from '../farmer';\nexport { fetchFarms };\n"),
+    ],
+    ids=["jsx-then-url", "navigation-two-step-re-export"],
+)
+def test_a_jsx_line_or_a_two_step_re_export_hides_nothing(repo, rel, text):
+    write(repo, *FARMER_SERVICE)
+    write(repo, *FARMER_BARREL)
+    write(repo, rel, text)
+    result = boundary(repo)
+    assert result.returncode == 1
+    assert "[module-boundary]" in result.stderr
+
+
+def test_ui_copy_that_reads_like_an_import_is_not_one(repo):
+    write(repo, *FARMER_SERVICE)
+    write(repo, *FARMER_BARREL)
+    write(
+        repo,
+        "frontend/admin/screens/Docs.tsx",
+        "export const Docs = () => <Text>Documents we require (CNIC and licence)</Text>;\n"
+        "export const failed = 'We could not import (CSV) your file';\n",
+    )
+    # After the JSX line, a comment is still a comment. (Outside screens/: the older `layer-boundary` text rule still
+    # reads comments there.)
+    write(repo, "frontend/admin/Row.tsx", JSX_THEN_URL + "// import { fetchFarms } from '../farmer/services/farmService';\n")
+    result = boundary(repo)
+    assert result.returncode == 0, result.stderr
+
+
+def test_regular_expressions_jsx_and_comments_do_not_confuse_the_reader(repo):
+    write(repo, *FARMER_SERVICE)
+    write(repo, *FARMER_BARREL)
+    write(
+        repo,
+        "frontend/admin/hooks/x.tsx",
+        "import { fetchFarms } from '../../farmer';\n"
+        "// import { fetchFarms } from '../../farmer/services/farmService';\n"
+        "export const trim = (p: string) => p.replace(/^\\/*/, '').split(/\\/\\//);\n"
+        "export const View = () => <Text>{`a ${1 / 2}`}</Text>;\n"
+        "export const f = fetchFarms;\n",
+    )
+    assert boundary(repo).returncode == 0
+
+
+def test_the_entry_file_may_use_a_barrel_at_runtime(repo):
+    write(repo, *FARMER_SERVICE)
+    write(repo, *FARMER_BARREL)
+    write(repo, "App.tsx", "import { fetchFarms } from './frontend/farmer';\nexport const f = fetchFarms;\n")
+    assert boundary(repo).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "text, allowed",
+    [
+        ("import app.farmer.repository\n\nX = app.farmer.repository\n", False),
+        ("from ..farmer import repository\n\nX = repository\n", False),
+        ("from app import farmer\n\nX = farmer\n", False),
+        ("import app.farmer.service\n\nX = app.farmer.service\n", True),
+        ("from ..farmer import service\n\nX = service\n", True),
+        ("from . import repository\n\nX = repository\n", True),  # its own repository
+    ],
+    ids=["import-repository", "relative-repository", "from-app-import", "import-service", "relative-service", "own"],
+)
+def test_every_backend_import_form_is_checked(repo, text, allowed):
+    _backend_modules(repo)
+    write(repo, "backend/app/admin/service.py", text)
+    result = boundary(repo)
+    assert (result.returncode == 0) is allowed, result.stderr
+
+
+def _backend_modules(repo: Path) -> None:
+    # A service binds its repository as `repo`, as every service in the app does, and imports its models.
+    write(
+        repo,
+        "backend/app/farmer/service.py",
+        "from app.farmer import repository as repo\nfrom app.farmer.schemas import FarmInput\n\n\n"
+        "def farms(data: FarmInput):\n    return repo.rows()\n",
+    )
+    write(repo, "backend/app/farmer/schemas.py", "class FarmInput:\n    pass\n")
+    write(repo, "backend/app/farmer/repository.py", "def rows():\n    return []\n")
+    write(repo, "backend/app/admin/repository.py", "def rows():\n    return []\n")
+
+
+@pytest.mark.parametrize(
+    "text, allowed",
+    [
+        ("from app.farmer.service import repo\n\nX = repo.rows\n", False),
+        ("from app.farmer import service as farmer_service\n\nX = farmer_service.repo.rows\n", False),
+        ("import app.farmer.service\n\nX = app.farmer.service.repo.rows\n", False),
+        ("import app\n\nX = app.farmer.repository.rows\n", False),
+        ("import importlib\n\nX = importlib.import_module('app.farmer.repository')\n", False),
+        ("X = __import__('app.farmer.repository')\n", False),
+        ("import builtins\n\nX = builtins.__import__('app.farmer.repository')\n", False),
+        ("from app.farmer import service as farmer_service\n\nX = farmer_service.farms\n", True),
+        # A model the service imports from schemas is a public type, reachable either way.
+        ("from app.farmer.service import FarmInput\n\nX = FarmInput\n", True),
+        ("from app.farmer import service as farmer_service\n\nX = farmer_service.FarmInput\n", True),
+    ],
+    ids=["import-alias", "attribute-alias", "attribute-dotted", "attribute-module", "importlib", "dunder-import",
+         "builtins-import", "service-function", "schema-through-service", "schema-attribute"],
+)
+def test_a_backend_module_cannot_reach_past_another_modules_service(repo, text, allowed):
+    _backend_modules(repo)
+    write(repo, "backend/app/admin/service.py", text)
+    result = boundary(repo)
+    assert (result.returncode == 0) is allowed, result.stderr
+
+
+# ------------------------------------------------------------------ silent-breakage guards (A1)
+
+
+def test_a_gate_that_scans_no_frontend_file_fails(repo):
+    write(repo, "package.json", "{}\n")
+    write(repo, "src/a.ts", "export const a = 1;\n")  # a source file the gate does not look at
+    result = gate(repo)
+    assert result.returncode == 1
+    assert "[scan]" in result.stderr
+
+
+def test_the_entry_files_alone_do_not_count_as_a_scanned_frontend(repo):
+    write(repo, "package.json", "{}\n")
+    write(repo, "App.tsx", "export const App = () => null;\n")
+    result = gate(repo)
+    assert result.returncode == 1
+    assert "[scan]" in result.stderr
+
+
+def test_a_baseline_entry_for_a_missing_file_fails(repo):
+    write(repo, "frontend/a.ts", DEBT)
+    assert gate(repo, "--init").returncode == 0
+    (repo / "frontend" / "a.ts").rename(repo / "frontend" / "b.ts")
+    result = gate(repo)
+    assert result.returncode == 1
+    assert "[baseline] lint-disable: frontend/a.ts no longer exists" in result.stderr

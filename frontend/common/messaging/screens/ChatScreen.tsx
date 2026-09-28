@@ -1,15 +1,15 @@
 import React, { useMemo } from 'react';
-import type { PickedPhoto } from '../../utils/photoPicker';
+import type { PickedPhoto } from '../../../utils/photoPicker';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components/ui';
-import { ChatInput } from '../../components/features/messaging/ChatInput';
-import { MessageBubble } from '../../components/features/messaging/MessageBubble';
-import { useAttachmentUrls, useConversationMessages, useSendMessage } from '../../hooks/api/messaging';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
-import type { MessagingScreenProps } from '../../navigation/stacks/MessagingNavigator';
+import { EmptyState, Spinner } from '../../components';
+import { ChatInput } from '../components/ChatInput';
+import { MessageBubble } from '../components/MessageBubble';
+import { useAttachmentUrls, useConversationMessages, useSendMessage } from '../hooks/messaging';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import { errorMessage } from '../../../utils/errorMessage';
+import type { MessagingScreenProps } from '../../../navigation/stacks/MessagingNavigator';
 
 export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   const theme = useTheme();

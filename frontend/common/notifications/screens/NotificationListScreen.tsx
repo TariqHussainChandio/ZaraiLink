@@ -2,18 +2,18 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components/ui';
-import { NotificationRow } from '../../components/features/notifications/NotificationRow';
+import { EmptyState, Spinner } from '../../components';
+import { NotificationRow } from '../components/NotificationRow';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
-} from '../../hooks/api/notifications';
-import { useAuthStore } from '../../store/authStore';
-import { useTheme, type Theme } from '../../theme';
-import type { Notification } from '../../types/notifications';
-import { errorMessage } from '../../utils/errorMessage';
+} from '../hooks/notifications';
+import { useAuthStore } from '../../../state/authStore';
+import { useTheme, type Theme } from '../../../theme';
+import type { Notification } from '../types/notifications';
+import { errorMessage } from '../../../utils/errorMessage';
 
 const ORDER_TYPES = new Set(['order_new', 'order_status_changed', 'payment_status_changed']);
 

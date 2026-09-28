@@ -1,20 +1,20 @@
 /**
  * P7 (7D) real-stack test: the order, payment, messaging and notification hooks against the real FastAPI and the
  * real local Supabase, for three real users (seller, buyer, stranger): the allowed path and the rejected path.
- * Setup and how to run it: see src/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
+ * Setup and how to run it: see frontend/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
  */
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import React from 'react';
-import { API_URL, installNodeFetch, realStackEnabled, signUp } from '../../testUtils/realStack';
-import { useAuthStore } from '../../store/authStore';
-import { createTestQueryClient } from '../../testUtils/renderWithProviders';
+import { API_URL, installNodeFetch, realStackEnabled, signUp } from '../../../testUtils/realStack';
+import { useAuthStore } from '../../../state/authStore';
+import { createTestQueryClient } from '../../../testUtils/renderWithProviders';
 
 installNodeFetch();
 
 // The token the (real) client attaches; each step says which real user is calling.
 let mockToken: string | null = null;
-jest.mock('../../services/supabase/client', () => ({
+jest.mock('../../../services/supabase/client', () => ({
   supabase: {
     auth: {
       getSession: async () => ({ data: { session: mockToken ? { access_token: mockToken } : null } }),
@@ -35,11 +35,11 @@ describeReal('order, payment, messaging and notification hooks against the real 
   let sellerToken = '';
   let buyerToken = '';
   let strangerToken = '';
-  let market: typeof import('./marketplace');
+  let market: typeof import('../../marketplace/hooks/marketplace');
   let orders: typeof import('./orders');
-  let payments: typeof import('./payments');
-  let messaging: typeof import('./messaging');
-  let notifications: typeof import('./notifications');
+  let payments: typeof import('../../payments/hooks/payments');
+  let messaging: typeof import('../../messaging/hooks/messaging');
+  let notifications: typeof import('../../notifications/hooks/notifications');
   let queryClient: QueryClient;
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -51,11 +51,11 @@ describeReal('order, payment, messaging and notification hooks against the real 
     sellerToken = await signUp('farmer');
     buyerToken = await signUp('buyer');
     strangerToken = await signUp('buyer');
-    market = require('./marketplace');
+    market = require('../../marketplace/hooks/marketplace');
     orders = require('./orders');
-    payments = require('./payments');
-    messaging = require('./messaging');
-    notifications = require('./notifications');
+    payments = require('../../payments/hooks/payments');
+    messaging = require('../../messaging/hooks/messaging');
+    notifications = require('../../notifications/hooks/notifications');
   }, 60_000);
 
   beforeEach(() => {

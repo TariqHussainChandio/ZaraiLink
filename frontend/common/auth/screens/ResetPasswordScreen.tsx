@@ -3,10 +3,10 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input } from '../../components/ui';
-import { useUpdatePassword } from '../../hooks/api/profile';
-import { useTheme, type Theme } from '../../theme';
-import { mapPasswordFlowErrorMessage } from '../auth/mapAuthError';
+import { Button, Input } from '../../components';
+import { useUpdatePassword } from '../../profile';
+import { useTheme, type Theme } from '../../../theme';
+import { mapPasswordFlowErrorMessage } from './mapAuthError';
 
 function makeResetPasswordSchema() {
   return z

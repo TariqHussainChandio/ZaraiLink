@@ -1,13 +1,13 @@
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { extensionFromMimeType } from '../../../utils/mimeExtension';
-import { apiFetch } from '../../api/client';
-import { supabase } from '../../supabase/client';
+import { apiFetch } from '../../../services/api/client';
+import { supabase } from '../../../services/supabase/client';
 import type {
   Consultation,
   ConsultationMessageWithListing,
   ConsultationPriority,
   ConsultationWithRelations,
-} from '../../../types/expert';
+} from '../../../expert';
 
 const ATTACHMENTS_BUCKET = 'consultation-attachments';
 

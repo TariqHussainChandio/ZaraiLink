@@ -2,19 +2,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, EmptyState, Input, SelectField, Sheet, SkeletonList } from '../../components/ui';
-import { InventoryRow } from '../../components/features/dealer/InventoryRow';
-import { StockAdjustModal } from '../../components/features/dealer/StockAdjustModal';
-import { HOME_ROUTES } from '../../constants/routes';
+import { Button, EmptyState, Input, SelectField, Sheet, SkeletonList } from '../../common/components';
+import { InventoryRow } from '../components/InventoryRow';
+import { StockAdjustModal } from '../components/StockAdjustModal';
+import { HOME_ROUTES } from '../../common/constants/routes';
 import {
   useDealerListingOptions,
   useDeleteInventoryItem,
   useInventory,
   useSaveInventoryItem,
-} from '../../hooks/api/dealer';
-import { useAuthStore } from '../../store/authStore';
+} from '../hooks/dealer';
+import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { InventoryItemWithListing } from '../../types/dealer';
+import type { InventoryItemWithListing } from '../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 import { errorMessage } from '../../utils/errorMessage';
 

@@ -8,12 +8,12 @@ import {
   submitExpertApplication,
   updateExpertProfile,
   uploadExpertDocument,
-} from '../../services/modules/expert/expertService';
+} from '../services/expertService';
 import { pickPhotos } from '../../utils/photoPicker';
-import { useAuthStore } from '../../store/authStore';
-import type { ExpertWithProfile } from '../../types/expert';
+import { useAuthStore } from '../../state/authStore';
+import type { ExpertWithProfile } from '../types/expert';
 
-jest.mock('../../services/modules/expert/expertService', () => ({
+jest.mock('../services/expertService', () => ({
   fetchExpertProfile: jest.fn(),
   submitExpertApplication: jest.fn(),
   updateExpertProfile: jest.fn(),

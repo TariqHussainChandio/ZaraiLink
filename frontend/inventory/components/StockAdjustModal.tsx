@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { Button, Input, SelectField, Sheet } from '../../ui';
-import { useAdjustStock } from '../../../hooks/api/dealer';
-import { useAuthStore } from '../../../store/authStore';
-import { useTheme, type Theme } from '../../../theme';
-import type { InventoryTransactionType } from '../../../types/dealer';
+import { Button, Input, SelectField, Sheet } from '../../common/components';
+import { useAdjustStock } from '../hooks/dealer';
+import { useAuthStore } from '../../state/authStore';
+import { useTheme, type Theme } from '../../theme';
+import type { InventoryTransactionType } from '../types/dealer';
 
 export interface StockAdjustModalProps {
   visible: boolean;

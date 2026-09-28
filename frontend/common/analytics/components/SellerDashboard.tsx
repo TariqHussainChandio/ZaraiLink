@@ -2,17 +2,17 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '../../../components/ui';
-import { APP_TABS, HOME_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../../constants/routes';
-import { useDealerAnalytics, useFarmerAnalytics } from '../../../hooks/api/analytics';
-import { useOrders } from '../../../hooks/api/orders';
-import { useAuthStore } from '../../../store/authStore';
+import { Spinner } from '../../components';
+import { APP_TABS, HOME_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
+import { useDealerAnalytics, useFarmerAnalytics } from '../hooks/analytics';
+import { useOrders } from '../../orders';
+import { useAuthStore } from '../../../state/authStore';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import type { HomeStackParamList } from '../../../navigation/stacks/HomeNavigator';
 import { useTheme, type Theme } from '../../../theme';
-import { ActivityFeed } from './ActivityFeed';
-import { QuickActions } from './QuickActions';
-import { StatCard } from './StatCard';
+import { ActivityFeed } from '../../components/dashboards/ActivityFeed';
+import { QuickActions } from '../../components/dashboards/QuickActions';
+import { StatCard } from '../../components/dashboards/StatCard';
 
 export function SellerDashboard() {
   const theme = useTheme();

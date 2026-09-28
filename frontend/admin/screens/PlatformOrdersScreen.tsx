@@ -2,10 +2,10 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components/ui';
-import { OrderCard } from '../../components/features/orders/OrderCard';
-import { ADMIN_HOME_ROUTES } from '../../constants/routes';
-import { useAllOrders } from '../../hooks/api/admin';
+import { EmptyState, Spinner } from '../../common/components';
+import { OrderCard } from '../../common/orders';
+import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
+import { useAllOrders } from '../hooks/admin';
 import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
 import { useTheme, type Theme } from '../../theme';
 

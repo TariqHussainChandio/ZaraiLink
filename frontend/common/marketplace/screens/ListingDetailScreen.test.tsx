@@ -1,17 +1,17 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ListingDetailScreen } from './ListingDetailScreen';
-import { fetchListingById, recordListingView } from '../../services/modules/marketplace/listingsService';
-import { findOrCreateConversation } from '../../services/modules/messaging/messagingService';
-import { fetchReviewsForListing } from '../../services/modules/reviews/reviewsService';
-import { useAuthStore } from '../../store/authStore';
-import { useCartStore } from '../../store/cartStore';
+import { fetchListingById, recordListingView } from '../services/listingsService';
+import { findOrCreateConversation } from '../../messaging/services/messagingService';
+import { fetchReviewsForListing } from '../../reviews/services/reviewsService';
+import { useAuthStore } from '../../../state/authStore';
+import { useCartStore } from '../../../state/cartStore';
 import { APP_TABS, MARKETPLACE_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
-import type { ListingWithRelations } from '../../types/marketplace';
-import type { ReviewWithBuyer } from '../../types/reviews';
-import type { MarketplaceScreenProps } from '../../navigation/stacks/MarketplaceNavigator';
+import type { ListingWithRelations } from '../types/marketplace';
+import type { ReviewWithBuyer } from '../../reviews/types/reviews';
+import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
 const mockTabNavigate = jest.fn();
 
@@ -25,14 +25,14 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/marketplace/listingsService', () => ({
+jest.mock('../services/listingsService', () => ({
   fetchListingById: jest.fn(),
   recordListingView: jest.fn(),
 }));
-jest.mock('../../services/modules/messaging/messagingService', () => ({
+jest.mock('../../messaging/services/messagingService', () => ({
   findOrCreateConversation: jest.fn(),
 }));
-jest.mock('../../services/modules/reviews/reviewsService', () => ({
+jest.mock('../../reviews/services/reviewsService', () => ({
   fetchReviewsForListing: jest.fn(),
 }));
 

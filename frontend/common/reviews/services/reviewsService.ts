@@ -1,11 +1,11 @@
-import { apiFetch } from '../../api/client';
-import type { Review, ReviewWithBuyer } from '../../../types/reviews';
+import { apiFetch } from '../../../services/api/client';
+import type { Review, ReviewWithBuyer } from '../types/reviews';
 
 /**
  * BR-07 (a buyer may only review their own completed order) is enforced server-side. The
  * backend derives `seller_id` from the order itself (never trusts a client-supplied value) and
  * validates `listingId`, if given, actually belongs to that order — see
- * backend/app/services/reviews_service.py for why: the database's own RLS check alone didn't
+ * backend/app/common/reviews/service.py for why: the database's own RLS check alone didn't
  * validate that association, a gap closed during the backend migration.
  */
 export async function createReview(

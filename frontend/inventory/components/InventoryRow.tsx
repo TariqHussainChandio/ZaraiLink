@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Badge, Card } from '../../ui';
-import { useTheme, type Theme } from '../../../theme';
-import type { InventoryItemWithListing } from '../../../types/dealer';
+import { Badge, Card } from '../../common/components';
+import { useTheme, type Theme } from '../../theme';
+import type { InventoryItemWithListing } from '../types/dealer';
 
 export interface InventoryRowProps {
   item: InventoryItemWithListing;

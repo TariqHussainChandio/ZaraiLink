@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import reviews_repository as repo
-from .audit_log_service import log_admin_action
+from app.auth.dependencies import AuthenticatedUser
+from app.common.audit_log import log_admin_action
+from app.common.reviews import repository as repo
 
 
 async def create_review(

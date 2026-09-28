@@ -1,12 +1,12 @@
-import { apiFetch } from '../../api/client';
-import { idempotencyKeyFor, releaseIdempotencyKey } from '../../api/idempotency';
-import type { CartItem } from '../../../store/cartStore';
-import type { Order, OrderStatus, OrderStatusHistoryEntry, OrderWithItems } from '../../../types/orders';
+import { apiFetch } from '../../../services/api/client';
+import { idempotencyKeyFor, releaseIdempotencyKey } from '../../../services/api/idempotency';
+import type { CartItem } from '../../../state/cartStore';
+import type { Order, OrderStatus, OrderStatusHistoryEntry, OrderWithItems } from '../types/orders';
 
 /**
  * Cart validation, stock validation, listing-status validation, seller grouping, subtotal
  * pricing, and order/order_items/status-history creation all now live server-side
- * (`backend/app/services/orders_service.py`) — this is a thin wrapper only. Notably, the
+ * (`backend/app/common/orders/service.py`) — this is a thin wrapper only. Notably, the
  * request body carries only `listingId`/`quantity` per cart item (no price, no sellerId): the
  * backend prices every order from the listing's own current price and derives the seller from
  * the listing's actual owner, never from anything this client sends. No `buyerId` param either

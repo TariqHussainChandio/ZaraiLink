@@ -2,9 +2,9 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { UserManagementScreen } from './UserManagementScreen';
-import { fetchAllProfiles, setProfileSuspended, updateUserRole } from '../../services/modules/admin/adminService';
-import { useAuthStore } from '../../store/authStore';
-import type { Profile } from '../../types/profile';
+import { fetchAllProfiles, setProfileSuspended, updateUserRole } from '../services/adminService';
+import { useAuthStore } from '../../state/authStore';
+import type { Profile } from '../../common/types/profile';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -19,7 +19,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-jest.mock('../../services/modules/admin/adminService', () => ({
+jest.mock('../services/adminService', () => ({
   fetchAllProfiles: jest.fn(),
   setProfileSuspended: jest.fn(),
   updateUserRole: jest.fn(),

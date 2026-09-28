@@ -43,7 +43,9 @@ SKIP_DIRS = ("node_modules/", "android/", "ios/", ".expo/", "dist/", "web-build/
 # module-registry calls, which must follow the move or a mock silently stops intercepting.
 SPEC_RE = re.compile(
     r"""(?P<head>\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*|"""
-    r"""\bjest\.(?:mock|doMock|unmock|dontMock|requireActual|requireMock|setMock|createMockFromModule)\s*\(\s*)"""
+    r"""\bjest\.(?:mock|doMock|unmock|dontMock|requireActual|requireMock|setMock|createMockFromModule)\s*"""
+    # An optional type argument, as in jest.requireActual<typeof import('./x')>('./x').
+    r"""(?:<[^>\n]*>)?\s*\(\s*)"""
     r"""(?P<q>['"])(?P<spec>\.{1,2}/[^'"\n]*|\.{1,2})(?P=q)"""
 )
 # A whole static statement ending in a relative specifier: import/export <clause> from '<spec>'. [^;] keeps the
@@ -270,7 +272,8 @@ def cmd_move(_args) -> None:
     for old in dropped:
         (ROOT / old).unlink()
     for base in ("src", "backend/app", "backend/tests/unit"):
-        for dirpath, dirnames, _ in sorted(os.walk(ROOT / base, topdown=False)):
+        # Bottom-up as os.walk yields it (children before parents); sorting would visit a parent first and leave it.
+        for dirpath, dirnames, _ in os.walk(ROOT / base, topdown=False):
             d = Path(dirpath)
             if d.name == "__pycache__":
                 for f in d.iterdir():

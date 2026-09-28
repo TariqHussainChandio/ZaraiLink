@@ -7,11 +7,11 @@ import {
   updateExpertProfile,
   uploadExpertDocument,
   type ExpertProfileInput,
-} from '../../services/modules/expert/expertService';
-import { fetchReviewsForExpert } from '../../services/modules/reviews/reviewsService';
-import type { ExpertSpecialization } from '../../types/expert';
+} from '../services/expertService';
+import { fetchReviewsForExpert } from '../../common/reviews';
+import type { ExpertSpecialization } from '../types/expert';
 import type { PickedPhoto } from '../../utils/photoPicker';
-import { queryKeys } from './keys';
+import { queryKeys } from '../../hooks/keys';
 
 /** Verified experts, optionally narrowed to one specialization. */
 export function useExperts(specialization: ExpertSpecialization | undefined) {

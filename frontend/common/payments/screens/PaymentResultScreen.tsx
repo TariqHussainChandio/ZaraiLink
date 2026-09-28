@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button, EmptyState, Spinner } from '../../components/ui';
-import { PaymentStatusBadge } from '../../components/features/payments/PaymentStatusBadge';
+import { Button, EmptyState, Spinner } from '../../components';
+import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
 import { ORDERS_ROUTES } from '../../constants/routes';
-import { usePayment } from '../../hooks/api/payments';
-import { useTheme, type Theme } from '../../theme';
-import type { OrdersScreenProps } from '../../navigation/stacks/OrdersNavigator';
-import type { PaymentStatus } from '../../types/payments';
+import { usePayment } from '../hooks/payments';
+import { useTheme, type Theme } from '../../../theme';
+import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
+import type { PaymentStatus } from '../types/payments';
 
 const RESULT_COPY: Record<PaymentStatus, { title: string; description: string }> = {
   successful: { title: 'Payment Confirmed', description: 'The seller has confirmed they received your payment.' },

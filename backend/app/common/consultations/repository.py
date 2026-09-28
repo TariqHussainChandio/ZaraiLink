@@ -1,8 +1,8 @@
 from typing import Any
 
-from ..core.pagination import page_range
-from ..core.rows import as_rows, first_row
-from ..core.supabase_client import get_user_scoped_client
+from app.common.pagination import page_range
+from app.common.rows import as_rows, first_row
+from app.database.supabase_client import get_user_scoped_client
 
 # Security/correctness fix N2 (standardization plan, P0 baseline / P5a "Backend repair"):
 # `consultations.expert_id` references `experts(id)`, not `profiles(id)` directly (Postgres
@@ -38,7 +38,7 @@ def _flatten_expert(row: dict) -> dict:
 
 async def create_request(access_token: str, user_id: str, fields: dict[str, Any]) -> dict:
     # No embed needed here — the create endpoint's response_model is the plain `Consultation`,
-    # not `ConsultationWithRelations` (see api/v1/endpoints/consultations.py), so the write-then-
+    # not `ConsultationWithRelations` (see common/consultations/router.py), so the write-then-
     # select fix (N1) is the plain default: insert alone already returns the full row.
     client = await get_user_scoped_client(access_token)
     response = await client.table("consultations").insert({"user_id": user_id, **fields}).execute()

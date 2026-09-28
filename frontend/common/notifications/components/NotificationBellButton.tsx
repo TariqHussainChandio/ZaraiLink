@@ -1,7 +1,7 @@
 import { Bell } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useUnreadNotificationsCount } from '../../../hooks/api/notifications';
+import { useUnreadNotificationsCount } from '../hooks/notifications';
 import { useTheme, type Theme } from '../../../theme';
 
 export function NotificationBellButton({ onPress }: { onPress: () => void }) {

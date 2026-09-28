@@ -10,23 +10,23 @@ from postgrest.exceptions import APIError
 from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .api.v1.router import api_router
-from .core.config import settings
-from .core.logging_config import configure_logging
-from .core.middleware import MaxBodySizeMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware
-from .core.observability import init_sentry
-from .core.openapi import customize as customize_openapi
-from .core.openapi import operation_id
-from .core.problem_details import (
+from app.ai.engine import load_classifier
+from app.api_router import api_router
+from app.common.logging_config import configure_logging
+from app.common.observability import init_sentry
+from app.common.openapi import customize as customize_openapi
+from app.common.openapi import operation_id
+from app.common.problem_details import (
     database_error_handler,
     http_exception_handler,
     rate_limit_exception_handler,
     unhandled_exception_handler,
     validation_exception_handler,
 )
-from .core.rate_limit import RateLimitMiddleware, limiter
-from .core.supabase_client import close_shared_clients, get_public_client, init_shared_clients
-from .services.ai_engine import load_classifier
+from app.config.settings import settings
+from app.database.supabase_client import close_shared_clients, get_public_client, init_shared_clients
+from app.middleware.http_middleware import MaxBodySizeMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware, limiter
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     init_sentry(settings)
     # Loading here (once, at startup) rather than relying on get_classifier()'s own lazy fallback
     # means the first real prediction request doesn't pay the checkpoint-load cost — see
-    # services/ai_engine.py for why this moved out of import-time entirely (P5, item 3).
+    # ai/engine.py for why this moved out of import-time entirely (P5, item 3).
     load_classifier()
     # P5 (item 2): the shared anon/service-role AsyncClient singletons. A bad SUPABASE_URL/key now
     # fails at boot instead of on whichever request happens to need it first.
@@ -73,7 +73,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(APIError, database_error_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
-# `limiter`'s 200/minute default (core/rate_limit.py, keyed by user id when authenticated else IP)
+# `limiter`'s 200/minute default (middleware/rate_limit.py, keyed by user id when authenticated else IP)
 # applies to every route automatically — a generous ceiling meant to stop abuse/scraping, not to
 # throttle normal app usage. Individual endpoints that are unusually expensive (e.g. disease
 # prediction, which runs model inference) override it with a tighter `@limiter.limit(...)`.
@@ -108,7 +108,7 @@ async def readiness() -> dict[str, str]:
         await get_public_client().table("categories").select("id").limit(1).execute()
     # APIError: PostgREST answered but rejected the request (bad grants, etc). httpx.HTTPError:
     # a network-level failure before PostgREST could even respond — the same pairing
-    # disease_service.py already uses for its own Supabase Storage calls.
+    # ai/service.py already uses for its own Supabase Storage calls.
     except (APIError, httpx.HTTPError) as exc:
         logger.warning("Readiness check failed: %s", exc)
         raise HTTPException(status_code=503, detail="Supabase unreachable") from exc

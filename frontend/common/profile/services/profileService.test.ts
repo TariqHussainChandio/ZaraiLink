@@ -1,13 +1,13 @@
 import type { PickedPhoto } from '../../../utils/photoPicker';
-import { apiFetch } from '../../api/client';
+import { apiFetch } from '../../../services/api/client';
 
-jest.mock('../../api/client');
-jest.mock('../../supabase/client', () => {
+jest.mock('../../../services/api/client');
+jest.mock('../../../services/supabase/client', () => {
   const { makeSupabaseMock } = jest.requireActual('../../../testUtils/supabaseMock');
   return { supabase: makeSupabaseMock({ storagePublicUrl: 'https://example.supabase.co/storage/avatar.jpg' }) };
 });
 
-import { supabase } from '../../supabase/client';
+import { supabase } from '../../../services/supabase/client';
 import { makeSupabaseMock } from '../../../testUtils/supabaseMock';
 import { updatePassword, updateProfile, uploadAvatar } from './profileService';
 

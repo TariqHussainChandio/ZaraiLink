@@ -8,11 +8,11 @@ import {
   resolveAttachmentUrls,
   sendMessage,
   uploadMessageAttachments,
-} from '../../services/modules/messaging/messagingService';
-import type { Message } from '../../types/messaging';
-import type { PickedPhoto } from '../../utils/photoPicker';
-import { useRealtimeMessages } from '../realtime/useRealtimeMessages';
-import { queryKeys } from './keys';
+} from '../services/messagingService';
+import type { Message } from '../types/messaging';
+import type { PickedPhoto } from '../../../utils/photoPicker';
+import { useRealtimeMessages } from '../../../hooks/realtime/useRealtimeMessages';
+import { queryKeys } from '../../../hooks/keys';
 
 /** Opens (or creates) the conversation with another user, for a "Message seller" button. */
 export function useOpenConversation() {

@@ -1,9 +1,9 @@
-import { apiFetch } from '../../api/client';
-import type { Profile } from '../../../types/profile';
-import type { Role } from '../../../constants/roles';
-import type { ReportStatus, ReportWithReporter } from '../../../types/reports';
-import type { AuditLogEntryWithActor } from '../../../types/audit';
-import type { OrderWithItems } from '../../../types/orders';
+import { apiFetch } from '../../services/api/client';
+import type { Profile } from '../../common/types/profile';
+import type { Role } from '../../common/constants/roles';
+import type { ReportStatus, ReportWithReporter } from '../types/reports';
+import type { AuditLogEntryWithActor } from '../types/audit';
+import type { OrderWithItems } from '../../common/orders';
 
 export interface PlatformStats {
   totalUsers: number;
@@ -33,7 +33,7 @@ export async function fetchAllProfiles(): Promise<Profile[]> {
   return apiFetch('/api/v1/admin/users');
 }
 
-// logAdminAction moved server-side entirely (backend/app/services/audit_log_service.py) — every
+// logAdminAction moved server-side entirely (backend/app/common/audit_log.py) — every
 // mutation below writes its own audit_logs row as part of the same backend request, so there's
 // no separate client-side call left to make.
 

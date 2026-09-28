@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Avatar, Card } from '../../ui';
+import { Avatar, Card } from '../../components';
 import { RatingStars } from './RatingStars';
 import { useTheme, type Theme } from '../../../theme';
-import type { ReviewWithBuyer } from '../../../types/reviews';
+import type { ReviewWithBuyer } from '../types/reviews';
 
 export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   const theme = useTheme();

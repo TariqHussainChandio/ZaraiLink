@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 
-from ..core.auth import AuthenticatedUser
-from ..repositories import farmer_repository as repo
-from ..schemas.farmer import FarmInput, FarmUpdateInput
+from app.auth.dependencies import AuthenticatedUser
+from app.farmer import repository as repo
+from app.farmer.schemas import FarmInput, FarmUpdateInput
 
 
 def _location(country: str | None, province: str | None, city: str | None) -> dict | None:

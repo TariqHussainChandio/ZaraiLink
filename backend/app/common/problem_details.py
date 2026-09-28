@@ -17,8 +17,8 @@ from pydantic import BaseModel
 from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .errors import default_code
-from .request_context import request_id_var
+from app.common.errors import default_code
+from app.middleware.request_context import request_id_var
 
 logger = logging.getLogger(__name__)
 
