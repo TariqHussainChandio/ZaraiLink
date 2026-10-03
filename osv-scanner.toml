@@ -44,3 +44,21 @@ ecosystem = "npm"
 ignore = true
 effectiveUntil = 2026-12-15T00:00:00Z
 reason = "Transitive development dependency (linting and config parsing). Resolved when the toolchain moves to Expo (phase P2)."
+
+# ---- JavaScript, recorded 2026-10-04 (A2): advisories published with no fixed release yet ----
+
+[[PackageOverrides]]
+name = "braces"
+ecosystem = "npm"
+version = "3.0.3"
+ignore = true
+effectiveUntil = 2026-12-15T00:00:00Z
+reason = "GHSA-vfj7-8cjw-p6xm, no fixed release. Reached only through jest's micromatch, which expands glob patterns written in the test configuration; it never ships in the app bundle and never sees user input. Lift when braces publishes a fix."
+
+[[PackageOverrides]]
+name = "node-forge"
+ecosystem = "npm"
+version = "1.4.0"
+ignore = true
+effectiveUntil = 2026-12-15T00:00:00Z
+reason = "GHSA-86w9-cpqp-85rv, no fixed release. Reached only through @expo/cli's code-signing certificates, a developer and build-time tool; it never ships in the app bundle. Lift when node-forge or @expo/cli publishes a fix."
