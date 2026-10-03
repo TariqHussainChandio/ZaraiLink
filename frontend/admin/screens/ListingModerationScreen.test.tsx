@@ -74,8 +74,10 @@ describe('ListingModerationScreen', () => {
 
     expect(await screen.findByText('Wheat Seeds')).toBeTruthy();
     expect(screen.getByText(/Farmer Sana/)).toBeTruthy();
-    expect(screen.getByText(/Rs\. 100\/kg/)).toBeTruthy();
-    expect(screen.getByText('active')).toBeTruthy();
+    expect(screen.getByText(/Rs 100\/kg/)).toBeTruthy();
+    // The status reads through the vocabulary: an active listing is "Listed", never the raw value.
+    expect(screen.getByText('Listed')).toBeTruthy();
+    expect(screen.queryByText('active')).toBeNull();
   });
 
   it('deactivates an active listing', async () => {

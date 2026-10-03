@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Card } from '../../components';
+import { Card, StatusBadge } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
 import type { OrderWithItems } from '../types/orders';
-import { StatusBadge } from './StatusBadge';
+import { formatRs } from '../../../utils/money';
+import { statusMeta } from '../../constants/status';
 
 export interface OrderCardProps {
   order: OrderWithItems;
@@ -20,16 +21,15 @@ export function OrderCard({ order, counterpartyName, onPress }: OrderCardProps) 
       onPress={onPress}
       activeOpacity={0.8}
       accessibilityRole="button"
-      accessibilityLabel={`Order with ${counterpartyName}, Rs. ${order.total.toFixed(0)}, ${order.status}`}
+      accessibilityLabel={`Order with ${counterpartyName}, ${formatRs(order.total)}, ${statusMeta('order', order.status).label}`}
     >
       <Card style={styles.card}>
         <View style={styles.row}>
           <Text style={styles.counterparty}>{counterpartyName}</Text>
-          <StatusBadge status={order.status} />
+          <StatusBadge kind="order" status={order.status} />
         </View>
         <Text style={styles.meta}>
-          {order.order_items.length} item{order.order_items.length === 1 ? '' : 's'} · Rs.{' '}
-          {order.total.toFixed(0)}
+          {order.order_items.length} item{order.order_items.length === 1 ? '' : 's'} · {formatRs(order.total)}
         </Text>
         <Text style={styles.date}>{new Date(order.created_at).toLocaleDateString()}</Text>
       </Card>
@@ -37,30 +37,29 @@ export function OrderCard({ order, counterpartyName, onPress }: OrderCardProps) 
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: spacing.xs,
+      marginBottom: space[1],
     },
     counterparty: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     meta: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     date: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

@@ -14,9 +14,9 @@ export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onP
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
       <Card style={styles.card}>
         <View style={styles.row}>
-          <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={44} />
+          <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={theme.size.avatarMd} />
           <View style={styles.textWrap}>
-            <Text style={styles.name}>{expert.profile?.full_name ?? 'Expert'}</Text>
+            <Text style={styles.name}>{expert.profile?.full_name || 'Expert'}</Text>
             {expert.degree ? <Text style={styles.degree}>{expert.degree}</Text> : null}
             {specializations.length > 0 ? (
               <Text style={styles.specializations} numberOfLines={1}>
@@ -30,10 +30,10 @@ export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onP
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     row: {
       flexDirection: 'row',
@@ -41,22 +41,22 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     textWrap: {
       flex: 1,
-      marginLeft: spacing.md,
+      marginLeft: space[3],
     },
     name: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     degree: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     specializations: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.brand.primary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      // Specialisations are the expert module's content: the expert colour in every shell.
+      color: colors.accent.expert.ink,
     },
   });
 }

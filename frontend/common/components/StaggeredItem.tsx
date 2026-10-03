@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, ViewStyle } from 'react-native';
+import { AccessibilityInfo, Animated, type ViewStyle } from 'react-native';
 import { motion } from '../../theme/motion';
 
 // `motion` (unlike `colors`) is theme-invariant — imported directly here rather than through
@@ -27,7 +27,11 @@ export function StaggeredItem({ index, style, children }: StaggeredItemProps) {
 
   useEffect(() => {
     const delay = Math.min(index, MAX_STAGGERED_INDEX) * STAGGER_STEP_MS;
-    Animated.parallel([
+    const show = () => {
+      opacity.setValue(1);
+      translateY.setValue(0);
+    };
+    const animate = () => Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
         duration: motion.duration.base,
@@ -43,6 +47,10 @@ export function StaggeredItem({ index, style, children }: StaggeredItemProps) {
         useNativeDriver: true,
       }),
     ]).start();
+    // The design system: every animation stops when the phone asks for reduced motion.
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(reduce => (reduce ? show() : animate()))
+      .catch(show);
     // Deliberately mount-only: `index` is a stable identity for a list position, and `opacity`/
     // `translateY` are refs whose identity never changes — re-running this on every re-render
     // would replay the entrance animation on unrelated updates (e.g. a re-fetch).

@@ -51,13 +51,13 @@ describe('CheckoutScreen', () => {
     await renderWithQuery(<CheckoutScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByText('2 × Wheat seeds')).toBeTruthy();
     expect(screen.getByText('1 × Rice seeds')).toBeTruthy();
-    expect(screen.getByText('Rs. 250')).toBeTruthy();
+    expect(screen.getByText('Rs 250')).toBeTruthy();
   });
 
   it('adds a delivery charge into the total for that seller', async () => {
     await renderWithQuery(<CheckoutScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Delivery charge (optional)'), '50');
-    expect(screen.getByText('Rs. 250')).toBeTruthy();
+    expect(screen.getByText('Rs 250')).toBeTruthy();
   });
 
   it('checks out, clears the cart, and pops to top on success', async () => {

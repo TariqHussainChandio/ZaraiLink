@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { Button, EmptyState, Input, LocationPicker, Spinner } from '../../common/components';
+import { Button, Chip, EmptyState, TextField, LocationPicker, Spinner } from '../../common/components';
 import { useOwnExpertProfile, useSaveExpertProfile } from '../hooks/experts';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
@@ -145,7 +145,7 @@ export function ExpertApplicationScreen() {
         control={control}
         name="qualifications"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Qualifications"
             placeholder="e.g. PhD Agronomy, 10 years extension work"
             value={value}
@@ -159,21 +159,21 @@ export function ExpertApplicationScreen() {
         control={control}
         name="degree"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Degree / Certification" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <TextField label="Degree / Certification" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
       <Controller
         control={control}
         name="experience"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Experience" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <TextField label="Experience" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
       <Controller
         control={control}
         name="professionalDescription"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="About you"
             value={value}
             onChangeText={onChange}
@@ -187,7 +187,7 @@ export function ExpertApplicationScreen() {
         control={control}
         name="contact"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Contact"
             value={value}
             onChangeText={onChange}
@@ -210,15 +210,7 @@ export function ExpertApplicationScreen() {
       <View style={styles.chipsRow}>
         {SPECIALIZATION_OPTIONS.map(option => {
           const selected = specializations.includes(option.id);
-          return (
-            <TouchableOpacity
-              key={option.id}
-              onPress={() => toggleSpecialization(option.id)}
-              style={[styles.chip, selected && styles.chipSelected]}
-            >
-              <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{option.label}</Text>
-            </TouchableOpacity>
-          );
+          return <Chip key={option.id} label={option.label} selected={selected} onPress={() => toggleSpecialization(option.id)} />;
         })}
       </View>
 
@@ -228,7 +220,7 @@ export function ExpertApplicationScreen() {
           {document ? (
             <Image source={{ uri: document.uri }} style={styles.documentPreview} />
           ) : (
-            <TouchableOpacity style={styles.documentPicker} onPress={pickDocument}>
+            <TouchableOpacity style={styles.documentPicker} onPress={pickDocument} accessibilityRole="button">
               <Text style={styles.documentPickerLabel}>+ Add a photo of your certificate</Text>
             </TouchableOpacity>
           )}
@@ -249,70 +241,50 @@ export function ExpertApplicationScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.secondary,
-      marginBottom: spacing.sm,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[2],
     },
     chipsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    chip: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs + 2,
-      borderRadius: radii.full,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    chipSelected: {
-      backgroundColor: colors.brand.primaryTint,
-      borderColor: colors.brand.primary,
-    },
-    chipLabel: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-    },
-    chipLabelSelected: {
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
+      gap: space[2],
+      marginBottom: space[3],
     },
     documentPreview: {
-      width: 120,
-      height: 120,
-      borderRadius: radii.md,
-      marginBottom: spacing.md,
-      backgroundColor: colors.border,
+      width: size.photoLg,
+      height: size.photoLg,
+      borderRadius: radius.sm,
+      marginBottom: space[3],
+      backgroundColor: colors.line,
     },
     documentPicker: {
-      height: 80,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      borderColor: colors.border,
+      height: size.photoMd,
+      borderRadius: radius.sm,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
       borderStyle: 'dashed',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     documentPickerLabel: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     submit: {
-      marginTop: spacing.md,
-      marginBottom: spacing['2xl'],
+      marginTop: space[3],
+      marginBottom: space[8],
     },
   });
 }

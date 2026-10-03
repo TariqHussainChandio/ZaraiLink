@@ -1,7 +1,7 @@
 import { ImagePlus, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
-import { useTheme, type Theme } from '../../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
 import { hapticTap } from '../../../utils/haptics';
 import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
 
@@ -12,7 +12,8 @@ export interface ChatInputProps {
 
 export function ChatInput({ onSend, sending = false }: ChatInputProps) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const [value, setValue] = useState('');
   const [images, setImages] = useState<PickedPhoto[]>([]);
 
@@ -44,11 +45,11 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => removeImage(image.uri)}
-                hitSlop={12}
+                hitSlop={theme.components.hitSlop(theme.size.countBadge)}
                 accessibilityRole="button"
                 accessibilityLabel="Remove photo"
               >
-                <X size={12} color={theme.colors.neutral.white} />
+                <X size={theme.size.iconSm} color={theme.colors.onAccent} />
               </TouchableOpacity>
             </View>
           ))}
@@ -62,12 +63,12 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
           accessibilityRole="button"
           accessibilityLabel="Add photo"
         >
-          <ImagePlus size={22} color={theme.colors.text.secondary} />
+          <ImagePlus size={theme.size.iconMd} color={theme.colors.ink2} />
         </TouchableOpacity>
         <TextInput
           style={styles.input}
           placeholder="Type a message..."
-          placeholderTextColor={theme.colors.text.secondary}
+          placeholderTextColor={theme.colors.ink2}
           value={value}
           onChangeText={setValue}
           multiline
@@ -86,73 +87,74 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
   );
 }
 
-function makeStyles({ colors, spacing, radii }: Theme) {
+function makeStyles({ colors, space, radius, size, borders, typography }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background.surface,
+      borderTopWidth: borders.hairline,
+      borderTopColor: colors.line,
+      backgroundColor: colors.surface,
     },
     previewRow: {
-      paddingHorizontal: spacing.md,
-      paddingTop: spacing.sm,
+      paddingHorizontal: space[3],
+      paddingTop: space[2],
     },
     previewWrap: {
-      marginRight: spacing.sm,
+      marginRight: space[2],
     },
     previewImage: {
-      width: 56,
-      height: 56,
-      borderRadius: radii.md,
-      backgroundColor: colors.border,
+      width: size.thumb,
+      height: size.thumb,
+      borderRadius: radius.sm,
+      backgroundColor: colors.line,
     },
     removeButton: {
       position: 'absolute',
-      top: -6,
-      right: -6,
-      backgroundColor: colors.text.secondary,
-      borderRadius: radii.full,
-      width: 18,
-      height: 18,
+      top: -space[1],
+      right: -space[1],
+      backgroundColor: colors.ink2,
+      borderRadius: radius.pill,
+      width: size.countBadge,
+      height: size.countBadge,
       alignItems: 'center',
       justifyContent: 'center',
     },
     row: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      padding: spacing.md,
+      padding: space[3],
     },
     attachButton: {
-      minWidth: 44,
-      minHeight: 44,
+      minWidth: size.touchMin,
+      minHeight: size.touchMin,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: spacing.xs,
+      marginRight: space[1],
     },
     input: {
       flex: 1,
-      maxHeight: 100,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.lg,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      fontSize: 14,
-      color: colors.text.primary,
-      marginRight: spacing.sm,
+      maxHeight: size.composerMax,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
+      borderRadius: radius.md,
+      paddingHorizontal: space[3],
+      paddingVertical: space[2],
+      ...typography.bodyLg,
+      color: colors.ink,
+      marginRight: space[2],
     },
     sendButton: {
-      backgroundColor: colors.brand.primary,
-      borderRadius: radii.lg,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm + 2,
+      backgroundColor: accent.fill,
+      borderRadius: radius.md,
+      paddingHorizontal: space[4],
+      minHeight: size.touchMin,
+      justifyContent: 'center',
     },
     sendButtonDisabled: {
       opacity: 0.5,
     },
     sendLabel: {
-      color: colors.neutral.white,
-      fontWeight: '700',
+      ...typography.label,
+      color: colors.onAccent,
     },
   });
 }

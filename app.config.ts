@@ -15,6 +15,17 @@ function resolveVersionCode(): number {
   return value;
 }
 
+// The Atkinson Hyperlegible weights the theme uses (frontend/theme/typography.ts), resolved inside their @expo-google-fonts
+// packages. The expo-font plugin below embeds them as Android font families, so a style's fontWeight picks the file.
+const FONT_FILES = {
+  next400: require.resolve('@expo-google-fonts/atkinson-hyperlegible-next/400Regular/AtkinsonHyperlegibleNext_400Regular.ttf'),
+  next500: require.resolve('@expo-google-fonts/atkinson-hyperlegible-next/500Medium/AtkinsonHyperlegibleNext_500Medium.ttf'),
+  next600: require.resolve('@expo-google-fonts/atkinson-hyperlegible-next/600SemiBold/AtkinsonHyperlegibleNext_600SemiBold.ttf'),
+  next700: require.resolve('@expo-google-fonts/atkinson-hyperlegible-next/700Bold/AtkinsonHyperlegibleNext_700Bold.ttf'),
+  mono500: require.resolve('@expo-google-fonts/atkinson-hyperlegible-mono/500Medium/AtkinsonHyperlegibleMono_500Medium.ttf'),
+  mono700: require.resolve('@expo-google-fonts/atkinson-hyperlegible-mono/700Bold/AtkinsonHyperlegibleMono_700Bold.ttf'),
+};
+
 const config: ExpoConfig = {
   name: 'ZaraiLink',
   slug: 'zarailink',
@@ -46,6 +57,34 @@ const config: ExpoConfig = {
     // Photos come from the system picker and the camera path needs CAMERA. Nothing records audio,
     // and the plugin adds RECORD_AUDIO unless told not to.
     ['expo-image-picker', { microphonePermission: false }],
+    // A2 (D14): the design system's faces, embedded at build time so text never flashes in a fallback font.
+    // Declared as Android font families with one file per weight, so a style's `fontWeight` picks the file
+    // natively (frontend/theme/typography.ts names the families).
+    [
+      'expo-font',
+      {
+        android: {
+          fonts: [
+            {
+              fontFamily: 'AtkinsonHyperlegibleNext',
+              fontDefinitions: [
+                { path: FONT_FILES.next400, weight: 400 },
+                { path: FONT_FILES.next500, weight: 500 },
+                { path: FONT_FILES.next600, weight: 600 },
+                { path: FONT_FILES.next700, weight: 700 },
+              ],
+            },
+            {
+              fontFamily: 'AtkinsonHyperlegibleMono',
+              fontDefinitions: [
+                { path: FONT_FILES.mono500, weight: 500 },
+                { path: FONT_FILES.mono700, weight: 700 },
+              ],
+            },
+          ],
+        },
+      },
+    ],
     [
       'expo-build-properties',
       {

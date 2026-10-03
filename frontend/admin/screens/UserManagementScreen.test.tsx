@@ -69,6 +69,15 @@ describe('UserManagementScreen', () => {
     expect(screen.getByText('Farmer')).toBeTruthy();
   });
 
+  it('reads an empty name like a missing one, in the row and the role sheet', async () => {
+    // profiles.full_name is never null but defaults to ''.
+    mockFetchAllProfiles.mockResolvedValue([profile({ full_name: '' })]);
+    await renderWithQuery(<UserManagementScreen />);
+    expect(await screen.findByText('Unknown user')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Change Role'));
+    expect(await screen.findByText('Change role for this user')).toBeTruthy();
+  });
+
   it('shows a Suspended badge for suspended users', async () => {
     mockFetchAllProfiles.mockResolvedValue([profile({ is_suspended: true })]);
     await renderWithQuery(<UserManagementScreen />);

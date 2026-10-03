@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, EmptyState, Input, SelectField, Spinner } from '../../common/components';
+import { Button, EmptyState, TextField, SelectField, Spinner } from '../../common/components';
 import { useDeleteFarmCrop, useFarmCrop, useSaveFarmCrop } from '../hooks/farmer';
 import { useCrops } from '../../common/marketplace';
 import { useTheme, type Theme } from '../../theme';
@@ -152,7 +152,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="variety"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Variety"
             value={value}
             onChangeText={onChange}
@@ -165,7 +165,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="plantingDate"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Planting date"
             placeholder="YYYY-MM-DD"
             value={value}
@@ -180,7 +180,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="area"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Area"
             keyboardType="numeric"
             value={value}
@@ -194,7 +194,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="expectedHarvestDate"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Expected harvest date"
             placeholder="YYYY-MM-DD"
             value={value}
@@ -209,7 +209,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="growthStage"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Growth stage"
             value={value}
             onChangeText={onChange}
@@ -222,7 +222,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         control={control}
         name="notes"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Notes"
             value={value}
             onChangeText={onChange}
@@ -246,7 +246,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
       {isEditing ? (
         <Button
           label="Remove Crop"
-          variant="destructive"
+          variant="danger"
           onPress={onDelete}
           style={styles.delete}
         />
@@ -255,21 +255,21 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     action: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
     delete: {
-      marginTop: spacing.md,
-      marginBottom: spacing['2xl'],
+      marginTop: space[3],
+      marginBottom: space[8],
     },
   });
 }

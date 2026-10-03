@@ -49,7 +49,7 @@ describe('PaymentProcessingScreen', () => {
     });
     await renderWithQuery(<PaymentProcessingScreen {...makeProps()} />);
 
-    expect(await screen.findByText('Rs. 1500')).toBeTruthy();
+    expect(await screen.findByText('Rs 1,500')).toBeTruthy();
     expect(screen.getByText('Cash on Delivery')).toBeTruthy();
   });
 
@@ -80,7 +80,7 @@ describe('PaymentProcessingScreen', () => {
       status: 'pending',
     });
     await renderWithQuery(<PaymentProcessingScreen {...makeProps()} />);
-    await screen.findByText('Rs. 1500');
+    await screen.findByText('Rs 1,500');
 
     await fireEvent.press(screen.getByText('Check Status'));
     expect(mockFetchPayment).toHaveBeenCalledTimes(2);
@@ -96,7 +96,7 @@ describe('PaymentProcessingScreen', () => {
     });
     const props = makeProps();
     await renderWithQuery(<PaymentProcessingScreen {...props} />);
-    await screen.findByText('Rs. 1500');
+    await screen.findByText('Rs 1,500');
 
     await fireEvent.press(screen.getByText('Back to Order'));
     expect(props.navigation.reset).toHaveBeenCalledWith({

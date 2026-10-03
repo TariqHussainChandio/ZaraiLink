@@ -49,16 +49,16 @@ describe('VerifyOtpScreen — signup', () => {
   it('shows the identifier the code was sent to and disables Verify until a full code is entered', async () => {
     await renderWithQuery(<VerifyOtpScreen {...makeProps()} />);
     expect(screen.getByText(/farmer@example.com/)).toBeTruthy();
-    expect(screen.getByText('Verify').parent?.props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Verify' })).toBeDisabled();
   });
 
   it('stays disabled for a partial code and enables once all 6 digits are entered', async () => {
     await renderWithQuery(<VerifyOtpScreen {...makeProps()} />);
     await fireEvent.changeText(screen.getByLabelText('Verification code'), '123');
-    expect(screen.getByText('Verify').parent?.props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Verify' })).toBeDisabled();
 
     await fireEvent.changeText(screen.getByLabelText('Verification code'), '123456');
-    expect(screen.getByText('Verify').parent?.props.accessibilityState.disabled).toBe(false);
+    expect(screen.getByRole('button', { name: 'Verify' })).toBeEnabled();
   });
 
   it('strips non-digit characters from a pasted value and caps it at 6 digits', async () => {

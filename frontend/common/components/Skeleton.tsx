@@ -1,44 +1,39 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { useTheme, type Theme } from '../../theme';
+import { AccessibilityInfo, Animated, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
+import { type Theme, useTheme } from '../../theme';
 
-const PULSE_MIN_OPACITY = 0.35;
-const PULSE_MAX_OPACITY = 0.85;
+const PULSE_MIN_OPACITY = 0.4;
+const PULSE_MAX_OPACITY = 1;
 
-/** Base shimmer block — a plain opacity pulse, not a moving gradient (no gradient library is
- * installed in this project, and a pulse reads as "loading" just as clearly without adding one).
- * Every other skeleton shape in this file is built from this. */
+/** One pulsing block in `surfaceSunken`: the shape of content that is still loading. The pulse stops when the phone
+ * asks for reduced motion. Every other skeleton shape in this file is built from it. */
 export function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const [opacity] = useState(() => new Animated.Value(PULSE_MIN_OPACITY));
+  const [opacity] = useState(() => new Animated.Value(PULSE_MAX_OPACITY));
 
   useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: PULSE_MAX_OPACITY,
-          duration: theme.motion.duration.slow,
-          easing: theme.motion.easing.standard,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: PULSE_MIN_OPACITY,
-          duration: theme.motion.duration.slow,
-          easing: theme.motion.easing.standard,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    pulse.start();
-    return () => pulse.stop();
+    let pulse: Animated.CompositeAnimation | undefined;
+    let cancelled = false;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(reduce => {
+        if (reduce || cancelled) return;
+        const step = (toValue: number) =>
+          Animated.timing(opacity, { toValue, duration: theme.motion.duration.slow * 2, easing: theme.motion.easing.standard, useNativeDriver: true });
+        pulse = Animated.loop(Animated.sequence([step(PULSE_MIN_OPACITY), step(PULSE_MAX_OPACITY)]));
+        pulse.start();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      pulse?.stop();
+    };
   }, [opacity, theme.motion]);
 
   return <Animated.View style={[styles.block, { opacity }, style]} />;
 }
 
-/** Mirrors `ListingCard`'s shape (image block, title line, price line) — for the marketplace
- * grid and any other image-forward card list. */
+/** A listing card: image block, title line, price line. */
 export function SkeletonCard() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -47,14 +42,13 @@ export function SkeletonCard() {
       <Skeleton style={styles.cardImage} />
       <View style={styles.cardBody}>
         <Skeleton style={styles.lineWide} />
-        <Skeleton style={[styles.lineNarrow, styles.lineSpacing]} />
+        <Skeleton style={styles.lineNarrow} />
       </View>
     </View>
   );
 }
 
-/** Mirrors a typical dashboard/list row (leading icon or avatar, two text lines, trailing
- * badge-shaped block) — for order lists, inventory lists, and dashboard activity feeds. */
+/** A list row: a leading tile, two text lines and a trailing figure. */
 export function SkeletonListItem() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -63,15 +57,14 @@ export function SkeletonListItem() {
       <Skeleton style={styles.rowIcon} />
       <View style={styles.rowBody}>
         <Skeleton style={styles.lineWide} />
-        <Skeleton style={[styles.lineNarrow, styles.lineSpacing]} />
+        <Skeleton style={styles.lineNarrow} />
       </View>
       <Skeleton style={styles.rowTrailing} />
     </View>
   );
 }
 
-/** N repeated `SkeletonListItem`s — the common case of "replace a fullscreen Spinner with a
- * list-shaped placeholder" in one call. */
+/** N list rows: the list-shaped placeholder for a loading list. */
 export function SkeletonList({ count = 6 }: { count?: number }) {
   return (
     <View>
@@ -82,57 +75,27 @@ export function SkeletonList({ count = 6 }: { count?: number }) {
   );
 }
 
-function makeStyles({ colors, spacing, radii }: Theme) {
+function makeStyles({ colors, space, size, radius, borders, components, typography }: Theme) {
+  // A text line is as tall as a caption's letters, not its line box.
+  const line = typography.caption.fontSize;
   return StyleSheet.create({
-    block: {
-      backgroundColor: colors.border,
-      borderRadius: radii.sm,
-    },
+    block: { backgroundColor: colors.surfaceSunken, borderRadius: radius.xs },
     card: {
       flex: 1,
-      margin: spacing.xs,
-      borderRadius: radii.lg,
+      margin: space[1],
+      borderRadius: components.card.radius,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
       overflow: 'hidden',
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
-    cardImage: {
-      width: '100%',
-      height: 110,
-      borderRadius: 0,
-    },
-    cardBody: {
-      padding: spacing.sm,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
-      gap: spacing.md,
-    },
-    rowIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: radii.full,
-    },
-    rowBody: {
-      flex: 1,
-    },
-    rowTrailing: {
-      width: 48,
-      height: 20,
-      borderRadius: radii.sm,
-    },
-    lineWide: {
-      height: 12,
-      width: '80%',
-    },
-    lineNarrow: {
-      height: 10,
-      width: '45%',
-    },
-    lineSpacing: {
-      marginTop: spacing.xs,
-    },
+    cardImage: { width: '100%', height: size.cardImage, borderRadius: 0 },
+    cardBody: { padding: space[3], gap: space[2] },
+    row: { flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: size.row, paddingVertical: space[3], paddingHorizontal: space[4] },
+    rowIcon: { width: size.avatarMd, height: size.avatarMd, borderRadius: radius.sm },
+    rowBody: { flex: 1, gap: space[2] },
+    rowTrailing: { width: size.touchMin, height: line },
+    lineWide: { height: line, width: '80%' },
+    lineNarrow: { height: line, width: '45%' },
   });
 }

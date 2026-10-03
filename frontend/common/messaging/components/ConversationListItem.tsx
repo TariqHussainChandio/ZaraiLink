@@ -12,11 +12,12 @@ export interface ConversationListItemProps {
 export function ConversationListItem({ conversation, onPress }: ConversationListItemProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const name = conversation.otherParticipant?.full_name ?? 'Unknown';
+  // An empty name reads like a missing one, never as a blank row.
+  const name = conversation.otherParticipant?.full_name || 'Unknown';
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      <Avatar name={name} uri={conversation.otherParticipant?.avatar_url} size={44} />
+      <Avatar name={name} uri={conversation.otherParticipant?.avatar_url} size={theme.size.avatarMd} />
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>
           {name}
@@ -34,34 +35,33 @@ export function ConversationListItem({ conversation, onPress }: ConversationList
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, borders }: Theme) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[3],
+      paddingHorizontal: space[4],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     body: {
       flex: 1,
-      marginLeft: spacing.md,
+      marginLeft: space[3],
     },
     name: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     preview: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     time: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-      marginLeft: spacing.sm,
+      ...typography.caption,
+      color: colors.ink2,
+      marginLeft: space[2],
     },
   });
 }

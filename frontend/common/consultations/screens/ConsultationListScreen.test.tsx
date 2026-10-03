@@ -92,11 +92,19 @@ describe('ConsultationListScreen', () => {
     expect(await screen.findByText('No consultations yet')).toBeTruthy();
   });
 
+  it('leads a requester with no consultations to the verified experts', async () => {
+    mockFetchForUser.mockResolvedValue([]);
+    await renderWithQuery(<ConsultationListScreen />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Find an expert' }));
+    expect(mockNavigate).toHaveBeenCalledWith(CONSULTATIONS_ROUTES.ExpertList);
+  });
+
   it('shows the expert empty state when there are no assigned requests', async () => {
     useAuthStore.setState({ user: { id: 'e1' } as never, role: 'expert' as never });
     mockFetchForExpert.mockResolvedValue([]);
     await renderWithQuery(<ConsultationListScreen />);
     expect(await screen.findByText('No consultation requests yet')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Find an expert' })).toBeNull();
   });
 
   it('shows a retryable error state when loading fails', async () => {

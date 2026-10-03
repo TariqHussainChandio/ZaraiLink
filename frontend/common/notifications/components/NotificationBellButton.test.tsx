@@ -35,10 +35,10 @@ describe('NotificationBellButton', () => {
     expect(screen.getByText('3')).toBeTruthy();
   });
 
-  it('caps the displayed badge at "9+"', async () => {
-    mockFetchUnreadCount.mockResolvedValue(15);
+  it('caps the displayed badge at "99+"', async () => {
+    mockFetchUnreadCount.mockResolvedValue(120);
     await renderWithQuery(<NotificationBellButton onPress={() => {}} />);
-    expect(await screen.findByText('9+')).toBeTruthy();
+    expect(await screen.findByText('99+')).toBeTruthy();
   });
 
   it('calls onPress when tapped', async () => {

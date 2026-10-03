@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, EmptyState, Input, LocationPicker, SelectField, Spinner } from '../../common/components';
+import { Button, EmptyState, TextField, LocationPicker, SelectField, Spinner } from '../../common/components';
 import { useDeleteStore, useSaveStore, useStore } from '../hooks/dealer';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
@@ -138,7 +138,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         control={control}
         name="name"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Store name"
             value={value}
             onChangeText={onChange}
@@ -161,7 +161,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         control={control}
         name="address"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Address" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <TextField label="Address" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
 
@@ -169,7 +169,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         control={control}
         name="contact"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Contact"
             value={value}
             onChangeText={onChange}
@@ -183,7 +183,7 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
         control={control}
         name="openingInfo"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Opening hours / info"
             value={value}
             onChangeText={onChange}
@@ -210,27 +210,27 @@ export function StoreDetailScreen({ route, navigation }: HomeScreenProps<'StoreD
 
       <Button label="Save Store" loading={saveStore.isPending} onPress={handleSubmit(onSubmit)} style={styles.action} />
       {storeId ? (
-        <Button label="Delete Store" variant="destructive" onPress={onDelete} style={styles.delete} />
+        <Button label="Delete Store" variant="danger" onPress={onDelete} style={styles.delete} />
       ) : null}
     </ScrollView>
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     action: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
     delete: {
-      marginTop: spacing.md,
-      marginBottom: spacing['2xl'],
+      marginTop: space[3],
+      marginBottom: space[8],
     },
   });
 }

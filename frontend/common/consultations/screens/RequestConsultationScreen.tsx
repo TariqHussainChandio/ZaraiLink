@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, SelectField } from '../../components';
+import { Button, TextField, SelectField } from '../../components';
 import { useRequestConsultation } from '../hooks/consultations';
 import { useAuthStore } from '../../../state/authStore';
 import { useFarms } from '../../../farmer';
@@ -100,7 +100,7 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
         control={control}
         name="subject"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Subject"
             value={value}
             onChangeText={onChange}
@@ -142,7 +142,7 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
         control={control}
         name="problemDescription"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Describe the problem"
             value={value}
             onChangeText={onChange}
@@ -187,50 +187,49 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.secondary,
-      marginBottom: spacing.sm,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[2],
     },
     imageRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
+      gap: space[2],
+      marginBottom: space[3],
     },
     thumb: {
-      width: 64,
-      height: 64,
-      borderRadius: radii.md,
-      backgroundColor: colors.border,
+      width: size.photoSm,
+      height: size.photoSm,
+      borderRadius: radius.sm,
+      backgroundColor: colors.line,
     },
     addImage: {
-      width: 64,
-      height: 64,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      borderColor: colors.border,
+      width: size.photoSm,
+      height: size.photoSm,
+      borderRadius: radius.sm,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
       borderStyle: 'dashed',
       alignItems: 'center',
       justifyContent: 'center',
     },
     addImageLabel: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     submit: {
-      marginTop: spacing.md,
-      marginBottom: spacing['2xl'],
+      marginTop: space[3],
+      marginBottom: space[8],
     },
   });
 }

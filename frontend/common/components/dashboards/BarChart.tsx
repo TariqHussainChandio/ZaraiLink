@@ -61,12 +61,12 @@ export function BarChart({
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     barsRow: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      gap: spacing.sm,
+      gap: space[2],
     },
     barColumn: {
       flex: 1,
@@ -79,18 +79,18 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
     },
     bar: {
       width: '100%',
-      borderRadius: radii.sm,
+      borderRadius: radius.xs,
     },
     barValue: {
-      fontSize: typography.sizes.xs,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink2,
+      marginBottom: space[1],
     },
     barLabel: {
-      marginTop: spacing.xs,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      marginTop: space[1],
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

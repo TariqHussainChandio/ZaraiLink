@@ -13,20 +13,13 @@
   }
  },
  "tools": {
-  "eslint": {
-   "react/no-unstable-nested-components:frontend/common/marketplace/screens/BrowseScreen.tsx": 1,
-   "react/no-unstable-nested-components:frontend/navigation/stacks/AdminNavigator.tsx": 3,
-   "react/no-unstable-nested-components:frontend/navigation/stacks/AppNavigator.tsx": 6,
-   "react/no-unstable-nested-components:frontend/navigation/stacks/ExpertNavigator.tsx": 5,
-   "react/no-unstable-nested-components:frontend/navigation/stacks/HomeNavigator.tsx": 1
-  },
+  "eslint": {},
   "knip": {
    "devDependencies:package.json": 1,
    "exports:frontend/common/constants/routes.ts": 1,
    "exports:frontend/services/api/client.ts": 1,
    "exports:frontend/testUtils/supabaseMock.ts": 1,
    "exports:frontend/theme/motion.ts": 2,
-   "exports:frontend/theme/typography.ts": 2,
    "types:frontend/admin/types/audit.ts": 1,
    "types:frontend/admin/types/reports.ts": 1,
    "types:frontend/common/analytics/types/analytics.ts": 3,
@@ -38,11 +31,8 @@
    "types:frontend/common/orders/types/orders.ts": 1,
    "types:frontend/navigation/stacks/AdminNavigator.tsx": 2,
    "types:frontend/navigation/stacks/AuthNavigator.tsx": 1,
-   "types:frontend/navigation/stacks/ExpertNavigator.tsx": 1,
    "types:frontend/state/authStore.ts": 1,
-   "types:frontend/state/marketplaceStore.ts": 1,
-   "types:frontend/theme/spacing.ts": 1,
-   "types:frontend/theme/typography.ts": 1
+   "types:frontend/state/marketplaceStore.ts": 1
   },
   "mypy": {},
   "ruff": {

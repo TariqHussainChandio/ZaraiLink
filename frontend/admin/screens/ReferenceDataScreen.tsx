@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, EmptyState, FilterChips, Input, Sheet, Spinner } from '../../common/components';
+import { Button, EmptyState, ChipRow, TextField, Sheet, Spinner } from '../../common/components';
 import {
   useDeleteRefDataRow,
   useRefDataRows,
@@ -137,7 +137,7 @@ export function ReferenceDataScreen() {
 
   return (
     <View style={styles.container}>
-      <FilterChips options={tableOptions} value={table}
+      <ChipRow options={tableOptions} value={table}
         onChange={next => {
           setTable(next);
           setForm({});
@@ -167,7 +167,7 @@ export function ReferenceDataScreen() {
                 />
                 <Button
                   label="Delete"
-                  variant="destructive"
+                  variant="danger"
                   fullWidth={false}
                   loading={savingId === item.id}
                   onPress={() => remove(item)}
@@ -199,7 +199,7 @@ export function ReferenceDataScreen() {
             : `New ${config.title.slice(0, -1)}`}
         </Text>
         {config.fields.map(field => (
-          <Input
+          <TextField
             key={field.key}
             label={field.label}
             value={form[field.key] ?? ''}
@@ -216,47 +216,45 @@ export function ReferenceDataScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      paddingTop: spacing.md,
-      paddingHorizontal: spacing.lg,
+      backgroundColor: colors.surface,
+      paddingTop: space[3],
+      paddingHorizontal: space[4],
     },
     list: {
-      paddingBottom: spacing.lg,
+      paddingBottom: space[4],
     },
     row: {
-      paddingVertical: spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[3],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     info: {
-      marginBottom: spacing.sm,
+      marginBottom: space[2],
     },
     name: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     subtitle: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-      marginTop: spacing.xs / 2,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: space[1] / 2,
     },
     actions: {
       flexDirection: 'row',
-      gap: spacing.sm,
+      gap: space[2],
     },
     addButton: {
-      marginTop: spacing.lg,
+      marginTop: space[4],
     },
     sheetTitle: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.lg,
+      ...typography.title,
+      color: colors.ink,
+      marginBottom: space[4],
     },
   });
 }

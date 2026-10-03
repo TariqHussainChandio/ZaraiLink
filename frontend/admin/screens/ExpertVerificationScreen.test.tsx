@@ -94,7 +94,7 @@ describe('ExpertVerificationScreen', () => {
     await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
-    await fireEvent.press(screen.getByText('Approved'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Approved' }));
 
     expect(mockFetchExperts).toHaveBeenLastCalledWith('approved');
   });

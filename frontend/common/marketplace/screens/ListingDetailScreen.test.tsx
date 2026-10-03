@@ -113,6 +113,14 @@ describe('ListingDetailScreen', () => {
     expect(mockRecordListingView).toHaveBeenCalledWith('listing-1');
   });
 
+  it('names a seller whose name is empty as unknown', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing({ owner: { id: 'seller-1', full_name: '', avatar_url: null } }));
+    mockFetchReviewsForListing.mockResolvedValue([]);
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
+    expect(await screen.findByText('Unknown seller')).toBeTruthy();
+  });
+
   it('does not record a view for the listing owner', async () => {
     useAuthStore.setState({ user: { id: 'seller-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());
@@ -173,6 +181,7 @@ describe('ListingDetailScreen', () => {
     expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1');
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
       screen: MESSAGING_ROUTES.Chat,
+      initial: false,
       params: { conversationId: 'conversation-1', otherUserName: 'Green Farms' },
     });
   });

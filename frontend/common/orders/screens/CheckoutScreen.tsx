@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Input } from '../../components';
+import { Button, Card, TextField } from '../../components';
 import { useCheckout } from '../hooks/orders';
 import { useAuthStore } from '../../../state/authStore';
 import { useCartStore, type CartItem } from '../../../state/cartStore';
 import { useTheme, type Theme } from '../../../theme';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
+import { formatRs } from '../../../utils/money';
 
 function groupBySeller(items: CartItem[]): Map<string, CartItem[]> {
   const groups = new Map<string, CartItem[]>();
@@ -77,11 +78,11 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
                     {`${item.quantity} × ${item.title}`}
                   </Text>
                   <Text style={styles.itemPrice}>
-                    {`Rs. ${(item.price * item.quantity).toFixed(0)}`}
+                    {formatRs(item.price * item.quantity)}
                   </Text>
                 </View>
               ))}
-              <Input
+              <TextField
                 label="Delivery charge (optional)"
                 keyboardType="numeric"
                 placeholder="0"
@@ -94,13 +95,13 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
                 <View style={styles.itemRow}>
                   <Text style={styles.itemLabel}>Subtotal</Text>
                   <Text style={styles.itemPrice}>
-                    {`Rs. ${subtotal.toFixed(0)}`}
+                    {formatRs(subtotal)}
                   </Text>
                 </View>
                 <View style={styles.itemRow}>
                   <Text style={styles.itemLabel}>Delivery</Text>
                   <Text style={styles.itemPrice}>
-                    {`Rs. ${delivery.toFixed(0)}`}
+                    {formatRs(delivery)}
                   </Text>
                 </View>
               </View>
@@ -112,7 +113,7 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>
-            {`Rs. ${grandTotal.toFixed(0)}`}
+            {formatRs(grandTotal)}
           </Text>
         </View>
         <Button label="Place Order" loading={checkout.isPending} onPress={onConfirm} />
@@ -121,62 +122,62 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     sellerCard: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     sellerTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.secondary,
-      marginBottom: spacing.sm,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink2,
+      marginBottom: space[2],
     },
     sellerSummary: {
-      marginTop: spacing.sm,
-      paddingTop: spacing.sm,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      marginTop: space[2],
+      paddingTop: space[2],
+      borderTopWidth: borders.hairline,
+      borderTopColor: colors.line,
     },
     itemRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: spacing.xs,
+      marginBottom: space[1],
     },
     itemLabel: {
+      ...typography.body,
       flex: 1,
-      marginRight: spacing.sm,
-      color: colors.text.primary,
+      marginRight: space[2],
+      color: colors.ink,
     },
     itemPrice: {
-      color: colors.text.secondary,
-      fontWeight: typography.weights.medium,
+      ...typography.figure,
+      color: colors.ink2,
     },
     footer: {
-      padding: spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      padding: space[4],
+      borderTopWidth: borders.hairline,
+      borderTopColor: colors.line,
     },
     totalRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     totalLabel: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
+      ...typography.body,
+      color: colors.ink2,
     },
     totalValue: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.title,
+      color: colors.ink,
     },
   });
 }

@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, Button, EmptyState, FilterChips, Spinner } from '../../common/components';
+import { Badge, Button, ChipRow, EmptyState, Spinner, StatusBadge } from '../../common/components';
 import { useDismissReport, useModerateReport, useReportPreviews, useReports } from '../hooks/admin';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
@@ -112,7 +112,7 @@ export function ReportsScreen() {
 
   return (
     <View style={styles.container}>
-      <FilterChips options={filters} value={filter} onChange={setFilter} />
+      <ChipRow options={filters} value={filter} onChange={setFilter} />
       <FlashList
         contentContainerStyle={styles.list}
         data={reports}
@@ -123,7 +123,7 @@ export function ReportsScreen() {
           return (
             <View style={styles.card}>
               <View style={styles.headerRow}>
-                <Badge label={TARGET_LABEL[item.target_type]} tone="error" />
+                <Badge label={TARGET_LABEL[item.target_type]} tone="neutral" />
                 <Text style={styles.time}>{new Date(item.created_at).toLocaleString()}</Text>
               </View>
               <Text style={styles.preview} numberOfLines={2}>
@@ -131,7 +131,7 @@ export function ReportsScreen() {
               </Text>
               <Text style={styles.reason}>{`Reason: ${item.reason}`}</Text>
               <Text style={styles.reporter}>
-                {`Reported by ${item.reporter?.full_name ?? 'Unknown'}`}
+                {`Reported by ${item.reporter?.full_name || 'Unknown'}`}
               </Text>
 
               {item.status === 'open' || item.status === 'investigating' ? (
@@ -139,7 +139,7 @@ export function ReportsScreen() {
                   {action ? (
                     <Button
                       label={action.label}
-                      variant="destructive"
+                      variant="danger"
                       fullWidth={false}
                       loading={updatingId === item.id}
                       onPress={() => confirmAction(item, action)}
@@ -154,7 +154,7 @@ export function ReportsScreen() {
                   />
                 </View>
               ) : (
-                <Badge label={item.status} tone={item.status === 'resolved' ? 'success' : 'neutral'} />
+                <StatusBadge kind="report" status={item.status} />
               )}
             </View>
           );
@@ -164,24 +164,24 @@ export function ReportsScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      paddingTop: spacing.md,
+      backgroundColor: colors.surface,
+      paddingTop: space[3],
     },
     list: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.lg,
+      paddingHorizontal: space[4],
+      paddingBottom: space[4],
     },
     card: {
-      backgroundColor: colors.background.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.lg,
-      padding: spacing.md,
-      marginBottom: spacing.md,
+      backgroundColor: colors.surface,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
+      borderRadius: radius.md,
+      padding: space[3],
+      marginBottom: space[3],
     },
     headerRow: {
       flexDirection: 'row',
@@ -189,29 +189,29 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
       justifyContent: 'space-between',
     },
     time: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     preview: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginTop: spacing.sm,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
+      marginTop: space[2],
     },
     reason: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      marginTop: spacing.xs,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: space[1],
     },
     reporter: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-      marginTop: spacing.xs / 2,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: space[1] / 2,
     },
     actions: {
       flexDirection: 'row',
-      gap: spacing.sm,
-      marginTop: spacing.md,
+      gap: space[2],
+      marginTop: space[3],
     },
   });
 }

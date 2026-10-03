@@ -1,5 +1,7 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { lightTheme } from '../../../theme';
 import { CartItemRow } from './CartItemRow';
 import type { CartItem } from '../../../state/cartStore';
 
@@ -17,8 +19,21 @@ describe('CartItemRow', () => {
   it('renders the title, price, and quantity', async () => {
     await render(<CartItemRow item={item} onIncrement={() => {}} onDecrement={() => {}} onRemove={() => {}} />);
     expect(screen.getByText('Wheat seeds')).toBeTruthy();
-    expect(screen.getByText('Rs. 100 / kg')).toBeTruthy();
+    expect(screen.getByText('Rs 100 / kg')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
+  });
+
+  it('names the steppers and Remove for TalkBack', async () => {
+    await render(<CartItemRow item={item} onIncrement={() => {}} onDecrement={() => {}} onRemove={() => {}} />);
+    expect(screen.getByRole('button', { name: 'One more Wheat seeds' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'One fewer Wheat seeds' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Remove Wheat seeds from the cart' })).toBeTruthy();
+  });
+
+  it('gives Remove a full 48 dp target, not only the word', async () => {
+    await render(<CartItemRow item={item} onIncrement={() => {}} onDecrement={() => {}} onRemove={() => {}} />);
+    const remove = screen.getByRole('button', { name: 'Remove Wheat seeds from the cart' });
+    expect(StyleSheet.flatten(remove.props.style).minHeight).toBe(lightTheme.size.touchMin);
   });
 
   it('calls onIncrement when + is pressed', async () => {

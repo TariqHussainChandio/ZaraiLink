@@ -14,12 +14,12 @@ export const APP_TABS = {
   Profile: 'Profile',
 } as const;
 
-// Expert gets its own dedicated tab bar (no Marketplace/Orders) per SRDS v4.0 §34.
+// The expert's shell (A2): Requests (Home) · Cases (Consultations) · Messages · Account (Profile). No Market or Orders;
+// notifications open from the bell on Requests.
 export const EXPERT_TABS = {
   Home: 'Home',
   Consultations: 'Consultations',
   Messages: 'Messages',
-  Notifications: 'Notifications',
   Profile: 'Profile',
 } as const;
 
@@ -30,13 +30,16 @@ export const EXPERT_HOME_ROUTES = {
   Dashboard: 'Dashboard',
   ExpertApplication: 'ExpertApplication',
   Analytics: 'Analytics',
+  Notifications: 'Notifications',
 } as const;
 
-// Admin gets its own dedicated tab bar; the long list of admin destinations (Users, Experts,
-// Products, Orders, Reports, Categories, Reference Data, Audit Logs) live as stack screens
-// reachable from the Home dashboard's Quick Actions rather than as individual bottom tabs.
+// The admin's shell (A2): Overview (Home) · Approvals · Moderation · Audit · Account (Profile). Dense and operational;
+// every decision screen writes an audit entry (BR-15).
 export const ADMIN_TABS = {
   Home: 'Home',
+  Approvals: 'Approvals',
+  Moderation: 'Moderation',
+  Audit: 'Audit',
   Profile: 'Profile',
 } as const;
 
@@ -103,22 +106,21 @@ export const HOME_ROUTES = {
   Analytics: 'Analytics',
 } as const;
 
-// Admin's Home stack: dashboard + every admin destination from SRDS v4.0 §34, reached via
-// Quick Actions on the Admin dashboard. UserManagement/ListingModeration have real screens
-// already (Module 18 partial); the rest are placeholders pending the rest of Module 18.
+// Every admin screen, across the admin's tab stacks (they share one param list, AdminStackParamList).
 export const ADMIN_HOME_ROUTES = {
   Dashboard: 'Dashboard',
+  Analytics: 'Analytics',
+  Notifications: 'Notifications',
+  ExpertVerification: 'ExpertVerification',
+  ModerationHub: 'ModerationHub',
   UserManagement: 'UserManagement',
   ListingModeration: 'ListingModeration',
-  ExpertVerification: 'ExpertVerification',
   Orders: 'Orders',
   OrderDetail: 'OrderDetail',
   Reports: 'Reports',
   Categories: 'Categories',
   ReferenceData: 'ReferenceData',
   AuditLogs: 'AuditLogs',
-  Notifications: 'Notifications',
-  Analytics: 'Analytics',
 } as const;
 
 // Consultations tab (Buyer/Farmer per §34; Dealer's nav tree omits it — no dealer entry point
@@ -133,14 +135,6 @@ export const CONSULTATIONS_ROUTES = {
   ConsultationDetail: 'ConsultationDetail',
 } as const;
 
-// The Expert's dedicated Notifications tab (real screen as of Module 13). Buyer/farmer/dealer
-// and admin don't have a bottom tab for this — they reach `NotificationListScreen` via
-// `HOME_ROUTES.Notifications`/`ADMIN_HOME_ROUTES.Notifications` instead, behind a bell icon on
-// their dashboard header.
-export const NOTIFICATIONS_ROUTES = {
-  NotificationList: 'NotificationList',
-} as const;
-
 export const PROFILE_ROUTES = {
   ViewProfile: 'ViewProfile',
   EditProfile: 'EditProfile',
@@ -149,4 +143,6 @@ export const PROFILE_ROUTES = {
   // P4 (4A.4, admin-only) and (4A.5, every role).
   MfaEnrollment: 'MfaEnrollment',
   DeleteAccount: 'DeleteAccount',
+  // Development builds only (A2): every shared component in the current theme.
+  DesignCatalogue: 'DesignCatalogue',
 } as const;

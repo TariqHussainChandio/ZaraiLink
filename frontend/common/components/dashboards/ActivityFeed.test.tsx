@@ -19,14 +19,14 @@ describe('ActivityFeed', () => {
         title="Recent Sales"
         emptyMessage="No sales yet"
         items={[
-          { id: '1', title: 'Buyer A', subtitle: 'Rs. 100 · completed', value: 'Rs. 100' },
-          { id: '2', title: 'Buyer B', subtitle: 'Rs. 50 · pending' },
+          { id: '1', title: 'Buyer A', subtitle: 'Rs 100 · completed', value: 'Rs 100' },
+          { id: '2', title: 'Buyer B', subtitle: 'Rs 50 · pending' },
         ]}
       />,
     );
     expect(screen.getByText('Buyer A')).toBeTruthy();
-    expect(screen.getByText('Rs. 100 · completed')).toBeTruthy();
-    expect(screen.getByText('Rs. 100')).toBeTruthy();
+    expect(screen.getByText('Rs 100 · completed')).toBeTruthy();
+    expect(screen.getByText('Rs 100')).toBeTruthy();
     expect(screen.getByText('Buyer B')).toBeTruthy();
     expect(screen.queryByText('No sales yet')).toBeNull();
   });
@@ -37,7 +37,7 @@ describe('ActivityFeed', () => {
       <ActivityFeed
         title="Recent Sales"
         emptyMessage="No sales yet"
-        items={[{ id: '1', title: 'Buyer A', subtitle: 'Rs. 100', onPress }]}
+        items={[{ id: '1', title: 'Buyer A', subtitle: 'Rs 100', onPress }]}
       />,
     );
     fireEvent.press(screen.getByText('Buyer A'));
@@ -49,7 +49,7 @@ describe('ActivityFeed', () => {
       <ActivityFeed
         title="Recent Sales"
         emptyMessage="No sales yet"
-        items={[{ id: '1', title: 'Buyer A', subtitle: 'Rs. 100' }]}
+        items={[{ id: '1', title: 'Buyer A', subtitle: 'Rs 100' }]}
       />,
     );
     expect(screen.getByTestId('activity-row-1').props.accessibilityState?.disabled).toBe(true);

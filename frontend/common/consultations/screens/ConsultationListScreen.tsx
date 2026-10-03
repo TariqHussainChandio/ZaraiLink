@@ -51,7 +51,7 @@ export function ConsultationListScreen() {
           <ConsultationCard
             consultation={item}
             counterpartyName={
-              (isExpert ? item.user?.full_name : item.expert?.full_name) ??
+              (isExpert ? item.user?.full_name : item.expert?.full_name) ||
               'Unknown'
             }
             onPress={() =>
@@ -71,6 +71,8 @@ export function ConsultationListScreen() {
                 ? 'Requests from farmers and buyers will show up here.'
                 : 'Browse verified experts to request a consultation.'
             }
+            actionLabel={isExpert ? undefined : 'Find an expert'}
+            onAction={isExpert ? undefined : () => navigation.navigate(CONSULTATIONS_ROUTES.ExpertList)}
           />
         }
       />
@@ -78,14 +80,14 @@ export function ConsultationListScreen() {
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      padding: spacing.lg,
+      padding: space[4],
     },
   });
 }

@@ -37,7 +37,8 @@ describe('ViewProfileScreen', () => {
     const { toJSON } = await renderWithQuery(
       <ViewProfileScreen navigation={makeNavigation()} route={{} as never} />,
     );
-    expect(toJSON()).toBeNull();
+    // The test providers (as in the app) wrap the screen; the screen itself adds nothing inside them.
+    expect(toJSON()).toMatchObject({ children: [] });
   });
 
   it("renders the user's name, role, and contact details", async () => {
@@ -49,6 +50,12 @@ describe('ViewProfileScreen', () => {
     expect(screen.getByText('ahmed@example.com')).toBeTruthy();
     expect(screen.getByText('+923001234567')).toBeTruthy();
     expect(screen.getByText('Multan, Punjab')).toBeTruthy();
+  });
+
+  it('shows a placeholder for an empty name', async () => {
+    useAuthStore.setState({ profile: profile({ full_name: '' }), user: { email: 'ahmed@example.com' } as never });
+    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    expect(screen.getByText('No name yet')).toBeTruthy();
   });
 
   it('shows placeholders for missing phone and location', async () => {

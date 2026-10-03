@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Card } from '../../components';
-import { ConsultationStatusBadge } from './ConsultationStatusBadge';
+import { Card, StatusBadge } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
 import type { ConsultationWithRelations } from '../../../expert';
 
@@ -22,7 +21,7 @@ export function ConsultationCard({ consultation, counterpartyName, onPress }: Co
           <Text style={styles.subject} numberOfLines={1}>
             {consultation.subject}
           </Text>
-          <ConsultationStatusBadge status={consultation.status} />
+          <StatusBadge kind="consultation" status={consultation.status} />
         </View>
         <Text style={styles.meta}>
           {counterpartyName}
@@ -34,32 +33,31 @@ export function ConsultationCard({ consultation, counterpartyName, onPress }: Co
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: spacing.xs,
+      marginBottom: space[1],
     },
     subject: {
       flex: 1,
-      marginRight: spacing.sm,
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      marginRight: space[2],
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     meta: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     date: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

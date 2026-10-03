@@ -24,14 +24,19 @@ describe('NotificationRow', () => {
     expect(screen.getByLabelText('New order received')).toBeTruthy();
   });
 
-  it('builds a payload-aware description for order_status_changed', async () => {
-    const notification: Notification = {
-      ...baseNotification,
-      type: 'order_status_changed',
-      payload: { status: 'shipped' },
-    };
+  // A status notification reads "<what changed>: <status word>", the word from the vocabulary (statusMeta), so it stays
+  // grammatical for every status and never shows the raw API value.
+  it.each([
+    ['order_status_changed', 'ready', 'Order status updated: Ready for dispatch'],
+    ['order_status_changed', 'payment_failed', 'Order status updated: Payment failed'],
+    ['payment_status_changed', 'successful', 'Payment update: Paid'],
+    ['payment_status_changed', 'failed', 'Payment update: Payment failed'],
+    ['listing_status_changed', 'active', 'Listing status changed: Listed'],
+    ['expert_verification_changed', 'pending', 'Verification update: Under review'],
+  ] as const)('describes %s to %s through the vocabulary', async (type, status, text) => {
+    const notification: Notification = { ...baseNotification, type, payload: { status } };
     await render(<NotificationRow notification={notification} onPress={() => {}} />);
-    expect(screen.getByText('Order is now shipped')).toBeTruthy();
+    expect(screen.getByText(text)).toBeTruthy();
   });
 
   it('builds a payload-aware description for inventory_low_stock', async () => {
@@ -54,8 +59,9 @@ describe('NotificationRow', () => {
     expect(screen.getByText('Your account was suspended')).toBeTruthy();
   });
 
-  it('falls back to a generic label for an unknown type', async () => {
-    const notification: Notification = { ...baseNotification, type: 'something_new', payload: {} };
+  it.each(['something_new', 'constructor'])('falls back to a generic label for an unknown type (%s)', async type => {
+    // 'constructor' is a key every object inherits; it must not be read as a known type.
+    const notification: Notification = { ...baseNotification, type, payload: {} };
     await render(<NotificationRow notification={notification} onPress={() => {}} />);
     expect(screen.getByText('Notification')).toBeTruthy();
   });

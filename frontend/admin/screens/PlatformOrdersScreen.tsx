@@ -6,14 +6,14 @@ import { EmptyState, Spinner } from '../../common/components';
 import { OrderCard } from '../../common/orders';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
 import { useAllOrders } from '../hooks/admin';
-import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
+import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
 import { useTheme, type Theme } from '../../theme';
 
 /** Platform-wide order overview — every order, not scoped to a buyer/seller segment. */
 export function PlatformOrdersScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const navigation = useNavigation<AdminHomeScreenProps<'Orders'>['navigation']>();
+  const navigation = useNavigation<AdminScreenProps<'Orders'>['navigation']>();
   const { data: orders = [], isPending: loading, refetch } = useAllOrders();
 
   useFocusEffect(
@@ -33,7 +33,7 @@ export function PlatformOrdersScreen() {
         renderItem={({ item }) => (
           <OrderCard
             order={item}
-            counterpartyName={`${item.buyer?.full_name ?? 'Unknown buyer'} → ${item.seller?.full_name ?? 'Unknown seller'}`}
+            counterpartyName={`${item.buyer?.full_name || 'Unknown buyer'} → ${item.seller?.full_name || 'Unknown seller'}`}
             onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.OrderDetail, { orderId: item.id })}
           />
         )}
@@ -48,15 +48,15 @@ export function PlatformOrdersScreen() {
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.lg,
+      paddingHorizontal: space[4],
+      paddingTop: space[4],
     },
   });
 }

@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card, EmptyState, Skeleton, SkeletonList } from '../../common/components';
 import { ActivityFeed } from '../../common/components/dashboards/ActivityFeed';
 import { QuickActions } from '../../common/components/dashboards/QuickActions';
-import { StatCard } from '../../common/components/dashboards/StatCard';
+import { StatTile } from '../../common/components/dashboards/StatTile';
 import {
   APP_TABS,
   CONSULTATIONS_ROUTES,
@@ -15,6 +15,8 @@ import { useOrders } from '../../common/orders';
 import { useAuthStore } from '../../state/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../theme';
+import { formatRs } from '../../utils/money';
+import { statusMeta } from '../../common/constants/status';
 
 // Disease Advisory is farmer-only (like Inventory is dealer-only) — buyers get marketplace,
 // orders, and expert consultation only, no entry point into `HOME_ROUTES.DiseaseAdvisory` here.
@@ -67,8 +69,8 @@ export function BuyerDashboardScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Total Purchases" value={orders.length} accent={theme.moduleAccents.orders} />
-        <StatCard label="In Progress" value={pendingCount} accent={theme.moduleAccents.orders} />
+        <StatTile label="Total Purchases" value={orders.length} accent={theme.colors.module.orders} />
+        <StatTile label="In Progress" value={pendingCount} accent={theme.colors.module.orders} />
       </View>
 
       <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -94,8 +96,8 @@ export function BuyerDashboardScreen() {
         emptyMessage="No purchases yet"
         items={orders.slice(0, 5).map(order => ({
           id: order.id,
-          title: order.seller?.full_name ?? 'Unknown seller',
-          subtitle: `Rs. ${order.total.toFixed(0)} · ${order.status}`,
+          title: order.seller?.full_name || 'Unknown seller',
+          subtitle: `${formatRs(order.total)} · ${statusMeta('order', order.status).label}`,
           onPress: () =>
             tabNavigation?.navigate(APP_TABS.Orders, {
               screen: ORDERS_ROUTES.OrderDetail,
@@ -107,38 +109,37 @@ export function BuyerDashboardScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     statsRow: {
       flexDirection: 'row',
-      gap: spacing.md,
-      marginBottom: spacing.xl,
+      gap: space[3],
+      marginBottom: space[6],
     },
     sectionTitle: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
     },
     statSkeletonCard: {
       flex: 1,
       alignItems: 'flex-start',
     },
     statSkeletonValue: {
-      width: 40,
-      height: 22,
+      width: '40%',
+      height: typography.figureLg.fontSize,
     },
     statSkeletonLabel: {
-      marginTop: spacing.xs,
-      width: 70,
-      height: 12,
+      marginTop: space[1],
+      width: '70%',
+      height: typography.caption.fontSize,
     },
   });
 }

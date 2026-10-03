@@ -2,10 +2,9 @@ import React, { useMemo } from 'react';
 import { Controller, type Control, type FieldErrors, type UseFormSetValue, type UseFormWatch } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Input, LocationPicker } from '../../components';
+import { Chip, LocationPicker, TextField } from '../../components';
 import { useCategories, useCrops } from '../hooks/marketplace';
 import { useTheme, type Theme } from '../../../theme';
-import { CategoryChip } from './CategoryChip';
 
 export const listingSchema = z.object({
   title: z.string().min(2, 'Enter a title'),
@@ -71,7 +70,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         control={control}
         name="title"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Title"
             value={value}
             onChangeText={onChange}
@@ -85,7 +84,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         control={control}
         name="description"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Description"
             value={value}
             onChangeText={onChange}
@@ -103,7 +102,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         render={({ field: { onChange, value } }) => (
           <View style={styles.chipRow}>
             {categories.map(category => (
-              <CategoryChip
+              <Chip
                 key={category.id}
                 label={category.name}
                 selected={value === category.id}
@@ -120,7 +119,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             control={control}
             name="price"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextField
                 label="Price"
                 keyboardType="numeric"
                 value={String(value)}
@@ -136,7 +135,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             control={control}
             name="unit"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextField
                 label="Unit"
                 value={value}
                 onChangeText={onChange}
@@ -152,7 +151,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         control={control}
         name="quantity"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Quantity available"
             keyboardType="numeric"
             value={String(value)}
@@ -169,7 +168,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             control={control}
             name="brand"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextField
                 label="Brand (optional)"
                 value={value}
                 onChangeText={onChange}
@@ -183,7 +182,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             control={control}
             name="condition"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextField
                 label="Condition (optional)"
                 value={value}
                 onChangeText={onChange}
@@ -201,7 +200,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
             {crops.map(crop => {
               const selected = cropCompatibility.includes(crop.name);
               return (
-                <CategoryChip
+                <Chip
                   key={crop.id}
                   label={crop.name}
                   selected={selected}
@@ -233,22 +232,21 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[1],
     },
     chipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     row: {
       flexDirection: 'row',
-      gap: spacing.md,
+      gap: space[3],
     },
     rowItem: {
       flex: 1,

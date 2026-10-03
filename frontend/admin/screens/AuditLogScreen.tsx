@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, EmptyState, FilterChips, Spinner } from '../../common/components';
+import { Badge, EmptyState, ChipRow, Spinner } from '../../common/components';
 import { useAuditLogs } from '../hooks/admin';
 import { useTheme, type Theme } from '../../theme';
 
@@ -29,7 +29,7 @@ export function AuditLogScreen() {
 
   return (
     <View style={styles.container}>
-      <FilterChips options={filterOptions} value={filter} onChange={setFilter} />
+      <ChipRow options={filterOptions} value={filter} onChange={setFilter} />
       <FlashList
         contentContainerStyle={styles.list}
         data={filtered}
@@ -47,7 +47,7 @@ export function AuditLogScreen() {
               <Text style={styles.time}>{new Date(item.created_at).toLocaleString()}</Text>
             </View>
             <Text style={styles.summary}>
-              <Text style={styles.bold}>{item.actor?.full_name ?? 'System'}</Text> · {item.target_entity}
+              <Text style={styles.bold}>{item.actor?.full_name || 'System'}</Text> · {item.target_entity}
               {item.target_id ? ` #${item.target_id.slice(0, 8)}` : ''}
             </Text>
             {item.previous_state || item.new_state ? (
@@ -65,24 +65,24 @@ export function AuditLogScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      paddingTop: spacing.md,
-      paddingHorizontal: spacing.lg,
+      backgroundColor: colors.surface,
+      paddingTop: space[3],
+      paddingHorizontal: space[4],
     },
     list: {
-      paddingBottom: spacing.lg,
+      paddingBottom: space[4],
     },
     card: {
-      backgroundColor: colors.background.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.lg,
-      padding: spacing.md,
-      marginBottom: spacing.sm,
+      backgroundColor: colors.surface,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
+      borderRadius: radius.md,
+      padding: space[3],
+      marginBottom: space[2],
     },
     headerRow: {
       flexDirection: 'row',
@@ -90,28 +90,28 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
       justifyContent: 'space-between',
     },
     time: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     summary: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      marginTop: spacing.sm,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: space[2],
     },
     bold: {
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
     },
     stateBlock: {
-      marginTop: spacing.sm,
-      backgroundColor: colors.background.default,
-      borderRadius: radii.sm,
-      padding: spacing.sm,
+      marginTop: space[2],
+      backgroundColor: colors.ground,
+      borderRadius: radius.xs,
+      padding: space[2],
     },
+    // Before and after states are JSON: the theme's mono face keeps keys and values in columns.
     mono: {
-      fontFamily: 'monospace',
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      ...typography.code,
+      color: colors.ink2,
     },
   });
 }

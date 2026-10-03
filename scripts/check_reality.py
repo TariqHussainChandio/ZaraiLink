@@ -63,10 +63,28 @@ class Rule:
     patterns: dict[str, str]
     why: str
     scope: tuple[str, ...] = ()  # path prefixes the rule applies to; empty means every production file
-    exempt: tuple[str, ...] = ()  # the one or two files that are allowed to break the rule by design
+    # The one or two files allowed to break the rule by design; an entry ending in "/" exempts a whole folder.
+    exempt: tuple[str, ...] = ()
     # Path segments the rule applies to wherever they occur (A1 put screens and components inside every module).
     scope_segments: tuple[str, ...] = ()
 
+
+# raw-style: the ternaries and fallbacks in front of a literal, on one line: `big ? 18 : 14`, `on ? colors.ink : 'red'`,
+# `size ?? 14`, `dense && 8`, `Platform.OS === 'ios' ? 12 : 8`, nested ones too. It is a small grammar rather than a run
+# of any characters: a condition is one operand (a name, a member or index access, a number or a string), perhaps
+# compared with another, then `?`, `??`, `||` or `&&`. So a literal inside an index (`space[dense ? 1 : 2]`), a call
+# (`scale(dense ? 1 : 2)`), arithmetic, a typed declaration (`const end: number = more ? 1 : 0`), a parameter list or
+# a time ('09:00') is never read as a branch.
+# Every line has one parse, so a match from one rule key stays linear in its operators: spaces come only before a piece,
+# never after one (two `[ \t]*` side by side could share a run of spaces, doubling the work at each step), and `!` only
+# starts an operand (otherwise `a!==b` reads as `a!` `==` or as `a` `!==`).
+_OPERAND = r"!*(?:[\w.$]|\[[^\]\n]*\]|'[^'\n]*'|\"[^\"\n]*\")+"
+_BRANCH = (
+    r"(?:[ \t]*" + _OPERAND + r"(?:[ \t]*(?:[=!]==?|[<>]=?)[ \t]*" + _OPERAND + r")?"
+    r"[ \t]*(?:\?\??|\|\||&&)(?:[ \t]*" + _OPERAND + r"[ \t]*:)?)*"
+)
+# A size other than 0, which is no design value; signed and decimal numbers count.
+_NONZERO = r"[-+]?(?:\.\d|(?!0(?![.\d]))\d)"
 
 RULES: tuple[Rule, ...] = (
     # ---- strict: production code must never contain these --------------------------------
@@ -132,6 +150,61 @@ RULES: tuple[Rule, ...] = (
         "screens and components read and write through their module's hooks, never the service or Supabase layer "
         "directly, so caching, offline behaviour and error handling live in one place",
         scope_segments=("/screens/", "/components/"),
+    ),
+    Rule(
+        "raw-style",
+        "strict",
+        # A2 (D14, SRDS §43): colour literals (hex, rgb/hsl, named colours, a hex alpha appended to a token); font
+        # families, weights and numeric type sizes; numeric spacing, radius, border, size, flex-basis and translate
+        # values other than 0 (signed and decimal numbers count, logical properties too); numeric size-like props, as
+        # numbers or strings; each of these behind a ternary or a `??`, `||` or `&&` fallback on the same line too
+        # (`_BRANCH`; a ternary spread over several lines is seen only when the break falls just before the literal). flex, opacity, zIndex, aspectRatio, elevation,
+        # percentages and `transparent` stay allowed: they are not part of the visual system. The rule reads literals,
+        # not arithmetic on tokens (`space[1] / 2`) or constants.
+        {
+            "ts": "|".join(
+                [
+                    r"['\"`]#[0-9A-Fa-f]{3,8}['\"`]",  # a hex colour
+                    r"\b(?:rgba?|hsla?)\(",
+                    r"\}[0-9A-Fa-f]{2}`",  # `${colors.x}1A`: a tint belongs in the theme
+                    # A named colour in a style or a prop, also as a ternary branch or a template string.
+                    r"\b\w*[cC]olor\s*:" + _BRANCH + r"\s*['\"`](?!transparent['\"`])[a-z]",
+                    r"\b\w*[cC]olor=\{?" + _BRANCH + r"\s*['\"`](?!transparent['\"`])[a-z]",
+                    r"\b\w*[cC]olor=\{\{[^}]*:\s*['\"`](?!transparent['\"`])[a-z]",  # trackColor={{ false: 'gray' }}
+                    r"\b(?:fontSize|lineHeight|letterSpacing)\s*:" + _BRANCH + r"\s*[-+]?\.?\d",
+                    r"\bfontFamily\s*:" + _BRANCH + r"\s*['\"]",
+                    # A weight comes from the theme's type style, which pairs it with the font file.
+                    r"\bfontWeight\s*:" + _BRANCH + r"\s*(?:['\"]?\d|['\"](?:bold|normal|bolder|lighter)['\"])",
+                    r"\b(?:(?:padding|margin)(?:Top|Bottom|Left|Right|Horizontal|Vertical|Start|End|Block|Inline)?"
+                    r"(?:Start|End)?|gap|rowGap|columnGap|flexBasis|translateX|translateY|"
+                    r"border(?:Top|Bottom|Start|End)?(?:Left|Right|Start|End)?Radius|"
+                    r"border(?:Top|Bottom|Left|Right|Start|End|Horizontal|Vertical|Block|Inline)?Width|width|height|"
+                    r"min(?:Width|Height)|max(?:Width|Height)|top|bottom|left|right|start|end|"
+                    r"inset(?:Block|Inline)?(?:Start|End)?|outlineWidth|outlineOffset|shadowRadius|textShadowRadius)"
+                    r"\s*:" + _BRANCH + r"\s*" + _NONZERO,
+                    r"\b(?:size|strokeWidth|hitSlop|width|height|keyboardVerticalOffset|gap)=\{"
+                    + _BRANCH + r"\s*['\"]?" + _NONZERO,
+                    r"\b(?:size|strokeWidth|width|height)=['\"]\d",  # a size passed as a string
+                    # Size-like props on our own components.
+                    r"\b\w+(?:Size|Gap|Width|Height|Radius|Spacing|Offset)=\{" + _BRANCH + r"\s*" + _NONZERO,
+                ]
+            )
+        },
+        "every colour, type size, space, corner, border and size comes from frontend/theme, so the app looks one way and "
+        "a design change is one edit (SRDS section 43)",
+        scope=("frontend/", "App.tsx"),
+        exempt=("frontend/theme/",),
+    ),
+    Rule(
+        "header-right",
+        "strict",
+        # headerLeft, a component headerTitle and headerSearchBarOptions are mounted in the hidden native header too; a
+        # string title is only text.
+        {"ts": r"\bheader(?:Right|Left|SearchBarOptions)\b|(?<![.\w])headerTitle\s*:\s*(?![\s'\"`])"},
+        "pass a screen's app-bar actions to stackOptionsWithActions (frontend/navigation/stackHeader.tsx): with the app's "
+        "own header, native-stack still mounts headerRight, headerLeft, a component headerTitle and a search bar in its "
+        "hidden native header, so they ran twice (A2); a title is a string",
+        scope=("frontend/", "App.tsx"),
     ),
     Rule(
         "console-call",
@@ -220,7 +293,8 @@ def scan(files: list[tuple[str, str]]) -> tuple[dict[str, Counter], dict[str, li
         text = (ROOT / path).read_text(encoding="utf-8", errors="replace")
         for rule in RULES:
             pattern = rule.patterns.get(lang)
-            if not pattern or (rule.scope and not path.startswith(rule.scope)) or path in rule.exempt:
+            exempted = any(path == e or (e.endswith("/") and path.startswith(e)) for e in rule.exempt)
+            if not pattern or (rule.scope and not path.startswith(rule.scope)) or exempted:
                 continue
             if rule.scope_segments and not any(seg in "/" + path for seg in rule.scope_segments):
                 continue
@@ -773,7 +847,8 @@ def write_baseline(data: dict) -> None:
         "Recorded debt for scripts/check_reality.py. Counts may only go down. "
         "Refresh with `python scripts/check_reality.py --update-baseline`; it refuses increases."
     )
-    BASELINE_PATH.write_text(json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    # LF on every OS, as .gitattributes asks: Windows text mode would otherwise write CRLF.
+    BASELINE_PATH.write_text(json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
 
 
 # --------------------------------------------------------------------------- main

@@ -12,7 +12,9 @@ import type { HomeStackParamList } from '../../../navigation/stacks/HomeNavigato
 import { useTheme, type Theme } from '../../../theme';
 import { ActivityFeed } from '../../components/dashboards/ActivityFeed';
 import { QuickActions } from '../../components/dashboards/QuickActions';
-import { StatCard } from '../../components/dashboards/StatCard';
+import { StatTile } from '../../components/dashboards/StatTile';
+import { formatRs } from '../../../utils/money';
+import { statusMeta } from '../../constants/status';
 
 export function SellerDashboard() {
   const theme = useTheme();
@@ -46,19 +48,19 @@ export function SellerDashboard() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Active Listings" value={activeListings} accent={theme.moduleAccents.marketplace} />
-        <StatCard label="Pending Orders" value={pendingOrders} accent={theme.moduleAccents.orders} />
+        <StatTile label="Active Listings" value={activeListings} accent={theme.colors.module.marketplace} />
+        <StatTile label="Pending Orders" value={pendingOrders} accent={theme.colors.module.orders} />
       </View>
 
       {role === 'farmer' && farmerExtra ? (
         <>
           <View style={styles.statsRow}>
-            <StatCard label="Farms" value={farmerExtra.farmCount} accent={theme.moduleAccents.farmer} />
-            <StatCard label="Crops" value={farmerExtra.cropCount} accent={theme.moduleAccents.farmer} />
+            <StatTile label="Farms" value={farmerExtra.farmCount} accent={theme.colors.accent.farmer.mark} />
+            <StatTile label="Crops" value={farmerExtra.cropCount} accent={theme.colors.accent.farmer.mark} />
           </View>
           <View style={styles.statsRow}>
-            <StatCard label="Open Consultations" value={farmerExtra.openConsultations} accent={theme.moduleAccents.consultation} />
-            <StatCard label="Resolved" value={farmerExtra.resolvedConsultations} accent={theme.moduleAccents.consultation} />
+            <StatTile label="Open Consultations" value={farmerExtra.openConsultations} accent={theme.colors.module.expert} />
+            <StatTile label="Resolved" value={farmerExtra.resolvedConsultations} accent={theme.colors.module.expert} />
           </View>
         </>
       ) : null}
@@ -66,11 +68,11 @@ export function SellerDashboard() {
       {role === 'dealer' && dealerExtra ? (
         <>
           <View style={styles.statsRow}>
-            <StatCard label="Low Stock" value={dealerExtra.lowStockCount} accent={theme.moduleAccents.inventory} />
-            <StatCard label="Stores" value={dealerExtra.storeCount} accent={theme.moduleAccents.dealer} />
+            <StatTile label="Low Stock" value={dealerExtra.lowStockCount} accent={theme.colors.module.dealer} />
+            <StatTile label="Stores" value={dealerExtra.storeCount} accent={theme.colors.module.dealer} />
           </View>
           <View style={styles.statsRow}>
-            <StatCard label="Suppliers" value={dealerExtra.supplierCount} accent={theme.moduleAccents.dealer} />
+            <StatTile label="Suppliers" value={dealerExtra.supplierCount} accent={theme.colors.module.dealer} />
           </View>
         </>
       ) : null}
@@ -126,8 +128,8 @@ export function SellerDashboard() {
         emptyMessage="No sales yet"
         items={recentSales.map(order => ({
           id: order.id,
-          title: order.buyer?.full_name ?? 'Unknown buyer',
-          subtitle: `Rs. ${order.total.toFixed(0)} · ${order.status}`,
+          title: order.buyer?.full_name || 'Unknown buyer',
+          subtitle: `${formatRs(order.total)} · ${statusMeta('order', order.status).label}`,
           onPress: () =>
             tabNavigation?.navigate(APP_TABS.Orders, {
               screen: ORDERS_ROUTES.OrderDetail,
@@ -139,25 +141,24 @@ export function SellerDashboard() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     statsRow: {
       flexDirection: 'row',
-      gap: spacing.md,
-      marginBottom: spacing.xl,
+      gap: space[3],
+      marginBottom: space[6],
     },
     sectionTitle: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
     },
   });
 }

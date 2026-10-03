@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { Button, Input, SelectField, Sheet } from '../../common/components';
+import { Button, TextField, SelectField, Sheet } from '../../common/components';
 import { useAdjustStock } from '../hooks/dealer';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
@@ -57,14 +57,14 @@ export function StockAdjustModal({ visible, onClose, inventoryId, unit }: StockA
     <Sheet visible={visible} onClose={onClose}>
       <Text style={styles.title}>Adjust Stock</Text>
       <SelectField label="Type" value={type} options={TYPE_OPTIONS} onSelect={id => setType(id as InventoryTransactionType)} searchable={false} />
-      <Input
+      <TextField
         testID="stock-adjust-quantity"
         label={`Quantity (${unit})`}
         keyboardType="numeric"
         value={quantity}
         onChangeText={setQuantity}
       />
-      <Input
+      <TextField
         testID="stock-adjust-notes"
         label="Notes"
         value={notes}
@@ -80,18 +80,17 @@ export function StockAdjustModal({ visible, onClose, inventoryId, unit }: StockA
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     title: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.md,
+      ...typography.title,
+      color: colors.ink,
+      marginBottom: space[3],
     },
     actions: {
       flexDirection: 'row',
-      gap: spacing.md,
-      marginTop: spacing.sm,
+      gap: space[3],
+      marginTop: space[2],
     },
     button: {
       flex: 1,

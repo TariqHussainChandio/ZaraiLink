@@ -29,7 +29,7 @@ describe('ListingCard', () => {
   it('renders title, price, and category', async () => {
     await render(<ListingCard listing={baseListing} onPress={() => {}} />);
     expect(screen.getByText('DAP Fertilizer 50kg')).toBeTruthy();
-    expect(screen.getByText('Rs. 4500 / bag')).toBeTruthy();
+    expect(screen.getByText('Rs 4,500 / bag')).toBeTruthy();
     expect(screen.getByText('Fertilizers')).toBeTruthy();
   });
 

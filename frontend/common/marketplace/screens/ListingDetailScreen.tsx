@@ -12,6 +12,7 @@ import { useTheme, type Theme } from '../../../theme';
 import { errorMessage } from '../../../utils/errorMessage';
 import { hapticTap } from '../../../utils/haptics';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
+import { formatRs } from '../../../utils/money';
 
 export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProps<'ListingDetail'>) {
   const theme = useTheme();
@@ -50,20 +51,20 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
       {listing.images[0] ? (
         <Image source={{ uri: listing.images[0] }} style={styles.image} />
       ) : (
-        <View style={[styles.image, styles.imagePlaceholder]} />
+        <View style={styles.image} />
       )}
 
       <Text style={styles.title}>{listing.title}</Text>
       <Text style={styles.price}>
-        {`Rs. ${listing.price.toFixed(0)} / ${listing.unit} · ${listing.quantity} ${listing.unit} available`}
+        {`${formatRs(listing.price)} / ${listing.unit} · ${listing.quantity} ${listing.unit} available`}
       </Text>
       {listing.category ? <Text style={styles.category}>{listing.category.name}</Text> : null}
       {listing.description ? <Text style={styles.description}>{listing.description}</Text> : null}
 
       {listing.owner ? (
         <View style={styles.sellerRow}>
-          <Avatar name={listing.owner.full_name} uri={listing.owner.avatar_url} size={36} />
-          <Text style={styles.sellerName}>{listing.owner.full_name}</Text>
+          <Avatar name={listing.owner.full_name} uri={listing.owner.avatar_url} size={theme.size.avatarMd} />
+          <Text style={styles.sellerName}>{listing.owner.full_name || 'Unknown seller'}</Text>
         </View>
       ) : null}
 
@@ -104,8 +105,10 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
               if (!userId || !listing.owner) return;
               try {
                 const conversation = await openConversation.mutateAsync(listing.owner_id);
+                // On top of the conversation list (initial: false), so Back and the Messages tab reach it, not a stack whose root is this chat.
                 tabNavigation?.navigate(APP_TABS.Messages, {
                   screen: MESSAGING_ROUTES.Chat,
+                  initial: false,
                   params: { conversationId: conversation.id, otherUserName: listing.owner.full_name },
                 });
               } catch (error) {
@@ -128,70 +131,64 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, size }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     image: {
       width: '100%',
-      height: 220,
-      borderRadius: radii.lg,
-      backgroundColor: colors.border,
+      height: size.photoHero,
+      borderRadius: radius.md,
+      backgroundColor: colors.line,
     },
-    imagePlaceholder: {},
     title: {
-      marginTop: spacing.lg,
-      fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      marginTop: space[4],
+      ...typography.headline,
+      color: colors.ink,
     },
     price: {
-      marginTop: spacing.xs,
-      fontSize: typography.sizes.base,
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
+      marginTop: space[1],
+      ...typography.bodyStrong,
+      color: colors.accent.brand.ink,
     },
     category: {
-      marginTop: spacing.xs,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1],
+      ...typography.caption,
+      color: colors.ink2,
     },
     description: {
-      marginTop: spacing.md,
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
-      lineHeight: typography.lineHeights.base,
+      marginTop: space[3],
+      ...typography.body,
+      color: colors.ink2,
     },
     sellerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: spacing.lg,
-      gap: spacing.sm,
+      marginTop: space[4],
+      gap: space[2],
     },
     sellerName: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.primary,
+      ...typography.caption,
+      color: colors.ink,
     },
     action: {
-      marginTop: spacing.xl,
+      marginTop: space[6],
     },
     secondaryAction: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
     reviewsSection: {
-      marginTop: spacing.xl,
+      marginTop: space[6],
     },
     sectionTitle: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
     },
   });
 }

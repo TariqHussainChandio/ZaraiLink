@@ -11,7 +11,7 @@ import {
   useNotifications,
 } from '../hooks/notifications';
 import { useAuthStore } from '../../../state/authStore';
-import { useTheme, type Theme } from '../../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
 import type { Notification } from '../types/notifications';
 import { errorMessage } from '../../../utils/errorMessage';
 
@@ -19,7 +19,8 @@ const ORDER_TYPES = new Set(['order_new', 'order_status_changed', 'payment_statu
 
 export function NotificationListScreen() {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const userId = useAuthStore(state => state.user?.id);
   // Untyped: this screen is mounted inside three different tab navigators (buyer/farmer/dealer,
   // expert, admin) with different param lists — deep-linking below is best-effort per type and
@@ -53,11 +54,13 @@ export function NotificationListScreen() {
     }
 
     if (notification.type === 'new_message' && notification.payload?.conversation_id) {
+      // On top of the conversation list (initial: false), so Back and the Messages tab reach it, not a stack whose root is this chat.
       tabNavigation.navigate(APP_TABS.Messages, {
         screen: MESSAGING_ROUTES.Chat,
+        initial: false,
         params: {
           conversationId: notification.payload.conversation_id,
-          otherUserName: notification.payload.sender_name ?? 'Conversation',
+          otherUserName: notification.payload.sender_name || 'Conversation',
         },
       });
     }
@@ -110,20 +113,20 @@ export function NotificationListScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     markAllRow: {
-      padding: spacing.md,
+      padding: space[3],
       alignItems: 'flex-end',
     },
     markAllLabel: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.brand.primary,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: accent.ink,
     },
   });
 }

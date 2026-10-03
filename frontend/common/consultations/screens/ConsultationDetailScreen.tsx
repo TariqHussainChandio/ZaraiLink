@@ -11,8 +11,7 @@ import {
   View,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, Card, Input, SelectField, Sheet, Spinner } from '../../components';
-import { ConsultationStatusBadge } from '../components/ConsultationStatusBadge';
+import { Button, Card, SelectField, Sheet, Spinner, StatusBadge, TextField } from '../../components';
 import { ConsultationMessageBubble } from '../components/ConsultationMessageBubble';
 import { ChatInput } from '../../messaging';
 import { RatingStars } from '../../reviews';
@@ -27,6 +26,7 @@ import {
   useUpdateConsultationStatus,
 } from '../hooks/consultations';
 import { useListingOptions } from '../../marketplace';
+import { useComposerInsets } from '../../../hooks/useComposerInsets';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 import type { ConsultationStatus } from '../../../expert';
@@ -34,6 +34,7 @@ import { errorMessage } from '../../../utils/errorMessage';
 
 export function ConsultationDetailScreen() {
   const theme = useTheme();
+  const composer = useComposerInsets();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { consultationId } = useRoute().params as { consultationId: string };
   const navigation = useNavigation<any>();
@@ -83,7 +84,7 @@ export function ConsultationDetailScreen() {
   const isRequester = consultation.user_id === userId;
   const isExpert = consultation.expert_id === userId;
   const counterpartyName =
-    (isRequester ? consultation.expert?.full_name : consultation.user?.full_name) ??
+    (isRequester ? consultation.expert?.full_name : consultation.user?.full_name) ||
     'Unknown';
 
   const advance = async (to: ConsultationStatus) => {
@@ -139,7 +140,7 @@ export function ConsultationDetailScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      keyboardVerticalOffset={composer.keyboardOffset}
     >
       <View style={styles.flex}>
         <FlashList
@@ -164,7 +165,7 @@ export function ConsultationDetailScreen() {
             <View style={styles.details}>
               <View style={styles.headerRow}>
                 <Text style={styles.subject}>{consultation.subject}</Text>
-                <ConsultationStatusBadge status={consultation.status} />
+                <StatusBadge kind="consultation" status={consultation.status} />
               </View>
               <Text style={styles.meta}>
                 {`With ${counterpartyName}`}
@@ -212,7 +213,7 @@ export function ConsultationDetailScreen() {
                 {canReject ? (
                   <Button
                     label="Reject"
-                    variant="destructive"
+                    variant="danger"
                     loading={updating}
                     onPress={() => advance('rejected')}
                     style={styles.action}
@@ -237,7 +238,7 @@ export function ConsultationDetailScreen() {
                 {canCancel ? (
                   <Button
                     label="Cancel Request"
-                    variant="destructive"
+                    variant="danger"
                     loading={updating}
                     onPress={() => advance('cancelled')}
                     style={styles.action}
@@ -288,9 +289,9 @@ export function ConsultationDetailScreen() {
       <Sheet visible={reviewVisible} onClose={() => setReviewVisible(false)}>
         <Text style={styles.sheetTitle}>Rate this Consultation</Text>
         <View style={styles.starsRow}>
-          <RatingStars value={reviewRating} size={28} onChange={setReviewRating} />
+          <RatingStars value={reviewRating} size={theme.size.iconLg} onChange={setReviewRating} />
         </View>
-        <Input
+        <TextField
           label="Comment (optional)"
           value={reviewComment}
           onChangeText={setReviewComment}
@@ -303,81 +304,78 @@ export function ConsultationDetailScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, fontWeight, size, borders }: Theme) {
   return StyleSheet.create({
     flex: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      paddingVertical: spacing.md,
+      paddingVertical: space[3],
     },
     details: {
-      padding: spacing.lg,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      padding: space[4],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: spacing.xs,
+      marginBottom: space[1],
     },
     subject: {
       flex: 1,
-      marginRight: spacing.sm,
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      marginRight: space[2],
+      ...typography.title,
+      color: colors.ink,
     },
     meta: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs / 2,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[1] / 2,
     },
     descriptionCard: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
     },
     description: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.primary,
-      lineHeight: typography.lineHeights.sm,
+      ...typography.caption,
+      color: colors.ink,
     },
     imageRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.sm,
-      marginTop: spacing.sm,
+      gap: space[2],
+      marginTop: space[2],
     },
     image: {
-      width: 80,
-      height: 80,
-      borderRadius: radii.md,
-      backgroundColor: colors.border,
+      width: size.photoMd,
+      height: size.photoMd,
+      borderRadius: radius.sm,
+      backgroundColor: colors.line,
     },
     reviewCard: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
     reviewTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink2,
+      marginBottom: space[1],
     },
     actions: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
     action: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
     },
     sheetTitle: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.md,
+      ...typography.title,
+      color: colors.ink,
+      marginBottom: space[3],
     },
     starsRow: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
   });
 }

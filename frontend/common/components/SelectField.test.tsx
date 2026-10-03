@@ -41,6 +41,21 @@ describe('SelectField — closed state', () => {
   });
 });
 
+describe('SelectField — for TalkBack', () => {
+  it('reads the closed field as a button with its label and the chosen option', async () => {
+    await render(<SelectField label="Unit" value="bag" options={options} onSelect={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Unit, Bag' })).toBeTruthy();
+  });
+
+  it('marks the chosen option as selected in the open picker', async () => {
+    await render(<SelectField label="Unit" value="bag" options={options} onSelect={() => {}} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Unit, Bag' }));
+    const chosen = await screen.findByRole('button', { name: 'Bag', selected: true, includeHiddenElements: true });
+    expect(chosen).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Kilogram', selected: false, includeHiddenElements: true })).toBeTruthy();
+  });
+});
+
 describe('SelectField — opening the picker', () => {
   it('opens the option sheet when the field is pressed', async () => {
     await render(<SelectField value={null} options={options} onSelect={() => {}} />);

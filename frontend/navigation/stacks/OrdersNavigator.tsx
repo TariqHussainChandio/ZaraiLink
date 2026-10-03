@@ -8,6 +8,7 @@ import { PaymentMethodScreen } from '../../common/payments/screens/PaymentMethod
 import { PaymentProcessingScreen } from '../../common/payments/screens/PaymentProcessingScreen';
 import { PaymentResultScreen } from '../../common/payments/screens/PaymentResultScreen';
 import { WriteReviewScreen } from '../../common/reviews/screens/WriteReviewScreen';
+import { stackScreenOptions } from '../stackHeader';
 
 export type OrdersStackParamList = {
   [ORDERS_ROUTES.OrderHistory]: undefined;
@@ -25,7 +26,7 @@ const Stack = createNativeStackNavigator<OrdersStackParamList>();
 
 export function OrdersNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
+    <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen
         name={ORDERS_ROUTES.OrderHistory}
         component={OrderHistoryScreen}

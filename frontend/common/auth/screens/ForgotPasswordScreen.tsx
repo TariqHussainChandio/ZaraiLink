@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input } from '../../components';
+import { Banner, Button, TextField } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { useResetPassword } from '../hooks/auth';
 import { useTheme, type Theme } from '../../../theme';
@@ -54,7 +54,7 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
         control={control}
         name="email"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Email"
             autoCapitalize="none"
             keyboardType="email-address"
@@ -66,7 +66,15 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
         )}
       />
 
-      {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
+      {submitError ? (
+
+        <View style={styles.errorBanner}>
+
+          <Banner tone="danger" title={submitError} />
+
+        </View>
+
+      ) : null}
 
       <Button
         label="Send code"
@@ -75,43 +83,40 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
         style={styles.submit}
       />
 
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.link}>Back to sign in</Text>
-      </TouchableOpacity>
+      <View style={styles.links}>
+        <Button label="Back to sign in" variant="quiet" fullWidth={false} onPress={() => navigation.goBack()} />
+      </View>
     </View>
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
+    links: {
+      alignItems: 'center',
+      marginTop: space[4],
+      gap: space[2],
+    },
     container: {
       flex: 1,
       justifyContent: 'center',
-      padding: spacing.xl,
+      padding: space[6],
     },
     title: {
-      fontSize: typography.sizes['3xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.display,
+      color: colors.ink,
     },
     subtitle: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
-      marginTop: spacing.xs,
-      marginBottom: spacing.xl,
+      ...typography.body,
+      color: colors.ink2,
+      marginTop: space[1],
+      marginBottom: space[6],
     },
     submit: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
     },
     errorBanner: {
-      color: colors.semantic.error,
-      marginBottom: spacing.md,
-    },
-    link: {
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
-      marginTop: spacing.xl,
-      textAlign: 'center',
+      marginBottom: space[3],
     },
   });
 }

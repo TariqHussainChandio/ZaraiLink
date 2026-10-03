@@ -24,7 +24,7 @@ describe('OrderCard', () => {
   it('renders the counterparty name, item count, total, and status', async () => {
     await render(<OrderCard order={order()} counterpartyName="Green Farms" onPress={() => {}} />);
     expect(screen.getByText('Green Farms')).toBeTruthy();
-    expect(screen.getByText('1 item · Rs. 500')).toBeTruthy();
+    expect(screen.getByText('1 item · Rs 500')).toBeTruthy();
     expect(screen.getByText('Pending')).toBeTruthy();
   });
 
@@ -41,7 +41,12 @@ describe('OrderCard', () => {
         onPress={() => {}}
       />,
     );
-    expect(screen.getByText('2 items · Rs. 500')).toBeTruthy();
+    expect(screen.getByText('2 items · Rs 500')).toBeTruthy();
+  });
+
+  it('speaks the status word, not the raw value', async () => {
+    await render(<OrderCard order={order({ status: 'payment_failed' })} counterpartyName="Green Farms" onPress={() => {}} />);
+    expect(screen.getByLabelText('Order with Green Farms, Rs 500, Payment failed')).toBeTruthy();
   });
 
   it('calls onPress when tapped', async () => {

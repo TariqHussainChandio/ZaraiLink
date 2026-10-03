@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
+import { lightColors } from '../../theme';
 import { Badge } from './Badge';
 
 describe('Badge', () => {
@@ -10,9 +11,15 @@ describe('Badge', () => {
 
   it('defaults to the neutral tone', async () => {
     await render(<Badge label="Neutral" />);
-    const text = screen.getByText('Neutral');
-    expect(text.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ color: '#434336' })]),
+    expect(screen.getByText('Neutral').props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ color: lightColors.status.neutral.ink })]),
+    );
+  });
+
+  it('draws danger as a solid block with on-accent text', async () => {
+    await render(<Badge label="Rejected" tone="danger" />);
+    expect(screen.getByText('Rejected').props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ color: lightColors.onAccent })]),
     );
   });
 });

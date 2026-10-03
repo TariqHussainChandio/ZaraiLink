@@ -1,38 +1,65 @@
+import { X } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { Modal, ModalProps, Pressable, StyleSheet, View } from 'react-native';
-import { useTheme, type Theme } from '../../theme';
+import { Modal, type ModalProps, Pressable, StyleSheet, Text, View } from 'react-native';
+import { type Theme, useTheme } from '../../theme';
 
 export interface SheetProps extends Pick<ModalProps, 'visible'> {
   onClose: () => void;
+  /** Names the task; with a title the sheet gets a close button and is announced as a dialog with that name. */
+  title?: string;
   children: React.ReactNode;
 }
 
-export function Sheet({ visible, onClose, children }: SheetProps) {
+/** A bottom sheet for a task that belongs to the screen behind it: filters, a reason, a stock adjustment. It rises over
+ * the scrim with elevation 3; system back, the backdrop and the close button dismiss it. */
+export function Sheet({ visible, onClose, title, children }: SheetProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <Pressable testID="sheet-backdrop" style={styles.backdrop} onPress={onClose} />
-      <View style={styles.sheet}>{children}</View>
+      <Pressable testID="sheet-backdrop" style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+      <View style={styles.sheet} accessibilityViewIsModal accessibilityLabel={title}>
+        <View style={styles.grip} />
+        {title ? (
+          <View style={styles.head}>
+            <Text style={styles.title} accessibilityRole="header">
+              {title}
+            </Text>
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
+              <X color={theme.colors.ink} size={theme.size.iconMd} />
+            </Pressable>
+          </View>
+        ) : null}
+        {children}
+      </View>
     </Modal>
   );
 }
 
-function makeStyles({ colors, spacing, radii, shadows }: Theme) {
+function makeStyles({ colors, space, size, components, shadows, typography, radius }: Theme) {
+  const { sheet } = components;
   return StyleSheet.create({
-    backdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.4)',
-    },
+    backdrop: { flex: 1, backgroundColor: colors.scrim },
     sheet: {
-      backgroundColor: colors.background.surface,
-      borderTopLeftRadius: radii.xl,
-      borderTopRightRadius: radii.xl,
-      padding: spacing.xl,
-      // One depth tier above `Card` (shadows.sm) — a sheet floats over the whole screen, a
-      // card sits flush within it, so the two should never read at the same elevation.
-      ...shadows.md,
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: sheet.radius,
+      borderTopRightRadius: sheet.radius,
+      paddingHorizontal: sheet.padding,
+      paddingTop: space[2],
+      paddingBottom: space[6],
+      ...shadows.elev3,
     },
+    grip: {
+      alignSelf: 'center',
+      width: sheet.grip.width,
+      height: sheet.grip.height,
+      borderRadius: radius.pill,
+      backgroundColor: colors.lineStrong,
+      marginBottom: space[3],
+    },
+    head: { flexDirection: 'row', alignItems: 'center', minHeight: size.touchMin, marginBottom: space[2] },
+    title: { ...typography.title, flex: 1, color: colors.ink },
+    close: { width: size.touchMin, height: size.touchMin, alignItems: 'center', justifyContent: 'center' },
   });
 }

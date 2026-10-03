@@ -1,10 +1,10 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { EmptyState, Spinner } from '../../common/components';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Banner, EmptyState, Spinner } from '../../common/components';
 import { ConsultationCard, useConsultations } from '../../common/consultations';
 import { QuickActions } from '../../common/components/dashboards/QuickActions';
-import { StatCard } from '../../common/components/dashboards/StatCard';
+import { StatTile } from '../../common/components/dashboards/StatTile';
 import { CONSULTATIONS_ROUTES, EXPERT_HOME_ROUTES, EXPERT_TABS } from '../../common/constants/routes';
 import { useOwnExpertProfile } from '../hooks/experts';
 import { useAuthStore } from '../../state/authStore';
@@ -55,32 +55,43 @@ export function ExpertDashboardScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {!profile ? (
-        <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate(EXPERT_HOME_ROUTES.ExpertApplication)}>
-          <Text style={styles.bannerTitle}>Complete your expert profile</Text>
-          <Text style={styles.bannerText}>Submit your qualifications so buyers and farmers can find you.</Text>
-        </TouchableOpacity>
+        <View style={styles.banner}>
+          <Banner
+            tone="info"
+            title="Complete your expert profile"
+            actionLabel="Complete profile"
+            onAction={() => navigation.navigate(EXPERT_HOME_ROUTES.ExpertApplication)}
+          >
+            Submit your qualifications so buyers and farmers can find you.
+          </Banner>
+        </View>
       ) : profile.verification_status === 'pending' ? (
-        <View style={[styles.banner, styles.bannerPending]}>
-          <Text style={styles.bannerTitle}>Application pending review</Text>
-          <Text style={styles.bannerText}>{"An admin will verify your profile before it's visible to buyers/farmers."}</Text>
+        <View style={styles.banner}>
+          <Banner tone="warning" title="Application pending review">
+            {"An admin will verify your profile before it's visible to buyers and farmers."}
+          </Banner>
         </View>
       ) : profile.verification_status === 'rejected' ? (
-        <TouchableOpacity style={[styles.banner, styles.bannerRejected]} onPress={() => navigation.navigate(EXPERT_HOME_ROUTES.ExpertApplication)}>
-          <Text style={styles.bannerTitle}>Application not approved</Text>
-          <Text style={styles.bannerText}>Update your profile and it will be reviewed again.</Text>
-        </TouchableOpacity>
+        <View style={styles.banner}>
+          <Banner
+            tone="danger"
+            title="Application not approved"
+            actionLabel="Update profile"
+            onAction={() => navigation.navigate(EXPERT_HOME_ROUTES.ExpertApplication)}
+          >
+            Update your profile and it will be reviewed again.
+          </Banner>
+        </View>
       ) : null}
 
       <View style={styles.statsRow}>
-        <StatCard label="Open Requests" value={openCount} accent={theme.moduleAccents.consultation} />
-        <StatCard label="Resolved" value={resolvedCount} accent={theme.moduleAccents.consultation} />
+        <StatTile label="Open Requests" value={openCount} accent={theme.colors.module.expert} />
+        <StatTile label="Resolved" value={resolvedCount} accent={theme.colors.module.expert} />
       </View>
 
-      <QuickActions
-        actions={[
-          { label: 'Analytics', onPress: () => navigation.navigate(EXPERT_HOME_ROUTES.Analytics) },
-        ]}
-      />
+      <View style={styles.actions}>
+        <QuickActions actions={[{ label: 'Analytics', onPress: () => navigation.navigate(EXPERT_HOME_ROUTES.Analytics) }]} />
+      </View>
 
       <Text style={styles.sectionTitle}>Recent Consultation Requests</Text>
       {consultations.length === 0 ? (
@@ -95,7 +106,7 @@ export function ExpertDashboardScreen() {
             <ConsultationCard
               key={consultation.id}
               consultation={consultation}
-              counterpartyName={consultation.user?.full_name ?? 'Unknown'}
+              counterpartyName={consultation.user?.full_name || 'Unknown'}
               onPress={() =>
                 navigation.navigate(EXPERT_TABS.Consultations, { screen: CONSULTATIONS_ROUTES.ConsultationDetail, params: { consultationId: consultation.id } })
               }
@@ -106,47 +117,30 @@ export function ExpertDashboardScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     banner: {
-      backgroundColor: colors.brand.primaryTint,
-      borderRadius: radii.md,
-      padding: spacing.md,
-      marginBottom: spacing.lg,
+      marginBottom: space[4],
     },
-    bannerPending: {
-      backgroundColor: colors.background.default,
-    },
-    bannerRejected: {
-      backgroundColor: `${colors.semantic.error}1A`,
-    },
-    bannerTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-    },
-    bannerText: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+    actions: {
+      marginBottom: space[6],
     },
     statsRow: {
       flexDirection: 'row',
-      gap: spacing.md,
-      marginBottom: spacing.xl,
+      gap: space[3],
+      marginBottom: space[6],
     },
     sectionTitle: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
     },
   });
 }

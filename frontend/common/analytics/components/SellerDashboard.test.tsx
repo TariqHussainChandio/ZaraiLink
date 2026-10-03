@@ -78,7 +78,7 @@ describe('SellerDashboard', () => {
     ]);
     await renderWithProviders(<SellerDashboard />);
     expect(await screen.findByText('Bilal')).toBeTruthy();
-    await waitFor(() => expect(screen.getByText('Rs. 500 · completed')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Rs 500 · Completed')).toBeTruthy());
     expect(mockFetchOrdersForUser).toHaveBeenCalledWith('seller');
   });
 });

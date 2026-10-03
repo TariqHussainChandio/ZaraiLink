@@ -1,17 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, PhoneInput, isValidE164 } from '../../components';
+import { Banner, Button, type ChipOption, ChipRow, isValidE164, PhoneInput, TextField } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS, ROLES, type Role } from '../../constants/roles';
 import { useSignUp, type AuthChannel } from '../hooks/auth';
@@ -20,6 +12,11 @@ import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
 const REGISTRABLE_ROLES = ROLES.filter(role => role !== 'admin') as Exclude<Role, 'admin'>[];
+const ROLE_OPTIONS: ChipOption<Exclude<Role, 'admin'>>[] = REGISTRABLE_ROLES.map(role => ({ value: role, label: ROLE_LABELS[role] }));
+const CHANNELS: ChipOption<'email' | 'phone'>[] = [
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone number' },
+];
 
 function makeRegisterSchema() {
   return z
@@ -97,7 +94,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           control={control}
           name="fullName"
           render={({ field: { onChange, onBlur, value } }) => (
-            <Input
+            <TextField
               label="Full name"
               value={value}
               onChangeText={onChange}
@@ -111,23 +108,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
         <Controller
           control={control}
           name="channel"
-          render={({ field: { onChange, value } }) => (
-            <View style={styles.roleRow}>
-              {(['email', 'phone'] as const).map(option => (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.roleChip, value === option && styles.roleChipSelected]}
-                  onPress={() => onChange(option)}
-                >
-                  <Text
-                    style={[styles.roleChipLabel, value === option && styles.roleChipLabelSelected]}
-                  >
-                    {option === 'email' ? 'Email' : 'Phone number'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+          render={({ field: { onChange, value } }) => <ChipRow options={CHANNELS} value={value} onChange={onChange} />}
         />
 
         {channel === 'email' ? (
@@ -135,7 +116,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
             control={control}
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextField
                 label="Email"
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -164,7 +145,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           control={control}
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
-            <Input
+            <TextField
               label="Password"
               secureTextEntry
               value={value}
@@ -180,29 +161,20 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           control={control}
           name="role"
           render={({ field: { onChange, value } }) => (
-            <View style={styles.roleRow}>
-              {REGISTRABLE_ROLES.map(role => (
-                <TouchableOpacity
-                  key={role}
-                  style={[styles.roleChip, value === role && styles.roleChipSelected]}
-                  onPress={() => onChange(role)}
-                >
-                  <Text
-                    style={[
-                      styles.roleChipLabel,
-                      value === role && styles.roleChipLabelSelected,
-                    ]}
-                  >
-                    {ROLE_LABELS[role]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ChipRow options={ROLE_OPTIONS} value={value} onChange={onChange} />
           )}
         />
         {errors.role?.message ? <Text style={styles.errorText}>{errors.role.message}</Text> : null}
 
-        {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
+        {submitError ? (
+
+          <View style={styles.errorBanner}>
+
+            <Banner tone="danger" title={submitError} />
+
+          </View>
+
+        ) : null}
 
         <Button
           label="Create account"
@@ -213,93 +185,64 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate(AUTH_ROUTES.Login)}>
-            <Text style={styles.link}>{' Sign in'}</Text>
-          </TouchableOpacity>
+          <Button label="Sign in" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     flex: { flex: 1 },
     container: {
       flexGrow: 1,
       justifyContent: 'center',
-      padding: spacing.xl,
+      padding: space[6],
     },
     title: {
-      fontSize: typography.sizes['3xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.display,
+      color: colors.ink,
     },
     subtitle: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
-      marginTop: spacing.xs,
-      marginBottom: spacing.xl,
+      ...typography.body,
+      color: colors.ink2,
+      marginTop: space[1],
+      marginBottom: space[6],
     },
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[1],
     },
     hint: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-      marginTop: -spacing.sm,
-      marginBottom: spacing.md,
-    },
-    roleRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    roleChip: {
-      paddingVertical: spacing.xs,
-      paddingHorizontal: spacing.md,
-      borderRadius: radii.full,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    roleChipSelected: {
-      backgroundColor: colors.brand.primary,
-      borderColor: colors.brand.primary,
-    },
-    roleChipLabel: {
-      color: colors.text.secondary,
-      fontWeight: typography.weights.medium,
-    },
-    roleChipLabelSelected: {
-      color: colors.neutral.white,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: -space[2],
+      marginBottom: space[3],
     },
     errorText: {
-      color: colors.semantic.error,
-      fontSize: typography.sizes.xs,
-      marginBottom: spacing.md,
+      color: colors.status.danger.mark,
+      ...typography.caption,
+      marginBottom: space[3],
     },
     submit: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
     },
     errorBanner: {
-      color: colors.semantic.error,
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     footer: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
       justifyContent: 'center',
-      marginTop: spacing.xl,
+      gap: space[1],
+      marginTop: space[4],
     },
     footerText: {
-      color: colors.text.secondary,
-    },
-    link: {
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
+      ...typography.body,
+      color: colors.ink2,
     },
   });
 }

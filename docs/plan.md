@@ -1,6 +1,6 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-09-28): A0 and A1 closed. Next: A2 and A3.**
+> **Status (2026-10-04): A0 and A1 closed; A2 verified, awaiting the merge. Next: A3.**
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is
 >   configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
 >   Supabase's password rules, reauthentication for old sessions, phone sign-up off).
@@ -9,6 +9,11 @@
 > - **A1, modular restructure** (PR #15, merge commit `8ddd846`): the code is in the SRDS module layout (section 2),
 >   with no behaviour change; the strict `module-boundary` rule is at zero, and `zl-verifier` signed it off after four
 >   rounds (`docs/plan-ecommerce.md` A1).
+> - **A2, design system and app shell** (branch `a2/design-system`, not yet merged): the theme, components and five
+>   role shells from the approved design system (D14), with the strict `raw-style` rule at zero; proven on the Pixel 8
+>   emulator as each role, in light and dark (`docs/plan-ecommerce.md` A2). `zl-verifier` rounds 1–3 found ten, twelve
+>   and eight issues, all fixed; round 4 verified it; its seven Low follow-ups and the five small
+>   items a re-check of them found are fixed. The merge is next.
 > - An early build of A3's account status, email-only sign-in and Application Status screen is parked, unmerged, on
 >   branch `wip/a3-account-status` (its migration is not pushed); A3 ports it by hand with `scripts/a1/moves.json`.
 >
@@ -165,6 +170,7 @@ Agreed before the phase that needs them. Each has a contract test, so a lane can
 | D11 | AI report text comes from a curated, expert-reviewed disease knowledge base (no LLM) | Recommended |
 | D12 | Conversations start only from a listing, an order or a consultation | Recommended |
 | D13 | Model weights live in the private Supabase bucket `ml-models`, fetched by signed URL | **Done** 2026-09-26 |
+| D14 | A2's design source is a new ZaraiLink design system built from the SRDS (§43–§44, the business rules and the status vocabulary); the earlier Cowork design system and prototype are not used | **Decided** 2026-09-28 (maintainer); design approved 2026-09-28 |
 
 ## 7. Outside services and gates
 

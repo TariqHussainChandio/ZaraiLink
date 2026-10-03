@@ -1,8 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, Button, EmptyState, Sheet, Spinner } from '../../common/components';
+import { Button, EmptyState, ListGroup, ListRow, RoleBadge, Sheet, Spinner, StatusBadge } from '../../common/components';
 import { ROLES, ROLE_LABELS } from '../../common/constants/roles';
 import { useProfiles, useSetProfileSuspended, useUpdateUserRole } from '../hooks/admin';
 import { useAuthStore } from '../../state/authStore';
@@ -64,11 +64,11 @@ export function UserManagementScreen() {
           <View style={styles.row}>
             <View style={styles.info}>
               <Text style={styles.name} numberOfLines={1}>
-                {item.full_name}
+                {item.full_name || 'Unknown user'}
               </Text>
               <View style={styles.badgeRow}>
-                <Badge label={ROLE_LABELS[item.role]} tone="info" />
-                {item.is_suspended ? <Badge label="Suspended" tone="error" /> : null}
+                <RoleBadge role={item.role} />
+                {item.is_suspended ? <StatusBadge kind="application" status="suspended" /> : null}
               </View>
             </View>
             {item.id !== currentUserId ? (
@@ -82,7 +82,7 @@ export function UserManagementScreen() {
                 />
                 <Button
                   label={item.is_suspended ? 'Unsuspend' : 'Suspend'}
-                  variant={item.is_suspended ? 'secondary' : 'destructive'}
+                  variant={item.is_suspended ? 'secondary' : 'danger'}
                   fullWidth={false}
                   loading={updatingId === item.id}
                   onPress={() => toggleSuspend(item)}
@@ -94,73 +94,50 @@ export function UserManagementScreen() {
         ListEmptyComponent={<EmptyState title="No users found" />}
       />
 
-      <Sheet visible={!!roleSheetFor} onClose={() => setRoleSheetFor(null)}>
-        <Text style={styles.sheetTitle}>
-          {`Change role for ${roleSheetFor?.full_name}`}
-        </Text>
-        {ROLES.filter(role => role !== roleSheetFor?.role).map(role => (
-          <TouchableOpacity
-            key={role}
-            style={styles.roleOption}
-            onPress={() => roleSheetFor && changeRole(roleSheetFor, role)}
-          >
-            <Text style={styles.roleOptionLabel}>{ROLE_LABELS[role]}</Text>
-          </TouchableOpacity>
-        ))}
+      <Sheet visible={!!roleSheetFor} onClose={() => setRoleSheetFor(null)} title={`Change role for ${roleSheetFor?.full_name || 'this user'}`}>
+        <ListGroup>
+          {ROLES.filter(role => role !== roleSheetFor?.role).map(role => (
+            <ListRow key={role} title={ROLE_LABELS[role]} onPress={() => roleSheetFor && changeRole(roleSheetFor, role)} />
+          ))}
+        </ListGroup>
       </Sheet>
     </>
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[3],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     info: {
       flex: 1,
-      marginRight: spacing.sm,
+      marginRight: space[2],
     },
     name: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.xs,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[1],
     },
     badgeRow: {
       flexDirection: 'row',
-      gap: spacing.xs,
+      gap: space[1],
     },
     actions: {
       flexDirection: 'row',
-      gap: spacing.sm,
-    },
-    sheetTitle: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.lg,
-    },
-    roleOption: {
-      paddingVertical: spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    roleOptionLabel: {
-      fontSize: typography.sizes.base,
-      color: colors.text.primary,
+      gap: space[2],
     },
   });
 }

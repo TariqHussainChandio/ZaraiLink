@@ -117,6 +117,13 @@ config}/` plus `backend/app/common/*.py` for the core. Another module is reached
 (`backend/tests/<module>/`, integration tests in `backend/tests/integration/`). `supabase/migrations/` (timestamped, never edited after being pushed);
 `docs/{architecture,database,setup,process,status}/`; the plans are `docs/plan*.md`.
 
+Every colour, type style, space, corner, border and size comes from `frontend/theme/` (since A2, from the design
+system of decision D14), read through `useTheme()`; the strict `raw-style` rule fails a literal anywhere else. A
+colour for a role comes from `useRoleAccent()`, which each shell sets, and a status is shown only through
+`StatusBadge` and the vocabulary in `frontend/common/constants/status.ts`. Build screens from
+`frontend/common/components/` before writing a new control. A stack's app-bar actions go to
+`stackOptionsWithActions` (`frontend/navigation/stackHeader.tsx`), never React Navigation's `headerRight`.
+
 ## Learned the hard way
 
 - The pinned `supabase-py` write builders have no `.select()`, so `insert(...).select()` crashes at runtime
@@ -144,3 +151,15 @@ config}/` plus `backend/app/common/*.py` for the core. Another module is reached
   passes in debug and fails in release. `app.config.ts` keeps those names; prefer a plain result over a code.
 - When you swap a lint config, diff the active rules (`eslint --print-config`) before and after. Unchanged findings
   do not mean unchanged checks: a rule that is switched off finds nothing.
+- With a custom `header`, native-stack still hands `headerRight` to its hidden native header, so the element mounts
+  twice (Jest shows both). Two notification bells crashed the app on the shared realtime channel, because
+  `supabase.channel()` returns the already-subscribed channel for a repeated topic. Hence `stackOptionsWithActions`
+  and a per-mount topic in `frontend/hooks/realtime/`.
+- On Android a view that gains its first `backgroundColor` after mount can lose its `borderRadius` (a tab highlight
+  drew square). Give a view that changes colour a background from the start.
+- Testing Library's `fireEvent` is async (since v13; the project is on v14). An un-awaited press overlaps the next `act()` and every later test in
+  the file fails with "Unable to find", far from the cause.
+- Fast Refresh can leave a style change unapplied on the device. Before judging a layout fix, relaunch the app.
+- Never start Metro with `CI=1`: Expo then turns off file watching, and Metro keeps serving the bundle it cached
+  before, so the device runs old code while every check of the source passes. To confirm what the device runs, fetch
+  `http://127.0.0.1:8081/index.bundle?platform=android&dev=true&minify=false` and search it for the change.

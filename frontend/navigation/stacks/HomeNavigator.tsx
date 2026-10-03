@@ -19,11 +19,12 @@ import { StoreListScreen } from '../../inventory/screens/StoreListScreen';
 import { SupplierDetailScreen } from '../../inventory/screens/SupplierDetailScreen';
 import { SupplierListScreen } from '../../inventory/screens/SupplierListScreen';
 import { NotificationListScreen } from '../../common/notifications/screens/NotificationListScreen';
-import { NotificationBellButton } from '../../common/notifications';
 import { DiseaseProcessingScreen } from '../../ai/screens/DiseaseProcessingScreen';
 import { DiseaseResultScreen } from '../../ai/screens/DiseaseResultScreen';
 import { DiseaseUploadScreen } from '../../ai/screens/DiseaseUploadScreen';
 import { MyListingsScreen } from '../../common/marketplace/screens/MyListingsScreen';
+import { homeActions } from '../headerActions';
+import { stackOptionsWithActions } from '../stackHeader';
 
 export type HomeStackParamList = {
   [HOME_ROUTES.Dashboard]: undefined;
@@ -65,18 +66,15 @@ function RoleAwareAnalyticsScreen() {
   return <EmptyState title="Analytics unavailable" description="Analytics isn't available for this role." />;
 }
 
+const HOME_STACK_OPTIONS = stackOptionsWithActions({ [HOME_ROUTES.Dashboard]: homeActions });
+
 export function HomeNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
+    <Stack.Navigator screenOptions={HOME_STACK_OPTIONS}>
       <Stack.Screen
         name={HOME_ROUTES.Dashboard}
         component={HomeDashboardScreen}
-        options={({ navigation }) => ({
-          title: 'Home',
-          headerRight: () => (
-            <NotificationBellButton onPress={() => navigation.navigate(HOME_ROUTES.Notifications)} />
-          ),
-        })}
+        options={{ title: 'Home' }}
       />
       <Stack.Screen
         name={HOME_ROUTES.Notifications}

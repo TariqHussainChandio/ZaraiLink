@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { Avatar, Button, Input, LocationPicker, PhoneInput, isValidE164 } from '../../components';
+import { Avatar, Button, TextField, LocationPicker, PhoneInput, isValidE164 } from '../../components';
 import { useFarmerProfile, useUpdateProfile, useUploadAvatar, useUpsertFarmerProfile } from '../hooks/profile';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
@@ -55,7 +55,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   } = useForm<EditProfileFormValues>({
     resolver: zodResolver(editProfileSchema),
     defaultValues: {
-      fullName: profile?.full_name ?? '',
+      fullName: profile?.full_name || '',
       phone: profile?.phone ?? null,
       country: profile?.country ?? '',
       province: profile?.province ?? '',
@@ -137,7 +137,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         {avatarUri ? (
           <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
         ) : (
-          <Avatar name={profile?.full_name} size={88} />
+          <Avatar name={profile?.full_name} size={theme.size.avatarLg} />
         )}
         <View style={styles.avatarBadge} />
       </TouchableOpacity>
@@ -146,7 +146,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         control={control}
         name="fullName"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Full name"
             value={value}
             onChangeText={onChange}
@@ -180,14 +180,14 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         control={control}
         name="village"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Village" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <TextField label="Village" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
       <Controller
         control={control}
         name="street"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input label="Street / address" value={value} onChangeText={onChange} onBlur={onBlur} />
+          <TextField label="Street / address" value={value} onChangeText={onChange} onBlur={onBlur} />
         )}
       />
 
@@ -197,7 +197,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
             control={control}
             name="experience"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextField
                 label="Experience"
                 placeholder="e.g. 8 years growing wheat and cotton"
                 value={value}
@@ -210,7 +210,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
             control={control}
             name="agriculturalInfo"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextField
                 label="Agricultural information"
                 placeholder="Practices, specialties, certifications, etc."
                 value={value}
@@ -234,28 +234,28 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space, size, radius }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     avatarWrap: {
       alignSelf: 'center',
-      marginBottom: spacing.xl,
+      marginBottom: space[6],
     },
     avatarImage: {
-      width: 88,
-      height: 88,
-      borderRadius: 44,
-      backgroundColor: colors.border,
+      width: size.avatarLg,
+      height: size.avatarLg,
+      borderRadius: radius.pill,
+      backgroundColor: colors.line,
     },
     avatarBadge: {},
     submit: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
   });
 }

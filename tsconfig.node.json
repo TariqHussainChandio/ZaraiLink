@@ -1,0 +1,9 @@
+{
+  // The files Node runs rather than the app: Expo evaluates app.config.ts in Node (npm run typecheck checks both).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["app.config.ts"],
+  "exclude": ["node_modules"]
+}

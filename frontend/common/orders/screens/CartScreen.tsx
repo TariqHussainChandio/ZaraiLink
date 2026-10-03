@@ -7,6 +7,7 @@ import { MARKETPLACE_ROUTES } from '../../constants/routes';
 import { cartTotal, useCartStore } from '../../../state/cartStore';
 import { useTheme, type Theme } from '../../../theme';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
+import { formatRs } from '../../../utils/money';
 
 export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
   const theme = useTheme();
@@ -43,7 +44,7 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
       <View style={styles.footer}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>{`Rs. ${total.toFixed(0)}`}</Text>
+          <Text style={styles.totalValue}>{formatRs(total)}</Text>
         </View>
         <Button
           label="Checkout"
@@ -54,38 +55,37 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     empty: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
       justifyContent: 'center',
     },
     list: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     footer: {
-      padding: spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      padding: space[4],
+      borderTopWidth: borders.hairline,
+      borderTopColor: colors.line,
     },
     totalRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     totalLabel: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
+      ...typography.body,
+      color: colors.ink2,
     },
     totalValue: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.title,
+      color: colors.ink,
     },
   });
 }

@@ -268,16 +268,184 @@ to `zl-app-core`.
 
 ### A2 — Design system and app shell
 
-**Goal:** SRDS §43–§44 theme and a shared component set, from the approved Claude Design prototype.
+**Goal:** SRDS §43–§44 theme and a shared component set, from the ZaraiLink design system (D14): a new design built from
+the SRDS, published as a Design System artifact (https://claude.ai/artifact/QGigdYkNz8jUZLQcNMTeWz) and approved by the
+maintainer on 2026-09-28. It holds light and dark tokens (every text, icon and control pair
+contrast-checked in both themes), the type scale (Atkinson Hyperlegible Next and Mono), 18 components, the role
+shells and the status vocabulary.
 
 | Lane | Tasks | Needs |
 |---|---|---|
-| `zl-app-core` (theme) | Add `theme/{dimensions,borders,components,shadows}.ts`; tokens from the prototype; status tokens for orders (incl. dispatched), applications, stock and sync; strict `raw-style` gate (no hex colours, raw sizes or raw font sizes outside `theme/`) burned to zero | Prototype approved |
+| `zl-app-core` (theme) | Add `theme/{dimensions,borders,components,shadows}.ts`; tokens from the design system's `tokens.json`; status tokens for orders (incl. dispatched), applications, stock and sync; strict `raw-style` gate (no hex colours, raw sizes or raw font sizes outside `theme/`) burned to zero | Design system approved (D14) |
 | `zl-app-core` (components) | Rebuild `common/components`: Button sizes; Input focus/disabled/helper states; one `StatusBadge` (icon + label) replacing four; Chip replacing two; Sheet with title and modal semantics; 48 dp targets; component docs | theme lane's tokens |
 | `zl-app-core` (shell) | Role-aware root navigator: Auth, Application Status, Farmer, Buyer, Dealer, Expert, Admin shells; the IMS root slot (empty until B4, hidden) | A1 |
 | every role lane | Replace raw styles in its own folder with tokens | theme lane |
 
 **Exit:** component catalogue screenshots in light and dark; `raw-style` and `module-boundary` at zero.
+
+**Status (2026-10-04): built on branch `a2/design-system`, in one sequential pass (the maintainer's choice).
+`zl-verifier` rounds 1 (2026-09-28), 2 and 3 (2026-10-03): verified with findings, all fixed below; round 4
+(2026-10-03): verified, with seven Low follow-ups; a re-check of those (2026-10-04) found them holding, with four Low
+and one Info item more, fixed below except the inventory lists' raw status words (B4). Two checks of those fixes found
+them holding, but the rule's new ternary reading still failed valid code; it was rewritten as a small grammar, and a
+third check of that found no false positive and one slow case (chained operators), fixed below. The merge is next.**
+
+- **Theme** (`frontend/theme/`): `colors`, `typography`, `spacing`, `dimensions`, `borders`, `shadows`, `components`,
+  `motion`, `themes`, `ThemeContext` and `RoleScope` (each shell sets its accent once; components read it with
+  `useRoleAccent()`). Values are the design system's light and dark tokens; `contrast.test.ts` checks 184 text and
+  icon pairs in both themes. The status vocabulary (tone, icon, word for orders, payments, applications,
+  consultations, listings, reports and stock) is `frontend/common/constants/status.ts`. Atkinson Hyperlegible Next and
+  Mono are embedded by the `expo-font` config plugin as Android font families (`app.config.ts`), so a style's
+  `fontWeight` picks the file; the release APK carries all six font files.
+- **Components** (`frontend/common/components/`): Button, TextField, Chip and ChipRow, StatusBadge (replaces the four
+  status badges), Card, ListRow, Sheet, Banner, EmptyState, Skeleton, Spinner, Avatar, RoleBadge, TopAppBar and
+  IconButton, TabBar, PriceBreakdown (BR-09: the delivery charge is always its own line), OrderTimeline and
+  `dashboards/StatTile`, each with tests. A development-only design catalogue (Account, palette icon) shows every one.
+- **Shells** (`frontend/navigation/`): Farmer (Home · Market · Orders · Advisory · Account), Buyer (Home · Market ·
+  Orders · Experts · Account), Dealer (Home · Market · Orders · Messages · Account), Expert (Requests · Cases · Messages
+  · Account) and Admin (Overview · Approvals · Moderation · Audit · Account). Farmers and buyers open Messages from
+  Home's app bar, as a full-screen stack over the tabs; the chat composer there clears the gesture area itself
+  (`useComposerInsets`). The Advisory and Experts tabs lead to the verified experts ("Find an expert"). Each stack draws
+  the design system's app bar; a screen's app-bar actions are passed per route (`stackOptionsWithActions`), never
+  React Navigation's `headerRight`. `shells.test.tsx` renders each role's navigator and checks its tabs, its accent
+  and that each app-bar action appears exactly once, which fails if an action is also handed to `headerRight`; an
+  action moved to the native header altogether is caught by the strict `header-right` gate rule, not by the test. A
+  chat opened from another tab sits on top of the conversation list (`initial: false`). `stackHeader.test.tsx` checks
+  the app bar's Back and title: a stack's first screen (what every tab root is) has the large title and no Back, a
+  screen that sets `headerBackVisible: false` has no Back, an inner screen has Back and the standard title, and a stack
+  opened full screen over the tabs gets a Back that closes it (native-stack passes the parent's Back to its first
+  screen).
+- **Migration**: `scripts/a2/migrate_theme.py` rewrote every module to the new theme (`--check` reports 0 old uses);
+  hand-built chips, banners, quick actions and cart and role badges were replaced with the shared components.
+- **Gate**: the strict `raw-style` rule (colour literals: hex, rgb/hsl, named colours and a hex alpha appended to a
+  token; font families, weights and numeric type sizes; numeric spacing, radius, border, size, flex-basis and
+  translate values other than 0, signed, decimal and logical properties included; numeric size-like props, as numbers
+  or strings; each of these as a ternary branch or a `??`, `||` or `&&` fallback on the same line too) and
+  the strict `header-right` rule (`headerRight`, `headerLeft` and a component `headerTitle`, all mounted in the hidden
+  native header) are at zero, with no baseline entry and failing-first tests in `scripts/test_check_reality.py`.
+  `module-boundary` stays at zero; the knip count fell from 27 to 22. The CI change filter counts
+  `tsconfig.node.json` as a frontend change (`scripts/test_ci_paths.py`).
+- **Types**: `app.config.ts` runs in Node, so `tsconfig.node.json` checks it with Node's types (`@types/node` pinned
+  to the Node 22 line that `engines` and CI use) and the app's program excludes it (`npm run typecheck` runs both); app
+  code cannot type-check Node-only APIs such as `Buffer`.
+- **Evidence** (after the round-4 re-check's fixes, 2026-10-04): `npm run typecheck` (both programs) 0 errors; ESLint 0
+  errors, 0 warnings (the ESLint allowance in `scripts/reality-baseline.json` lowered from 16 to 0); Jest 159 suites, 1,135 tests; the
+  app's real-stack Jest 16/16 against local Supabase and FastAPI, and the backend suite 466 passed (1 skipped: no
+  sample leaf photo) at round 1, the backend unchanged since; gate tests 202 (`scripts/test_check_reality.py` and `scripts/test_ci_paths.py`); `expo-doctor` 21/21 on `expo` 57.0.26;
+  round 4 assembled a release APK that carries all six font files. A dev build
+  rebuilt on 57.0.26 runs on the emulator: the timeline's spoken states and the price lines are in Android's
+  accessibility tree (`uiautomator`), the farmer's full-screen Messages closes with Back, and a dealer's chat opened
+  from a listing returns to the Messages list. On the Pixel 8 emulator (Android 16), a new dev build signed in as a local farmer, buyer,
+  dealer, expert and admin, each with its tab set and accent; Settings switched light and dark; 130% font scale held;
+  the catalogue was captured page by page in both themes.
+- **Defects the device run found and fixed:** header actions mounted twice (native-stack hands `headerRight` to its
+  hidden native header), and the second notification bell crashed on the shared realtime channel; the realtime hooks
+  now give each mount its own channel, with a regression test on the real supabase-js client. Also: a tab selected
+  after launch drew a square highlight; the role badge used the info colour; a stat figure broke across lines and four
+  tiles in a row broke words; status-bar icons followed the phone's theme instead of the app's; tab labels were cut at
+  130%.
+- **Verifier round 1** (VERIFIED WITH FINDINGS), fixed: the order timeline drew disputed and refunded orders as not
+  started (F1; now completed, then the dispute, then the refund); the farmer and buyer chat composer sat in the
+  Android gesture area (F2; proven on the emulator: the composer ends at y 2307, the gesture area starts at 2337); a
+  `/// <reference types="node" />` let Node's globals type-check in app code (F3; the tsconfig split above);
+  StatusBadge crashed on a status it does not know (F4; now a neutral badge with the status's own word); no test
+  guarded the shells (F5; `shells.test.tsx` fails if an action appears twice, and the `header-right` rule); controls took the brand
+  green in every shell (F7; FABs, chat, filters, selected options and unread rows now take the role accent);
+  `raw-style` missed several forms (F8; extended, and the QR code, keyboard offsets and a font literal fixed); text
+  without a type style fell back to Roboto (F9; form errors are danger Banners, auth links quiet Buttons, line items and
+  profile rows typed); touchables without a button role and the tab's "new" dot at 2:1 (F10; roles added, the dot
+  ringed in the notifications ink, which the contrast test now checks). The inventory system's dealer strip moved below
+  the status bar.
+- **Verifier round 2** (VERIFIED WITH FINDINGS), fixed: the order screen crashed on a status the build does not know,
+  where F4 had only fixed the badge (V1; every status is read through `statusMeta` in `common/constants/status.ts`, the
+  timeline draws an unknown status as the current step after the steps reached, and the screen has a test with
+  `dispatched`); the F1 tests passed with F1's fix reverted (V2; each step is now spoken as "done", "current step" or
+  "to come", the tests assert it, and reverting F1 fails two of them); a dealer who opened a chat from a listing,
+  order or notification before the Messages tab could never reach the conversation list (V3; `initial: false` at the
+  four call sites); the F5 wording overstated the test (V4; corrected above); `headerLeft` and a component
+  `headerTitle` escaped the `header-right` rule (V5); the app bar ignored `headerBackVisible: false` (V6); the select
+  field, the payment method choice and the cart steppers had no roles or selected state for TalkBack (V7); the CI
+  filter missed `tsconfig.node.json` (V8); `raw-style` missed named colours, logical properties and more (V9);
+  `@types/node` was newer than the project's Node (V10); a missing chat partner's name showed as "Unknown" rather than
+  the "Conversation" fallback (V11); the expert specialisation line and a listing icon used the wrong tokens, and a
+  refunded order's past dispute was drawn as a warning (V12).
+- **Verifier round 3** (VERIFIED WITH FINDINGS), fixed: the timeline's spoken states never reached TalkBack, because
+  Android flattened the layout-only views that carried them (R3-1; each step and price line is `accessible`, the list
+  keeps a native view, Jest asserts both, and the device's accessibility tree now holds them); CI's Android job runs
+  `expo-doctor` first and would have skipped the APK builds on the new upstream patch (R3-2; `expo` taken to 57.0.26
+  with `npx expo install --fix`, the native project and dev build rebuilt); the ESLint allowance still allowed 16
+  nested components (R3-3; lowered to 0); raw status values showed in dashboard rows, order and listing labels and
+  notifications (R3-4; read through `statusMeta`); the cart's Remove was a 20 dp target (R3-5; 48 dp); a nameless
+  conversation showed a blank row (R3-6; "Unknown"); test gaps (R3-7: an unknown status's timeline, a history entry
+  leaving an unknown status, the full-screen Back, a case only the size-prop pattern catches); and forms the rules still
+  passed (R3-8: `headerSearchBarOptions`, `fontWeight: '700'`, `size={'24'}`, `color={'black'}`, outline and shadow
+  radii). `statusMeta` reads own keys only. The full-screen Back proved to come from native-stack itself, so the
+  header's own overlay-closing code was removed.
+- **Verifier round 4** (VERIFIED: nothing above Low), its seven Low follow-ups fixed: My Listings and listing
+  moderation showed the raw listing status (L1; `StatusBadge`, so an active listing reads "Listed"); a status
+  notification read "Payment payment failed" (L2; now what changed, then the status word: "Payment update: Paid", one
+  test case per kind); changes the tests did not catch (L3; the order card's and a listing's spoken status, the Total's
+  own accessible stop, the large title on a stack's first screen, and `outlineOffset` and `textShadowRadius` each get a
+  test, and reverting each fix fails one); a name left empty (`profiles.full_name` defaults to `''`) showed blank where a
+  missing name read "Unknown" (L4; every fallback uses `||`); the payment result screen looked its copy up by status and
+  would crash on one it does not know (L5; it falls back to the status word, with a test); `raw-style` missed numeric
+  and named font weights and a literal in a ternary, a colour object or a template string (L6; each has a case, and
+  dropping any branch of the rule fails one); and the shells bullet said "a tab root" where the test renders a stack's
+  first screen (L7). The re-check (fresh context, mutations on every fix) found them all holding, and fixed: font
+  sizes, weights and families in a ternary still passed the rule; its new ternary branches could run past a `}` into a
+  later JSX prop and fail valid code (the branch now stops at a brace, and three such lines are allowed in the tests);
+  the admin analytics tiles named payment and report statuses with the raw value ("Successful" for "Paid"); an empty
+  name still showed blank in the admin user list and its role sheet, a listing's seller and your own profile; the L5
+  test passed with the fallback title broken; and a notification type equal to an inherited key (`constructor`) was
+  read as a known type. Two checks of those fixes found the ternary reading still failed valid code: first a time
+  (`'09:00'`) or a function's parameters, then an index (`space[dense ? 1 : 2]`, correct token use), a typed
+  declaration (`const end: number = more ? 1 : 0`) and a size prop's `Platform.OS === 'ios' ? headerHeight : 0`. Each
+  fix had stopped a free run of characters at one more place, so the reading was rewritten as a small grammar
+  (`_BRANCH` in `scripts/check_reality.py`): a condition is one operand (a name, a member or index access, a number or
+  a string), perhaps compared with another, then `?`, `??`, `||` or `&&`, nested ternaries included. Style keys and
+  size props share it, and neither counts 0 as a raw size. A third check found no false positive in 113 realistic
+  lines, but chained operators backtracked exponentially (22 `??` on one line took 7.6 s): spaces could belong to the
+  end of one step or the start of the next, and `a!==b` read two ways. Spaces now come only before a piece and `!`
+  only starts an operand, so each line has one parse; 1,600 chained operators take about 10 ms, and a test with 400
+  of them fails on a 30 s timeout if the doubling returns. A fourth check found the old and new forms flag the same
+  lines across all 46,679 lines of `frontend/` and 248 probes, and nothing above Low; its two untested parts (a double
+  `!`, and `transparent` in a colour object) now have tests. The tests reject 29 ternary and fallback forms and allow
+  25 valid lines that earlier versions failed or that pin a boundary; dropping any part of the grammar fails one (two
+  loosenings that would only flag more raw values pass: reading across lines, and any text as the right side of a
+  comparison). On the emulator, as the local admin, the payment tiles read "Paid
+  27", "Payment failed 7" and "Awaiting payment 15" (the local database's counts), and users with an empty name read
+  "Unknown user".
+- **Deviation from the task table:** the Application Status shell needs A3's `account_status`, and the IMS root slot
+  is B4's; built now, each would be an unreachable or empty screen (AGENTS rule 2), so they come with their phases.
+  The status tokens for `dispatched` come with that status in A4 (D5), and those for sync with B3; until then a status
+  the app does not know reads as a neutral word with its own name, as a badge, in an order's history and as the
+  timeline's current step. The design catalogue opens from Account (development builds only)
+  instead of a `zarailink://dev/catalogue` deep link; its code still ships, unreachable, in the release bundle, since
+  Metro does not drop unused modules. Adopting list skeletons screen by screen is A8's work.
+- **Known limits:** `raw-style` reads literals, not arithmetic: 33 half-step nudges (`space[1] / 2`) remain for A8's
+  screen pass. With no profile loaded (offline at a cold start) an authenticated user's role is unknown and the
+  shared navigator shows the buyer tabs (before A2, a generic tab set); A3 resolves role and account status. One
+  sign-out during the device run (a single app-initiated `/logout`, no backend 401) was not reproduced in later
+  tries, and the verifier saw one native crash of the dev build (SIGSEGV in Fabric's mounting, 1 of 5 launches), also
+  not reproduced. Keyboard avoidance on Android is unverified: the emulator draws no soft keyboard, and the chat
+  screens' `KeyboardAvoidingView` sets a behaviour on iOS only, so with edge-to-edge on target SDK 36 the keyboard may
+  cover a composer on a real phone (A8 checks it on a device). 22 hand-built touchables still have no accessibility
+  role, for A8's accessibility pass: 20 in module screens, plus the sheet's backdrop (which TalkBack never reaches, the
+  sheet being modal) and the activity feed's rows. The inventory store and supplier lists still show their raw
+  `active` and `inactive` values, which have no vocabulary entry yet; Plan B (B4) rebuilds those screens. `raw-style`
+  reads a ternary on one line, so one that the formatter spreads over several lines is caught only when the break
+  falls just before the literal. It does not read a branch with a call, arithmetic or `typeof` in its condition or
+  branch (`useColorScheme() === 'dark' ? 'white' : …`, `index % 2 === 0 ? 8 : …`, `big ? scale(4) : 14`,
+  `(dense && 8) || space[2]`), a TypeScript non-null `!` in the condition (`theme!.dark ? 'red' : …`), or a ternary
+  inside a template string: the rule stays silent there rather than fail valid code. Each match is linear, but a
+  single line holding about a thousand rule keys (`color:a ?? color:a ?? …`) takes seconds, since each key starts
+  its own match; no source line comes close, and generated files are not scanned. It still flags a few valid lines it reads as styles, all from before round 4: a style key's
+  name with a number inside copy or a comment (`'Season end: 31 March'`), a type literal (`color: 'accent' |
+  'neutral'`), a non-style object with a `start` or `end` key (`selection={{ start: 1 }}`), a list prop such as
+  `windowSize={5}`, and a literal written before a token (`2 * space[4]`). None is in the code today; such a line is
+  reworded or moved to a constant. The backend's schemathesis fuzz test
+  could not run on this machine (Windows Application Control blocks hypothesis's native library, and now the
+  `uvicorn.exe` launcher, so the API runs as `python -m uvicorn`); CI runs it.
 
 ### A3 — Accounts, registration and approval
 

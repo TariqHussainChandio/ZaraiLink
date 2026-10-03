@@ -81,7 +81,7 @@ describe('ExpertDashboardScreen', () => {
     await renderWithQuery(<ExpertDashboardScreen />);
 
     expect(await screen.findByText('Complete your expert profile')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Complete your expert profile'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Complete profile' }));
     expect(mockNavigate).toHaveBeenCalledWith(EXPERT_HOME_ROUTES.ExpertApplication);
   });
 
@@ -97,7 +97,8 @@ describe('ExpertDashboardScreen', () => {
     mockFetchConsultationsForExpert.mockResolvedValue([]);
     await renderWithQuery(<ExpertDashboardScreen />);
 
-    await fireEvent.press(await screen.findByText('Application not approved'));
+    expect(await screen.findByText('Application not approved')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Update profile' }));
     expect(mockNavigate).toHaveBeenCalledWith(EXPERT_HOME_ROUTES.ExpertApplication);
   });
 

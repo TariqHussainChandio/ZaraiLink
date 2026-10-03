@@ -73,35 +73,34 @@ export function DiseaseProcessingScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.background.surface,
-      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      padding: space[4],
     },
     status: {
-      marginTop: spacing.md,
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
+      marginTop: space[3],
+      ...typography.body,
+      color: colors.ink2,
     },
     errorTitle: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
       textAlign: 'center',
-      marginBottom: spacing.xs,
+      marginBottom: space[1],
     },
     errorText: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
       textAlign: 'center',
-      marginBottom: spacing.lg,
+      marginBottom: space[4],
     },
     action: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
       alignSelf: 'stretch',
     },
   });

@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input } from '../../components';
+import { Banner, Button, TextField } from '../../components';
 import { useDeleteOwnAccount } from '../hooks/profile';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
@@ -66,7 +66,7 @@ export function DeleteAccountScreen() {
         control={control}
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Confirm your password"
             secureTextEntry
             value={value}
@@ -77,11 +77,19 @@ export function DeleteAccountScreen() {
         )}
       />
 
-      {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
+      {submitError ? (
+
+        <View style={styles.errorBanner}>
+
+          <Banner tone="danger" title={submitError} />
+
+        </View>
+
+      ) : null}
 
       <Button
         label="Delete my account"
-        variant="destructive"
+        variant="danger"
         loading={isSubmitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
@@ -90,30 +98,28 @@ export function DeleteAccountScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      padding: space[4],
     },
     title: {
-      fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.titleLg,
+      color: colors.ink,
+      marginBottom: space[2],
     },
     warning: {
-      fontSize: typography.sizes.base,
-      color: colors.semantic.error,
-      marginBottom: spacing.xl,
+      ...typography.body,
+      color: colors.status.danger.mark,
+      marginBottom: space[6],
     },
     errorBanner: {
-      color: colors.semantic.error,
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     submit: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
     },
   });
 }

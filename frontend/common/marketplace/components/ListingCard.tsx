@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RoleBadge } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
 import type { ListingWithRelations } from '../types/marketplace';
+import { formatRs } from '../../../utils/money';
 
 export interface ListingCardProps {
   listing: ListingWithRelations;
@@ -31,7 +32,7 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
           {listing.title}
         </Text>
         <Text style={styles.price}>
-          Rs. {listing.price.toFixed(0)} / {listing.unit}
+          {formatRs(listing.price)} / {listing.unit}
         </Text>
         {listing.category ? <Text style={styles.category}>{listing.category.name}</Text> : null}
         {listing.brand || listing.condition ? (
@@ -57,66 +58,67 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
+function makeStyles({ colors, space, radius, typography, borders, fontWeight, size, components }: Theme) {
   return StyleSheet.create({
     card: {
       flex: 1,
-      margin: spacing.xs,
-      backgroundColor: colors.background.surface,
-      borderRadius: radii.lg,
+      margin: space[1],
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
       overflow: 'hidden',
-      ...shadows.sm,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
     },
     image: {
       width: '100%',
-      height: 110,
-      backgroundColor: colors.border,
+      height: size.photoLg,
+      backgroundColor: colors.line,
     },
     roleBadge: {
       position: 'absolute',
-      top: spacing.xs,
-      left: spacing.xs,
+      top: space[1],
+      left: space[1],
     },
     imagePlaceholder: {
       alignItems: 'center',
       justifyContent: 'center',
     },
     body: {
-      padding: spacing.sm,
+      padding: space[2],
     },
     title: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
     },
     price: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.sm,
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.accent.brand.ink,
     },
     category: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     // Quiet, muted pills — deliberately unstyled relative to `price` (no brand color, no bold)
     // so brand/condition read as secondary detail, never competing with it for attention.
     chipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.xs / 2,
-      marginTop: spacing.xs,
+      gap: space[1] / 2,
+      marginTop: space[1],
     },
     chip: {
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 1,
-      borderRadius: radii.sm,
-      backgroundColor: colors.background.default,
+      paddingHorizontal: space[1],
+      paddingVertical: components.badge.paddingY,
+      borderRadius: radius.xs,
+      backgroundColor: colors.ground,
     },
     chipLabel: {
-      fontSize: 10,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

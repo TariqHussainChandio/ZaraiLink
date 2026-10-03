@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, LocationPicker, SelectField } from '../../common/components';
+import { Button, TextField, LocationPicker, SelectField } from '../../common/components';
 import { useCreateFarm } from '../hooks/farmer';
 import { useUnits } from '../../common/reference-data';
 import { useAuthStore } from '../../state/authStore';
@@ -84,7 +84,7 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         control={control}
         name="name"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Farm name"
             value={value}
             onChangeText={onChange}
@@ -107,7 +107,7 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         control={control}
         name="area"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Area"
             keyboardType="numeric"
             value={value}
@@ -134,7 +134,7 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         control={control}
         name="notes"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Notes"
             value={value}
             onChangeText={onChange}
@@ -155,18 +155,18 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     submit: {
-      marginTop: spacing.md,
-      marginBottom: spacing['2xl'],
+      marginTop: space[3],
+      marginBottom: space[8],
     },
   });
 }

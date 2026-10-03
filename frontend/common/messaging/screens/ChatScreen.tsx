@@ -6,6 +6,7 @@ import { EmptyState, Spinner } from '../../components';
 import { ChatInput } from '../components/ChatInput';
 import { MessageBubble } from '../components/MessageBubble';
 import { useAttachmentUrls, useConversationMessages, useSendMessage } from '../hooks/messaging';
+import { useComposerInsets } from '../../../hooks/useComposerInsets';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 import { errorMessage } from '../../../utils/errorMessage';
@@ -20,6 +21,7 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   const send = useSendMessage(conversationId, userId);
   const attachmentPaths = useMemo(() => messages.flatMap(m => m.attachments), [messages]);
   const { data: attachmentUrls = {} } = useAttachmentUrls(attachmentPaths);
+  const composer = useComposerInsets();
 
   const onSend = async (body: string, images: PickedPhoto[]) => {
     if (!userId) return;
@@ -42,9 +44,9 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      keyboardVerticalOffset={composer.keyboardOffset}
     >
-      <View style={styles.flex}>
+      <View style={[styles.flex, { paddingBottom: composer.bottom }]}>
         <FlashList
           data={messages}
           // FlashList v2 has no `inverted`: the newest message is at the bottom and the list starts and follows there.
@@ -61,14 +63,14 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     flex: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      paddingVertical: spacing.md,
+      paddingVertical: space[3],
     },
   });
 }

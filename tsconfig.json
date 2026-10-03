@@ -8,5 +8,8 @@
     "isolatedModules": true,
     "types": ["jest", "expo/types"]
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx"],
+  // app.config.ts runs in Node, not on the phone; tsconfig.node.json checks it with Node's types. Keeping it out of this
+  // program keeps Node's globals (Buffer, __dirname) from type-checking in app code, where Hermes has none.
+  "exclude": ["node_modules", "app.config.ts"]
 }

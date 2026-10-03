@@ -66,7 +66,7 @@ describe('BuyerDashboardScreen', () => {
     mockFetchOrders.mockResolvedValue([order()]);
     await renderWithQuery(<BuyerDashboardScreen />);
     expect(await screen.findByText('Green Farms')).toBeTruthy();
-    expect(screen.getByText('Rs. 500 · pending')).toBeTruthy();
+    expect(screen.getByText('Rs 500 · Pending')).toBeTruthy();
   });
 
   it('shows an empty state when there are no purchases', async () => {

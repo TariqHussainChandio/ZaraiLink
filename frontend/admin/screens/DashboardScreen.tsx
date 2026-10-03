@@ -3,14 +3,14 @@ import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Spinner } from '../../common/components';
 import { QuickActions } from '../../common/components/dashboards/QuickActions';
-import { StatCard } from '../../common/components/dashboards/StatCard';
+import { StatTile } from '../../common/components/dashboards/StatTile';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
 import { ROLE_LABELS, ROLES } from '../../common/constants/roles';
 import { usePlatformStats } from '../hooks/admin';
 import { useTheme, type Theme } from '../../theme';
-import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
+import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
 
-export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashboard'>) {
+export function AdminDashboardScreen({ navigation }: AdminScreenProps<'Dashboard'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { data: stats, isPending: loading, error, refetch } = usePlatformStats();
@@ -37,81 +37,48 @@ export function AdminDashboardScreen({ navigation }: AdminHomeScreenProps<'Dashb
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard label="Total Users" value={stats.totalUsers} accent={theme.moduleAccents.admin} />
-        <StatCard label="Listings" value={stats.totalListings} accent={theme.moduleAccents.marketplace} />
-        <StatCard label="Orders" value={stats.totalOrders} accent={theme.moduleAccents.orders} />
+        <StatTile label="Total Users" value={stats.totalUsers} accent={theme.colors.accent.admin.mark} />
+        <StatTile label="Listings" value={stats.totalListings} accent={theme.colors.module.marketplace} />
+        <StatTile label="Orders" value={stats.totalOrders} accent={theme.colors.module.orders} />
       </View>
 
       <Text style={styles.sectionTitle}>Users by Role</Text>
       <View style={styles.statsRow}>
         {ROLES.filter(role => role !== 'admin').map(role => (
-          <StatCard key={role} label={ROLE_LABELS[role]} value={stats.usersByRole[role] ?? 0} accent={theme.roleColors[role]} />
+          <StatTile key={role} label={ROLE_LABELS[role]} value={stats.usersByRole[role] ?? 0} accent={theme.colors.accent[role].mark} />
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Manage</Text>
+      {/* Approvals, moderation and the audit log have their own tabs; the overview links only what stays here. */}
       <QuickActions
         actions={[
-          {
-            label: 'Analytics',
-            onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Analytics),
-          },
-          {
-            label: 'Manage Users',
-            onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.UserManagement),
-          },
-          {
-            label: 'Moderate Listings',
-            onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ListingModeration),
-          },
-          {
-            label: 'Expert Verification',
-            onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ExpertVerification),
-          },
-          { label: 'Orders', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Orders) },
-          { label: 'Reports', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Reports) },
-          {
-            label: 'Categories',
-            onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Categories),
-          },
-          {
-            label: 'Reference Data',
-            onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.ReferenceData),
-          },
-          {
-            label: 'Audit Logs',
-            onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.AuditLogs),
-          },
-          {
-            label: 'Notifications',
-            onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Notifications),
-          },
+          { label: 'Analytics', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Analytics) },
+          { label: 'Notifications', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Notifications) },
         ]}
       />
     </ScrollView>
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     statsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.md,
-      marginBottom: spacing.xl,
+      gap: space[3],
+      marginBottom: space[6],
     },
     sectionTitle: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
     },
   });
 }

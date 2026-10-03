@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Spinner } from '../../components';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { useOrderPaymentContext } from '../../orders';
@@ -10,6 +10,7 @@ import type { PaymentMethod } from '../types/payments';
 import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
 import { PAYMENT_METHOD_LABELS } from '../../constants/labels';
+import { formatRs } from '../../../utils/money';
 
 const METHOD_IDS: PaymentMethod[] = ['cod', 'bank_transfer'];
 const METHOD_DESCRIPTIONS: Record<PaymentMethod, string> = {
@@ -48,16 +49,14 @@ export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'Pa
 
   return (
     <View style={styles.container}>
-      <Text style={styles.total}>{`Rs. ${orderTotal.toFixed(0)}`}</Text>
+      <Text style={styles.total}>{formatRs(orderTotal)}</Text>
       <Text style={styles.subtitle}>{"Choose how you'll pay for this order"}</Text>
 
       {METHOD_IDS.map(id => (
-        <TouchableOpacity key={id} onPress={() => setMethod(id)}>
-          <Card style={[styles.option, method === id && styles.optionSelected]}>
-            <Text style={styles.optionLabel}>{PAYMENT_METHOD_LABELS[id]}</Text>
-            <Text style={styles.optionDescription}>{METHOD_DESCRIPTIONS[id]}</Text>
-          </Card>
-        </TouchableOpacity>
+        <Card key={id} style={styles.option} selected={method === id} onPress={() => setMethod(id)}>
+          <Text style={styles.optionLabel}>{PAYMENT_METHOD_LABELS[id]}</Text>
+          <Text style={styles.optionDescription}>{METHOD_DESCRIPTIONS[id]}</Text>
+        </Card>
       ))}
 
       <Button label="Continue" loading={initiate.isPending} onPress={onSubmit} style={styles.submit} />
@@ -65,44 +64,38 @@ export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'Pa
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      padding: space[4],
     },
     total: {
-      fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.headline,
+      color: colors.ink,
     },
     subtitle: {
-      marginTop: spacing.xs,
-      marginBottom: spacing.lg,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1],
+      marginBottom: space[4],
+      ...typography.caption,
+      color: colors.ink2,
     },
+    // The Card draws the chosen method in the role's accent (selected) and reports it to TalkBack.
     option: {
-      marginBottom: spacing.md,
-      borderWidth: 2,
-      borderColor: 'transparent',
-    },
-    optionSelected: {
-      borderColor: colors.brand.primary,
+      marginBottom: space[3],
     },
     optionLabel: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     optionDescription: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     submit: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
   });
 }

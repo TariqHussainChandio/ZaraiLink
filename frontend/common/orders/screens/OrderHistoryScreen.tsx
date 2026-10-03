@@ -1,8 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, SkeletonList, StaggeredItem } from '../../components';
+import { ChipRow, type ChipOption, EmptyState, SkeletonList, StaggeredItem } from '../../components';
 import { OrderCard } from '../components/OrderCard';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { useOrders } from '../hooks/orders';
@@ -11,6 +11,11 @@ import { useTheme, type Theme } from '../../../theme';
 import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 
 type Segment = 'buyer' | 'seller';
+
+const SEGMENTS: ChipOption<Segment>[] = [
+  { value: 'buyer', label: 'Purchases' },
+  { value: 'seller', label: 'Sales' },
+];
 
 export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHistory'>) {
   const theme = useTheme();
@@ -31,18 +36,8 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
 
   return (
     <View style={styles.container}>
-      <View style={styles.segmentRow}>
-        {(['buyer', 'seller'] as Segment[]).map(value => (
-          <TouchableOpacity
-            key={value}
-            style={[styles.segment, segment === value && styles.segmentActive]}
-            onPress={() => setSegment(value)}
-          >
-            <Text style={[styles.segmentLabel, segment === value && styles.segmentLabelActive]}>
-              {value === 'buyer' ? 'Purchases' : 'Sales'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.segments}>
+        <ChipRow options={SEGMENTS} value={segment} onChange={setSegment} />
       </View>
 
       {loading ? (
@@ -57,7 +52,7 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
               <OrderCard
                 order={item}
                 counterpartyName={
-                  (segment === 'buyer' ? item.seller?.full_name : item.buyer?.full_name) ??
+                  (segment === 'buyer' ? item.seller?.full_name : item.buyer?.full_name) ||
                   'Unknown'
                 }
                 onPress={() => navigation.navigate(ORDERS_ROUTES.OrderDetail, { orderId: item.id })}
@@ -76,39 +71,18 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
+    segments: {
+      paddingHorizontal: space[4],
+      paddingTop: space[3],
+    },
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-    },
-    segmentRow: {
-      flexDirection: 'row',
-      margin: spacing.lg,
-      backgroundColor: colors.background.default,
-      borderRadius: radii.md,
-      padding: spacing.xs / 2,
-    },
-    segment: {
-      flex: 1,
-      paddingVertical: spacing.sm,
-      alignItems: 'center',
-      borderRadius: radii.sm,
-    },
-    segmentActive: {
-      backgroundColor: colors.background.surface,
-    },
-    segmentLabel: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      fontWeight: typography.weights.medium,
-    },
-    segmentLabelActive: {
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
+      backgroundColor: colors.surface,
     },
     list: {
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: space[4],
     },
   });
 }

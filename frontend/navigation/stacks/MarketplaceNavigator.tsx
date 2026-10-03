@@ -8,6 +8,8 @@ import { CheckoutScreen } from '../../common/orders/screens/CheckoutScreen';
 import { CreateListingScreen } from '../../common/marketplace/screens/CreateListingScreen';
 import { EditListingScreen } from '../../common/marketplace/screens/EditListingScreen';
 import { ListingDetailScreen } from '../../common/marketplace/screens/ListingDetailScreen';
+import { cartAction } from '../headerActions';
+import { stackOptionsWithActions } from '../stackHeader';
 
 export type MarketplaceStackParamList = {
   [MARKETPLACE_ROUTES.Browse]: undefined;
@@ -22,10 +24,11 @@ export type MarketplaceScreenProps<RouteName extends keyof MarketplaceStackParam
   NativeStackScreenProps<MarketplaceStackParamList, RouteName>;
 
 const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
+const MARKET_STACK_OPTIONS = stackOptionsWithActions({ [MARKETPLACE_ROUTES.Browse]: cartAction });
 
 export function MarketplaceNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
+    <Stack.Navigator screenOptions={MARKET_STACK_OPTIONS}>
       <Stack.Screen
         name={MARKETPLACE_ROUTES.Browse}
         component={BrowseScreen}

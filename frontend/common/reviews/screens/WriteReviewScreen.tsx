@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Input } from '../../components';
+import { Button, TextField } from '../../components';
 import { RatingStars } from '../components/RatingStars';
 import { useCreateReview } from '../hooks/reviews';
 import { useAuthStore } from '../../../state/authStore';
@@ -31,10 +31,10 @@ export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'Writ
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.label}>Your rating</Text>
       <View style={styles.starsRow}>
-        <RatingStars value={rating} size={32} onChange={setRating} />
+        <RatingStars value={rating} size={theme.size.iconLg} onChange={setRating} />
       </View>
 
-      <Input
+      <TextField
         label="Comment (optional)"
         placeholder="How was your experience?"
         value={comment}
@@ -53,26 +53,25 @@ export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'Writ
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.secondary,
-      marginBottom: spacing.sm,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[2],
     },
     starsRow: {
-      marginBottom: spacing.lg,
+      marginBottom: space[4],
     },
     submit: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
   });
 }

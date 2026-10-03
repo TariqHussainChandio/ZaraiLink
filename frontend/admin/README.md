@@ -8,10 +8,10 @@ The administrator console: platform dashboard, user management, listing moderati
 
 ## Public API
 
-None: no other module imports from this one.
+Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `ReportStatus` (the shared status vocabulary, `common/constants/status.ts`, names a report's states).
 
 ## Inside
 
-`hooks/` · `screens/` (10) · `services/` · `types/`. Tests sit beside the code they test.
+`hooks/` · `screens/` (11, with the Moderation hub) · `services/` · `types/` · `index.ts`. Tests sit beside the code they test.
 
-It has no `index.ts` yet because no other module imports from it; `navigation/` mounts its screens directly. The admin never sees dealer inventory (SRDS §15).
+`navigation/` mounts its screens directly, in the admin shell's Overview, Approvals, Moderation and Audit tabs. The admin never sees dealer inventory (SRDS §15).

@@ -114,17 +114,42 @@ describe('OrderDetailScreen', () => {
     mockFetchOrderById.mockResolvedValue(order());
     await renderScreen();
 
-    expect(await screen.findByText('Rs. 550')).toBeTruthy();
+    // The total shows twice: the hero figure and the price breakdown's total line (BR-09).
+    expect(await screen.findAllByText('Rs 550')).toHaveLength(2);
     expect(screen.getByText('2 kg × Wheat seeds')).toBeTruthy();
     expect(screen.getByText('Ali Khan')).toBeTruthy();
     expect(screen.getByText('Green Farms')).toBeTruthy();
+  });
+
+  it('still shows an order whose status this build does not know yet, in its history and timeline', async () => {
+    // An installed build meets API values before it is updated (D5 adds `dispatched` in A4); the screen must not crash.
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order({ status: 'dispatched' as never }));
+    mockFetchOrderStatusHistory.mockResolvedValue([
+      { id: 'h1', order_id: 'order-1', from_status: 'ready', to_status: 'dispatched', changed_by: 'seller-1', created_at: '2026-01-02T00:00:00.000Z' },
+    ]);
+    await renderScreen();
+
+    expect(await screen.findByText('Ready for dispatch → Dispatched')).toBeTruthy();
+    expect(screen.getAllByText('Dispatched').length).toBeGreaterThan(0);
+  });
+
+  it('shows a history entry that leaves a status this build does not know', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order({ status: 'completed' }));
+    mockFetchOrderStatusHistory.mockResolvedValue([
+      { id: 'h2', order_id: 'order-1', from_status: 'dispatched', to_status: 'completed', changed_by: 'seller-1', created_at: '2026-01-03T00:00:00.000Z' },
+    ]);
+    await renderScreen();
+
+    expect(await screen.findByText('Dispatched → Completed')).toBeTruthy();
   });
 
   it('lets the buyer pay when no payment exists yet', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchOrderById.mockResolvedValue(order());
     await renderScreen();
-    await screen.findByText('Rs. 550');
+    await screen.findAllByText('Rs 550');
 
     await fireEvent.press(screen.getByText('Pay Now'));
     expect(mockNavigate).toHaveBeenCalledWith(ORDERS_ROUTES.PaymentMethod, { orderId: 'order-1' });
@@ -135,7 +160,7 @@ describe('OrderDetailScreen', () => {
     mockFetchOrderById.mockResolvedValue(order());
     mockUpdateOrderStatus.mockResolvedValue(undefined);
     await renderScreen();
-    await screen.findByText('Rs. 550');
+    await screen.findAllByText('Rs 550');
 
     await fireEvent.press(screen.getByText('Confirm Order'));
 
@@ -148,7 +173,7 @@ describe('OrderDetailScreen', () => {
     mockFetchOrderById.mockResolvedValue(order());
     mockUpdateOrderStatus.mockRejectedValue(new Error('Order already updated'));
     await renderScreen();
-    await screen.findByText('Rs. 550');
+    await screen.findAllByText('Rs 550');
 
     await fireEvent.press(screen.getByText('Confirm Order'));
 
@@ -175,7 +200,7 @@ describe('OrderDetailScreen', () => {
     });
     mockMarkPaymentReceived.mockResolvedValue({});
     await renderScreen();
-    await screen.findByText('Rs. 550');
+    await screen.findAllByText('Rs 550');
 
     await fireEvent.press(screen.getByText('Mark Payment Received'));
     await waitFor(() => expect(mockMarkPaymentReceived).toHaveBeenCalledWith('payment-1'));
@@ -186,7 +211,7 @@ describe('OrderDetailScreen', () => {
     mockFetchOrderById.mockResolvedValue(order());
     mockFindOrCreateConversation.mockResolvedValue({ id: 'conversation-1' });
     await renderScreen();
-    await screen.findByText('Rs. 550');
+    await screen.findAllByText('Rs 550');
 
     await fireEvent.press(screen.getByText('Message Seller'));
 
@@ -194,6 +219,7 @@ describe('OrderDetailScreen', () => {
     await waitFor(() =>
       expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
         screen: MESSAGING_ROUTES.Chat,
+        initial: false,
         params: { conversationId: 'conversation-1', otherUserName: 'Green Farms' },
       }),
     );
@@ -203,7 +229,7 @@ describe('OrderDetailScreen', () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchOrderById.mockResolvedValue(order({ status: 'completed' }));
     await renderScreen();
-    await screen.findByText('Rs. 550');
+    await screen.findAllByText('Rs 550');
 
     await fireEvent.press(screen.getByText('Write a Review'));
 
