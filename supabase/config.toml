@@ -236,7 +236,7 @@ enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 # On: a session older than 24 h must confirm a code Supabase emails (`reauthenticate()` → nonce) before
 # `updateUser({ password })` is accepted, so an unlocked phone alone cannot change the password (audit SEC-06).
-# The app's code step arrives in A3 (parked on branch wip/a3-account-status); until then such a user signs in again.
+# Since A3a ChangePasswordScreen asks for that code when Supabase answers `reauthentication_needed` (template below).
 secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "60s"
@@ -260,6 +260,12 @@ content_path = "./supabase/templates/confirmation.html"
 [auth.email.template.recovery]
 subject = "Your ZaraiLink password reset code"
 content_path = "./supabase/templates/recovery.html"
+
+# A3a: the code a signed-in user enters before a password change once their session is over a day old
+# (secure_password_change); ChangePasswordScreen asks for it only then, since Supabase checks it only then.
+[auth.email.template.reauthentication]
+subject = "Your ZaraiLink confirmation code"
+content_path = "./supabase/templates/reauthentication.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

@@ -29,8 +29,9 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
   };
 }
 
-export async function fetchAllProfiles(): Promise<Profile[]> {
-  return apiFetch('/api/v1/admin/users');
+/** The user list, filtered on the server (a pending-dealer queue filtered in the app lost everyone past one page). */
+export async function fetchAllProfiles(filter: { role?: Role; accountStatus?: Profile['account_status'] } = {}): Promise<Profile[]> {
+  return apiFetch('/api/v1/admin/users', { query: { role: filter.role, account_status: filter.accountStatus } });
 }
 
 // logAdminAction moved server-side entirely (backend/app/common/audit_log.py) — every
@@ -46,6 +47,21 @@ export async function setProfileSuspended(id: string, isSuspended: boolean): Pro
  * log's "previous state") rather than trusting whatever a possibly-stale client object claims. */
 export async function updateUserRole(profileId: string, newRole: Role): Promise<void> {
   await apiFetch(`/api/v1/admin/users/${profileId}/role`, { method: 'PATCH', body: { role: newRole } });
+}
+
+/**
+ * Decides a pending dealer's application (A3a; SRDS §8, §12). Needs a second factor; the decision and its audit row
+ * are one database transaction. A rejection's reason is what the dealer reads on their Application Status screen.
+ */
+export async function decideDealerApplication(
+  profileId: string,
+  status: 'approved' | 'rejected',
+  reason?: string,
+): Promise<void> {
+  await apiFetch(`/api/v1/admin/users/${profileId}/account-status`, {
+    method: 'PATCH',
+    body: { status, reason: reason?.trim() || null },
+  });
 }
 
 export async function fetchReports(status?: ReportStatus): Promise<ReportWithReporter[]> {

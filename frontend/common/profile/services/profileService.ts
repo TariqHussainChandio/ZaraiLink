@@ -44,9 +44,20 @@ export async function uploadAvatar(userId: string, image: PickedPhoto): Promise<
   return data.publicUrl;
 }
 
-// Supabase Auth SDK directly — unchanged, per the auth strategy (Auth stays on the client).
-export async function updatePassword(newPassword: string): Promise<void> {
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
+/**
+ * Emails the signed-in user a code to confirm a password change (A3a). The project requires it
+ * (supabase/config.toml secure_password_change) for a session older than a day, and checks it only then, so
+ * ChangePasswordScreen asks for it only when Supabase answers `reauthentication_needed`.
+ */
+export async function requestReauthentication(): Promise<void> {
+  const { error } = await supabase.auth.reauthenticate();
+  if (error) throw error;
+}
+
+// Supabase Auth SDK directly, per the auth strategy (Auth stays on the client). `nonce` is the emailed code from
+// requestReauthentication(); a password-recovery session (ResetPasswordScreen) is fresh and needs none.
+export async function updatePassword(newPassword: string, nonce?: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser(nonce ? { password: newPassword, nonce } : { password: newPassword });
   if (error) throw error;
   // P4 (4B.4): a changed password should invalidate any other device/session that's still
   // signed in with the old one — `scope: 'others'` leaves this session (the one that just set
@@ -65,4 +76,9 @@ export async function updatePassword(newPassword: string): Promise<void> {
 // but the account behind it can no longer be used to sign in again.
 export async function deleteOwnAccount(password: string): Promise<void> {
   await apiFetch('/api/v1/profile/me', { method: 'DELETE', body: { password } });
+}
+
+/** A rejected dealer or expert sends their application back for review (A3a, D10). The API refuses anyone else (409). */
+export async function resubmitApplication(): Promise<void> {
+  await apiFetch('/api/v1/profile/application/resubmit', { method: 'POST' });
 }

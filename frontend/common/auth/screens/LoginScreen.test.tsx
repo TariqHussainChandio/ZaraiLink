@@ -22,10 +22,11 @@ describe('LoginScreen', () => {
     mockSignIn.mockReset();
   });
 
-  it('renders the email channel by default', async () => {
+  it('asks for an email and a password only (phone sign-in is off)', async () => {
     await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByLabelText('Email')).toBeTruthy();
     expect(screen.getByLabelText('Password')).toBeTruthy();
+    expect(screen.queryByText('Phone number')).toBeNull();
   });
 
   it('submits email + password and calls signIn', async () => {
@@ -35,11 +36,7 @@ describe('LoginScreen', () => {
     await fireEvent.changeText(screen.getByLabelText('Password'), 'secret123');
     await fireEvent.press(screen.getByText('Sign In'));
 
-    expect(mockSignIn).toHaveBeenCalledWith({
-      channel: 'email',
-      identifier: 'farmer@example.com',
-      password: 'secret123',
-    });
+    expect(mockSignIn).toHaveBeenCalledWith({ email: 'farmer@example.com', password: 'secret123' });
   });
 
   it('shows the submit error when signIn rejects', async () => {
@@ -49,16 +46,17 @@ describe('LoginScreen', () => {
     await fireEvent.changeText(screen.getByLabelText('Password'), 'wrongpass');
     await fireEvent.press(screen.getByText('Sign In'));
 
-    expect(await screen.findByText('Incorrect email, phone or password.')).toBeTruthy();
+    expect(await screen.findByText('Incorrect email or password.')).toBeTruthy();
     expect(screen.queryByText('Invalid login credentials')).toBeNull();
   });
 
-  it('switches to the phone channel and back', async () => {
+  it('refuses a malformed email before calling Supabase', async () => {
     await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
-    await fireEvent.press(screen.getByText('Phone number'));
-    expect(screen.queryByLabelText('Email')).toBeNull();
-    await fireEvent.press(screen.getByText('Email'));
-    expect(screen.getByLabelText('Email')).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'not-an-email');
+    await fireEvent.changeText(screen.getByLabelText('Password'), 'secret123');
+    await fireEvent.press(screen.getByText('Sign In'));
+    expect(await screen.findByText('Enter a valid email')).toBeTruthy();
+    expect(mockSignIn).not.toHaveBeenCalled();
   });
 
   it('navigates to Register and ForgotPassword', async () => {

@@ -5,6 +5,24 @@ export type ClientOptions = {
 };
 
 /**
+ * AccountDecision
+ */
+export type AccountDecision = {
+    /**
+     * New Status
+     */
+    new_status: 'pending' | 'approved' | 'rejected';
+    /**
+     * Previous Status
+     */
+    previous_status: 'pending' | 'approved' | 'rejected';
+    /**
+     * Role
+     */
+    role: 'admin' | 'expert' | 'dealer' | 'farmer' | 'buyer';
+};
+
+/**
  * ActorRef
  */
 export type ActorRef = {
@@ -738,6 +756,23 @@ export type DealerStore = {
      * Updated At
      */
     updated_at: string;
+};
+
+/**
+ * DecideAccountRequest
+ *
+ * An admin's decision on a pending dealer (SRDS §8, §12). A rejection carries the reason the applicant will read
+ * on their Application Status screen, so it must say something (decide_account_status() enforces the same).
+ */
+export type DecideAccountRequest = {
+    /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
+     * Status
+     */
+    status: 'approved' | 'rejected';
 };
 
 /**
@@ -2356,7 +2391,7 @@ export type PredictResponse = {
  * RFC 9457 problem details. `code` is a stable machine-readable identifier; `title` is English text.
  */
 export type ProblemDetail = {
-    code: 'bad_request' | 'unauthenticated' | 'token_invalid' | 'auth_unavailable' | 'account_suspended' | 'insufficient_role' | 'mfa_required' | 'incorrect_password' | 'forbidden' | 'not_found' | 'conflict' | 'idempotency_in_progress' | 'idempotency_key_reused' | 'payload_too_large' | 'validation_failed' | 'insufficient_stock' | 'listing_unavailable' | 'invalid_transition' | 'rate_limited' | 'service_unavailable' | 'server_error';
+    code: 'bad_request' | 'unauthenticated' | 'token_invalid' | 'auth_unavailable' | 'account_suspended' | 'account_not_approved' | 'sign_in_again' | 'insufficient_role' | 'mfa_required' | 'incorrect_password' | 'forbidden' | 'not_found' | 'conflict' | 'idempotency_in_progress' | 'idempotency_key_reused' | 'payload_too_large' | 'validation_failed' | 'insufficient_stock' | 'listing_unavailable' | 'invalid_transition' | 'rate_limited' | 'service_unavailable' | 'server_error';
     detail?: string | null;
     errors?: Array<{
         loc?: Array<string | number>;
@@ -2372,6 +2407,18 @@ export type ProblemDetail = {
  * Profile
  */
 export type Profile = {
+    /**
+     * Account Status
+     */
+    account_status?: 'pending' | 'approved' | 'rejected';
+    /**
+     * Account Status Changed At
+     */
+    account_status_changed_at?: string | null;
+    /**
+     * Account Status Reason
+     */
+    account_status_reason?: string | null;
     /**
      * Avatar Url
      */
@@ -2591,20 +2638,20 @@ export type Review = {
 
 /**
  * ReviewVerificationRequest
+ *
+ * An admin's decision on a pending expert application (SRDS §11, §12). Suspension is no longer a decision: it
+ * is the account's suspension (PATCH /admin/users/{id}/suspend), like every other role's. A rejection carries the
+ * reason the expert reads on their Application Status screen.
  */
 export type ReviewVerificationRequest = {
     /**
      * Decision
      */
-    decision: 'pending' | 'approved' | 'rejected' | 'suspended';
+    decision: 'approved' | 'rejected';
     /**
      * Notes
      */
     notes?: string | null;
-    /**
-     * Verification Id
-     */
-    verification_id: string;
 };
 
 /**
@@ -3199,6 +3246,14 @@ export type AdminListUsersData = {
     path?: never;
     query?: {
         /**
+         * Role
+         */
+        role?: 'admin' | 'expert' | 'dealer' | 'farmer' | 'buyer' | null;
+        /**
+         * Account Status
+         */
+        account_status?: 'pending' | 'approved' | 'rejected' | null;
+        /**
          * Limit
          */
         limit?: number;
@@ -3233,6 +3288,40 @@ export type AdminListUsersResponses = {
 };
 
 export type AdminListUsersResponse = AdminListUsersResponses[keyof AdminListUsersResponses];
+
+export type AdminDecideDealerApplicationData = {
+    body: DecideAccountRequest;
+    path: {
+        /**
+         * Profile Id
+         */
+        profile_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/users/{profile_id}/account-status';
+};
+
+export type AdminDecideDealerApplicationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminDecideDealerApplicationError = AdminDecideDealerApplicationErrors[keyof AdminDecideDealerApplicationErrors];
+
+export type AdminDecideDealerApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    200: AccountDecision;
+};
+
+export type AdminDecideDealerApplicationResponse = AdminDecideDealerApplicationResponses[keyof AdminDecideDealerApplicationResponses];
 
 export type AdminChangeUserRoleData = {
     body: UpdateUserRoleRequest;
@@ -6504,6 +6593,35 @@ export type ProfileUpdateProfileResponses = {
 };
 
 export type ProfileUpdateProfileResponse = ProfileUpdateProfileResponses[keyof ProfileUpdateProfileResponses];
+
+export type ProfileResubmitApplicationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/profile/application/resubmit';
+};
+
+export type ProfileResubmitApplicationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ProfileResubmitApplicationError = ProfileResubmitApplicationErrors[keyof ProfileResubmitApplicationErrors];
+
+export type ProfileResubmitApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type ProfileResubmitApplicationResponse = ProfileResubmitApplicationResponses[keyof ProfileResubmitApplicationResponses];
 
 export type ProfileDeleteOwnAccountData = {
     body: DeleteAccountRequest;

@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from typing import Any
 
 from app.common.pagination import page_range
@@ -103,32 +102,14 @@ async def fetch_expert_for_admin_by_id(access_token: str, expert_id: str) -> dic
     return rows[0] if rows else None
 
 
-async def review_verification(
-    access_token: str, expert_id: str, verification_id: str, decision: str, notes: str | None, reviewed_by: str
-) -> None:
-    # The record is decided first and must belong to this expert; first_row turns "no such record or expert" into a
-    # 404 before anything changes, so the service never audits a decision that did not happen.
-    client = await get_user_scoped_client(access_token)
-    decided = await (
-        client.table("expert_verifications")
-        .update(
-            {
-                "decision": decision,
-                "reviewed_by": reviewed_by,
-                "decision_at": datetime.now(UTC).isoformat(),
-                "notes": notes,
-            }
-        )
-        .eq("id", verification_id)
-        .eq("expert_id", expert_id)
-        .execute()
-    )
-    first_row(decided)
-    response = await client.table("experts").update({"verification_status": decision}).eq("id", expert_id).execute()
-    first_row(response)
-
-
 async def create_document_signed_url(access_token: str, path: str) -> str | None:
     client = await get_user_scoped_client(access_token)
     response = await client.storage.from_("expert-documents").create_signed_url(path, 3600)
     return response.get("signedUrl") or response.get("signedURL")
+
+
+async def fetch_profile_role(access_token: str, profile_id: str) -> str | None:
+    client = await get_user_scoped_client(access_token)
+    response = await client.table("profiles").select("role").eq("id", profile_id).limit(1).execute()
+    rows = as_rows(response)
+    return rows[0]["role"] if rows else None

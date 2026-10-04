@@ -63,6 +63,9 @@ export function makeSupabaseMock(options: SupabaseMockOptions = {}) {
         }),
       ),
       challengeAndVerify: jest.fn(() => Promise.resolve({ data: {}, error: null })),
+      getAuthenticatorAssuranceLevel: jest.fn(() =>
+        Promise.resolve({ data: { currentLevel: 'aal1', nextLevel: 'aal1', currentAuthenticationMethods: [] }, error: null }),
+      ),
       unenroll: jest.fn(() => Promise.resolve({ data: { id: 'factor-1' }, error: null })),
     },
   };

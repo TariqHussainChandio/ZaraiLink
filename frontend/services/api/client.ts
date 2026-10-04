@@ -96,6 +96,8 @@ async function tryOnce(request: PreparedRequest, token: string | undefined, requ
  * - P4 (4B.2), kept: a 401 that means a bad token gets one `refreshSession()` and one resend before the user is signed
  *   out; a 403 `account_suspended` routes to the suspended screen without touching the session; a network failure sets
  *   the global offline flag and any response clears it.
+ * - A3a: a 403 `account_not_approved` routes a dealer or expert whose application is waiting to the Application Status
+ *   screen, and a 403 `sign_in_again` (approved after this session began) to the screen that asks them to sign in again.
  * - Every request carries an `X-Request-ID` that the backend echoes into its logs, and reports a breadcrumb (see
  *   services/observability) so a crash report can be matched to the server side.
  */
@@ -181,6 +183,12 @@ async function performRequest(request: PreparedRequest): Promise<Response> {
 
     if (response.status === 403 && failure.code === 'account_suspended') {
       useAuthStore.setState({ status: 'suspended' });
+    }
+    if (response.status === 403 && failure.code === 'account_not_approved') {
+      useAuthStore.setState({ status: 'awaitingApproval' });
+    }
+    if (response.status === 403 && failure.code === 'sign_in_again') {
+      useAuthStore.setState({ status: 'approvalGranted' });
     }
 
     const retryAfterMs = (failure.retryAfterSeconds ?? 0) * 1000;

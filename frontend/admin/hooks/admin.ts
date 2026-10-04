@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  decideDealerApplication,
   dismissReport,
   fetchAllOrders,
   fetchAllProfiles,
@@ -13,7 +14,6 @@ import {
 import { fetchAdminAnalytics } from '../../common/analytics';
 import {
   fetchExpertById,
-  fetchExpertForAdminById,
   fetchExpertsForAdmin,
   resolveExpertDocumentUrl,
   reviewExpertVerification,
@@ -63,14 +63,28 @@ function useInvalidateAdmin() {
 
 // ---- users
 
-export function useProfiles() {
-  return useQuery({ queryKey: queryKeys.admin.profiles(), queryFn: fetchAllProfiles, staleTime: 0 });
+/** All users, or only the dealers waiting for a decision (A3a), filtered by the API. */
+export function useProfiles(filter: 'all' | 'pendingDealers' = 'all') {
+  return useQuery({
+    queryKey: queryKeys.admin.profiles(filter),
+    queryFn: () => fetchAllProfiles(filter === 'pendingDealers' ? { role: 'dealer', accountStatus: 'pending' } : {}),
+    staleTime: 0,
+  });
 }
 
 export function useSetProfileSuspended() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
     mutationFn: ({ id, suspended }: { id: string; suspended: boolean }) => setProfileSuspended(id, suspended),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDecideDealerApplication() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: ({ id, status, reason }: { id: string; status: 'approved' | 'rejected'; reason?: string }) =>
+      decideDealerApplication(id, status, reason),
     onSuccess: invalidate,
   });
 }
@@ -140,15 +154,13 @@ export function useReviewVerification() {
   return useMutation({
     mutationFn: ({
       expertId,
-      verificationId,
       decision,
       notes,
     }: {
       expertId: string;
-      verificationId: string;
-      decision: VerificationStatus;
+      decision: 'approved' | 'rejected';
       notes: string;
-    }) => reviewExpertVerification(expertId, verificationId, decision, notes),
+    }) => reviewExpertVerification(expertId, decision, notes),
     // A decision changes who shows up as a verified expert, not only the admin list.
     onSuccess: () =>
       Promise.all([
@@ -223,19 +235,10 @@ async function applyReportAction(report: ReportWithReporter) {
       return deleteReview(report.target_id);
     case 'message':
       return redactMessage(report.target_id);
-    case 'expert': {
-      const expert = await fetchExpertForAdminById(report.target_id);
-      const latestVerification = expert.expert_verifications[0];
-      if (latestVerification) {
-        await reviewExpertVerification(
-          report.target_id,
-          latestVerification.id,
-          'suspended',
-          'Suspended via report resolution',
-        );
-      }
-      return undefined;
-    }
+    case 'expert':
+      // Since A3a an expert is suspended like every other account (profiles.is_suspended), not through their
+      // verification.
+      return setProfileSuspended(report.target_id, true);
     default:
       return undefined;
   }

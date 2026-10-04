@@ -1,27 +1,24 @@
 import { supabase } from '../../../services/supabase/client';
 import type { Role } from '../../constants/roles';
 
-/** Which identifier the user chose at sign-up/sign-in — both send a numeric OTP. */
-export type AuthChannel = 'email' | 'phone';
-
+// Email only (A3a): Supabase Auth sends every code (sign-up, recovery, reauthentication) by email. Phone sign-up is off
+// in supabase/config.toml because no SMS provider is configured (G2). Password strength, code length and expiry are
+// Supabase's settings (config.toml); the app checks the same rules first only to answer sooner.
 export interface SignUpInput {
-  channel: AuthChannel;
-  /** Email address or E.164 phone number, matching `channel`. */
-  identifier: string;
+  email: string;
   password: string;
   fullName: string;
   role: Role;
 }
 
 export interface SignInInput {
-  channel: AuthChannel;
-  identifier: string;
+  email: string;
   password: string;
 }
 
-export async function signUp({ channel, identifier, password, fullName, role }: SignUpInput) {
+export async function signUp({ email, password, fullName, role }: SignUpInput) {
   const { data, error } = await supabase.auth.signUp({
-    ...(channel === 'email' ? { email: identifier } : { phone: identifier }),
+    email,
     password,
     options: {
       data: {
@@ -35,10 +32,8 @@ export async function signUp({ channel, identifier, password, fullName, role }: 
   return data;
 }
 
-export async function signIn({ channel, identifier, password }: SignInInput) {
-  const { data, error } = await supabase.auth.signInWithPassword(
-    channel === 'email' ? { email: identifier, password } : { phone: identifier, password },
-  );
+export async function signIn({ email, password }: SignInInput) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
 }
@@ -48,20 +43,14 @@ export async function signOut() {
   if (error) throw error;
 }
 
-export async function verifySignupOtp(channel: AuthChannel, identifier: string, token: string) {
-  const { data, error } = await supabase.auth.verifyOtp(
-    channel === 'email'
-      ? { email: identifier, token, type: 'signup' }
-      : { phone: identifier, token, type: 'sms' },
-  );
+export async function verifySignupOtp(email: string, token: string) {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
   if (error) throw error;
   return data;
 }
 
-export async function resendSignupOtp(channel: AuthChannel, identifier: string) {
-  const { error } = await supabase.auth.resend(
-    channel === 'email' ? { type: 'signup', email: identifier } : { type: 'sms', phone: identifier },
-  );
+export async function resendSignupOtp(email: string) {
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
   if (error) throw error;
 }
 

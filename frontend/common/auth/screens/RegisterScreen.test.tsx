@@ -47,16 +47,14 @@ describe('RegisterScreen', () => {
     await fireEvent.press(screen.getByText('Create account'));
 
     expect(mockSignUp).toHaveBeenCalledWith({
-      channel: 'email',
-      identifier: 'farmer@example.com',
+      email: 'farmer@example.com',
       password: 'secret123',
       fullName: 'Farmer Test',
       role: 'farmer',
     });
     expect(navigation.navigate).toHaveBeenCalledWith(AUTH_ROUTES.VerifyOtp, {
       purpose: 'signup',
-      channel: 'email',
-      identifier: 'farmer@example.com',
+      email: 'farmer@example.com',
     });
   });
 
@@ -78,6 +76,30 @@ describe('RegisterScreen', () => {
 
     expect(await screen.findByText('An account with these details already exists. Try signing in.')).toBeTruthy();
     expect(screen.queryByText('User already registered')).toBeNull();
+  });
+
+  it.each(['abc12', 'abcdefgh', '12345678'])(
+    'refuses %s before calling Supabase: at least 8 characters, with letters and numbers',
+    async password => {
+      await renderWithQuery(<RegisterScreen navigation={makeNavigation()} route={{} as never} />);
+      await fillRequiredFields();
+      await fireEvent.changeText(screen.getByLabelText('Password'), password);
+      await fireEvent.press(screen.getByText('Create account'));
+      expect(await screen.findByText('Use at least 8 characters, with letters and numbers')).toBeTruthy();
+      expect(mockSignUp).not.toHaveBeenCalled();
+    },
+  );
+
+  it('says a dealer or expert account is reviewed before use, and a farmer one is not', async () => {
+    await renderWithQuery(<RegisterScreen navigation={makeNavigation()} route={{} as never} />);
+    const notice = /An administrator reviews every dealer and expert account/;
+    expect(screen.queryByText(notice)).toBeNull();
+    await fireEvent.press(screen.getByText(ROLE_LABELS.dealer));
+    expect(screen.getByText(notice)).toBeTruthy();
+    await fireEvent.press(screen.getByText(ROLE_LABELS.expert));
+    expect(screen.getByText(notice)).toBeTruthy();
+    await fireEvent.press(screen.getByText(ROLE_LABELS.buyer));
+    expect(screen.queryByText(notice)).toBeNull();
   });
 
   it('navigates to Login', async () => {

@@ -7,10 +7,7 @@ import {
   signUp,
   verifyRecoveryOtp,
   verifySignupOtp,
-  type AuthChannel,
 } from '../services/authService';
-
-export type { AuthChannel };
 
 /*
  * Sign-in, sign-up and the one-time-code flows. None of them is cached or retried: a failed attempt is shown to the
@@ -28,15 +25,13 @@ export function useSignUp() {
 
 export function useVerifySignupOtp() {
   return useMutation({
-    mutationFn: ({ channel, identifier, token }: { channel: AuthChannel; identifier: string; token: string }) =>
-      verifySignupOtp(channel, identifier, token),
+    mutationFn: ({ email, token }: { email: string; token: string }) => verifySignupOtp(email, token),
   });
 }
 
 export function useResendSignupOtp() {
   return useMutation({
-    mutationFn: ({ channel, identifier }: { channel: AuthChannel; identifier: string }) =>
-      resendSignupOtp(channel, identifier),
+    mutationFn: (email: string) => resendSignupOtp(email),
   });
 }
 

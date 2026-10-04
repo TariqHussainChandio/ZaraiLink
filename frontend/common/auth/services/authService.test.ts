@@ -23,10 +23,10 @@ beforeEach(() => {
 });
 
 describe('signUp', () => {
-  it('sends email + password + full_name/role metadata for the email channel', async () => {
+  it('sends email + password + full_name/role metadata', async () => {
     mockedSupabase.auth.signUp.mockResolvedValue({ data: { session: null, user: null }, error: null } as never);
 
-    await signUp({ channel: 'email', identifier: 'farmer@example.com', password: 'secret123', fullName: 'Farmer Test', role: 'farmer' });
+    await signUp({ email: 'farmer@example.com', password: 'secret123', fullName: 'Farmer Test', role: 'farmer' });
 
     expect(mockedSupabase.auth.signUp).toHaveBeenCalledWith({
       email: 'farmer@example.com',
@@ -35,43 +35,22 @@ describe('signUp', () => {
     });
   });
 
-  it('sends phone instead of email for the phone channel', async () => {
-    mockedSupabase.auth.signUp.mockResolvedValue({ data: { session: null, user: null }, error: null } as never);
-
-    await signUp({ channel: 'phone', identifier: '+923001234567', password: 'secret123', fullName: 'Farmer Test', role: 'buyer' });
-
-    expect(mockedSupabase.auth.signUp).toHaveBeenCalledWith({
-      phone: '+923001234567',
-      password: 'secret123',
-      options: { data: { full_name: 'Farmer Test', role: 'buyer' } },
-    });
-  });
-
   it('throws the Supabase error instead of swallowing it', async () => {
     const error = new Error('Email already registered');
     mockedSupabase.auth.signUp.mockResolvedValue({ data: { session: null, user: null }, error } as never);
 
     await expect(
-      signUp({ channel: 'email', identifier: 'dup@example.com', password: 'secret123', fullName: 'Dup', role: 'buyer' }),
+      signUp({ email: 'dup@example.com', password: 'secret123', fullName: 'Dup', role: 'buyer' }),
     ).rejects.toThrow('Email already registered');
   });
 });
 
 describe('signIn', () => {
-  it('signs in with email + password for the email channel', async () => {
+  it('signs in with email + password', async () => {
     mockedSupabase.auth.signInWithPassword.mockResolvedValue({ data: { session: {}, user: {} }, error: null } as never);
-    await signIn({ channel: 'email', identifier: 'farmer@example.com', password: 'secret123' });
+    await signIn({ email: 'farmer@example.com', password: 'secret123' });
     expect(mockedSupabase.auth.signInWithPassword).toHaveBeenCalledWith({
       email: 'farmer@example.com',
-      password: 'secret123',
-    });
-  });
-
-  it('signs in with phone + password for the phone channel', async () => {
-    mockedSupabase.auth.signInWithPassword.mockResolvedValue({ data: { session: {}, user: {} }, error: null } as never);
-    await signIn({ channel: 'phone', identifier: '+923001234567', password: 'secret123' });
-    expect(mockedSupabase.auth.signInWithPassword).toHaveBeenCalledWith({
-      phone: '+923001234567',
       password: 'secret123',
     });
   });
@@ -82,9 +61,7 @@ describe('signIn', () => {
       error: new Error('Invalid login credentials'),
     } as never);
 
-    await expect(signIn({ channel: 'email', identifier: 'x@example.com', password: 'wrong' })).rejects.toThrow(
-      'Invalid login credentials',
-    );
+    await expect(signIn({ email: 'x@example.com', password: 'wrong' })).rejects.toThrow('Invalid login credentials');
   });
 });
 
@@ -102,23 +79,13 @@ describe('signOut', () => {
 });
 
 describe('verifySignupOtp', () => {
-  it('verifies a signup-type OTP for email', async () => {
+  it('verifies a signup-type email code', async () => {
     mockedSupabase.auth.verifyOtp.mockResolvedValue({ data: { session: {}, user: {} }, error: null } as never);
-    await verifySignupOtp('email', 'farmer@example.com', '123456');
+    await verifySignupOtp('farmer@example.com', '123456');
     expect(mockedSupabase.auth.verifyOtp).toHaveBeenCalledWith({
       email: 'farmer@example.com',
       token: '123456',
       type: 'signup',
-    });
-  });
-
-  it('verifies an sms-type OTP for phone', async () => {
-    mockedSupabase.auth.verifyOtp.mockResolvedValue({ data: { session: {}, user: {} }, error: null } as never);
-    await verifySignupOtp('phone', '+923001234567', '654321');
-    expect(mockedSupabase.auth.verifyOtp).toHaveBeenCalledWith({
-      phone: '+923001234567',
-      token: '654321',
-      type: 'sms',
     });
   });
 
@@ -127,21 +94,15 @@ describe('verifySignupOtp', () => {
       data: { session: null, user: null },
       error: new Error('Token has expired'),
     } as never);
-    await expect(verifySignupOtp('email', 'x@example.com', '000000')).rejects.toThrow('Token has expired');
+    await expect(verifySignupOtp('x@example.com', '000000')).rejects.toThrow('Token has expired');
   });
 });
 
 describe('resendSignupOtp', () => {
-  it('resends a signup email OTP', async () => {
+  it('resends a signup email code', async () => {
     mockedSupabase.auth.resend.mockResolvedValue({ data: {}, error: null });
-    await resendSignupOtp('email', 'farmer@example.com');
+    await resendSignupOtp('farmer@example.com');
     expect(mockedSupabase.auth.resend).toHaveBeenCalledWith({ type: 'signup', email: 'farmer@example.com' });
-  });
-
-  it('resends an sms OTP', async () => {
-    mockedSupabase.auth.resend.mockResolvedValue({ data: {}, error: null });
-    await resendSignupOtp('phone', '+923001234567');
-    expect(mockedSupabase.auth.resend).toHaveBeenCalledWith({ type: 'sms', phone: '+923001234567' });
   });
 });
 

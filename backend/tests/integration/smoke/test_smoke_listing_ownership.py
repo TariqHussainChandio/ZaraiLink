@@ -136,20 +136,19 @@ def test_an_expert_cannot_apply_already_approved(make_actor, api_client, world):
     assert filed.status_code == 201, filed.text
 
 
-def test_a_decision_on_an_expert_or_record_that_does_not_match_is_not_audited(world, api_client, make_actor):
+def test_a_decision_that_cannot_happen_is_not_audited(world, api_client, make_actor):
     # The review route decided and audited an expert that did not exist (independent verification of 20260928090000).
-    decision = {"verification_id": str(uuid.uuid4()), "decision": "approved", "notes": "smoke"}
+    # Since A3a the decision and its audit row are one transaction (decide_account_status), so a refused decision
+    # leaves no row by construction; these pin it.
+    decision = {"decision": "approved", "notes": "smoke"}
     missing_id = str(uuid.uuid4())
     missing = api_client("PATCH", f"/api/v1/expert/admin/{missing_id}/verification", world.admin.token, json=decision)
     assert missing.status_code == 404, missing.text
     assert audit_rows(missing_id) == []
 
-    # A real expert, but a verification record that is not theirs.
-    expert_id, _, token = make_actor("expert")
-    applied = rest("POST", "experts", token, body={"id": expert_id})
-    assert applied.status_code == 201, applied.text
-    mismatched = api_client("PATCH", f"/api/v1/expert/admin/{expert_id}/verification", world.admin.token, json=decision)
-    assert mismatched.status_code == 404, mismatched.text
+    # A real expert who has not sent an application yet cannot be approved.
+    expert_id, _, _ = make_actor("expert")
+    early = api_client("PATCH", f"/api/v1/expert/admin/{expert_id}/verification", world.admin.token, json=decision)
+    assert early.status_code == 409, early.text
+    assert early.json()["code"] == "invalid_transition"
     assert audit_rows(expert_id) == []
-    still = api_client("GET", f"/api/v1/expert/admin/{expert_id}", world.admin.token)
-    assert still.json()["verification_status"] == "pending"

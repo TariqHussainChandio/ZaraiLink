@@ -3,6 +3,7 @@ import {
   enrollTotp,
   getVerifiedTotpFactorId,
   unenrollTotp,
+  verifySecondFactor,
   verifyTotpEnrollment,
   type TotpEnrollment,
 } from '../services/mfaService';
@@ -32,6 +33,10 @@ export function useVerifyTotpEnrollment() {
   return useMutation({
     mutationFn: ({ factorId, code }: { factorId: string; code: string }) => verifyTotpEnrollment(factorId, code),
   });
+}
+
+export function useVerifySecondFactor() {
+  return useMutation({ mutationFn: (code: string) => verifySecondFactor(code) });
 }
 
 export function useUnenrollTotp() {

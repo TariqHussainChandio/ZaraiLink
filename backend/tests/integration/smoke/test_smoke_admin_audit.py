@@ -39,6 +39,7 @@ except ValidationError:
 COVERED = {
     ("PATCH", "/api/v1/admin/users/{profile_id}/suspend"),
     ("PATCH", "/api/v1/admin/users/{profile_id}/role"),
+    ("PATCH", "/api/v1/admin/users/{profile_id}/account-status"),
     ("PATCH", "/api/v1/admin/reports/{report_id}/resolve"),
     ("PATCH", "/api/v1/admin/reports/{report_id}/dismiss"),
     ("PATCH", "/api/v1/expert/admin/{expert_id}/verification"),
@@ -123,11 +124,17 @@ def test_an_expert_verification_decision_is_audited(world, api_client, make_acto
         }
     }
     assert api_client("POST", "/api/v1/expert/application", expert_token, json=application).status_code in (200, 201)
-    detail = api_client("GET", f"/api/v1/expert/admin/{expert_id}", world.admin.token).json()
-    decision = {"verification_id": detail["expert_verifications"][0]["id"], "decision": "approved", "notes": "smoke"}
-    verified = _patch(api_client, world, f"/api/v1/expert/admin/{expert_id}/verification", **decision)
+    verified = _patch(api_client, world, f"/api/v1/expert/admin/{expert_id}/verification", decision="approved")
     assert verified.status_code == 204, verified.text
-    _assert_audited(world, "expert_verification_approved", expert_id)
+    # The audit row is written by decide_account_status() in the decision's own transaction (SRDS §51 names).
+    _assert_audited(world, "expert_application_approved", expert_id)
+
+
+def test_a_dealer_application_decision_is_audited(world, api_client, make_actor):
+    dealer_id = make_actor("dealer")[0]
+    decided = _patch(api_client, world, f"/api/v1/admin/users/{dealer_id}/account-status", status="approved")
+    assert decided.status_code == 200, decided.text
+    _assert_audited(world, "dealer_application_approved", dealer_id)
 
 
 def test_redacting_a_message_is_audited(world, api_client, make_actor):

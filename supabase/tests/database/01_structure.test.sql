@@ -117,7 +117,6 @@ select is(
   'public.expert_specializations.expert_specializations_owner_insert',
   'public.expert_specializations.expert_specializations_owner_update',
   'public.expert_specializations.expert_specializations_select_all',
-  'public.expert_verifications.expert_verifications_admin_update',
   'public.expert_verifications.expert_verifications_insert_owner',
   'public.expert_verifications.expert_verifications_select_owner_or_admin',
   'public.experts.experts_insert_own',

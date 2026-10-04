@@ -1,11 +1,14 @@
 import React from 'react';
+import { ApprovalGrantedScreen } from '../../common/auth/screens/ApprovalGrantedScreen';
 import { ResetPasswordScreen } from '../../common/auth/screens/ResetPasswordScreen';
+import { SecondFactorScreen } from '../../common/auth/screens/SecondFactorScreen';
 import { SplashScreen } from '../../common/auth/screens/SplashScreen';
 import { SuspendedScreen } from '../../common/auth/screens/SuspendedScreen';
 import { ErrorBoundary } from '../../common/components/ErrorBoundary';
 import { useAuthStore } from '../../state/authStore';
 import { AdminNavigator } from './AdminNavigator';
 import { AppNavigator } from './AppNavigator';
+import { ApprovalNavigator } from './ApprovalNavigator';
 import { AuthNavigator } from './AuthNavigator';
 import { ExpertNavigator } from './ExpertNavigator';
 
@@ -18,6 +21,18 @@ export function RootNavigator() {
   // A password-reset link was just exchanged for a session (authStore) — the user must set a
   // new password before reaching the normal authenticated app shell below.
   if (status === 'passwordRecovery') return <ResetPasswordScreen />;
+  // A dealer or expert whose application is pending or rejected sees only its status (A3a, D10); one approved while
+  // signed in signs in again before the dashboard (SRDS §8). Both come before role routing, so a role's own shell
+  // only ever mounts for an approved account.
+  if (status === 'awaitingApproval') {
+    return (
+      <Guarded name="approval navigator">
+        <ApprovalNavigator />
+      </Guarded>
+    );
+  }
+  if (status === 'approvalGranted') return <ApprovalGrantedScreen />;
+  if (status === 'secondFactor') return <SecondFactorScreen />;
   if (status !== 'authenticated') {
     return (
       <Guarded name="auth navigator">

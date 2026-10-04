@@ -44,8 +44,18 @@ describe('fetchAllProfiles', () => {
   it('fetches the admin users list', async () => {
     mockApiFetch.mockResolvedValue([{ id: 'p1' }]);
     const result = await fetchAllProfiles();
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/users');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/users', {
+      query: { role: undefined, account_status: undefined },
+    });
     expect(result).toEqual([{ id: 'p1' }]);
+  });
+
+  it('asks the API for the dealers waiting for a decision (filtered on the server, A3a)', async () => {
+    mockApiFetch.mockResolvedValue([]);
+    await fetchAllProfiles({ role: 'dealer', accountStatus: 'pending' });
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/users', {
+      query: { role: 'dealer', account_status: 'pending' },
+    });
   });
 });
 

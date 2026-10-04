@@ -1,7 +1,9 @@
 from typing import Any
 
+from postgrest.exceptions import APIError
 from supabase import AuthError
 
+from app.common.errors import AppHTTPException
 from app.database.supabase_client import get_reauth_client, get_service_role_client, get_user_scoped_client
 
 # P4 (4A.5), account deletion: buckets whose objects are stored under a `{user_id}/...` prefix,
@@ -89,3 +91,17 @@ async def log_self_deletion(user_id: str) -> None:
         )
         .execute()
     )
+
+
+async def resubmit_application(access_token: str) -> None:
+    """resubmit_application() checks the caller is a rejected dealer or expert and not suspended
+    (20261005080000_account_status.sql); anything else is its 23514, a 409 here."""
+    client = await get_user_scoped_client(access_token)
+    try:
+        await client.rpc("resubmit_application", {}).execute()
+    except APIError as exc:
+        if exc.code == "23514":
+            raise AppHTTPException(
+                409, exc.message or "There is no rejected application to send", "invalid_transition"
+            ) from exc
+        raise

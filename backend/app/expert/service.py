@@ -1,7 +1,8 @@
 from fastapi import HTTPException
 
 from app.auth.dependencies import AuthenticatedUser
-from app.common.audit_log import log_admin_action
+from app.common import account_status
+from app.common.errors import AppHTTPException
 from app.expert import repository as repo
 
 
@@ -76,17 +77,17 @@ async def fetch_expert_for_admin_by_id(user: AuthenticatedUser, expert_id: str) 
 
 
 async def review_verification(
-    user: AuthenticatedUser, expert_id: str, verification_id: str, decision: str, notes: str | None
+    user: AuthenticatedUser, expert_id: str, decision: account_status.Decision, notes: str | None
 ) -> None:
-    await repo.review_verification(user.access_token, expert_id, verification_id, decision, notes, user.id)
-    await log_admin_action(
-        user,
-        f"expert_verification_{decision}",
-        "experts",
-        expert_id,
-        new_state={"verification_status": decision},
-        metadata={"notes": notes},
-    )
+    # One place per role: an expert is decided here, a dealer in User Management (A3a verification, L5).
+    role = await repo.fetch_profile_role(user.access_token, expert_id)
+    if role is None:
+        raise AppHTTPException(404, "No such account", "not_found")
+    if role != "expert":
+        raise AppHTTPException(409, "Only an expert is decided here; dealers are reviewed in Users", "conflict")
+    # The account, the expert's verification and its latest record move together, with the audit row, in one
+    # database transaction (decide_account_status); before A3a these were three separate writes.
+    await account_status.decide(user, expert_id, decision, notes)
 
 
 async def get_document_url(user: AuthenticatedUser, expert_id: str) -> str | None:

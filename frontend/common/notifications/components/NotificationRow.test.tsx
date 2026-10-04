@@ -33,6 +33,8 @@ describe('NotificationRow', () => {
     ['payment_status_changed', 'failed', 'Payment update: Payment failed'],
     ['listing_status_changed', 'active', 'Listing status changed: Listed'],
     ['expert_verification_changed', 'pending', 'Verification update: Under review'],
+    ['account_status_changed', 'approved', 'Application update: Approved'],
+    ['account_status_changed', 'rejected', 'Application update: Not approved'],
   ] as const)('describes %s to %s through the vocabulary', async (type, status, text) => {
     const notification: Notification = { ...baseNotification, type, payload: { status } };
     await render(<NotificationRow notification={notification} onPress={() => {}} />);

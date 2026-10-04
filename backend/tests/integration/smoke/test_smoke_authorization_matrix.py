@@ -39,14 +39,26 @@ for _name, _local in (
         os.environ.setdefault(_name, os.environ[_local])
 
 try:
-    from app.auth.dependencies import declared_roles, get_current_user, require_admin_aal2
+    from app.auth.dependencies import (
+        declared_any_status,
+        declared_roles,
+        get_current_user,
+        get_current_user_any_status,
+        require_admin_aal2,
+    )
     from app.main import app
 except ValidationError:  # no Supabase settings available: the tests below skip via backend_url
     app = None
 
 POLICY_FILE = Path(__file__).with_name("authorization_policy.json")
 ROLES = ("farmer", "buyer", "dealer", "expert", "admin")
-AUTH_TITLES = {"Insufficient role", "Account suspended", "This action requires a verified second factor (MFA)."}
+AUTH_TITLES = {
+    "Insufficient role",
+    "Account suspended",
+    "Account not approved",
+    "Your account was approved. Sign in again to continue.",
+    "This action requires a verified second factor (MFA).",
+}
 
 EXPECTED_PUBLIC = {
     ("GET", "/health"),
@@ -78,15 +90,18 @@ def _calls(dependant):
 
 
 def _classify(route: ApiRoute):
+    """(kind, roles, any_status): any_status marks a route a pending or rejected dealer or expert may still call
+    (A3a, D10); every other authenticated route refuses them with 403 `account_not_approved`."""
     calls = list(_calls(route.dependant))
+    any_status = any(call in declared_any_status for call in calls)
     if require_admin_aal2 in calls:
-        return "aal2", ("admin",)
+        return "aal2", ("admin",), False
     for call in calls:
         if call in declared_roles:
-            return "roles", declared_roles[call]
-    if get_current_user in calls:
-        return "auth", ROLES
-    return "public", ROLES
+            return "roles", declared_roles[call], any_status
+    if get_current_user in calls or get_current_user_any_status in calls:
+        return "auth", ROLES, any_status
+    return "public", ROLES, False
 
 
 def _routes():
@@ -97,8 +112,8 @@ def _routes():
 
 def _derived_policy() -> dict[str, dict]:
     return {
-        f"{method} {path}": {"kind": kind, "roles": sorted(roles)}
-        for method, path, kind, roles in sorted(_routes(), key=lambda r: (r[1], r[0]))
+        f"{method} {path}": {"kind": kind, "roles": sorted(roles), **({"any_status": True} if any_status else {})}
+        for method, path, kind, roles, any_status in sorted(_routes(), key=lambda r: (r[1], r[0]))
     }
 
 
@@ -144,15 +159,17 @@ def test_every_route_is_classified_and_the_public_set_is_exactly_the_expected_on
         pytest.skip("no Supabase settings in this environment")
     routes = _routes()
     assert len(routes) > 100, "route enumeration found suspiciously few routes"
-    public = {(m, p) for m, p, kind, _ in routes if kind == "public"}
+    public = {(m, p) for m, p, kind, _, _ in routes if kind == "public"}
     assert public == EXPECTED_PUBLIC, (
         f"unexpectedly public (missing an auth dependency?): {sorted(public - EXPECTED_PUBLIC)}; "
         f"expected public but now protected (update EXPECTED_PUBLIC): {sorted(EXPECTED_PUBLIC - public)}"
     )
 
 
-@pytest.mark.parametrize(("method", "path", "kind", "roles"), _routes(), ids=lambda v: v if isinstance(v, str) else "")
-def test_authorization_matrix(method, path, kind, roles, matrix_actors, api_client):
+@pytest.mark.parametrize(
+    ("method", "path", "kind", "roles", "any_status"), _routes(), ids=lambda v: v if isinstance(v, str) else ""
+)
+def test_authorization_matrix(method, path, kind, roles, any_status, matrix_actors, api_client):
     anonymous = _call(api_client, method, path, None)
     assert anonymous.status_code != 429, "rate limited: the matrix is being throttled, not tested"
     if kind == "public":
@@ -170,6 +187,22 @@ def test_authorization_matrix(method, path, kind, roles, matrix_actors, api_clie
         else:
             assert response.status_code == 403, f"{method} {path} as {role} -> {response.status_code}"
             assert response.json()["title"] == "Insufficient role", response.text
+
+    # A pending dealer or expert (A3a, D10): refused as not approved everywhere except the few routes open to them.
+    if kind != "public":
+        for actor, role in (("dealer_pending", "dealer"), ("expert_pending", "expert")):
+            response = _call(api_client, method, path, matrix_actors[actor])
+            assert response.status_code != 429, f"{method} {path} as {actor}: rate limited"
+            if any_status and role in roles:
+                assert not _rejected_for_who_you_are(response), (
+                    f"{method} {path} as {actor} was rejected: {response.status_code} {response.text}"
+                )
+            elif any_status:
+                assert response.status_code == 403, f"{method} {path} as {actor} -> {response.status_code}"
+                assert response.json()["title"] == "Insufficient role", response.text
+            else:
+                assert response.status_code == 403, f"{method} {path} as {actor} -> {response.status_code}"
+                assert response.json()["code"] == "account_not_approved", response.text
 
     if kind == "aal2":
         no_mfa = _call(api_client, method, path, matrix_actors["admin_aal1"])

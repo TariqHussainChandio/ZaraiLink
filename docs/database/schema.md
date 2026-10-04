@@ -5,7 +5,7 @@
 
 What each table is for, and the business rules behind the design, are in [notes.md](notes.md).
 
-33 tables, 1 view(s), 11 enum types, 93 row-level-security policies on tables and 18 on storage objects.
+33 tables, 1 view(s), 12 enum types, 92 row-level-security policies on tables and 18 on storage objects.
 
 Realtime publishes changes of: `consultation_messages`, `messages`, `notifications`.
 
@@ -89,7 +89,7 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `consultation_messages_insert_participant` | INSERT | - | ((sender_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (EXISTS ( SELECT 1 FROM consultations c WHERE ((c.id = consultation_messages.consultation_id) AND ((c.user_id = ( SELECT auth.uid() AS uid)) OR (c.expert_id = ( SELECT auth.uid() AS uid))) AND (c.status <> ALL (ARRAY['rejected'::consultation_status, 'cancelled'::consultation_status, 'expired'::consultation_status])))))) |
+| `consultation_messages_insert_participant` | INSERT | - | ((sender_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved) AND (EXISTS ( SELECT 1 FROM consultations c WHERE ((c.id = consultation_messages.consultation_id) AND ((c.user_id = ( SELECT auth.uid() AS uid)) OR (c.expert_id = ( SELECT auth.uid() AS uid))) AND (c.status <> ALL (ARRAY['rejected'::consultation_status, 'cancelled'::consultation_status, 'expired'::consultation_status])))))) |
 | `consultation_messages_select_participants` | SELECT | (EXISTS ( SELECT 1 FROM consultations c WHERE ((c.id = consultation_messages.consultation_id) AND ((c.user_id = ( SELECT auth.uid() AS uid)) OR (c.expert_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))))) | - |
 
 ### `consultations`
@@ -122,9 +122,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `consultations_insert_requester` | INSERT | - | ((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (status = 'requested'::consultation_status) AND (expert_id IS NOT NULL) AND (expert_id <> user_id) AND (EXISTS ( SELECT 1 FROM experts e WHERE ((e.id = consultations.expert_id) AND (e.verification_status = 'approved'::verification_status))))) |
+| `consultations_insert_requester` | INSERT | - | ((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved) AND (status = 'requested'::consultation_status) AND (expert_id IS NOT NULL) AND (expert_id <> user_id) AND (EXISTS ( SELECT 1 FROM experts e WHERE ((e.id = consultations.expert_id) AND (e.verification_status = 'approved'::verification_status)))) AND ( SELECT is_approved_expert_id(consultations.expert_id) AS is_approved_expert_id)) |
 | `consultations_select_participants` | SELECT | ((user_id = ( SELECT auth.uid() AS uid)) OR (expert_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
-| `consultations_update_participants` | UPDATE | (((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | (((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
+| `consultations_update_participants` | UPDATE | (((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_expert() AS is_approved_expert)) OR ( SELECT is_admin() AS is_admin)) | (((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_expert() AS is_approved_expert)) OR ( SELECT is_admin() AS is_admin)) |
 
 Triggers: `a_guard_consultations_update`, `notify_consultation_created`, `notify_consultation_status_changed`, `set_consultations_updated_at`.
 
@@ -149,7 +149,7 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `conversations_insert_participant` | INSERT | - | (((participant_one = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((participant_two = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)))) |
+| `conversations_insert_participant` | INSERT | - | ((((participant_one = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((participant_two = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)))) AND ( SELECT is_account_approved() AS is_account_approved)) |
 | `conversations_select_participants` | SELECT | ((participant_one = ( SELECT auth.uid() AS uid)) OR (participant_two = ( SELECT auth.uid() AS uid))) | - |
 
 ### `crops`
@@ -225,9 +225,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `dealer_stores_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | - |
-| `dealer_stores_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
-| `dealer_stores_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+| `dealer_stores_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
+| `dealer_stores_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
+| `dealer_stores_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
 | `dealer_stores_select_owner_or_admin` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 Triggers: `set_dealer_stores_updated_at`.
@@ -253,7 +253,7 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `disease_cases_insert_owner` | INSERT | - | ((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+| `disease_cases_insert_owner` | INSERT | - | ((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) |
 | `disease_cases_select_owner_or_admin` | SELECT | ((user_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 ### `disease_predictions`
@@ -297,14 +297,14 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `expert_specializations_owner_delete` | DELETE | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | - |
-| `expert_specializations_owner_insert` | INSERT | - | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
-| `expert_specializations_owner_update` | UPDATE | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
+| `expert_specializations_owner_delete` | DELETE | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) OR ( SELECT is_admin() AS is_admin)) | - |
+| `expert_specializations_owner_insert` | INSERT | - | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) OR ( SELECT is_admin() AS is_admin)) |
+| `expert_specializations_owner_update` | UPDATE | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) OR ( SELECT is_admin() AS is_admin)) | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) OR ( SELECT is_admin() AS is_admin)) |
 | `expert_specializations_select_all` | SELECT | true | - |
 
 ### `expert_verifications`
 
-Row-level security: **on**. Grants: authenticated: select, update.
+Row-level security: **on**. Grants: authenticated: select.
 
 | Column | Type | Null | Default |
 |---|---|---|---|
@@ -326,8 +326,7 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `expert_verifications_admin_update` | UPDATE | ( SELECT is_admin_aal2() AS is_admin_aal2) | ( SELECT is_admin_aal2() AS is_admin_aal2) |
-| `expert_verifications_insert_owner` | INSERT | - | ((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+| `expert_verifications_insert_owner` | INSERT | - | ((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) |
 | `expert_verifications_select_owner_or_admin` | SELECT | ((expert_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 ### `experts`
@@ -354,11 +353,11 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `experts_insert_own` | INSERT | - | ((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
-| `experts_select_verified_or_own_or_admin` | SELECT | ((verification_status = 'approved'::verification_status) OR (id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
+| `experts_insert_own` | INSERT | - | ((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) |
+| `experts_select_verified_or_own_or_admin` | SELECT | (((verification_status = 'approved'::verification_status) AND ( SELECT is_approved_expert_id(experts.id) AS is_approved_expert_id)) OR (id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 | `experts_update_own_or_admin` | UPDATE | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
 
-Triggers: `guard_experts_admin_update`, `guard_experts_verification_status`, `notify_expert_verification_changed`, `set_experts_updated_at`.
+Triggers: `guard_experts_admin_update`, `guard_experts_verification_status`, `set_experts_updated_at`.
 
 ### `farm_crops`
 
@@ -387,9 +386,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `farm_crops_owner_delete` | DELETE | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND (((f.owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin))))) | - |
-| `farm_crops_owner_insert` | INSERT | - | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND (((f.owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin))))) |
-| `farm_crops_owner_update` | UPDATE | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND (((f.owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin))))) | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND (((f.owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin))))) |
+| `farm_crops_owner_delete` | DELETE | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND (((f.owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin))))) | - |
+| `farm_crops_owner_insert` | INSERT | - | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND (((f.owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin))))) |
+| `farm_crops_owner_update` | UPDATE | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND (((f.owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin))))) | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND (((f.owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin))))) |
 | `farm_crops_select_owner_or_admin` | SELECT | (EXISTS ( SELECT 1 FROM farms f WHERE ((f.id = farm_crops.farm_id) AND ((f.owner_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))))) | - |
 
 Triggers: `set_farm_crops_updated_at`.
@@ -412,8 +411,8 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `farmer_profiles_owner_insert` | INSERT | - | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
-| `farmer_profiles_owner_update` | UPDATE | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
+| `farmer_profiles_owner_insert` | INSERT | - | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin)) |
+| `farmer_profiles_owner_update` | UPDATE | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin)) | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin)) |
 | `farmer_profiles_select_own_or_admin` | SELECT | ((id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 Triggers: `set_farmer_profiles_updated_at`.
@@ -442,9 +441,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `farms_owner_delete` | DELETE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | - |
-| `farms_owner_insert` | INSERT | - | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
-| `farms_owner_update` | UPDATE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin() AS is_admin)) |
+| `farms_owner_delete` | DELETE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin)) | - |
+| `farms_owner_insert` | INSERT | - | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin)) |
+| `farms_owner_update` | UPDATE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin)) | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ( SELECT is_admin() AS is_admin)) |
 | `farms_select_owner_or_admin` | SELECT | ((owner_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 Triggers: `set_farms_updated_at`.
@@ -502,9 +501,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `inventory_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | - |
-| `inventory_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ((listing_id IS NULL) OR (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = inventory.listing_id) AND (l.owner_id = inventory.dealer_id)))))) |
-| `inventory_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ((listing_id IS NULL) OR (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = inventory.listing_id) AND (l.owner_id = inventory.dealer_id)))))) |
+| `inventory_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
+| `inventory_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND ((listing_id IS NULL) OR (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = inventory.listing_id) AND (l.owner_id = inventory.dealer_id)))))) |
+| `inventory_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND ((listing_id IS NULL) OR (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = inventory.listing_id) AND (l.owner_id = inventory.dealer_id)))))) |
 | `inventory_select_owner_or_admin` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 Triggers: `notify_inventory_low_stock`, `set_inventory_updated_at`.
@@ -532,7 +531,7 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `inventory_transactions_owner_insert` | INSERT | - | (EXISTS ( SELECT 1 FROM inventory i WHERE ((i.id = inventory_transactions.inventory_id) AND (i.dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) |
+| `inventory_transactions_owner_insert` | INSERT | - | ((EXISTS ( SELECT 1 FROM inventory i WHERE ((i.id = inventory_transactions.inventory_id) AND (i.dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
 | `inventory_transactions_select_owner_or_admin` | SELECT | (EXISTS ( SELECT 1 FROM inventory i WHERE ((i.id = inventory_transactions.inventory_id) AND ((i.dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))))) | - |
 
 ### `listing_views`
@@ -555,7 +554,7 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `listing_views_insert_authenticated` | INSERT | - | (((viewer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (NOT (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = listing_views.listing_id) AND (l.owner_id = ( SELECT auth.uid() AS uid))))))) OR (viewer_id IS NULL)) |
+| `listing_views_insert_authenticated` | INSERT | - | (((viewer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved) AND (NOT (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = listing_views.listing_id) AND (l.owner_id = ( SELECT auth.uid() AS uid))))))) OR (viewer_id IS NULL)) |
 | `listing_views_select_owner_or_admin` | SELECT | (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = listing_views.listing_id) AND ((l.owner_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))))) | - |
 
 ### `listings`
@@ -593,9 +592,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `listings_owner_delete` | DELETE | ((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | - |
-| `listings_owner_insert` | INSERT | - | ((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
-| `listings_owner_update` | UPDATE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
+| `listings_owner_delete` | DELETE | ((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) | - |
+| `listings_owner_insert` | INSERT | - | ((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) |
+| `listings_owner_update` | UPDATE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
 | `listings_select_active_or_owner` | SELECT | ((status = 'active'::listing_status) OR (owner_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 Triggers: `guard_listings_admin_update`, `notify_listing_status_changed`, `set_listings_seller_role`, `set_listings_updated_at`.
@@ -623,9 +622,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `messages_insert_participant` | INSERT | - | ((sender_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (EXISTS ( SELECT 1 FROM conversations c WHERE ((c.id = messages.conversation_id) AND ((c.participant_one = ( SELECT auth.uid() AS uid)) OR (c.participant_two = ( SELECT auth.uid() AS uid))))))) |
+| `messages_insert_participant` | INSERT | - | ((sender_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved) AND (EXISTS ( SELECT 1 FROM conversations c WHERE ((c.id = messages.conversation_id) AND ((c.participant_one = ( SELECT auth.uid() AS uid)) OR (c.participant_two = ( SELECT auth.uid() AS uid))))))) |
 | `messages_select_participants` | SELECT | (( SELECT is_admin() AS is_admin) OR (EXISTS ( SELECT 1 FROM conversations c WHERE ((c.id = messages.conversation_id) AND ((c.participant_one = ( SELECT auth.uid() AS uid)) OR (c.participant_two = ( SELECT auth.uid() AS uid))))))) | - |
-| `messages_update` | UPDATE | (( SELECT is_admin_aal2() AS is_admin_aal2) OR (EXISTS ( SELECT 1 FROM conversations c WHERE ((c.id = messages.conversation_id) AND (((c.participant_one = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((c.participant_two = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)))))))) | (( SELECT is_admin_aal2() AS is_admin_aal2) OR (EXISTS ( SELECT 1 FROM conversations c WHERE ((c.id = messages.conversation_id) AND (((c.participant_one = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((c.participant_two = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)))))))) |
+| `messages_update` | UPDATE | (( SELECT is_admin_aal2() AS is_admin_aal2) OR (( SELECT is_account_approved() AS is_account_approved) AND (EXISTS ( SELECT 1 FROM conversations c WHERE ((c.id = messages.conversation_id) AND (((c.participant_one = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((c.participant_two = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))))))) | (( SELECT is_admin_aal2() AS is_admin_aal2) OR (( SELECT is_account_approved() AS is_account_approved) AND (EXISTS ( SELECT 1 FROM conversations c WHERE ((c.id = messages.conversation_id) AND (((c.participant_one = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((c.participant_two = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))))))) |
 
 Triggers: `guard_messages_updates`, `notify_new_message`.
 
@@ -676,7 +675,7 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `order_items_insert_buyer` | INSERT | - | (EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = order_items.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) |
+| `order_items_insert_buyer` | INSERT | - | ((EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = order_items.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) AND ( SELECT is_account_approved() AS is_account_approved)) |
 | `order_items_select_participants` | SELECT | (EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = order_items.order_id) AND ((o.buyer_id = ( SELECT auth.uid() AS uid)) OR (o.seller_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))))) | - |
 
 Triggers: `a_guard_order_items_insert`, `sync_order_subtotal`.
@@ -730,9 +729,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `orders_insert_buyer` | INSERT | - | ((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+| `orders_insert_buyer` | INSERT | - | ((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) |
 | `orders_select_participants` | SELECT | ((buyer_id = ( SELECT auth.uid() AS uid)) OR (seller_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
-| `orders_update_participants` | UPDATE | (((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR (( SELECT is_admin() AS is_admin) AND (status = 'disputed'::order_status))) | (((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR (( SELECT is_admin() AS is_admin) AND (status = ANY (ARRAY['refunded'::order_status, 'completed'::order_status])))) |
+| `orders_update_participants` | UPDATE | (((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR (( SELECT is_admin() AS is_admin) AND (status = 'disputed'::order_status))) | (((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR (( SELECT is_admin() AS is_admin) AND (status = ANY (ARRAY['refunded'::order_status, 'completed'::order_status])))) |
 
 Triggers: `a_guard_orders_insert`, `a_guard_orders_update`, `commit_stock_on_confirm`, `notify_new_order`, `notify_order_status_changed`, `record_order_history_insert`, `record_order_history_update`, `set_orders_updated_at`.
 
@@ -786,9 +785,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `payments_insert_buyer` | INSERT | - | ((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+| `payments_insert_buyer` | INSERT | - | ((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) |
 | `payments_select_order_participants` | SELECT | ((buyer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin) OR (EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = payments.order_id) AND (o.seller_id = ( SELECT auth.uid() AS uid)))))) | - |
-| `payments_update_order_seller` | UPDATE | (EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = payments.order_id) AND (o.seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) | (EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = payments.order_id) AND (o.seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) |
+| `payments_update_order_seller` | UPDATE | ((EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = payments.order_id) AND (o.seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) AND ( SELECT is_account_approved() AS is_account_approved)) | ((EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = payments.order_id) AND (o.seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) AND ( SELECT is_account_approved() AS is_account_approved)) |
 
 Triggers: `a_guard_payments_insert`, `a_guard_payments_update`, `notify_payment_status_changed`, `record_payment_event`, `set_payments_updated_at`.
 
@@ -813,10 +812,14 @@ Row-level security: **on**. Grants: anon: select; authenticated: insert, select,
 | `province` | text | yes |  |
 | `city` | text | yes |  |
 | `notifications_enabled` | boolean | no | true |
+| `account_status` | account_status | no | 'approved'::account_status |
+| `account_status_reason` | text | yes |  |
+| `account_status_changed_at` | timestamp with time zone | yes |  |
 
-Constraints: `profiles_id_fkey`: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE; `profiles_pkey`: PRIMARY KEY (id).
+Constraints: `profiles_account_status_reason_check`: CHECK ((char_length(account_status_reason) <= 1000)); `profiles_id_fkey`: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE; `profiles_pkey`: PRIMARY KEY (id).
 
 Indexes:
+- `CREATE INDEX profiles_review_queue_idx ON public.profiles USING btree (role, created_at) WHERE (account_status <> 'approved'::account_status)`
 - `CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)`
 
 | Policy | Command | Using | With check |
@@ -824,7 +827,7 @@ Indexes:
 | `profiles_select_own_or_admin` | SELECT | ((id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 | `profiles_update_own_or_admin` | UPDATE | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
 
-Triggers: `guard_profiles_role`, `notify_account_suspension_changed`, `set_profiles_updated_at`.
+Triggers: `guard_profiles_role`, `notify_account_status_changed`, `notify_account_suspension_changed`, `reset_expert_on_role_change`, `set_profiles_updated_at`.
 
 ### `reports`
 
@@ -855,7 +858,7 @@ Indexes:
 | Policy | Command | Using | With check |
 |---|---|---|---|
 | `reports_admin_update` | UPDATE | ( SELECT is_admin_aal2() AS is_admin_aal2) | ( SELECT is_admin_aal2() AS is_admin_aal2) |
-| `reports_insert_reporter` | INSERT | - | ((reporter_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+| `reports_insert_reporter` | INSERT | - | ((reporter_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) |
 | `reports_select_own_or_admin` | SELECT | ((reporter_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 ### `reviews`
@@ -887,7 +890,7 @@ Indexes:
 | Policy | Command | Using | With check |
 |---|---|---|---|
 | `reviews_admin_delete` | DELETE | ( SELECT is_admin() AS is_admin) | - |
-| `reviews_insert_buyer_completed_order_or_consultation` | INSERT | - | ((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (((order_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = reviews.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid)) AND (o.status = 'completed'::order_status) AND (o.seller_id = reviews.seller_id) AND ((reviews.listing_id IS NULL) OR (EXISTS ( SELECT 1 FROM order_items oi WHERE ((oi.order_id = o.id) AND (oi.listing_id = reviews.listing_id))))))))) OR ((consultation_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM consultations c WHERE ((c.id = reviews.consultation_id) AND (c.user_id = ( SELECT auth.uid() AS uid)) AND (c.status = ANY (ARRAY['resolved'::consultation_status, 'closed'::consultation_status])) AND (c.expert_id = reviews.seller_id))))))) |
+| `reviews_insert_buyer_completed_order_or_consultation` | INSERT | - | ((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved) AND (((order_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM orders o WHERE ((o.id = reviews.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid)) AND (o.status = 'completed'::order_status) AND (o.seller_id = reviews.seller_id) AND ((reviews.listing_id IS NULL) OR (EXISTS ( SELECT 1 FROM order_items oi WHERE ((oi.order_id = o.id) AND (oi.listing_id = reviews.listing_id))))))))) OR ((consultation_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM consultations c WHERE ((c.id = reviews.consultation_id) AND (c.user_id = ( SELECT auth.uid() AS uid)) AND (c.status = ANY (ARRAY['resolved'::consultation_status, 'closed'::consultation_status])) AND (c.expert_id = reviews.seller_id))))))) |
 | `reviews_select_all` | SELECT | true | - |
 
 ### `suppliers`
@@ -914,9 +917,9 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `suppliers_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | - |
-| `suppliers_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
-| `suppliers_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+| `suppliers_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
+| `suppliers_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
+| `suppliers_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
 | `suppliers_select_owner_or_admin` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 Triggers: `set_suppliers_updated_at`.
@@ -951,6 +954,7 @@ Indexes:
 
 ## Enum types
 
+- `account_status`: pending · approved · rejected
 - `consultation_priority`: low · medium · high
 - `consultation_status`: requested · accepted · in_progress · resolved · closed · rejected · cancelled · expired
 - `expert_specialization`: crop_management · plant_diseases · pest_management · fertilizer_management · irrigation · soil_management · crop_nutrition · general_agriculture
@@ -969,8 +973,10 @@ Indexes:
 |---|---|---|---|
 | `adjust_stock(uuid,text,numeric,uuid,text)` | inventory | invoker | search_path=public, pg_temp |
 | `available_stock(uuid[])` | TABLE(listing_id uuid, available numeric) | definer | search_path=public, pg_temp |
+| `caller_role()` | user_role | definer | search_path=public, pg_temp |
 | `commit_stock_on_confirm()` | trigger | definer | search_path=public, pg_temp |
 | `create_notification(uuid,text,jsonb,boolean)` | void | definer | search_path=public, pg_temp |
+| `decide_account_status(uuid,account_status,text)` | TABLE(role user_role, previous_status account_status, new_status account_status) | definer | search_path=public, pg_temp |
 | `guard_consultations_update()` | trigger | invoker | search_path="" |
 | `guard_experts_admin_update()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_experts_verification_status()` | trigger | invoker | search_path=public, pg_temp |
@@ -983,14 +989,18 @@ Indexes:
 | `guard_payments_update()` | trigger | invoker | search_path="" |
 | `guard_profiles_role()` | trigger | invoker | search_path=public, pg_temp |
 | `handle_new_user()` | trigger | definer | search_path=public, pg_temp |
+| `is_account_approved()` | boolean | definer | search_path=public, pg_temp |
 | `is_admin_aal2()` | boolean | definer | search_path=public, pg_temp |
 | `is_admin()` | boolean | definer | search_path=public, pg_temp |
+| `is_approved_dealer()` | boolean | definer | search_path=public, pg_temp |
+| `is_approved_expert_id(uuid)` | boolean | definer | search_path=public, pg_temp |
+| `is_approved_expert()` | boolean | definer | search_path=public, pg_temp |
 | `is_seller_role(uuid)` | boolean | definer | search_path=public, pg_temp |
 | `is_suspended()` | boolean | definer | search_path=public, pg_temp |
+| `notify_account_status_changed()` | trigger | definer | search_path=public, pg_temp |
 | `notify_account_suspension_changed()` | trigger | definer | search_path=public, pg_temp |
 | `notify_consultation_created()` | trigger | definer | search_path=public, pg_temp |
 | `notify_consultation_status_changed()` | trigger | definer | search_path=public, pg_temp |
-| `notify_expert_verification_changed()` | trigger | definer | search_path=public, pg_temp |
 | `notify_inventory_low_stock()` | trigger | definer | search_path=public, pg_temp |
 | `notify_listing_status_changed()` | trigger | definer | search_path=public, pg_temp |
 | `notify_new_message()` | trigger | definer | search_path=public, pg_temp |
@@ -1000,6 +1010,8 @@ Indexes:
 | `record_order_history()` | trigger | definer | search_path=public, pg_temp |
 | `record_payment_event()` | trigger | definer | search_path=public, pg_temp |
 | `reduce_stock_for_order(uuid,uuid)` | void | invoker | search_path=public, pg_temp |
+| `reset_expert_on_role_change()` | trigger | definer | search_path=public, pg_temp |
+| `resubmit_application()` | account_status | definer | search_path=public, pg_temp |
 | `rls_auto_enable()` | event_trigger | definer | search_path=pg_catalog |
 | `set_listings_seller_role()` | trigger | invoker | search_path=public, pg_temp |
 | `set_updated_at()` | trigger | invoker | search_path=public, pg_temp |
@@ -1025,17 +1037,17 @@ Indexes:
 | `avatars_owner_update` | UPDATE | ((bucket_id = 'avatars'::text) AND (owner = ( SELECT auth.uid() AS uid))) | - |
 | `avatars_owner_write` | INSERT | - | ((bucket_id = 'avatars'::text) AND (owner = ( SELECT auth.uid() AS uid))) |
 | `avatars_public_read` | SELECT | (bucket_id = 'avatars'::text) | - |
-| `consultation_attachments_participant_insert` | INSERT | - | ((bucket_id = 'consultation-attachments'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1 FROM consultations c WHERE (((c.id)::text = (storage.foldername(objects.name))[1]) AND ((c.user_id = ( SELECT auth.uid() AS uid)) OR (c.expert_id = ( SELECT auth.uid() AS uid))))))) |
+| `consultation_attachments_participant_insert` | INSERT | - | ((bucket_id = 'consultation-attachments'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_account_approved() AS is_account_approved) AND (EXISTS ( SELECT 1 FROM consultations c WHERE (((c.id)::text = (storage.foldername(objects.name))[1]) AND ((c.user_id = ( SELECT auth.uid() AS uid)) OR (c.expert_id = ( SELECT auth.uid() AS uid))))))) |
 | `consultation_attachments_select_participants` | SELECT | ((bucket_id = 'consultation-attachments'::text) AND (EXISTS ( SELECT 1 FROM consultations c WHERE (((c.id)::text = (storage.foldername(objects.name))[1]) AND ((c.user_id = ( SELECT auth.uid() AS uid)) OR (c.expert_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)))))) | - |
-| `disease_images_owner_delete` | DELETE | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text)) | - |
+| `disease_images_owner_delete` | DELETE | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) | - |
 | `disease_images_owner_or_admin_read` | SELECT | ((bucket_id = 'disease-images'::text) AND ((owner = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))) | - |
-| `disease_images_owner_update` | UPDATE | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text)) | - |
-| `disease_images_owner_write` | INSERT | - | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text)) |
+| `disease_images_owner_update` | UPDATE | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) | - |
+| `disease_images_owner_write` | INSERT | - | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) |
 | `expert_documents_owner_or_admin_read` | SELECT | ((bucket_id = 'expert-documents'::text) AND ((owner = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))) | - |
-| `expert_documents_owner_write` | INSERT | - | ((bucket_id = 'expert-documents'::text) AND (owner = ( SELECT auth.uid() AS uid))) |
-| `listing_images_owner_delete` | DELETE | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid))) | - |
-| `listing_images_owner_update` | UPDATE | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid))) | - |
-| `listing_images_owner_write` | INSERT | - | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid))) |
+| `expert_documents_owner_write` | INSERT | - | ((bucket_id = 'expert-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) |
+| `listing_images_owner_delete` | DELETE | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) | - |
+| `listing_images_owner_update` | UPDATE | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) | - |
+| `listing_images_owner_write` | INSERT | - | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) |
 | `listing_images_public_read` | SELECT | (bucket_id = 'listing-images'::text) | - |
-| `message_attachments_participant_insert` | INSERT | - | ((bucket_id = 'message-attachments'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1 FROM conversations c WHERE (((c.id)::text = (storage.foldername(objects.name))[1]) AND ((c.participant_one = ( SELECT auth.uid() AS uid)) OR (c.participant_two = ( SELECT auth.uid() AS uid))))))) |
+| `message_attachments_participant_insert` | INSERT | - | ((bucket_id = 'message-attachments'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_account_approved() AS is_account_approved) AND (EXISTS ( SELECT 1 FROM conversations c WHERE (((c.id)::text = (storage.foldername(objects.name))[1]) AND ((c.participant_one = ( SELECT auth.uid() AS uid)) OR (c.participant_two = ( SELECT auth.uid() AS uid))))))) |
 | `message_attachments_select_participants` | SELECT | ((bucket_id = 'message-attachments'::text) AND (EXISTS ( SELECT 1 FROM conversations c WHERE (((c.id)::text = (storage.foldername(objects.name))[1]) AND ((c.participant_one = ( SELECT auth.uid() AS uid)) OR (c.participant_two = ( SELECT auth.uid() AS uid))))))) | - |

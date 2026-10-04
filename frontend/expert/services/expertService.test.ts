@@ -122,19 +122,19 @@ describe('reads', () => {
 describe('reviewExpertVerification', () => {
   it('PATCHes the decision, converting an empty notes string to null', async () => {
     mockApiFetch.mockResolvedValue(undefined);
-    await reviewExpertVerification('expert-1', 'verification-1', 'approved', '');
+    await reviewExpertVerification('expert-1', 'approved', '');
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/expert/admin/expert-1/verification', {
       method: 'PATCH',
-      body: { verification_id: 'verification-1', decision: 'approved', notes: null },
+      body: { decision: 'approved', notes: null },
     });
   });
 
   it('keeps non-empty notes', async () => {
     mockApiFetch.mockResolvedValue(undefined);
-    await reviewExpertVerification('expert-1', 'verification-1', 'rejected', 'Missing documents');
+    await reviewExpertVerification('expert-1', 'rejected', 'Missing documents');
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/expert/admin/expert-1/verification', {
       method: 'PATCH',
-      body: { verification_id: 'verification-1', decision: 'rejected', notes: 'Missing documents' },
+      body: { decision: 'rejected', notes: 'Missing documents' },
     });
   });
 });

@@ -1,37 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, type ChipOption, ChipRow, isValidE164, PhoneInput, TextField } from '../../components';
+import { Banner, Button, TextField } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
-import { useSignIn, type AuthChannel } from '../hooks/auth';
+import { useSignIn } from '../hooks/auth';
 import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
-const CHANNELS: ChipOption<AuthChannel>[] = [
-  { value: 'email', label: 'Email' },
-  { value: 'phone', label: 'Phone number' },
-];
-
+// Sign-in checks only that a password was given: an account may predate today's rules, and Supabase decides.
 function makeLoginSchema() {
-  return z
-    .object({
-      channel: z.enum(['email', 'phone']),
-      email: z.string().optional(),
-      phone: z.string().nullable().optional(),
-      password: z.string().min(6, 'Password must be at least 6 characters'),
-    })
-    .superRefine((data, ctx) => {
-      if (data.channel === 'email') {
-        if (!data.email || !z.string().email().safeParse(data.email).success) {
-          ctx.addIssue({ code: 'custom', path: ['email'], message: 'Enter a valid email' });
-        }
-      } else if (!data.phone || !isValidE164(data.phone)) {
-        ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Enter a valid phone number' });
-      }
-    });
+  return z.object({
+    email: z.string().trim().email('Enter a valid email'),
+    password: z.string().min(1, 'Enter your password'),
+  });
 }
 
 type LoginFormValues = z.infer<ReturnType<typeof makeLoginSchema>>;
@@ -48,16 +32,13 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { channel: 'email', email: '', phone: null, password: '' },
+    defaultValues: { email: '', password: '' },
   });
-
-  const channel = useWatch({ control, name: 'channel' }) as AuthChannel;
 
   const onSubmit = async (values: LoginFormValues) => {
     setSubmitError(null);
     try {
-      const identifier = values.channel === 'email' ? values.email! : values.phone!;
-      await signIn({ channel: values.channel, identifier, password: values.password });
+      await signIn({ email: values.email.trim(), password: values.password });
     } catch (error) {
       setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to sign in'));
     }
@@ -74,35 +55,19 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
 
         <Controller
           control={control}
-          name="channel"
-          render={({ field: { onChange, value } }) => <ChipRow options={CHANNELS} value={value} onChange={onChange} />}
+          name="email"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField
+              label="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.email?.message}
+            />
+          )}
         />
-
-        {channel === 'email' ? (
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextField
-                label="Email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={value ?? ''}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={errors.email?.message}
-              />
-            )}
-          />
-        ) : (
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field: { onChange, value } }) => (
-              <PhoneInput value={value ?? null} onChange={onChange} error={errors.phone?.message} />
-            )}
-          />
-        )}
 
         <Controller
           control={control}

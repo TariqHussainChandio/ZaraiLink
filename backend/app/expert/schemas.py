@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 from app.common.schemas import Location
 
@@ -35,9 +35,18 @@ class SubmitApplicationRequest(BaseModel):
 
 
 class ReviewVerificationRequest(BaseModel):
-    verification_id: str
-    decision: VerificationStatus
-    notes: str | None = None
+    """An admin's decision on a pending expert application (SRDS §11, §12). Suspension is no longer a decision: it
+    is the account's suspension (PATCH /admin/users/{id}/suspend), like every other role's. A rejection carries the
+    reason the expert reads on their Application Status screen."""
+
+    decision: Literal["approved", "rejected"]
+    notes: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def _rejection_has_reason(self) -> "ReviewVerificationRequest":
+        if self.decision == "rejected" and len((self.notes or "").strip()) < 10:
+            raise ValueError("A rejection needs a reason of at least 10 characters")
+        return self
 
 
 class DocumentUrlResponse(BaseModel):

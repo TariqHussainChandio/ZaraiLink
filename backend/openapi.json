@@ -1,6 +1,46 @@
 {
   "components": {
     "schemas": {
+      "AccountDecision": {
+        "properties": {
+          "new_status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "New Status",
+            "type": "string"
+          },
+          "previous_status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Previous Status",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "expert",
+              "dealer",
+              "farmer",
+              "buyer"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "previous_status",
+          "new_status"
+        ],
+        "title": "AccountDecision",
+        "type": "object"
+      },
       "ActorRef": {
         "properties": {
           "full_name": {
@@ -1319,6 +1359,36 @@
           "updated_at"
         ],
         "title": "DealerStore",
+        "type": "object"
+      },
+      "DecideAccountRequest": {
+        "description": "An admin's decision on a pending dealer (SRDS §8, §12). A rejection carries the reason the applicant will read\non their Application Status screen, so it must say something (decide_account_status() enforces the same).",
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "DecideAccountRequest",
         "type": "object"
       },
       "DeleteAccountRequest": {
@@ -4396,6 +4466,8 @@
               "token_invalid",
               "auth_unavailable",
               "account_suspended",
+              "account_not_approved",
+              "sign_in_again",
               "insufficient_role",
               "mfa_required",
               "incorrect_password",
@@ -4472,6 +4544,38 @@
       },
       "Profile": {
         "properties": {
+          "account_status": {
+            "default": "approved",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Account Status",
+            "type": "string"
+          },
+          "account_status_changed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Status Changed At"
+          },
+          "account_status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Status Reason"
+          },
           "avatar_url": {
             "anyOf": [
               {
@@ -4939,13 +5043,12 @@
         "type": "object"
       },
       "ReviewVerificationRequest": {
+        "description": "An admin's decision on a pending expert application (SRDS §11, §12). Suspension is no longer a decision: it\nis the account's suspension (PATCH /admin/users/{id}/suspend), like every other role's. A rejection carries the\nreason the expert reads on their Application Status screen.",
         "properties": {
           "decision": {
             "enum": [
-              "pending",
               "approved",
-              "rejected",
-              "suspended"
+              "rejected"
             ],
             "title": "Decision",
             "type": "string"
@@ -4953,6 +5056,7 @@
           "notes": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -4960,14 +5064,9 @@
               }
             ],
             "title": "Notes"
-          },
-          "verification_id": {
-            "title": "Verification Id",
-            "type": "string"
           }
         },
         "required": [
-          "verification_id",
           "decision"
         ],
         "title": "ReviewVerificationRequest",
@@ -6227,6 +6326,50 @@
         "parameters": [
           {
             "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "admin",
+                    "expert",
+                    "dealer",
+                    "farmer",
+                    "buyer"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "in": "query",
+            "name": "account_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "approved",
+                    "rejected"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Status"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -6305,6 +6448,81 @@
           }
         ],
         "summary": "List Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{profile_id}/account-status": {
+      "patch": {
+        "operationId": "admin_decide_dealer_application",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDecision"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Echo of, or the generated, request id",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Error (application/problem+json)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Decide Dealer Application",
         "tags": [
           "admin"
         ]
@@ -13065,6 +13283,55 @@
           }
         ],
         "summary": "Update Profile",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/api/v1/profile/application/resubmit": {
+      "post": {
+        "description": "A rejected dealer or expert sends their application back for review (D10). Open to a pending or rejected\naccount by design: it is the one thing a rejected applicant does.",
+        "operationId": "profile_resubmit_application",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Echo of, or the generated, request id",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Error (application/problem+json)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Resubmit Application",
         "tags": [
           "profile"
         ]

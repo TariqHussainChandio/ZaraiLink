@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 
-from app.auth.dependencies import AuthenticatedUser
+from app.auth.dependencies import AuthenticatedUser, forget_profile
 from app.common.errors import AppHTTPException
 from app.common.profile import repository as repo
 
@@ -41,3 +41,8 @@ async def delete_own_account(user: AuthenticatedUser, password: str) -> None:
     await repo.delete_owned_storage_objects(user.id)
     await repo.log_self_deletion(user.id)
     await repo.soft_delete_auth_user(user.id)
+
+
+async def resubmit_application(user: AuthenticatedUser) -> None:
+    await repo.resubmit_application(user.access_token)
+    forget_profile(user.id)

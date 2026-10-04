@@ -14,14 +14,14 @@ select tests.expect(tests.fx('X'), $$insert into public.experts (id, verificatio
 select tests.expect(tests.fx('X'), 'insert into public.experts (id) values (' || tests.l('X') || ')', 'n:1', 'experts: a pending application is accepted');
 select is((select verification_status::text from public.experts where id = tests.fx('X')), 'pending', 'experts: and stays pending');
 select tests.expect(tests.fx('X'), 'update public.experts set updated_at = now() where id = ' || tests.l('X'), 'n:1', 'experts: the expert still edits their own application');
-select tests.expect(tests.fx('X'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('X'), 'err:P0001', 'experts: but cannot decide it');
+select tests.expect(tests.fx('X'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('X'), 'err:42501', 'experts: but cannot decide it');
 
 -- The guard itself asks for the second factor, not only the policy: an admin who owns an expert row passes the owner
 -- branch of experts_update_own_or_admin, so only the guard refuses a password-only session.
 insert into public.experts (id) values (tests.fx('A'));
-select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('A'), 'err:P0001', 'experts guard: an admin without a second factor cannot decide, even on a row they own');
+select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('A'), 'err:42501', 'experts guard: an admin without a second factor cannot decide, even on a row they own');
 select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('X'), 'n:0', 'experts policy: an admin without a second factor cannot decide another expert');
-select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('X'), 'n:1', 'experts: an admin with a second factor decides', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('X'), 'err:42501', 'experts: nor an admin with a second factor, directly; decide_account_status() decides, with its audit row (20261005080000)', 'aal2');
 select tests.expect(tests.fx('A'), $$update public.experts set qualifications = 'Rewritten' where id = $$ || tests.l('X'), 'err:42501', 'experts guard: an admin with a second factor cannot rewrite the profile', 'aal2');
 select tests.expect(tests.fx('X'), $$update public.experts set qualifications = 'MSc' where id = $$ || tests.l('X'), 'n:1', 'experts guard: the expert edits their own profile');
 select tests.expect(tests.fx('A'), 'select public.guard_experts_admin_update()', 'err:42501', 'guard_experts_admin_update: not callable by users');

@@ -71,9 +71,14 @@ select tests.expect(tests.fx('A'), 'insert into public.inventory_transactions (i
 
 -- experts ----------------------------------------------------------------------------------------------
 select tests.expect(tests.fx('E'), 'select id from public.experts where id = ' || tests.l('E'), 'rows:1', 'experts: an expert reads their own record');
-select tests.expect(tests.fx('B'), 'select id from public.experts where id = ' || tests.l('E'), 'rows:0', 'experts: others do not see an unapproved expert');
+select tests.expect(tests.fx('B'), 'select id from public.experts where id = ' || tests.l('E'), 'rows:1', 'experts: others see an approved expert');
+select tests.make_user('E3', 'expert');
+insert into public.experts (id) values (tests.fx('E3'));
+select tests.expect(tests.fx('B'), 'select id from public.experts where id = ' || tests.l('E3'), 'rows:0', 'experts: others do not see an unapproved expert');
 select tests.expect(tests.fx('A'), 'select id from public.experts where id = ' || tests.l('E'), 'rows:1', 'experts: an admin does');
-select tests.expect(tests.fx('F2'), 'insert into public.experts (id) values (' || tests.l('F2') || ')', 'n:1', 'experts: a user registers themselves');
+select tests.make_user('E4', 'expert');
+select tests.expect(tests.fx('E4'), 'insert into public.experts (id) values (' || tests.l('E4') || ')', 'n:1', 'experts: an expert registers themselves, while pending');
+select tests.expect(tests.fx('F2'), 'insert into public.experts (id) values (' || tests.l('F2') || ')', 'err:42501', 'experts: any other role cannot file an expert application (20261005080000)');
 select tests.expect(tests.fx('B'), 'insert into public.experts (id) values (' || tests.l('B2') || ')', 'err:42501', 'experts: cannot register someone else');
 select tests.expect(tests.fx('S'), 'insert into public.experts (id) values (' || tests.l('S') || ')', 'err:42501', 'experts: a suspended user cannot');
 select tests.expect(tests.fx('E'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:1', 'experts: the expert updates their record');
@@ -95,9 +100,9 @@ select tests.expect(tests.fx('B'), 'select id from public.expert_verifications w
 select tests.expect(tests.fx('A'), 'select id from public.expert_verifications where id = ' || tests.l('EV1'), 'rows:1', 'expert_verifications: an admin does');
 select tests.expect(tests.fx('E'), 'insert into public.expert_verifications (expert_id) values (' || tests.l('E') || ')', 'n:1', 'expert_verifications: the expert submits one');
 select tests.expect(tests.fx('B'), 'insert into public.expert_verifications (expert_id) values (' || tests.l('E') || ')', 'err:42501', 'expert_verifications: another user cannot');
-select tests.expect(tests.fx('A'), 'update public.expert_verifications set reviewed_by = ' || tests.l('A') || ' where id = ' || tests.l('EV1'), 'n:0', 'expert_verifications: an admin without a second factor cannot decide');
-select tests.expect(tests.fx('A'), 'update public.expert_verifications set reviewed_by = ' || tests.l('A') || ' where id = ' || tests.l('EV1'), 'n:1', 'expert_verifications: an admin with a second factor decides', 'aal2');
-select tests.expect(tests.fx('E'), 'update public.expert_verifications set reviewed_by = ' || tests.l('E') || ' where id = ' || tests.l('EV1'), 'n:0', 'expert_verifications: the expert cannot approve themselves');
+select tests.expect(tests.fx('A'), 'update public.expert_verifications set reviewed_by = ' || tests.l('A') || ' where id = ' || tests.l('EV1'), 'err:42501', 'expert_verifications: an admin without a second factor cannot decide');
+select tests.expect(tests.fx('A'), 'update public.expert_verifications set reviewed_by = ' || tests.l('A') || ' where id = ' || tests.l('EV1'), 'err:42501', 'expert_verifications: nor one with a second factor, directly; decide_account_status() records the decision with its audit row (20261005080000)', 'aal2');
+select tests.expect(tests.fx('E'), 'update public.expert_verifications set reviewed_by = ' || tests.l('E') || ' where id = ' || tests.l('EV1'), 'err:42501', 'expert_verifications: the expert cannot approve themselves');
 
 -- disease cases and predictions, reports ----------------------------------------------------------------
 select tests.expect(tests.fx('B'), 'select id from public.disease_cases where id = ' || tests.l('DC1'), 'rows:1', 'disease_cases: the owner reads their case');

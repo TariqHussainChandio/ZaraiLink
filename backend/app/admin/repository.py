@@ -28,9 +28,18 @@ async def count_orders(access_token: str) -> int:
     return response.count or 0
 
 
-async def fetch_all_profiles(access_token: str) -> list[dict]:
+async def fetch_all_profiles(
+    access_token: str, role: str | None = None, account_status: str | None = None
+) -> list[dict]:
+    # The filters run in the database, before the page is cut: the pending-dealer queue filtered one page of 100 in
+    # the app and lost every applicant whose name sorted later (A3a verification, H2).
     client = await get_user_scoped_client(access_token)
-    response = await client.table("profiles").select("*").order("full_name").range(*page_range()).execute()
+    query = client.table("profiles").select("*")
+    if role is not None:
+        query = query.eq("role", role)
+    if account_status is not None:
+        query = query.eq("account_status", account_status)
+    response = await query.order("full_name").range(*page_range()).execute()
     return as_rows(response)
 
 

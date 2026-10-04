@@ -46,6 +46,16 @@ class VerifiedClaims:
     # this session) — P4 (4A.4), used to gate admin writes. Supabase always sets this claim once
     # MFA is available on the project, defaulting to "aal1" for a session with no second factor.
     aal: str | None = None
+    # When the user last signed in (the latest `amr` timestamp, Unix seconds). A refresh keeps it, so it tells a real
+    # sign-in from a refreshed session: an approved dealer or expert must sign in again after the decision (A3a).
+    signed_in_at: int | None = None
+
+
+def _signed_in_at(amr: object) -> int | None:
+    if not isinstance(amr, list):
+        return None
+    stamps = [e["timestamp"] for e in amr if isinstance(e, dict) and isinstance(e.get("timestamp"), int)]
+    return max(stamps) if stamps else None
 
 
 def _get_jwk_client() -> PyJWKClient:
@@ -93,4 +103,6 @@ def verify_access_token(token: str) -> VerifiedClaims:
     if not sub:
         raise TokenVerificationError("Token has no subject claim")
 
-    return VerifiedClaims(sub=sub, email=claims.get("email"), aal=claims.get("aal"))
+    return VerifiedClaims(
+        sub=sub, email=claims.get("email"), aal=claims.get("aal"), signed_in_at=_signed_in_at(claims.get("amr"))
+    )

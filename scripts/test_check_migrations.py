@@ -113,10 +113,16 @@ ONE_LINE = "create table public.t (id uuid primary key, owner_id uuid references
         (GOOD + ' alter policy "things_owner" on public.things using (owner_id = auth.uid());', "bare"),
         (GOOD + ' create policy "admin" on public.things for select using (public.is_admin());', "bare"),
         (GOOD + """ create policy "jwt" on public.things for select using (auth.jwt() ->> 'role' = 'x');""", "bare"),
+        # A3a's account-status helpers run once per statement too.
+        (GOOD + ' create policy "ap" on public.things for insert with check (public.is_account_approved());', "bare"),
+        (GOOD + ' create policy "ad" on public.things for insert with check (is_approved_dealer());', "bare"),
+        (GOOD + ' create policy "ae" on public.things for update using (public.is_approved_expert());', "bare"),
+        (GOOD + """ create policy "cr" on public.things for insert with check (public.caller_role() = 'expert');""", "bare"),
     ],
     ids=[
         "one-line-no-rls", "one-line-unindexed-fk", "table-in-do-block", "grant-all", "anon-insert", "for-all-true",
         "insert-check-true", "add-column-fk", "add-constraint-fk", "alter-policy-bare", "bare-is-admin", "bare-jwt",
+        "bare-is-account-approved", "bare-is-approved-dealer", "bare-is-approved-expert", "bare-caller-role",
     ],
 )
 def test_the_gaps_found_by_verification_are_closed(broken, expected):
@@ -132,8 +138,9 @@ def test_the_gaps_found_by_verification_are_closed(broken, expected):
         GOOD + ' create policy "admin" on public.things for select using ((select public.is_admin()));',
         GOOD + ' create policy "pub" on public.things for select using (true);',
         GOOD + " grant select on public.things to anon;",
+        GOOD + """ create policy "cr" on public.things for insert with check ((select public.caller_role()) = 'expert');""",
     ],
-    ids=["spaced-wrapper", "alter-function-search-path", "wrapped-helper", "select-true", "anon-select"],
+    ids=["spaced-wrapper", "alter-function-search-path", "wrapped-helper", "select-true", "anon-select", "wrapped-caller-role"],
 )
 def test_valid_sql_is_not_flagged(fine):
     assert problems(fine) == []

@@ -244,6 +244,28 @@ describe('apiFetch: account suspended and other 403s (P4 4B.2, kept)', () => {
   });
 });
 
+describe('apiFetch: an application waiting for a decision (A3a)', () => {
+  it('routes account_not_approved to the Application Status screen, without signing out', async () => {
+    globalThis.fetch = jest.fn(() => Promise.resolve(fromFixture('account_not_approved'))) as never;
+    const signOut = jest.spyOn(useAuthStore.getState(), 'signOut').mockResolvedValue();
+
+    const result = await settle(apiFetch('/api/v1/dealer/inventory'));
+
+    expect((result as PromiseRejectedResult).reason.code).toBe('account_not_approved');
+    expect(useAuthStore.getState().status).toBe('awaitingApproval');
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it('routes sign_in_again to the screen that asks the approved user to sign in again', async () => {
+    globalThis.fetch = jest.fn(() => Promise.resolve(fromFixture('sign_in_again'))) as never;
+
+    const result = await settle(apiFetch('/api/v1/dealer/inventory'));
+
+    expect((result as PromiseRejectedResult).reason.code).toBe('sign_in_again');
+    expect(useAuthStore.getState().status).toBe('approvalGranted');
+  });
+});
+
 describe('apiFetch: connection failures, timeouts and retries', () => {
   it('retries a GET twice on a dropped connection, then reports a network error and sets the offline flag', async () => {
     globalThis.fetch = jest.fn(() => Promise.reject(new TypeError('Network request failed'))) as never;

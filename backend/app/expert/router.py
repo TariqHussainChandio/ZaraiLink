@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends
 
-from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2, require_expert
+from app.auth.dependencies import (
+    AuthenticatedUser,
+    require_admin,
+    require_admin_aal2,
+    require_expert_any_status,
+)
 from app.common.pagination import Page, paginate
 from app.expert import service
 from app.expert.schemas import (
@@ -22,7 +27,7 @@ router = APIRouter(prefix="/api/v1/expert", tags=["expert"])
 @router.post("/application", response_model=Expert)
 async def submit_application(
     request: SubmitApplicationRequest,
-    user: AuthenticatedUser = Depends(require_expert),
+    user: AuthenticatedUser = Depends(require_expert_any_status),
 ) -> dict:
     return await service.submit_application(user, request.profile, request.document_path)
 
@@ -30,13 +35,13 @@ async def submit_application(
 @router.patch("/application", response_model=Expert)
 async def update_profile(
     request: ExpertProfileInput,
-    user: AuthenticatedUser = Depends(require_expert),
+    user: AuthenticatedUser = Depends(require_expert_any_status),
 ) -> dict:
     return await service.update_profile(user, request)
 
 
 @router.get("/me", response_model=Expert | None)
-async def get_my_profile(user: AuthenticatedUser = Depends(require_expert)) -> dict | None:
+async def get_my_profile(user: AuthenticatedUser = Depends(require_expert_any_status)) -> dict | None:
     return await service.fetch_my_profile(user)
 
 
@@ -55,7 +60,7 @@ async def review_verification(
     request: ReviewVerificationRequest,
     user: AuthenticatedUser = Depends(require_admin_aal2),
 ) -> None:
-    await service.review_verification(user, expert_id, request.verification_id, request.decision, request.notes)
+    await service.review_verification(user, expert_id, request.decision, request.notes)
 
 
 @router.get("/admin/{expert_id}/document-url", response_model=DocumentUrlResponse)

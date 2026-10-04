@@ -1,9 +1,10 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 Role = Literal["admin", "expert", "dealer", "farmer", "buyer"]
 ReportStatus = Literal["open", "investigating", "resolved", "dismissed"]
+AccountStatus = Literal["pending", "approved", "rejected"]
 
 
 class Profile(BaseModel):
@@ -19,6 +20,9 @@ class Profile(BaseModel):
     village: str | None
     street: str | None
     is_suspended: bool
+    account_status: AccountStatus = "approved"
+    account_status_reason: str | None = None
+    account_status_changed_at: str | None = None
     created_at: str
     updated_at: str
 
@@ -80,3 +84,23 @@ class AuditLogEntryWithActor(BaseModel):
     metadata: dict | None
     created_at: str
     actor: ActorRef | None = None
+
+
+class DecideAccountRequest(BaseModel):
+    """An admin's decision on a pending dealer (SRDS §8, §12). A rejection carries the reason the applicant will read
+    on their Application Status screen, so it must say something (decide_account_status() enforces the same)."""
+
+    status: Literal["approved", "rejected"]
+    reason: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def _rejection_has_reason(self) -> "DecideAccountRequest":
+        if self.status == "rejected" and len((self.reason or "").strip()) < 10:
+            raise ValueError("A rejection needs a reason of at least 10 characters")
+        return self
+
+
+class AccountDecision(BaseModel):
+    role: Role
+    previous_status: AccountStatus
+    new_status: AccountStatus

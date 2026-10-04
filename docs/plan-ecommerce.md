@@ -460,6 +460,78 @@ third check of that found no false positive and one slow case (chained operators
 
 **Goal:** SRDS §3–§13, §50, §53.1–§53.9. Plan mode first (auth, RLS, migrations).
 
+**Decided 2026-10-04 (maintainer):** D10 as recommended; two sequential PRs, A3a then A3b, each verified and merged on
+its own; `account_status` is `pending | approved | rejected`, with suspension staying `profiles.is_suspended`; the
+approval email goes through a backend SMTP seam (local Mailpit; hosted Blocked until G1).
+
+**A3a status (2026-10-04): built on branch `a3a/account-status`. `zl-verifier` round 1: NOT VERIFIED (the admin
+side could not decide on a device), every finding fixed; round 2: VERIFIED WITH FINDINGS (Low only). Ready to merge.**
+- **Database** (`20261005080000_account_status.sql`, ported by hand from the parked branch and rebuilt on today's
+  policies; its listings section would have restored the admin branch without a second factor):
+  - `profiles.account_status`, `account_status_reason` and `account_status_changed_at`;
+  - dealers and experts sign up pending; a role change resets the status; no user session writes the status, an
+    admin's included;
+  - `decide_account_status()` is the one way to decide (second factor, a reason of 10 or more characters to reject,
+    the audit row in the same transaction with the SRDS §51 names); `resubmit_application()`;
+  - `is_seller_role()` now needs an approved, unsuspended seller;
+  - about 50 write policies now check the account. Before, a buyer could open a store, anyone could list or file an
+    expert application, and a pending dealer could receive orders. A pending user keeps only their own profile
+    (avatar included), notifications and the expert application, and a pgTAP ratchet fails any new write policy
+    that checks suspension but forgets the account.
+- **API:** default-deny for an unapproved dealer or expert (403 `account_not_approved`); the any-status routes
+  (profile, account deletion, the expert application, `POST /profile/application/resubmit`); `PATCH
+  /admin/users/{id}/account-status` for dealers; the expert verification route on the same database function (now
+  one transaction, approve or reject only); 403 `sign_in_again` for a session signed in before the approval (the
+  token's `amr` sign-in time, which a refresh keeps).
+- **App:** the Application Status screen (pending, rejected with the reason and Resubmit, the expert's own
+  application) and the "approved, sign in again" screen, mounted before any role shell; the decision arrives live
+  through the account's notification; email-only sign-in and sign-up with Supabase's password rule; Change Password
+  confirms with an emailed code (new `supabase/templates/reauthentication.html`); dealer Approve and Reject (with a
+  reason) in User Management; the expert decision needs a reason to reject, and suspension is the account's only.
+- **Interim until A3b:** a dealer has no business details or documents yet, so the admin approves on identity; the
+  expert applies with today's application screen. `GET /api/v1/expert/admin/{id}` has no app consumer left (only the
+  smoke suite calls it); A3b's application detail replaces it.
+- **Verifier round 1** (NOT VERIFIED), fixed:
+  - H1: the app never asked an admin for the second factor, so every in-app admin write (approve, reject, suspend)
+    answered `mfa_required`; an admin with an authenticator now gives the code at sign-in (`SecondFactorScreen`,
+    the auth store's `secondFactor` status, read from the session's assurance level).
+  - H2: the Pending dealers queue filtered one page of 100 in the app and lost later applicants; `GET
+    /admin/users` now takes `role` and `account_status`.
+  - H3: the user row squeezed the name away beside four actions; the actions wrap under the name.
+  - M1: the Change Password code was only checked by Supabase for a session over a day old; the screen now asks for
+    it only when Supabase answers `reauthentication_needed`.
+  - L1: an aal2 admin could write an expert record's decision without an audit row (the policy and its update grant
+    are dropped); L2: an expert made a farmer and back stayed `approved` on their record and vanished from
+    Approvals (a definer trigger resets it to pending); L3: legacy `suspended` experts kept a verification nothing
+    could lift (the backfill approves it, suspension being `is_suspended`); L5: the expert route decided dealers
+    (409 now); the unused `notify_expert_verification_changed()` is dropped.
+  - Recorded, not changed: L4, `sign_in_again` is FastAPI's; an old session refreshed after the approval can still
+    write through PostgREST until it signs in (the approval is real; only the "log in again" step is skipped). L6,
+    a pending user may still change their avatar, as part of their own profile.
+  - Device (round 1): the admin signed in, gave the TOTP code, saw only the pending dealer under Pending dealers
+    with a readable row, approved in the app (approved, one audit row) and rejected another with a reason (rejected,
+    reason stored, one audit row); a fresh session changed its password with no code; a session aged to 25 hours
+    got the code step, a wrong code was refused and the emailed code worked.
+- **Verifier round 2** (VERIFIED WITH FINDINGS, Low only): every round-1 fix held, re-proved on the device, the API
+  and the database, with mutants killed for each. Fixed: a stale comment, the filter chips touching the screen edge,
+  a register typo. Recorded as known limits:
+  - the admin user list and the Pending dealers queue show one page of 100 (paging predates A3a; the 101st pending
+    dealer by name would be missed until A3b's application queue, which pages by submission);
+  - if reading the session's assurance level fails, the admin console opens at aal1 and its writes answer
+    `mfa_required` (FastAPI and the database still demand the second factor, so nothing is exposed);
+  - `amr` is whole seconds, so a sign-in in the same second as the approval counts as after it (a sub-second
+    window, next to L4).
+- **Evidence (before round 1):** pgTAP 607 (11 files, the new one with two-user proofs: a pending dealer against an approved one on
+  every write surface) on a database rebuilt from migrations; advisors all accepted; backend unit 212, real-stack
+  smoke 281 (new `test_smoke_account_status.py`, the authorization matrix with pending actors); Jest 161 suites,
+  1,164 tests; app real-stack 18/18; gate tests 236; knip 22 → 21. On the Pixel 8 emulator: a dealer registered by
+  email (code from Mailpit) saw only "Under review"; rejected with a reason, the screen changed live and Resubmit
+  returned it to review; the pending dealer's token was refused by PostgREST (42501) and FastAPI
+  (`account_not_approved`); approved, the screen changed live to "sign in again", and after signing in the dealer
+  dashboard opened and a store was created; an expert applied while pending, was approved and reached the expert
+  workspace after signing in again; Change Password took the emailed code and the old password stopped working. The
+  admin's decisions on the device run were made through the API with a second-factor session.
+
 **Parked head start:** branch `wip/a3-account-status` (commit `0d7edd8`, not merged, its migration not pushed) holds an
 early build of this phase's status work: `profiles.account_status` with its guards and helpers, the FastAPI
 `account_not_approved` check, an audited admin decision route, email-only sign-in with Supabase's password rule and

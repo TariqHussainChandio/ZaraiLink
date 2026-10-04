@@ -16,11 +16,13 @@ from fastapi import HTTPException
 from app.auth.dependencies import (
     AuthenticatedUser,
     _profile_cache,
+    forget_profile,
     get_bearer_token,
     get_current_user,
+    get_current_user_any_status,
     require_admin_aal2,
 )
-from app.auth.jwt_verifier import JWKSUnavailableError, TokenVerificationError, VerifiedClaims
+from app.auth.jwt_verifier import JWKSUnavailableError, TokenVerificationError, VerifiedClaims, _signed_in_at
 
 
 @pytest.fixture(autouse=True)
@@ -169,3 +171,163 @@ async def test_require_admin_aal2_rejects_no_aal_claim_with_403():
     with pytest.raises(HTTPException) as exc_info:
         await require_admin_aal2(user=_ADMIN_NO_AAL)
     assert exc_info.value.status_code == 403
+
+
+# ---- Account status (A3a; SRDS §8, §11, §13; D10) -------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", ["dealer", "expert"])
+@pytest.mark.parametrize("status", ["pending", "rejected"])
+async def test_unapproved_dealer_or_expert_rejected_with_account_not_approved(role, status):
+    # A dealer or expert acts only after an admin approves them. The status comes from the profile lookup, never from
+    # the request or the token.
+    with (
+        _mock_verify(VerifiedClaims(sub=f"user-{role}-{status}", email="a@b.com")),
+        _mock_profile_lookup(rows=[{"role": role, "is_suspended": False, "account_status": status}]),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await get_current_user(token="good-token")
+    assert exc_info.value.status_code == 403
+    assert getattr(exc_info.value, "code", None) == "account_not_approved"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", ["farmer", "buyer"])
+async def test_farmers_and_buyers_need_no_approval(role):
+    with (
+        _mock_verify(VerifiedClaims(sub=f"user-{role}", email="a@b.com")),
+        _mock_profile_lookup(rows=[{"role": role, "is_suspended": False, "account_status": "approved"}]),
+    ):
+        user = await get_current_user(token="good-token")
+    assert user.role == role
+
+
+@pytest.mark.asyncio
+async def test_unapproved_dealer_still_reaches_any_status_routes():
+    # Their own profile, account deletion and (for experts) the application stay reachable while they wait.
+    with (
+        _mock_verify(VerifiedClaims(sub="user-pending-dealer", email="a@b.com")),
+        _mock_profile_lookup(rows=[{"role": "dealer", "is_suspended": False, "account_status": "pending"}]),
+    ):
+        user = await get_current_user_any_status(token="good-token")
+    assert user.role == "dealer"
+    assert user.account_status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_approved_dealer_passes():
+    with (
+        _mock_verify(VerifiedClaims(sub="user-approved-dealer", email="a@b.com")),
+        _mock_profile_lookup(rows=[{"role": "dealer", "is_suspended": False, "account_status": "approved"}]),
+    ):
+        user = await get_current_user(token="good-token")
+    assert user.account_status == "approved"
+
+
+@pytest.mark.asyncio
+async def test_suspension_is_checked_before_approval():
+    # A suspended account is refused as suspended even if it is also pending: the app routes the two differently.
+    with (
+        _mock_verify(VerifiedClaims(sub="user-suspended-pending", email="a@b.com")),
+        _mock_profile_lookup(rows=[{"role": "expert", "is_suspended": True, "account_status": "pending"}]),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await get_current_user_any_status(token="good-token")
+    assert getattr(exc_info.value, "code", None) == "account_suspended"
+
+
+@pytest.mark.asyncio
+async def test_a_pending_profile_is_read_again_so_an_approval_takes_effect_at_once():
+    # Only approved profiles are cached: the second call sees the admin's approval immediately.
+    with (
+        _mock_verify(VerifiedClaims(sub="user-awaiting-approval", email="a@b.com")),
+        _mock_profile_lookup(rows=[{"role": "dealer", "is_suspended": False, "account_status": "pending"}]) as lookup,
+    ):
+        await get_current_user_any_status(token="good-token")
+        await get_current_user_any_status(token="good-token")
+    assert lookup.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_an_admin_decision_drops_the_cached_profile():
+    # forget_profile (called after every admin decision about a user) makes the next request read the profile again.
+    with (
+        _mock_verify(VerifiedClaims(sub="user-decided", email="a@b.com")),
+        _mock_profile_lookup(rows=[{"role": "dealer", "is_suspended": False, "account_status": "approved"}]) as lookup,
+    ):
+        await get_current_user(token="good-token")
+        forget_profile("user-decided")
+        await get_current_user(token="good-token")
+    assert lookup.call_count == 2
+
+
+# SRDS §8: an approved dealer or expert logs in again. 2026-10-05T08:00:00Z is 1791187200.
+_APPROVED_AT = "2026-10-05T08:00:00+00:00"
+
+
+@pytest.mark.asyncio
+async def test_a_session_from_before_the_approval_must_sign_in_again():
+    with (
+        _mock_verify(VerifiedClaims(sub="user-old-session", email="a@b.com", signed_in_at=1791187200 - 60)),
+        _mock_profile_lookup(
+            rows=[
+                {
+                    "role": "dealer",
+                    "is_suspended": False,
+                    "account_status": "approved",
+                    "account_status_changed_at": _APPROVED_AT,
+                }
+            ]
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await get_current_user(token="good-token")
+    assert exc_info.value.status_code == 403
+    assert getattr(exc_info.value, "code", None) == "sign_in_again"
+
+
+@pytest.mark.asyncio
+async def test_a_sign_in_after_the_approval_passes():
+    with (
+        _mock_verify(VerifiedClaims(sub="user-new-session", email="a@b.com", signed_in_at=1791187200 + 60)),
+        _mock_profile_lookup(
+            rows=[
+                {
+                    "role": "dealer",
+                    "is_suspended": False,
+                    "account_status": "approved",
+                    "account_status_changed_at": _APPROVED_AT,
+                }
+            ]
+        ),
+    ):
+        user = await get_current_user(token="good-token")
+    assert user.role == "dealer"
+
+
+@pytest.mark.asyncio
+async def test_sign_in_again_applies_only_to_reviewed_roles():
+    # A farmer made a farmer again by an admin has a changed_at too, but was never reviewed.
+    with (
+        _mock_verify(VerifiedClaims(sub="user-farmer-old", email="a@b.com", signed_in_at=1791187200 - 60)),
+        _mock_profile_lookup(
+            rows=[
+                {
+                    "role": "farmer",
+                    "is_suspended": False,
+                    "account_status": "approved",
+                    "account_status_changed_at": _APPROVED_AT,
+                }
+            ]
+        ),
+    ):
+        user = await get_current_user(token="good-token")
+    assert user.role == "farmer"
+
+
+def test_signed_in_at_is_the_latest_amr_timestamp():
+    # A second factor adds a later entry; a refresh keeps the list unchanged (observed against local GoTrue).
+    assert _signed_in_at([{"method": "password", "timestamp": 10}, {"method": "totp", "timestamp": 20}]) == 20
+    assert _signed_in_at(None) is None
+    assert _signed_in_at([{"method": "password"}]) is None

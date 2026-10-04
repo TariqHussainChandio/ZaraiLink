@@ -170,6 +170,60 @@ def make_user(role: str) -> tuple[str, str, str]:
         return user_id, email, token_resp.json()["access_token"]
 
 
+def sign_in(email: str) -> str:
+    """A fresh password sign-in. An approved dealer or expert must sign in again after the decision (SRDS §8; the
+    API answers 403 `sign_in_again` to a session from before it), so the fixtures do what the app makes a user do."""
+    with httpx.Client(base_url=LOCAL_URL, timeout=30) as http:
+        token_resp = http.post(
+            "/auth/v1/token?grant_type=password",
+            headers=_auth_headers(None),
+            json={"email": email, "password": PASSWORD},
+        )
+        token_resp.raise_for_status()
+        return token_resp.json()["access_token"]
+
+
+# The expert application every approved fixture expert sends before an admin decides it.
+EXPERT_APPLICATION = {
+    "profile": {
+        "qualifications": "PhD Agronomy",
+        "degree": "PhD",
+        "experience": "10 years",
+        "professional_description": "Smoke-test expert",
+        "contact": "smoke@example.test",
+        "specializations": ["plant_diseases", "crop_management"],
+    },
+}
+
+
+def approve_dealer(backend_url: str, admin_token: str, dealer_id: str) -> None:
+    """Approves a pending dealer the way an admin does (PATCH /admin/users/{id}/account-status, second factor)."""
+    with httpx.Client(base_url=backend_url, timeout=60) as c:
+        response = c.patch(
+            f"/api/v1/admin/users/{dealer_id}/account-status",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"status": "approved"},
+        )
+    assert response.status_code == 200, response.text
+
+
+def approve_expert(backend_url: str, admin_token: str, expert_id: str, expert_token: str) -> None:
+    """The expert applies (open to a pending expert), then an admin approves the application."""
+    with httpx.Client(base_url=backend_url, timeout=60) as c:
+        applied = c.post(
+            "/api/v1/expert/application",
+            headers={"Authorization": f"Bearer {expert_token}"},
+            json=EXPERT_APPLICATION,
+        )
+        assert applied.status_code in (200, 201), applied.text
+        decided = c.patch(
+            f"/api/v1/expert/admin/{expert_id}/verification",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"decision": "approved", "notes": "smoke matrix"},
+        )
+    assert decided.status_code == 204, decided.text
+
+
 def enrol_totp_and_get_aal2_token(access_token: str) -> str:
     """P4 (4A.4): `world`'s shared admin needs aal2 for the same reason a real admin does — every
     admin-write endpoint now requires it (auth/dependencies.py:require_admin_aal2). Drives the same 3-call
@@ -293,44 +347,14 @@ def world(backend_url: str) -> World:
     assert cats.json(), "categories table must have at least one row (seed.sql)"
     category_id = cats.json()[0]["id"]
 
-    # Consultations reference `experts(id)`, not just any profile (see N2's fix comment in
-    # common/consultations/repository.py) — the expert user needs a real `experts` row before anything
-    # can be assigned to them, which only exists after they submit an application. Done here in
-    # the shared world (not in a per-domain test file) so it happens before every test file
-    # regardless of alphabetical collection order.
-    application = api(
-        "POST",
-        "/api/v1/expert/application",
-        expert_tok,
-        json={
-            "profile": {
-                "qualifications": "PhD Agronomy",
-                "degree": "PhD",
-                "experience": "10 years",
-                "professional_description": "Smoke-test expert",
-                "contact": "smoke@example.test",
-                "specializations": ["plant_diseases", "crop_management"],
-            },
-        },
-    )
-    assert application.status_code in (200, 201), application.text
-
-    # `experts` RLS only lets a non-owner read an *approved* row (public read of `approved`;
-    # owner read/write own row) — left unapproved, every embedded `expert:...` join elsewhere
-    # returns null for anyone but the expert themselves, not because of N2, but because the row
-    # is genuinely invisible under RLS. Approve now so the rest of the world reflects a normal,
-    # usable expert.
-    admin_view = api("GET", f"/api/v1/expert/admin/{expert_id}", admin_tok)
-    assert admin_view.status_code == 200, admin_view.text
-    verifications = admin_view.json().get("expert_verifications") or []
-    assert verifications, "submit_application must also create an expert_verifications row"
-    approve = api(
-        "PATCH",
-        f"/api/v1/expert/admin/{expert_id}/verification",
-        admin_tok,
-        json={"verification_id": verifications[0]["id"], "decision": "approved", "notes": "smoke matrix"},
-    )
-    assert approve.status_code == 204, approve.text
+    # Dealers and experts start pending (A3a, D10) and may do nothing until an admin approves them. The world's
+    # dealer is approved from User Management; the expert sends an application (an `experts` row, which
+    # consultations reference, and which RLS shows to others only once approved) and is approved from Approvals.
+    # Each then signs in again, as the app makes them do (a session from before the decision gets `sign_in_again`).
+    approve_dealer(backend_url, admin_tok, dealer_id)
+    dealer_tok = sign_in(dealer_email)
+    approve_expert(backend_url, admin_tok, expert_id, expert_tok)
+    expert_tok = sign_in(expert_email)
 
     farm = api(
         "POST",
@@ -441,6 +465,12 @@ def find_profile(api_client, world):
 
 
 @pytest.fixture(scope="session")
+def fresh_sign_in():
+    """`sign_in` for test files (no __init__.py here, so they cannot import conftest.py)."""
+    return sign_in
+
+
+@pytest.fixture(scope="session")
 def make_actor():
     """`make_user` for test files, which cannot import conftest.py (this directory has no __init__.py)."""
     return make_user
@@ -450,12 +480,22 @@ def make_actor():
 def matrix_actors(backend_url: str) -> dict[str, str]:
     """One fresh, real user per role for the authorization matrix (its own users, so its ~120 requests
     per actor neither share a rate-limit bucket with `world` nor mutate `world`'s actors). `admin` is
-    the aal2 session; `admin_aal1` is the same admin before its second factor was verified."""
+    the aal2 session; `admin_aal1` is the same admin before its second factor was verified. The dealer and expert
+    are approved (and signed in again); `dealer_pending` and `expert_pending` are waiting for a decision, for the
+    routes a pending account may and may not call (A3a, D10)."""
     tokens: dict[str, str] = {}
-    for role in ("farmer", "buyer", "dealer", "expert"):
+    for role in ("farmer", "buyer"):
         tokens[role] = make_user(role)[2]
     admin_id, _, admin_aal1 = make_user("buyer")
     promote_to_admin(admin_id)
     tokens["admin_aal1"] = admin_aal1
     tokens["admin"] = enrol_totp_and_get_aal2_token(admin_aal1)
+    dealer_id, dealer_email, _ = make_user("dealer")
+    approve_dealer(backend_url, tokens["admin"], dealer_id)
+    tokens["dealer"] = sign_in(dealer_email)
+    expert_id, expert_email, expert_token = make_user("expert")
+    approve_expert(backend_url, tokens["admin"], expert_id, expert_token)
+    tokens["expert"] = sign_in(expert_email)
+    tokens["dealer_pending"] = make_user("dealer")[2]
+    tokens["expert_pending"] = make_user("expert")[2]
     return tokens

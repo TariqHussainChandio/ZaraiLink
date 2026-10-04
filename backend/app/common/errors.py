@@ -18,6 +18,8 @@ ErrorCode = Literal[
     "token_invalid",
     "auth_unavailable",
     "account_suspended",
+    "account_not_approved",
+    "sign_in_again",
     "insufficient_role",
     "mfa_required",
     "incorrect_password",

@@ -9,7 +9,9 @@ import { useTheme, type Theme } from '../../theme';
 import type { VerificationStatus } from '../../expert';
 import { errorMessage } from '../../utils/errorMessage';
 
-type FilterValue = VerificationStatus | 'all';
+// Suspension is the account's (User Management), not a verification decision (A3a), so it is no longer a filter here.
+type FilterValue = Exclude<VerificationStatus, 'suspended'> | 'all';
+const MIN_REASON = 10;
 
 export function ExpertVerificationScreen() {
   const theme = useTheme();
@@ -19,7 +21,6 @@ export function ExpertVerificationScreen() {
       { value: 'pending', label: 'Pending' },
       { value: 'approved', label: 'Approved' },
       { value: 'rejected', label: 'Rejected' },
-      { value: 'suspended', label: 'Suspended' },
       { value: 'all', label: 'All' },
     ],
     [],
@@ -31,6 +32,7 @@ export function ExpertVerificationScreen() {
   const documentUrl = useExpertDocumentUrl();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [reasonError, setReasonError] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -38,18 +40,18 @@ export function ExpertVerificationScreen() {
     }, [refetch]),
   );
 
-  const decide = async (expert: (typeof experts)[number], decision: VerificationStatus) => {
+  const decide = async (expert: (typeof experts)[number], decision: 'approved' | 'rejected') => {
     if (!actorId) return;
-    const latestVerification = expert.expert_verifications[0];
-    if (!latestVerification) return;
+    const note = (notes[expert.id] ?? '').trim();
+    // The expert reads a rejection's reason on their Application Status screen, so it must say something.
+    if (decision === 'rejected' && note.length < MIN_REASON) {
+      setReasonError(expert.id);
+      return;
+    }
+    setReasonError(null);
     setUpdatingId(expert.id);
     try {
-      await review.mutateAsync({
-        expertId: expert.id,
-        verificationId: latestVerification.id,
-        decision,
-        notes: notes[expert.id] ?? '',
-      });
+      await review.mutateAsync({ expertId: expert.id, decision, notes: note });
     } catch (error) {
       Alert.alert('Could not record the decision', errorMessage(error));
     } finally {
@@ -103,11 +105,15 @@ export function ExpertVerificationScreen() {
                 />
               ) : null}
 
-              <TextField
-                placeholder="Decision note (optional)"
-                value={notes[item.id] ?? ''}
-                onChangeText={text => setNotes(prev => ({ ...prev, [item.id]: text }))}
-              />
+              {item.verification_status === 'pending' ? (
+                <TextField
+                  label="Reason"
+                  helper="Required to reject: the expert reads it and can send the application again."
+                  error={reasonError === item.id ? `Write at least ${MIN_REASON} characters` : undefined}
+                  value={notes[item.id] ?? ''}
+                  onChangeText={text => setNotes(prev => ({ ...prev, [item.id]: text }))}
+                />
+              ) : null}
 
               <View style={styles.actions}>
                 {item.verification_status === 'pending' ? (
@@ -126,22 +132,6 @@ export function ExpertVerificationScreen() {
                       onPress={() => decide(item, 'rejected')}
                     />
                   </>
-                ) : item.verification_status === 'approved' ? (
-                  <Button
-                    label="Suspend"
-                    variant="danger"
-                    fullWidth={false}
-                    loading={updatingId === item.id}
-                    onPress={() => decide(item, 'suspended')}
-                  />
-                ) : item.verification_status === 'suspended' ? (
-                  <Button
-                    label="Reactivate"
-                    variant="secondary"
-                    fullWidth={false}
-                    loading={updatingId === item.id}
-                    onPress={() => decide(item, 'approved')}
-                  />
                 ) : null}
               </View>
             </View>
