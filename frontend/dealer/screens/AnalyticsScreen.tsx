@@ -4,10 +4,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Spinner } from '../../common/components';
 import { ActivityFeed } from '../../common/components/dashboards/ActivityFeed';
 import { BarChart } from '../../common/components/dashboards/BarChart';
-import { StatCard } from '../../common/components/dashboards/StatCard';
+import { StatTile } from '../../common/components/dashboards/StatTile';
 import { useDealerAnalytics } from '../../common/analytics';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { formatRs } from '../../utils/money';
 
 export function DealerAnalyticsScreen() {
   const theme = useTheme();
@@ -38,19 +39,19 @@ export function DealerAnalyticsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard
+        <StatTile
           label="Total Sales"
-          value={`Rs. ${analytics.totalSales.toFixed(0)}`}
-          accent={theme.moduleAccents.payments}
+          value={formatRs(analytics.totalSales)}
+          accent={theme.colors.module.payments}
         />
-        <StatCard label="Total Orders" value={analytics.totalOrders} accent={theme.moduleAccents.orders} />
-        <StatCard label="Low Stock" value={analytics.lowStockCount} accent={theme.moduleAccents.inventory} />
+        <StatTile label="Total Orders" value={analytics.totalOrders} accent={theme.colors.module.orders} />
+        <StatTile label="Low Stock" value={analytics.lowStockCount} accent={theme.colors.module.dealer} />
       </View>
 
       <Text style={styles.sectionTitle}>Inventory Movement</Text>
       <BarChart
         data={analytics.inventoryMovement.map(m => ({ label: m.month.slice(5), value: m.value }))}
-        color={theme.roleColors.dealer}
+        color={theme.colors.accent.dealer.mark}
         emptyMessage="No recorded stock movement yet"
       />
 
@@ -60,7 +61,7 @@ export function DealerAnalyticsScreen() {
         items={analytics.bestSellers.map(p => ({
           id: p.listingId,
           title: p.title,
-          subtitle: `Rs. ${p.revenue.toFixed(0)} revenue`,
+          subtitle: `${formatRs(p.revenue)} revenue`,
           value: `${p.unitsSold} units`,
         }))}
       />
@@ -68,26 +69,25 @@ export function DealerAnalyticsScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     statsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.md,
-      marginBottom: spacing.xl,
+      gap: space[3],
+      marginBottom: space[6],
     },
     sectionTitle: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
     },
   });
 }

@@ -4,10 +4,9 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import { Button, Input } from '../../components';
+import { Button, TextField } from '../../components';
 import {
   useResendRecoveryOtp,
   useResendSignupOtp,
@@ -117,7 +116,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
 
-        <Input
+        <TextField
           label="Verification code"
           accessibilityHint="6-digit code sent to your email or phone"
           keyboardType="number-pad"
@@ -137,60 +136,46 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
           style={styles.submit}
         />
 
-        <TouchableOpacity
-          onPress={onResend}
-          disabled={resending || cooldown > 0}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: resending || cooldown > 0 }}
-        >
-          <Text style={[styles.link, (resending || cooldown > 0) && styles.linkDisabled]}>
-            {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button">
-          <Text style={styles.back}>{backLabel}</Text>
-        </TouchableOpacity>
+        <View style={styles.links}>
+          <Button
+            label={cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
+            variant="quiet"
+            fullWidth={false}
+            disabled={resending || cooldown > 0}
+            onPress={onResend}
+          />
+          <Button label={backLabel} variant="quiet" fullWidth={false} onPress={() => navigation.goBack()} />
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
+    links: {
+      alignItems: 'center',
+      marginTop: space[4],
+      gap: space[2],
+    },
     flex: { flex: 1 },
     container: {
       flex: 1,
       justifyContent: 'center',
-      padding: spacing.xl,
+      padding: space[6],
     },
     title: {
-      fontSize: typography.sizes['3xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.display,
+      color: colors.ink,
     },
     subtitle: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
-      marginTop: spacing.xs,
-      marginBottom: spacing.xl,
+      ...typography.body,
+      color: colors.ink2,
+      marginTop: space[1],
+      marginBottom: space[6],
     },
     submit: {
-      marginTop: spacing.sm,
-    },
-    link: {
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
-      marginTop: spacing.xl,
-      textAlign: 'center',
-    },
-    linkDisabled: {
-      color: colors.text.secondary,
-    },
-    back: {
-      color: colors.text.secondary,
-      marginTop: spacing.lg,
-      textAlign: 'center',
+      marginTop: space[2],
     },
   });
 }

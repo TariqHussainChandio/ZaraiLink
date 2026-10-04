@@ -46,9 +46,20 @@ describe('PaymentMethodScreen', () => {
     mockFetchPayment.mockResolvedValue(null);
     await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
 
-    expect(await screen.findByText('Rs. 1500')).toBeTruthy();
+    expect(await screen.findByText('Rs 1,500')).toBeTruthy();
     expect(screen.getByText('Cash on Delivery')).toBeTruthy();
     expect(screen.getByText('Bank Transfer')).toBeTruthy();
+  });
+
+  it('tells TalkBack which method is chosen, and moves the choice when another is pressed', async () => {
+    mockFetchOrder.mockResolvedValue({ total: 1500 });
+    mockFetchPayment.mockResolvedValue(null);
+    await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
+
+    expect(await screen.findByRole('button', { name: /Cash on Delivery/, selected: true })).toBeTruthy();
+    await fireEvent.press(screen.getByText('Bank Transfer'));
+    expect(screen.getByRole('button', { name: /Bank Transfer/, selected: true })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Cash on Delivery/, selected: false })).toBeTruthy();
   });
 
   it('redirects straight to PaymentProcessing when a payment already exists', async () => {
@@ -70,7 +81,7 @@ describe('PaymentMethodScreen', () => {
     mockInitiate.mockResolvedValue({ id: 'payment-2' });
     const props = makeProps();
     await renderWithQuery(<PaymentMethodScreen {...props} />);
-    await screen.findByText('Rs. 1500');
+    await screen.findByText('Rs 1,500');
 
     await fireEvent.press(screen.getByText('Bank Transfer'));
     await fireEvent.press(screen.getByText('Continue'));
@@ -86,7 +97,7 @@ describe('PaymentMethodScreen', () => {
     mockFetchPayment.mockResolvedValue(null);
     mockInitiate.mockRejectedValue(new Error('Gateway unavailable'));
     await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
-    await screen.findByText('Rs. 1500');
+    await screen.findByText('Rs 1,500');
 
     await fireEvent.press(screen.getByText('Continue'));
 

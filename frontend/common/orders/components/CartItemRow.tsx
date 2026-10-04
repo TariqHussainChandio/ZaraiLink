@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
 import type { CartItem } from '../../../state/cartStore';
+import { formatRs } from '../../../utils/money';
 
 export interface CartItemRowProps {
   item: CartItem;
@@ -19,90 +20,110 @@ export function CartItemRow({ item, onIncrement, onDecrement, onRemove }: CartIt
       {item.image ? (
         <Image source={{ uri: item.image }} style={styles.image} />
       ) : (
-        <View style={[styles.image, styles.imagePlaceholder]} />
+        <View style={styles.image} />
       )}
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={1}>
           {item.title}
         </Text>
         <Text style={styles.price}>
-          Rs. {item.price.toFixed(0)} / {item.unit}
+          {formatRs(item.price)} / {item.unit}
         </Text>
         <View style={styles.stepper}>
-          <TouchableOpacity style={styles.stepperButton} onPress={onDecrement}>
+          <TouchableOpacity
+            style={styles.stepperButton}
+            onPress={onDecrement}
+            accessibilityRole="button"
+            accessibilityLabel={`One fewer ${item.title}`}
+            hitSlop={theme.components.hitSlop(theme.size.buttonSm)}
+          >
             <Text style={styles.stepperLabel}>−</Text>
           </TouchableOpacity>
           <Text style={styles.quantity}>{item.quantity}</Text>
-          <TouchableOpacity style={styles.stepperButton} onPress={onIncrement}>
+          <TouchableOpacity
+            style={styles.stepperButton}
+            onPress={onIncrement}
+            accessibilityRole="button"
+            accessibilityLabel={`One more ${item.title}`}
+            hitSlop={theme.components.hitSlop(theme.size.buttonSm)}
+          >
             <Text style={styles.stepperLabel}>+</Text>
           </TouchableOpacity>
         </View>
       </View>
-      <TouchableOpacity onPress={onRemove}>
+      <TouchableOpacity
+        style={styles.removeButton}
+        onPress={onRemove}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${item.title} from the cart`}
+      >
         <Text style={styles.remove}>Remove</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, fontWeight, size, borders }: Theme) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[2],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     image: {
-      width: 56,
-      height: 56,
-      borderRadius: radii.md,
-      backgroundColor: colors.border,
+      width: size.thumb,
+      height: size.thumb,
+      borderRadius: radius.sm,
+      backgroundColor: colors.line,
     },
-    imagePlaceholder: {},
     body: {
       flex: 1,
-      marginLeft: spacing.md,
+      marginLeft: space[3],
     },
     title: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
     },
     price: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-      marginTop: spacing.xs / 2,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: space[1] / 2,
     },
     stepper: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: spacing.xs,
+      marginTop: space[1],
     },
     stepperButton: {
-      width: 28,
-      height: 28,
-      borderRadius: radii.sm,
-      borderWidth: 1,
-      borderColor: colors.border,
+      width: size.buttonSm,
+      height: size.buttonSm,
+      borderRadius: radius.xs,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
       alignItems: 'center',
       justifyContent: 'center',
     },
     stepperLabel: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
+      ...typography.body,
+      color: colors.ink2,
     },
     quantity: {
-      marginHorizontal: spacing.sm,
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.primary,
+      marginHorizontal: space[2],
+      ...typography.caption,
+      color: colors.ink,
+    },
+    // The whole 48 dp area is the target, not only the word.
+    removeButton: {
+      minHeight: size.touchMin,
+      justifyContent: 'center',
+      paddingHorizontal: space[2],
     },
     remove: {
-      color: colors.semantic.error,
-      fontSize: typography.sizes.xs,
-      marginLeft: spacing.sm,
+      color: colors.status.danger.mark,
+      ...typography.caption,
     },
   });
 }

@@ -12,46 +12,56 @@ import {
 } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme, type Theme } from '../../../theme';
-import type { ModuleAccentKey } from '../../../theme/moduleAccents';
+import { useTheme, type Theme, type ThemeColors, useRoleAccent, type Accent } from '../../../theme';
 import type { Notification } from '../types/notifications';
+import { statusMeta } from '../../constants/status';
 
-type TypeMeta = { icon: LucideIcon; accentKey: ModuleAccentKey; label: string };
+// Each type's icon sits on its module's tint: the module mark on the matching soft (SRDS §44). Marketplace, orders,
+// dealer and expert share their role's accent; messages have no module accent and share the orders blue, as most
+// start from an order or a listing.
+type Tint = { mark: string; soft: string };
+type TypeMeta = { icon: LucideIcon; tint: (colors: ThemeColors) => Tint; label: string };
 
 const TYPE_META: Record<string, TypeMeta> = {
-  order_new: { icon: Package, accentKey: 'orders', label: 'New order received' },
-  order_status_changed: { icon: Package, accentKey: 'orders', label: 'Order status updated' },
-  payment_status_changed: { icon: CreditCard, accentKey: 'payments', label: 'Payment update' },
-  new_message: { icon: MessageCircle, accentKey: 'messages', label: 'New message' },
-  consultation_new: { icon: Stethoscope, accentKey: 'consultation', label: 'New consultation request' },
-  consultation_status_changed: { icon: Stethoscope, accentKey: 'consultation', label: 'Consultation updated' },
-  listing_status_changed: { icon: ShoppingBag, accentKey: 'marketplace', label: 'Listing status changed' },
-  inventory_low_stock: { icon: AlertTriangle, accentKey: 'inventory', label: 'Low stock warning' },
-  expert_verification_changed: { icon: ShieldCheck, accentKey: 'expert', label: 'Verification update' },
-  account_suspension_changed: { icon: ShieldAlert, accentKey: 'admin', label: 'Account status changed' },
+  order_new: { icon: Package, tint: c => c.accent.buyer, label: 'New order received' },
+  order_status_changed: { icon: Package, tint: c => c.accent.buyer, label: 'Order status updated' },
+  payment_status_changed: { icon: CreditCard, tint: c => ({ mark: c.module.payments, soft: c.status.success.soft }), label: 'Payment update' },
+  new_message: { icon: MessageCircle, tint: c => c.accent.buyer, label: 'New message' },
+  consultation_new: { icon: Stethoscope, tint: c => c.accent.expert, label: 'New consultation request' },
+  consultation_status_changed: { icon: Stethoscope, tint: c => c.accent.expert, label: 'Consultation updated' },
+  listing_status_changed: { icon: ShoppingBag, tint: c => c.accent.brand, label: 'Listing status changed' },
+  inventory_low_stock: { icon: AlertTriangle, tint: c => c.accent.dealer, label: 'Low stock warning' },
+  expert_verification_changed: { icon: ShieldCheck, tint: c => c.accent.expert, label: 'Verification update' },
+  account_suspension_changed: { icon: ShieldAlert, tint: c => c.accent.admin, label: 'Account status changed' },
 };
 
-const DEFAULT_META: TypeMeta = { icon: Bell, accentKey: 'notifications', label: 'Notification' };
+const DEFAULT_META: TypeMeta = { icon: Bell, tint: c => ({ mark: c.module.notifications, soft: c.module.notificationsSoft }), label: 'Notification' };
+
+/** A type this build does not know reads as a plain notification; own keys only, as in statusMeta. */
+function metaFor(type: string): TypeMeta {
+  const known = Object.prototype.hasOwnProperty.call(TYPE_META, type) ? TYPE_META[type] : undefined;
+  return known ?? DEFAULT_META;
+}
 
 function describe(notification: Notification): string {
-  const meta = TYPE_META[notification.type] ?? DEFAULT_META;
+  const meta = metaFor(notification.type);
   if (notification.type === 'new_message' && notification.payload?.sender_name) {
     return `New message from ${notification.payload.sender_name}`;
   }
   if (notification.type === 'order_status_changed' && notification.payload?.status) {
-    return `Order is now ${notification.payload.status}`;
+    return `${meta.label}: ${statusMeta('order', notification.payload.status).label}`;
   }
   if (notification.type === 'payment_status_changed' && notification.payload?.status) {
-    return `Payment ${notification.payload.status}`;
+    return `${meta.label}: ${statusMeta('payment', notification.payload.status).label}`;
   }
   if (notification.type === 'listing_status_changed' && notification.payload?.status) {
-    return `Listing is now ${notification.payload.status}`;
+    return `${meta.label}: ${statusMeta('listing', notification.payload.status).label}`;
   }
   if (notification.type === 'inventory_low_stock') {
     return `Stock down to ${notification.payload?.stock_quantity ?? '?'} (threshold ${notification.payload?.min_stock_threshold ?? '?'})`;
   }
   if (notification.type === 'expert_verification_changed' && notification.payload?.status) {
-    return `Verification status: ${notification.payload.status}`;
+    return `${meta.label}: ${statusMeta('application', notification.payload.status).label}`;
   }
   if (notification.type === 'account_suspension_changed') {
     return notification.payload?.is_suspended ? 'Your account was suspended' : 'Your account was reactivated';
@@ -61,10 +71,11 @@ function describe(notification: Notification): string {
 
 export function NotificationRow({ notification, onPress }: { notification: Notification; onPress: () => void }) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  const meta = TYPE_META[notification.type] ?? DEFAULT_META;
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const meta = metaFor(notification.type);
   const Icon = meta.icon;
-  const accent = theme.moduleAccents[meta.accentKey];
+  const tint = meta.tint(theme.colors);
 
   return (
     <TouchableOpacity
@@ -73,8 +84,8 @@ export function NotificationRow({ notification, onPress }: { notification: Notif
       accessibilityRole="button"
       accessibilityLabel={`${describe(notification)}${notification.read ? '' : ', unread'}`}
     >
-      <View style={[styles.iconWrap, { backgroundColor: `${accent}1A` }]}>
-        <Icon size={18} color={accent} />
+      <View style={[styles.iconWrap, { backgroundColor: tint.soft }]}>
+        <Icon size={theme.size.iconSm} color={tint.mark} />
       </View>
       <View style={styles.textWrap}>
         <Text style={styles.label} numberOfLines={2}>
@@ -87,46 +98,45 @@ export function NotificationRow({ notification, onPress }: { notification: Notif
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, size, borders }: Theme, accent: Accent) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[3],
+      paddingHorizontal: space[4],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     rowUnread: {
-      backgroundColor: colors.brand.primaryTint,
+      backgroundColor: accent.soft,
     },
     iconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: radii.full,
+      width: size.avatarMd,
+      height: size.avatarMd,
+      borderRadius: radius.pill,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: spacing.md,
+      marginRight: space[3],
     },
     textWrap: {
       flex: 1,
     },
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.primary,
+      ...typography.caption,
+      color: colors.ink,
     },
     time: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     unreadDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.brand.primary,
-      marginLeft: spacing.sm,
+      width: size.dot,
+      height: size.dot,
+      borderRadius: radius.pill,
+      backgroundColor: accent.fill,
+      marginLeft: space[2],
     },
   });
 }

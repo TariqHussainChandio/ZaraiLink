@@ -38,7 +38,7 @@ describe('ConsultationMessageBubble', () => {
       />,
     );
     expect(screen.getByText('Copper Fungicide')).toBeTruthy();
-    expect(screen.getByText('Rs. 850 / bottle')).toBeTruthy();
+    expect(screen.getByText('Rs 850 / bottle')).toBeTruthy();
     fireEvent.press(screen.getByText('Copper Fungicide'));
     expect(onPressRecommendation).toHaveBeenCalledWith('l1');
   });

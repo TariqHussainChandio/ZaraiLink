@@ -1,8 +1,9 @@
 import { ShoppingBag } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme, type Theme } from '../../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
 import type { ConsultationMessageWithListing } from '../../../expert';
+import { formatRs } from '../../../utils/money';
 
 export interface ConsultationMessageBubbleProps {
   message: ConsultationMessageWithListing;
@@ -19,7 +20,8 @@ export function ConsultationMessageBubble({
   onPressRecommendation,
 }: ConsultationMessageBubbleProps) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
 
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
@@ -47,15 +49,15 @@ export function ConsultationMessageBubble({
             onPress={() => onPressRecommendation?.(message.recommended_listing!.id)}
             disabled={!onPressRecommendation}
             accessibilityRole="button"
-            accessibilityLabel={`Recommended listing: ${message.recommended_listing.title}, Rs. ${message.recommended_listing.price.toFixed(0)} per ${message.recommended_listing.unit}`}
+            accessibilityLabel={`Recommended listing: ${message.recommended_listing.title}, ${formatRs(message.recommended_listing.price)} per ${message.recommended_listing.unit}`}
           >
-            <ShoppingBag size={16} color={theme.colors.brand.primary} />
+            <ShoppingBag size={theme.size.iconSm} color={theme.colors.module.marketplace} />
             <View style={styles.recommendationText}>
               <Text style={styles.recommendationTitle} numberOfLines={1}>
                 {message.recommended_listing.title}
               </Text>
               <Text style={styles.recommendationPrice}>
-                Rs. {message.recommended_listing.price.toFixed(0)} / {message.recommended_listing.unit}
+                {formatRs(message.recommended_listing.price)} / {message.recommended_listing.unit}
               </Text>
             </View>
           </TouchableOpacity>
@@ -68,79 +70,81 @@ export function ConsultationMessageBubble({
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, fontWeight, size }: Theme, accent: Accent) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
-      marginVertical: spacing.xs / 2,
-      paddingHorizontal: spacing.lg,
+      marginVertical: space[1] / 2,
+      paddingHorizontal: space[4],
     },
     rowOwn: {
       justifyContent: 'flex-end',
     },
     bubble: {
       maxWidth: '78%',
-      borderRadius: radii.lg,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      paddingHorizontal: space[3],
+      paddingVertical: space[2],
     },
     bubbleOther: {
-      backgroundColor: colors.border,
-      borderBottomLeftRadius: radii.sm,
+      backgroundColor: colors.line,
+      borderBottomLeftRadius: radius.xs,
     },
     bubbleOwn: {
-      backgroundColor: colors.brand.primary,
-      borderBottomRightRadius: radii.sm,
+      backgroundColor: accent.fill,
+      borderBottomRightRadius: radius.xs,
     },
     imagesRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.xs,
-      marginBottom: spacing.xs,
+      gap: space[1],
+      marginBottom: space[1],
     },
     attachmentImage: {
-      width: 120,
-      height: 120,
-      borderRadius: radii.md,
-      backgroundColor: colors.background.default,
+      width: size.photoLg,
+      height: size.photoLg,
+      borderRadius: radius.sm,
+      backgroundColor: colors.ground,
     },
     attachmentPlaceholder: {},
     body: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.primary,
+      ...typography.bodyLg,
+      color: colors.ink,
     },
     bodyOwn: {
-      color: colors.neutral.white,
+      color: colors.onAccent,
     },
     recommendation: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.background.surface,
-      borderRadius: radii.md,
-      padding: spacing.sm,
-      marginTop: spacing.xs,
-      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.sm,
+      padding: space[2],
+      marginTop: space[1],
+      gap: space[2],
     },
     recommendationText: {
       flex: 1,
     },
     recommendationTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
     },
     recommendationPrice: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     time: {
-      marginTop: spacing.xs / 2,
-      fontSize: 10,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
       alignSelf: 'flex-end',
     },
     timeOwn: {
-      color: 'rgba(255,255,255,0.75)',
+      // Timestamps on an outgoing (filled) bubble: the text colour of the fill, a little quieter.
+      color: colors.onAccent,
+      opacity: 0.8,
     },
   });
 }

@@ -55,12 +55,12 @@ describe('FarmerAnalyticsScreen', () => {
     expect(screen.getByText('Listing Views')).toBeTruthy();
     expect(screen.getByText('6')).toBeTruthy();
     expect(screen.getByText('Orders')).toBeTruthy();
-    expect(screen.getByText('Rs. 1500')).toBeTruthy();
+    expect(screen.getByText('Rs 1,500')).toBeTruthy();
     expect(screen.getByText('Popular Products')).toBeTruthy();
     expect(screen.getByText('Top Products by Revenue')).toBeTruthy();
     expect(screen.getAllByText('Wheat')).toHaveLength(2);
     expect(screen.getByText('10 units sold')).toBeTruthy();
-    expect(screen.getByText('Rs. 1000')).toBeTruthy();
+    expect(screen.getByText('Rs 1,000')).toBeTruthy();
   });
 
   it('shows a retry state when loading analytics fails', async () => {

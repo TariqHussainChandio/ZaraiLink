@@ -88,49 +88,48 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[1],
     },
     imageRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.sm,
-      marginBottom: spacing.xl,
+      gap: space[2],
+      marginBottom: space[6],
     },
     thumbnail: {
-      width: 72,
-      height: 72,
-      borderRadius: radii.md,
-      backgroundColor: colors.border,
+      width: size.photoMd,
+      height: size.photoMd,
+      borderRadius: radius.sm,
+      backgroundColor: colors.line,
     },
     addImage: {
-      width: 72,
-      height: 72,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      borderColor: colors.border,
+      width: size.photoMd,
+      height: size.photoMd,
+      borderRadius: radius.sm,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
       borderStyle: 'dashed',
       alignItems: 'center',
       justifyContent: 'center',
     },
     addImageLabel: {
-      color: colors.text.secondary,
-      fontSize: typography.sizes.xs,
+      color: colors.ink2,
+      ...typography.caption,
     },
     submit: {
-      marginBottom: spacing['2xl'],
+      marginBottom: space[8],
     },
   });
 }

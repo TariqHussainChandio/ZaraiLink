@@ -54,7 +54,7 @@ describe('AdminAnalyticsScreen', () => {
     expect(screen.getByText('40')).toBeTruthy();
     expect(screen.getByText('30')).toBeTruthy();
     expect(screen.getByText('20')).toBeTruthy();
-    expect(screen.getByText('Rs. 5000')).toBeTruthy();
+    expect(screen.getByText('Rs 5,000')).toBeTruthy();
     expect(screen.getByText('6')).toBeTruthy();
   });
 
@@ -63,8 +63,10 @@ describe('AdminAnalyticsScreen', () => {
     await renderWithQuery(<AdminAnalyticsScreen />);
 
     await screen.findByText('Total Listings');
-    expect(screen.getByText('Successful')).toBeTruthy();
-    expect(screen.getByText('Pending')).toBeTruthy();
+    // The vocabulary's words, as on every payment badge, never the raw value.
+    expect(screen.getByText('Paid')).toBeTruthy();
+    expect(screen.getByText('Awaiting payment')).toBeTruthy();
+    expect(screen.queryByText('Successful')).toBeNull();
     expect(screen.getByText('Open')).toBeTruthy();
     expect(screen.getByText('Resolved')).toBeTruthy();
     expect(screen.getByText(/Approved experts: 7/)).toBeTruthy();

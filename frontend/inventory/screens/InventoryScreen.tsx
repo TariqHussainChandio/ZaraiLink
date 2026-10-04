@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, EmptyState, Input, SelectField, Sheet, SkeletonList } from '../../common/components';
+import { Button, EmptyState, TextField, SelectField, Sheet, SkeletonList } from '../../common/components';
 import { InventoryRow } from '../components/InventoryRow';
 import { StockAdjustModal } from '../components/StockAdjustModal';
 import { HOME_ROUTES } from '../../common/constants/routes';
@@ -13,7 +13,7 @@ import {
   useSaveInventoryItem,
 } from '../hooks/dealer';
 import { useAuthStore } from '../../state/authStore';
-import { useTheme, type Theme } from '../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
 import type { InventoryItemWithListing } from '../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 import { errorMessage } from '../../utils/errorMessage';
@@ -38,7 +38,8 @@ const EMPTY_FORM: ItemFormState = {
 
 export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const userId = useAuthStore(state => state.user?.id);
   const { data: items = [], isPending, error, refetch: refetchItems } = useInventory(!!userId);
   const { data: listings = [], refetch: refetchListings } = useDealerListingOptions(!!userId);
@@ -172,7 +173,7 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
           />
         }
       />
-      <TouchableOpacity style={styles.fab} onPress={openCreate}>
+      <TouchableOpacity accessibilityRole="button" style={styles.fab} onPress={openCreate}>
         <Text style={styles.fabLabel}>+ Add Item</Text>
       </TouchableOpacity>
 
@@ -187,32 +188,32 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
           options={listings.map(l => ({ id: l.id, label: l.title }))}
           onSelect={id => setForm(current => ({ ...current, listingId: id }))}
         />
-        <Input
+        <TextField
           label="Unit"
           value={form.unit}
           onChangeText={text => setForm(current => ({ ...current, unit: text }))}
         />
         {!editingItem ? (
-          <Input
+          <TextField
             label="Initial stock quantity"
             keyboardType="numeric"
             value={form.stockQuantity}
             onChangeText={text => setForm(current => ({ ...current, stockQuantity: text }))}
           />
         ) : null}
-        <Input
+        <TextField
           label="Purchase cost"
           keyboardType="numeric"
           value={form.purchaseCost}
           onChangeText={text => setForm(current => ({ ...current, purchaseCost: text }))}
         />
-        <Input
+        <TextField
           label="Selling price"
           keyboardType="numeric"
           value={form.sellingPrice}
           onChangeText={text => setForm(current => ({ ...current, sellingPrice: text }))}
         />
-        <Input
+        <TextField
           label="Low-stock threshold"
           keyboardType="numeric"
           value={form.minStockThreshold}
@@ -222,7 +223,7 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
         {editingItem ? (
           <Button
             label="Remove Item"
-            variant="destructive"
+            variant="danger"
             onPress={() => onDelete(editingItem)}
             style={styles.formAction}
           />
@@ -241,38 +242,37 @@ export function InventoryScreen({ navigation }: HomeScreenProps<'Inventory'>) {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
+function makeStyles({ colors, space, radius, typography, shadows }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      padding: spacing.lg,
-      paddingBottom: spacing['3xl'],
+      padding: space[4],
+      paddingBottom: space[12],
     },
     fab: {
       position: 'absolute',
-      right: spacing.lg,
-      bottom: spacing.lg,
-      backgroundColor: colors.brand.primary,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      borderRadius: radii.full,
-      ...shadows.md,
+      right: space[4],
+      bottom: space[4],
+      backgroundColor: accent.fill,
+      paddingHorizontal: space[4],
+      paddingVertical: space[3],
+      borderRadius: radius.pill,
+      ...shadows.elev2,
     },
     fabLabel: {
-      color: colors.neutral.white,
-      fontWeight: '700',
+      ...typography.label,
+      color: colors.onAccent,
     },
     sheetTitle: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.md,
+      ...typography.title,
+      color: colors.ink,
+      marginBottom: space[3],
     },
     formAction: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
     },
   });
 }

@@ -1,9 +1,8 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useMemo } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Spinner } from '../../components';
-import { StatusBadge } from '../components/StatusBadge';
-import { PaymentStatusBadge, useResolvePayment } from '../../payments';
+import { Button, Card, OrderTimeline, PriceBreakdown, Spinner, StatusBadge } from '../../components';
+import { useResolvePayment } from '../../payments';
 import { ReviewCard } from '../../reviews';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
 import { useOpenConversation } from '../../messaging';
@@ -11,20 +10,20 @@ import { useOrderDetail, useUpdateOrderStatus } from '../hooks/orders';
 import { useAuthStore } from '../../../state/authStore';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../../theme';
-import type { OrderStatus } from '../types/orders';
+import type { OrderStatus, OrderStatusHistoryEntry } from '../types/orders';
 import { hapticSuccess } from '../../../utils/haptics';
 import { errorMessage } from '../../../utils/errorMessage';
-import { ORDER_STATUS_LABELS } from '../../constants/labels';
+import { statusMeta } from '../../constants/status';
+import { formatRs } from '../../../utils/money';
 
-const TIMELINE: OrderStatus[] = ['pending', 'confirmed', 'processing', 'ready', 'completed'];
-const TERMINAL_SIDE_STATES: OrderStatus[] = [
-  'cancelled',
-  'rejected',
-  'payment_failed',
-  'disputed',
-  'refunded',
-  'expired',
-];
+const WHEN = new Intl.DateTimeFormat('en-PK', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
+/** When each status was first reached, from the order's status history. */
+function reachedAt(history: OrderStatusHistoryEntry[]): Partial<Record<OrderStatus, string>> {
+  const out: Partial<Record<OrderStatus, string>> = {};
+  for (const entry of history) out[entry.to_status] ??= WHEN.format(new Date(entry.created_at));
+  return out;
+}
 
 // Untyped navigation/route: this screen is mounted inside two different stacks (the buyer/
 // farmer/dealer Orders tab, and Admin's Home stack for platform-wide order oversight) with
@@ -72,7 +71,6 @@ export function OrderDetailScreen() {
 
   const isSeller = order.seller_id === userId;
   const isBuyer = order.buyer_id === userId;
-  const isTerminalSideState = TERMINAL_SIDE_STATES.includes(order.status);
   const canCancel = (isBuyer || isSeller) && ['pending', 'confirmed'].includes(order.status);
   const canConfirm = isSeller && order.status === 'pending';
   const canReject = isSeller && order.status === 'pending';
@@ -87,15 +85,15 @@ export function OrderDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
-        <Text style={styles.total}>{`Rs. ${order.total.toFixed(0)}`}</Text>
-        <StatusBadge status={order.status} />
+        <Text style={styles.total}>{formatRs(order.total)}</Text>
+        <StatusBadge kind="order" status={order.status} />
       </View>
 
       {payment ? (
         <Card style={styles.paymentCard}>
           <View style={styles.paymentRow}>
             <Text style={styles.sectionTitle}>Payment</Text>
-            <PaymentStatusBadge status={payment.status} />
+            <StatusBadge kind="payment" status={payment.status} />
           </View>
           {isSeller && paymentPending ? (
             <View style={styles.paymentActions}>
@@ -107,7 +105,7 @@ export function OrderDetailScreen() {
               />
               <Button
                 label="Mark Payment Failed"
-                variant="destructive"
+                variant="danger"
                 loading={payingAction}
                 onPress={onMarkPaymentFailed}
                 style={styles.paymentButton}
@@ -125,21 +123,9 @@ export function OrderDetailScreen() {
         />
       ) : null}
 
-      {!isTerminalSideState ? (
-        <View style={styles.timeline}>
-          {TIMELINE.map((stage, index) => {
-            const reached = TIMELINE.indexOf(order.status) >= index;
-            return (
-              <View key={stage} style={styles.timelineStep}>
-                <View style={[styles.timelineDot, reached && styles.timelineDotActive]} />
-                <Text style={[styles.timelineLabel, reached && styles.timelineLabelActive]}>
-                  {ORDER_STATUS_LABELS[stage]}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      ) : null}
+      <Card style={styles.itemsCard}>
+        <OrderTimeline status={order.status} reachedAt={reachedAt(history)} />
+      </Card>
 
       <Card style={styles.itemsCard}>
         <Text style={styles.sectionTitle}>Items</Text>
@@ -149,33 +135,22 @@ export function OrderDetailScreen() {
               {`${item.quantity} ${item.listing?.unit ?? ''} × ${item.listing?.title ?? 'Listing removed'}`}
             </Text>
             <Text style={styles.itemPrice}>
-              {`Rs. ${(item.unit_price * item.quantity).toFixed(0)}`}
+              {formatRs(item.unit_price * item.quantity)}
             </Text>
           </View>
         ))}
         <View style={styles.summaryDivider} />
-        <View style={styles.itemRow}>
-          <Text style={styles.itemLabel}>Subtotal</Text>
-          <Text style={styles.itemPrice}>
-            {`Rs. ${order.product_subtotal.toFixed(0)}`}
-          </Text>
-        </View>
-        <View style={styles.itemRow}>
-          <Text style={styles.itemLabel}>Delivery</Text>
-          <Text style={styles.itemPrice}>
-            {`Rs. ${order.delivery_charge.toFixed(0)}`}
-          </Text>
-        </View>
+        <PriceBreakdown subtotal={order.product_subtotal} delivery={order.delivery_charge} total={order.total} />
       </Card>
 
       <Card style={styles.partiesCard}>
         <Text style={styles.sectionTitle}>Buyer</Text>
         <Text style={styles.partyName}>
-          {order.buyer?.full_name ?? 'Unknown'}
+          {order.buyer?.full_name || 'Unknown'}
         </Text>
         <Text style={[styles.sectionTitle, styles.sellerLabel]}>Seller</Text>
         <Text style={styles.partyName}>
-          {order.seller?.full_name ?? 'Unknown'}
+          {order.seller?.full_name || 'Unknown'}
         </Text>
       </Card>
 
@@ -188,12 +163,13 @@ export function OrderDetailScreen() {
             if (!userId) return;
             const otherPartyId = isBuyer ? order.seller_id : order.buyer_id;
             const otherPartyName =
-              (isBuyer ? order.seller?.full_name : order.buyer?.full_name) ??
-              'Unknown';
+              (isBuyer ? order.seller?.full_name : order.buyer?.full_name) ?? '';
             try {
               const conversation = await openConversation.mutateAsync(otherPartyId);
+              // On top of the conversation list (initial: false), so Back and the Messages tab reach it, not a stack whose root is this chat.
               tabNavigation?.navigate(APP_TABS.Messages, {
                 screen: MESSAGING_ROUTES.Chat,
+                initial: false,
                 params: { conversationId: conversation.id, otherUserName: otherPartyName },
               });
             } catch (error) {
@@ -239,7 +215,7 @@ export function OrderDetailScreen() {
       {canReject ? (
         <Button
           label="Reject Order"
-          variant="destructive"
+          variant="danger"
           loading={updating}
           onPress={() => advance('rejected')}
           style={styles.action}
@@ -248,7 +224,7 @@ export function OrderDetailScreen() {
       {canCancel ? (
         <Button
           label="Cancel Order"
-          variant="destructive"
+          variant="danger"
           loading={updating}
           onPress={() => advance('cancelled')}
           style={styles.action}
@@ -286,9 +262,9 @@ export function OrderDetailScreen() {
             <View key={entry.id} style={styles.historyRow}>
               <Text style={styles.historyLabel}>
                 {entry.from_status
-                  ? `${ORDER_STATUS_LABELS[entry.from_status]} → `
+                  ? `${statusMeta('order', entry.from_status).label} → `
                   : ''}
-                {ORDER_STATUS_LABELS[entry.to_status]}
+                {statusMeta('order', entry.to_status).label}
               </Text>
               <Text style={styles.historyDate}>{new Date(entry.created_at).toLocaleString()}</Text>
             </View>
@@ -299,55 +275,27 @@ export function OrderDetailScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: spacing.lg,
+      marginBottom: space[4],
     },
     total: {
-      fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
-    },
-    timeline: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: spacing.xl,
-    },
-    timelineStep: {
-      alignItems: 'center',
-      flex: 1,
-    },
-    timelineDot: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      backgroundColor: colors.border,
-      marginBottom: spacing.xs,
-    },
-    timelineDotActive: {
-      backgroundColor: colors.brand.primary,
-    },
-    timelineLabel: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-    },
-    timelineLabelActive: {
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
+      ...typography.headline,
+      color: colors.ink,
     },
     paymentCard: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     paymentRow: {
       flexDirection: 'row',
@@ -356,71 +304,72 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     paymentActions: {
       flexDirection: 'row',
-      gap: spacing.sm,
-      marginTop: spacing.md,
+      gap: space[2],
+      marginTop: space[3],
     },
     paymentButton: {
       flex: 1,
     },
     summaryDivider: {
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      marginVertical: spacing.xs,
+      borderTopWidth: borders.hairline,
+      borderTopColor: colors.line,
+      marginVertical: space[1],
     },
     historyCard: {
-      marginTop: spacing.md,
-      marginBottom: spacing.md,
+      marginTop: space[3],
+      marginBottom: space[3],
     },
     historyRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: spacing.xs,
+      marginBottom: space[1],
     },
     historyLabel: {
       flex: 1,
-      marginRight: spacing.sm,
-      fontSize: typography.sizes.sm,
-      color: colors.text.primary,
+      marginRight: space[2],
+      ...typography.caption,
+      color: colors.ink,
     },
     historyDate: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     itemsCard: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     partiesCard: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     sectionTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink2,
+      marginBottom: space[1],
     },
     sellerLabel: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
     partyName: {
-      fontSize: typography.sizes.base,
-      color: colors.text.primary,
+      ...typography.body,
+      color: colors.ink,
     },
     itemRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: spacing.xs,
+      marginBottom: space[1],
     },
     itemLabel: {
+      ...typography.body,
       flex: 1,
-      marginRight: spacing.sm,
-      color: colors.text.primary,
+      marginRight: space[2],
+      color: colors.ink,
     },
     itemPrice: {
-      color: colors.text.secondary,
-      fontWeight: typography.weights.medium,
+      ...typography.figure,
+      color: colors.ink2,
     },
     action: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
     },
   });
 }

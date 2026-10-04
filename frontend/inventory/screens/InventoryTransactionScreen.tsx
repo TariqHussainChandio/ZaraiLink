@@ -5,7 +5,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Badge, Card, EmptyState, Spinner } from '../../common/components';
 import { StockAdjustModal } from '../components/StockAdjustModal';
 import { useInventoryItem, useInventoryTransactions } from '../hooks/dealer';
-import { useTheme, type Theme } from '../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
 import type { InventoryTransaction } from '../types/dealer';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
@@ -20,7 +20,8 @@ const TYPE_LABELS: Record<InventoryTransaction['type'], string> = {
 
 export function InventoryTransactionScreen({ route }: HomeScreenProps<'InventoryTransactions'>) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const { inventoryId } = route.params;
   const itemQuery = useInventoryItem(inventoryId);
   const transactionsQuery = useInventoryTransactions(inventoryId);
@@ -72,7 +73,7 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
         renderItem={({ item: tx }) => (
           <Card style={styles.txCard}>
             <View style={styles.txRow}>
-              <Badge label={TYPE_LABELS[tx.type]} tone={tx.quantity >= 0 ? 'success' : 'error'} />
+              <Badge label={TYPE_LABELS[tx.type]} tone={tx.quantity >= 0 ? 'success' : 'neutral'} />
               <Text style={styles.txQuantity}>
                 {tx.quantity >= 0 ? '+' : ''}
                 {tx.quantity} {item.unit}
@@ -95,45 +96,44 @@ export function InventoryTransactionScreen({ route }: HomeScreenProps<'Inventory
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     summary: {
-      margin: spacing.lg,
+      margin: space[4],
       marginBottom: 0,
     },
     title: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.title,
+      color: colors.ink,
     },
     stock: {
-      marginTop: spacing.xs,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1],
+      ...typography.caption,
+      color: colors.ink2,
     },
     adjustButton: {
-      marginTop: spacing.md,
+      marginTop: space[3],
       alignSelf: 'flex-start',
-      backgroundColor: colors.brand.primary,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radii.md,
+      backgroundColor: accent.fill,
+      paddingHorizontal: space[3],
+      paddingVertical: space[2],
+      borderRadius: radius.sm,
     },
     adjustLabel: {
-      color: colors.neutral.white,
-      fontWeight: '700',
-      fontSize: typography.sizes.sm,
+      ...typography.label,
+      color: colors.onAccent,
+      ...typography.caption,
     },
     list: {
-      padding: spacing.lg,
-      paddingBottom: spacing['3xl'],
+      padding: space[4],
+      paddingBottom: space[12],
     },
     txCard: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     txRow: {
       flexDirection: 'row',
@@ -141,19 +141,18 @@ function makeStyles({ colors, spacing, radii, typography }: Theme) {
       alignItems: 'center',
     },
     txQuantity: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     txDate: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     txNotes: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

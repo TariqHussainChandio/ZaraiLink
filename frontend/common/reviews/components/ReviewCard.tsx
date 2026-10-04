@@ -12,9 +12,9 @@ export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   return (
     <Card style={styles.card}>
       <View style={styles.header}>
-        <Avatar name={review.buyer?.full_name} uri={review.buyer?.avatar_url} size={32} />
+        <Avatar name={review.buyer?.full_name} uri={review.buyer?.avatar_url} size={theme.size.avatarSm} />
         <View style={styles.headerText}>
-          <Text style={styles.name}>{review.buyer?.full_name ?? 'Unknown buyer'}</Text>
+          <Text style={styles.name}>{review.buyer?.full_name || 'Unknown buyer'}</Text>
           <Text style={styles.date}>{new Date(review.created_at).toLocaleDateString()}</Text>
         </View>
         <RatingStars value={review.rating} />
@@ -24,33 +24,32 @@ export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     card: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
+      gap: space[2],
     },
     headerText: {
       flex: 1,
     },
     name: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
     },
     date: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     comment: {
-      marginTop: spacing.sm,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      lineHeight: typography.lineHeights.sm,
+      marginTop: space[2],
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

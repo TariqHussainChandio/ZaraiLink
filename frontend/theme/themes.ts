@@ -1,38 +1,19 @@
-import { colors, darkColors } from './colors';
-import { typography } from './typography';
-import { radii, shadows, spacing } from './spacing';
-import { roleColors, roleColorsDark } from './roleColors';
-import { moduleAccents, moduleAccentsDark } from './moduleAccents';
-import { statusColors, statusColorsDark } from './statusColors';
+import { borders } from './borders';
+import { darkColors, lightColors, type ThemeColors } from './colors';
+import { components } from './components';
+import { size } from './dimensions';
 import { motion } from './motion';
+import { shadows } from './shadows';
+import { radius, space } from './spacing';
+import { fontWeight, typography } from './typography';
 
-export const lightTheme = {
-  dark: false,
-  colors,
-  typography,
-  spacing,
-  radii,
-  shadows,
-  roleColors,
-  moduleAccents,
-  statusColors,
-  motion,
-} as const;
+// Only colours differ between the themes; type, space, shape, sizes and motion are shared.
+const shared = { typography, fontWeight, space, radius, size, borders, shadows, components, motion } as const;
 
-// Real dark palette (see colors.ts/roleColors.ts/statusColors.ts/moduleAccents.ts for the
-// per-token reasoning) — `typography`/`spacing`/`radii`/`shadows`/`motion` are theme-invariant,
-// only shared with light via the same imports.
-export const darkTheme = {
-  dark: true,
-  colors: darkColors,
-  typography,
-  spacing,
-  radii,
-  shadows,
-  roleColors: roleColorsDark,
-  moduleAccents: moduleAccentsDark,
-  statusColors: statusColorsDark,
-  motion,
-} as const;
+export interface Theme extends Readonly<typeof shared> {
+  dark: boolean;
+  colors: ThemeColors;
+}
 
-export type Theme = typeof lightTheme | typeof darkTheme;
+export const lightTheme: Theme = { ...shared, dark: false, colors: lightColors };
+export const darkTheme: Theme = { ...shared, dark: true, colors: darkColors };

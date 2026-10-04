@@ -32,20 +32,20 @@ export function RatingSummary({ reviews }: RatingSummaryProps) {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.xs,
+      gap: space[1],
     },
     text: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     empty: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

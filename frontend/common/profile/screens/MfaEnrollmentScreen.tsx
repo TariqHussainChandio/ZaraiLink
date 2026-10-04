@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { Button, Input } from '../../components';
+import { Banner, Button, TextField } from '../../components';
 import {
   useEnrollTotp,
   useUnenrollTotp,
@@ -10,7 +10,7 @@ import {
   type TotpEnrollment,
   mapMfaErrorMessage,
 } from '../../auth';
-import { useTheme, type Theme } from '../../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 
 type ScreenState = 'loading' | 'enrolled' | 'not-enrolled' | 'enrolling';
@@ -22,7 +22,8 @@ type ScreenState = 'loading' | 'enrolled' | 'not-enrolled' | 'enrolling';
 // covers.
 export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   // What the user did on this screen (enrolled, disabled) overrides what was read on load.
   const [stateOverride, setState] = useState<ScreenState | null>(null);
   const [factorOverride, setVerifiedFactorId] = useState<string | null | undefined>(undefined);
@@ -92,7 +93,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
   if (state === 'loading') {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={theme.colors.brand.primary} />
+        <ActivityIndicator color={accent.mark} />
       </View>
     );
   }
@@ -102,14 +103,22 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
       <Text style={styles.title}>Two-factor authentication</Text>
       <Text style={styles.subtitle}>Admin actions that change data (suspending a user, verifying an expert, and similar) require a verified authenticator app code in addition to your password.</Text>
 
-      {error ?? loadErrorMessage ? <Text style={styles.errorBanner}>{error ?? loadErrorMessage}</Text> : null}
+      {error ?? loadErrorMessage ? (
+
+        <View style={styles.errorBanner}>
+
+          <Banner tone="danger" title={error ?? loadErrorMessage ?? undefined} />
+
+        </View>
+
+      ) : null}
 
       {state === 'enrolled' ? (
         <>
           <Text style={styles.statusEnabled}>Two-factor authentication is enabled.</Text>
           <Button
             label="Turn off two-factor authentication"
-            variant="destructive"
+            variant="danger"
             loading={submitting}
             onPress={onDisable}
             style={styles.action}
@@ -130,7 +139,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
         <>
           <Text style={styles.stepLabel}>1. Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</Text>
           <View style={styles.qrContainer}>
-            <SvgXml xml={enrollment.qrCodeSvg} width={200} height={200} />
+            <SvgXml xml={enrollment.qrCodeSvg} width={theme.size.qrCode} height={theme.size.qrCode} />
           </View>
           <Text style={styles.secretLabel}>{"Can't scan the code? Enter this key manually:"}</Text>
           <Text selectable style={styles.secret}>
@@ -138,7 +147,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
           </Text>
 
           <Text style={styles.stepLabel}>2. Enter the 6-digit code from your app</Text>
-          <Input
+          <TextField
             label="Authentication code"
             keyboardType="number-pad"
             maxLength={6}
@@ -160,69 +169,66 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight, radius }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     center: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     title: {
-      fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.titleLg,
+      color: colors.ink,
     },
     subtitle: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
-      marginTop: spacing.xs,
-      marginBottom: spacing.lg,
+      ...typography.body,
+      color: colors.ink2,
+      marginTop: space[1],
+      marginBottom: space[4],
     },
     statusEnabled: {
-      fontSize: typography.sizes.base,
-      color: colors.semantic.success,
-      marginBottom: spacing.md,
+      ...typography.body,
+      color: colors.status.success.mark,
+      marginBottom: space[3],
     },
     stepLabel: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginTop: spacing.lg,
-      marginBottom: spacing.sm,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
+      marginTop: space[4],
+      marginBottom: space[2],
     },
     qrContainer: {
       alignItems: 'center',
-      padding: spacing.md,
-      backgroundColor: colors.neutral.white,
-      borderRadius: 8,
+      padding: space[3],
+      backgroundColor: colors.surface,
+      borderRadius: radius.sm,
       alignSelf: 'flex-start',
     },
     secretLabel: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-      marginTop: spacing.sm,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: space[2],
     },
+    // The setup key is typed by hand into an authenticator app: the mono face keeps 0/O and 1/l apart.
     secret: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      letterSpacing: 2,
-      marginTop: spacing.xs,
+      ...typography.code,
+      color: colors.ink,
+      marginTop: space[1],
     },
     errorBanner: {
-      color: colors.semantic.error,
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     action: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
   });
 }

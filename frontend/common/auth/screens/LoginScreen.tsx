@@ -1,22 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input, PhoneInput, isValidE164 } from '../../components';
+import { Banner, Button, type ChipOption, ChipRow, isValidE164, PhoneInput, TextField } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { useSignIn, type AuthChannel } from '../hooks/auth';
 import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
+
+const CHANNELS: ChipOption<AuthChannel>[] = [
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone number' },
+];
 
 function makeLoginSchema() {
   return z
@@ -78,26 +75,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
         <Controller
           control={control}
           name="channel"
-          render={({ field: { onChange, value } }) => (
-            <View style={styles.channelRow}>
-              {(['email', 'phone'] as const).map(option => (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.channelChip, value === option && styles.channelChipSelected]}
-                  onPress={() => onChange(option)}
-                >
-                  <Text
-                    style={[
-                      styles.channelChipLabel,
-                      value === option && styles.channelChipLabelSelected,
-                    ]}
-                  >
-                    {option === 'email' ? 'Email' : 'Phone number'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+          render={({ field: { onChange, value } }) => <ChipRow options={CHANNELS} value={value} onChange={onChange} />}
         />
 
         {channel === 'email' ? (
@@ -105,7 +83,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
             control={control}
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextField
                 label="Email"
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -130,7 +108,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
           control={control}
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
-            <Input
+            <TextField
               label="Password"
               secureTextEntry
               value={value}
@@ -141,7 +119,15 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
           )}
         />
 
-        {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
+        {submitError ? (
+
+          <View style={styles.errorBanner}>
+
+            <Banner tone="danger" title={submitError} />
+
+          </View>
+
+        ) : null}
 
         <Button
           label="Sign In"
@@ -150,82 +136,57 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
           style={styles.submit}
         />
 
-        <TouchableOpacity onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)}>
-          <Text style={styles.link}>Forgot your password?</Text>
-        </TouchableOpacity>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>{"Don't have an account?"}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate(AUTH_ROUTES.Register)}>
-            <Text style={styles.link}>{' Sign up'}</Text>
-          </TouchableOpacity>
+        <View style={styles.links}>
+          <Button label="Forgot your password?" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)} />
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>{"Don't have an account?"}</Text>
+            <Button label="Sign up" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Register)} />
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     flex: { flex: 1 },
     container: {
       flexGrow: 1,
       justifyContent: 'center',
-      padding: spacing.xl,
+      padding: space[6],
     },
     title: {
-      fontSize: typography.sizes['3xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.display,
+      color: colors.ink,
     },
     subtitle: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
-      marginTop: spacing.xs,
-      marginBottom: spacing.xl,
+      ...typography.body,
+      color: colors.ink2,
+      marginTop: space[1],
+      marginBottom: space[6],
     },
     submit: {
-      marginTop: spacing.sm,
-    },
-    channelRow: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    channelChip: {
-      paddingVertical: spacing.xs,
-      paddingHorizontal: spacing.md,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    channelChipSelected: {
-      backgroundColor: colors.brand.primary,
-      borderColor: colors.brand.primary,
-    },
-    channelChipLabel: {
-      color: colors.text.secondary,
-      fontWeight: typography.weights.medium,
-    },
-    channelChipLabelSelected: {
-      color: colors.neutral.white,
+      marginTop: space[2],
     },
     errorBanner: {
-      color: colors.semantic.error,
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
-    link: {
-      color: colors.brand.primary,
-      fontWeight: typography.weights.semibold,
-      marginTop: spacing.lg,
+    links: {
+      alignItems: 'center',
+      marginTop: space[4],
+      gap: space[2],
     },
     footer: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
       justifyContent: 'center',
-      marginTop: spacing.xl,
+      gap: space[1],
     },
     footerText: {
-      color: colors.text.secondary,
+      ...typography.body,
+      color: colors.ink2,
     },
   });
 }

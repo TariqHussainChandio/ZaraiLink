@@ -1,12 +1,13 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button, EmptyState, Spinner } from '../../components';
-import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
+import { Button, EmptyState, Spinner, StatusBadge } from '../../components';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { usePayment } from '../hooks/payments';
 import { useTheme, type Theme } from '../../../theme';
 import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 import type { PaymentStatus } from '../types/payments';
+import { formatRs } from '../../../utils/money';
+import { statusMeta } from '../../constants/status';
 
 const RESULT_COPY: Record<PaymentStatus, { title: string; description: string }> = {
   successful: { title: 'Payment Confirmed', description: 'The seller has confirmed they received your payment.' },
@@ -35,15 +36,18 @@ export function PaymentResultScreen({ route, navigation }: OrdersScreenProps<'Pa
     );
   }
 
+  // A status this build does not know yet reads as its own word instead of crashing (statusMeta).
+  const copy = Object.prototype.hasOwnProperty.call(RESULT_COPY, payment.status)
+    ? RESULT_COPY[payment.status]
+    : { title: statusMeta('payment', payment.status).label, description: 'This payment has been updated.' };
+
   return (
     <View style={styles.container}>
-      <PaymentStatusBadge status={payment.status} />
-      <Text style={styles.title}>{RESULT_COPY[payment.status].title}</Text>
-      <Text style={styles.description}>
-        {RESULT_COPY[payment.status].description}
-      </Text>
+      <StatusBadge kind="payment" status={payment.status} />
+      <Text style={styles.title}>{copy.title}</Text>
+      <Text style={styles.description}>{copy.description}</Text>
       <Text style={styles.amount}>
-        {`Rs. ${payment.amount.toFixed(0)}`}
+        {formatRs(payment.amount)}
       </Text>
       <Button
         label="Back to Order"
@@ -62,34 +66,32 @@ export function PaymentResultScreen({ route, navigation }: OrdersScreenProps<'Pa
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      padding: space[4],
       alignItems: 'center',
     },
     title: {
-      marginTop: spacing.lg,
-      fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      marginTop: space[4],
+      ...typography.titleLg,
+      color: colors.ink,
     },
     description: {
-      marginTop: spacing.xs,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1],
+      ...typography.caption,
+      color: colors.ink2,
       textAlign: 'center',
     },
     amount: {
-      marginTop: spacing.lg,
-      fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      marginTop: space[4],
+      ...typography.headline,
+      color: colors.ink,
     },
     action: {
-      marginTop: spacing.xl,
+      marginTop: space[6],
       alignSelf: 'stretch',
     },
   });

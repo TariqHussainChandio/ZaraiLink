@@ -1,37 +1,23 @@
-export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
+// Space and corners (A2, D14). Space is a 4-point grid named by step, as the design system names it (`space-4` is
+// `space[4]`): the screen side margin is space[4], sections are space[6] apart, a heading sits space[5] above its
+// content, cards in a grid are space[3] apart.
+export const space = {
+  1: 4,
+  2: 8,
+  3: 12,
+  4: 16,
+  5: 20,
+  6: 24,
+  8: 32,
+  12: 48,
+} as const;
+
+// Corners: xs for status badges, sm for buttons, inputs, chips and images, md for cards, list groups and dialogs,
+// lg for the top corners of bottom sheets only, pill for the active tab pill, avatars, count badges and search.
+export const radius = {
+  xs: 3,
+  sm: 6,
+  md: 10,
   lg: 16,
-  xl: 24,
-  '2xl': 32,
-  '3xl': 48,
+  pill: 999,
 } as const;
-
-export const radii = {
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
-  full: 9999,
-} as const;
-
-export const shadows = {
-  none: {},
-  sm: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-} as const;
-
-export type Spacing = typeof spacing;

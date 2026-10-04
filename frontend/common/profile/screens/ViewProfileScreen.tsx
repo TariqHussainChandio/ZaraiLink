@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Avatar, Badge, Button } from '../../components';
+import { Avatar, Button, RoleBadge } from '../../components';
 import { PROFILE_ROUTES } from '../../constants/routes';
-import { ROLE_LABELS } from '../../constants/roles';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
@@ -18,9 +17,12 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Avatar name={profile.full_name} uri={profile.avatar_url} size={72} />
-        <Text style={styles.name}>{profile.full_name}</Text>
-        <Badge label={ROLE_LABELS[profile.role]} tone="info" />
+        <Avatar name={profile.full_name} uri={profile.avatar_url} size={theme.size.avatarLg} />
+        <Text style={styles.name}>{profile.full_name || 'No name yet'}</Text>
+        {/* The wrapper takes the header's centring; the badge itself sizes to its label. */}
+        <View>
+          <RoleBadge role={profile.role} />
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -53,42 +55,43 @@ function Row({ label, value, styles }: { label: string; value: string; styles: R
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      padding: space[4],
     },
     header: {
       alignItems: 'center',
-      marginBottom: spacing.xl,
-      gap: spacing.sm,
+      marginBottom: space[6],
+      gap: space[2],
     },
     name: {
-      fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      ...typography.titleLg,
+      color: colors.ink,
     },
     section: {
-      marginBottom: spacing.xl,
+      marginBottom: space[6],
     },
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingVertical: spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[2],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     rowLabel: {
-      color: colors.text.secondary,
+      ...typography.body,
+      color: colors.ink2,
     },
     rowValue: {
-      color: colors.text.primary,
-      fontWeight: typography.weights.medium,
+      ...typography.body,
+      color: colors.ink,
+      fontWeight: fontWeight.medium,
     },
     action: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
   });
 }

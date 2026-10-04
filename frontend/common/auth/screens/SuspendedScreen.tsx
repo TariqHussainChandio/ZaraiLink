@@ -15,7 +15,7 @@ export function SuspendedScreen() {
       <Text style={styles.description}>Your account has been suspended by an administrator. Contact support if you believe this is a mistake.</Text>
       <Button
         label="Sign Out"
-        variant="destructive"
+        variant="danger"
         onPress={signOut}
         style={styles.action}
       />
@@ -23,28 +23,27 @@ export function SuspendedScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.background.surface,
-      padding: spacing.xl,
+      backgroundColor: colors.surface,
+      padding: space[6],
     },
     title: {
-      fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.semantic.error,
-      marginBottom: spacing.sm,
+      ...typography.headline,
+      color: colors.status.danger.mark,
+      marginBottom: space[2],
     },
     description: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
+      ...typography.body,
+      color: colors.ink2,
       textAlign: 'center',
     },
     action: {
-      marginTop: spacing.xl,
+      marginTop: space[6],
     },
   });
 }

@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Card } from '../../common/components';
-import { useTheme, type Theme } from '../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
 import type { InventoryItemWithListing } from '../types/dealer';
+import { formatRs } from '../../utils/money';
 
 export interface InventoryRowProps {
   item: InventoryItemWithListing;
@@ -13,7 +14,8 @@ export interface InventoryRowProps {
 
 export function InventoryRow({ item, onPress, onAdjust, onHistory }: InventoryRowProps) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const lowStock = item.stock_quantity <= item.min_stock_threshold;
 
   return (
@@ -29,7 +31,7 @@ export function InventoryRow({ item, onPress, onAdjust, onHistory }: InventoryRo
           {item.stock_quantity} {item.unit} in stock
         </Text>
         {item.selling_price !== null ? (
-          <Text style={styles.meta}>Selling price: Rs. {item.selling_price.toFixed(0)}</Text>
+          <Text style={styles.meta}>Selling price: {formatRs(item.selling_price)}</Text>
         ) : null}
       </TouchableOpacity>
       <View style={styles.actions}>
@@ -44,10 +46,10 @@ export function InventoryRow({ item, onPress, onAdjust, onHistory }: InventoryRo
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight }: Theme, accent: Accent) {
   return StyleSheet.create({
     card: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     row: {
       flexDirection: 'row',
@@ -56,28 +58,27 @@ function makeStyles({ colors, spacing, typography }: Theme) {
     },
     title: {
       flex: 1,
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginRight: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginRight: space[2],
     },
     meta: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     actions: {
       flexDirection: 'row',
-      gap: spacing.lg,
-      marginTop: spacing.sm,
+      gap: space[4],
+      marginTop: space[2],
     },
     actionButton: {
-      paddingVertical: spacing.xs,
+      paddingVertical: space[1],
     },
     actionLabel: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.brand.primary,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: accent.ink,
     },
   });
 }

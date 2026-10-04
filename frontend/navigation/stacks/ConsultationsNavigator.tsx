@@ -9,6 +9,8 @@ import { ExpertProfileScreen } from '../../common/consultations/screens/ExpertPr
 import { RequestConsultationScreen } from '../../common/consultations/screens/RequestConsultationScreen';
 import type { ExpertSpecialization } from '../../expert';
 import type { DiseasePrefill } from '../../ai';
+import { consultationsActions } from '../headerActions';
+import { stackOptionsWithActions } from '../stackHeader';
 
 export type ConsultationsStackParamList = {
   [CONSULTATIONS_ROUTES.ConsultationList]: undefined;
@@ -22,12 +24,14 @@ export type ConsultationsScreenProps<RouteName extends keyof ConsultationsStackP
   NativeStackScreenProps<ConsultationsStackParamList, RouteName>;
 
 const Stack = createNativeStackNavigator<ConsultationsStackParamList>();
+// Farmers and buyers find a verified expert from here; farmers also start the disease scan (SRDS rule 22).
+const CONSULTATIONS_STACK_OPTIONS = stackOptionsWithActions({ [CONSULTATIONS_ROUTES.ConsultationList]: consultationsActions });
 
 // Requester-side flow (Buyer/Farmer per §34, mounted from `AppNavigator`'s Consultations tab):
 // browse verified experts, view a profile, request a consultation, and track existing ones.
 export function ConsultationsNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
+    <Stack.Navigator screenOptions={CONSULTATIONS_STACK_OPTIONS}>
       <Stack.Screen
         name={CONSULTATIONS_ROUTES.ConsultationList}
         component={ConsultationListScreen}

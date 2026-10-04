@@ -58,7 +58,7 @@ describe('NotificationListScreen', () => {
   it('loads and renders notifications', async () => {
     mockFetchNotifications.mockResolvedValue([notification()]);
     await renderWithQuery(<NotificationListScreen />);
-    expect(await screen.findByText('Order is now confirmed')).toBeTruthy();
+    expect(await screen.findByText('Order status updated: Confirmed')).toBeTruthy();
   });
 
   it('shows an empty state when there are no notifications', async () => {
@@ -74,13 +74,13 @@ describe('NotificationListScreen', () => {
 
     mockFetchNotifications.mockResolvedValue([notification()]);
     await fireEvent.press(screen.getByText('Retry'));
-    expect(await screen.findByText('Order is now confirmed')).toBeTruthy();
+    expect(await screen.findByText('Order status updated: Confirmed')).toBeTruthy();
   });
 
   it('marks a notification read and navigates to the related order', async () => {
     mockFetchNotifications.mockResolvedValue([notification()]);
     await renderWithQuery(<NotificationListScreen />);
-    await fireEvent.press(await screen.findByText('Order is now confirmed'));
+    await fireEvent.press(await screen.findByText('Order status updated: Confirmed'));
 
     expect(mockMarkRead).toHaveBeenCalledWith('notif-1');
     expect(mockGetParentNavigate).toHaveBeenCalledWith(APP_TABS.Orders, {
@@ -104,6 +104,7 @@ describe('NotificationListScreen', () => {
     expect(mockMarkRead).not.toHaveBeenCalled();
     expect(mockGetParentNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
       screen: MESSAGING_ROUTES.Chat,
+      initial: false,
       params: { conversationId: 'conversation-1', otherUserName: 'Ali Khan' },
     });
   });
@@ -111,7 +112,7 @@ describe('NotificationListScreen', () => {
   it('shows Mark all as read only when there are unread notifications, and calls markAllRead', async () => {
     mockFetchNotifications.mockResolvedValue([notification({ read: false })]);
     await renderWithQuery(<NotificationListScreen />);
-    await screen.findByText('Order is now confirmed');
+    await screen.findByText('Order status updated: Confirmed');
 
     expect(screen.getByText('Mark all as read')).toBeTruthy();
     await fireEvent.press(screen.getByText('Mark all as read'));
@@ -121,7 +122,7 @@ describe('NotificationListScreen', () => {
   it('hides Mark all as read when everything is already read', async () => {
     mockFetchNotifications.mockResolvedValue([notification({ read: true })]);
     await renderWithQuery(<NotificationListScreen />);
-    await screen.findByText('Order is now confirmed');
+    await screen.findByText('Order status updated: Confirmed');
 
     expect(screen.queryByText('Mark all as read')).toBeNull();
   });

@@ -1,11 +1,17 @@
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { useTheme, type Theme } from '../../theme';
+import type { Role } from '../constants/roles';
+import { type Theme, useTheme } from '../../theme';
 
 export interface AvatarProps {
   uri?: string | null;
   name?: string;
+  /** Tints the initials in the role's colour. */
+  role?: Role;
+  /** avatarSm 32, avatarMd 40 (default), avatarLg 64. */
   size?: number;
+  /** A ring in the role colour, for your own profile header. */
+  ring?: boolean;
 }
 
 function getInitials(name?: string) {
@@ -15,35 +21,31 @@ function getInitials(name?: string) {
   return initials.join('') || '?';
 }
 
-export function Avatar({ uri, name, size = 40 }: AvatarProps) {
+/** A person, by their photo or by their initials on their role's tint. */
+export function Avatar({ uri, name, role, size, ring = false }: AvatarProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
+  const side = size ?? theme.size.avatarMd;
+  const accent = theme.colors.accent[role ?? 'brand'];
+  const shape = { width: side, height: side, borderRadius: theme.radius.pill };
+  const ringStyle = ring ? { borderWidth: theme.borders.selected, borderColor: accent.mark } : null;
 
   if (uri) {
-    return <Image source={{ uri }} style={[styles.image, dimensionStyle]} />;
+    return <Image source={{ uri }} style={[styles.image, shape, ringStyle]} accessibilityLabel={name} />;
   }
 
   return (
-    <View style={[styles.fallback, dimensionStyle]}>
-      <Text style={[styles.initials, { fontSize: size * 0.4 }]}>{getInitials(name)}</Text>
+    <View style={[styles.fallback, shape, { backgroundColor: accent.soft }, ringStyle]} accessibilityLabel={name}>
+      {/* Initials scale with the circle: four tenths of its side. */}
+      <Text style={[styles.initials, { color: accent.ink, fontSize: Math.round(side * 0.4) }]}>{getInitials(name)}</Text>
     </View>
   );
 }
 
 function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
-    image: {
-      backgroundColor: colors.border,
-    },
-    fallback: {
-      backgroundColor: colors.brand.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    initials: {
-      color: colors.neutral.white,
-      fontWeight: typography.weights.semibold,
-    },
+    image: { backgroundColor: colors.surfaceSunken },
+    fallback: { alignItems: 'center', justifyContent: 'center' },
+    initials: { fontFamily: typography.label.fontFamily, fontWeight: typography.title.fontWeight },
   });
 }

@@ -41,8 +41,8 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={72} />
-        <Text style={styles.name}>{expert.profile?.full_name ?? 'Expert'}</Text>
+        <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={theme.size.avatarLg} />
+        <Text style={styles.name}>{expert.profile?.full_name || 'Expert'}</Text>
         {expert.degree ? <Text style={styles.degree}>{expert.degree}</Text> : null}
         <RatingSummary reviews={reviews} />
       </View>
@@ -88,11 +88,13 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
           if (!userId) return;
           try {
             const conversation = await openConversation.mutateAsync(expertId);
+            // On top of the conversation list (initial: false), so Back and the Messages tab reach it, not a stack whose root is this chat.
             tabNavigation?.navigate(APP_TABS.Messages, {
               screen: MESSAGING_ROUTES.Chat,
+              initial: false,
               params: {
                 conversationId: conversation.id,
-                otherUserName: expert.profile?.full_name ?? 'Expert',
+                otherUserName: expert.profile?.full_name || 'Expert',
               },
             });
           } catch (err) {
@@ -114,46 +116,44 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     header: {
       alignItems: 'center',
-      marginBottom: spacing.lg,
+      marginBottom: space[4],
     },
     name: {
-      marginTop: spacing.sm,
-      fontSize: typography.sizes.xl,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      marginTop: space[2],
+      ...typography.titleLg,
+      color: colors.ink,
     },
     degree: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     section: {
-      marginBottom: spacing.lg,
+      marginBottom: space[4],
     },
     sectionTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink2,
+      marginBottom: space[1],
     },
     sectionText: {
-      fontSize: typography.sizes.base,
-      color: colors.text.primary,
-      lineHeight: typography.lineHeights.base,
+      ...typography.body,
+      color: colors.ink,
     },
     action: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
   });
 }

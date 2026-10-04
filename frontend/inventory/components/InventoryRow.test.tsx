@@ -22,7 +22,7 @@ describe('InventoryRow', () => {
     await render(<InventoryRow item={baseItem} onPress={() => {}} onAdjust={() => {}} onHistory={() => {}} />);
     expect(screen.getByText('DAP Fertilizer')).toBeTruthy();
     expect(screen.getByText('50 bag in stock')).toBeTruthy();
-    expect(screen.getByText('Selling price: Rs. 500')).toBeTruthy();
+    expect(screen.getByText('Selling price: Rs 500')).toBeTruthy();
   });
 
   it('falls back to "Unlinked stock item" when there is no linked listing', async () => {

@@ -62,6 +62,11 @@ STRICT_CASES = [
     ("empty-handler", "frontend/a.tsx", "export const p = { onPress: () => {} };\n"),
     ("layer-boundary", "frontend/farmer/screens/A.tsx", "import { x } from '../services/modules/a/b';\nexport const y = x;\n"),
     ("layer-boundary", "frontend/common/components/A.tsx", "import { supabase } from '../services/supabase/client';\nexport const s = supabase;\n"),
+    ("header-right", "frontend/navigation/stacks/A.tsx", "export const options = { headerRight: () => null };\n"),
+    ("header-right", "frontend/navigation/stacks/A.tsx", "export const options = { headerLeft: () => null };\n"),
+    ("header-right", "frontend/navigation/stacks/A.tsx", "export const options = { headerTitle: () => null };\n"),
+    ("header-right", "frontend/navigation/stacks/A.tsx", "export const options = { headerTitle: LogoTitle };\n"),
+    ("header-right", "frontend/navigation/stacks/A.tsx", "export const options = { headerSearchBarOptions: { placeholder: 'Search' } };\n"),
 ]
 
 
@@ -85,6 +90,12 @@ def test_todo_with_an_issue_reference_is_allowed(repo):
 def test_test_code_is_exempt(repo, rel):
     write(repo, rel, "export const f = jest.fn();\nconst x = 1; // eslint-disable-line\nconsole.log(x);\n// TODO later\n")
     assert gate(repo).returncode == 0
+
+
+def test_the_baseline_is_written_with_lf_line_endings(repo):
+    write(repo, "frontend/a.ts", "export const x = 1;\n")
+    assert gate(repo, "--init").returncode == 0
+    assert b"\r" not in (repo / "scripts" / "reality-baseline.json").read_bytes()
 
 
 def test_a_strict_hit_blocks_creating_a_baseline(repo):
@@ -206,6 +217,17 @@ def test_the_layer_boundary_has_no_baseline_to_hide_behind(repo):
     assert gate(repo, "--init").returncode == 1  # a strict rule blocks even the first baseline
 
 
+def test_a_string_header_title_and_reading_the_option_are_allowed(repo):
+    write(
+        repo,
+        "frontend/navigation/A.tsx",
+        "export const o = { headerTitle: 'Orders', title: 'Orders' };\n"
+        "export const t = (options: { headerTitle?: unknown; title?: string }) =>\n"
+        "  typeof options.headerTitle === 'string' ? options.headerTitle : (options.title ?? '');\n",
+    )
+    assert gate(repo).returncode == 0
+
+
 def test_the_logger_is_the_only_file_that_may_use_the_console(repo):
     write(repo, "frontend/utils/logger.ts", "export const log = () => console.warn('x');\n")
     assert gate(repo).returncode == 0
@@ -214,6 +236,194 @@ def test_the_logger_is_the_only_file_that_may_use_the_console(repo):
     assert result.returncode == 1
     assert "[console-call]" in result.stderr
     assert "frontend/utils/other.ts" in result.stderr
+
+
+# ------------------------------------------------------------------ raw-style (A2, SRDS §43)
+
+
+RAW_STYLES = [
+    "export const s = { color: '#1A7F4B' };\n",
+    "export const s = { color: \"#fff\" };\n",
+    "export const s = { backgroundColor: 'rgba(0,0,0,0.5)' };\n",
+    "export const s = { borderColor: 'hsl(140, 60%, 30%)' };\n",
+    "export const s = { backgroundColor: `${colors.status.danger.mark}1A` };\n",
+    "export const s = { fontSize: 14 };\n",
+    "export const s = { lineHeight: 20 };\n",
+    "export const s = { letterSpacing: 2 };\n",
+    "export const s = { padding: 8 };\n",
+    "export const s = { marginHorizontal: -4 };\n",
+    "export const s = { gap: 12 };\n",
+    "export const s = { borderRadius: 999 };\n",
+    "export const s = { borderTopWidth: 1 };\n",
+    "export const s = { width: 44 };\n",
+    "export const s = { maxHeight: 320 };\n",
+    "export const s = { top: -6 };\n",
+    "export const I = () => <Icon size={22} />;\n",
+    "export const I = () => <Icon strokeWidth={3} />;\n",
+    "export const P = () => <Pressable hitSlop={8} />;\n",
+    # Forms the A2 verifier found passing the first version of the rule.
+    "export const Q = () => <QRCode width={200} height={200} />;\n",
+    "export const K = () => <KeyboardAvoidingView keyboardVerticalOffset={90} />;\n",
+    "export const s = { fontFamily: 'monospace' };\n",
+    "export const s = { marginTop: 0.5 };\n",
+    "export const s = { borderTopLeftRadius: 12 };\n",
+    "export const s = { borderStartWidth: 2 };\n",
+    # Forms the A2 verifier's second round found passing.
+    "export const s = { color: 'white' };\n",
+    "export const I = () => <Icon color=\"black\" />;\n",
+    "export const s = { paddingInline: 8 };\n",
+    "export const s = { marginBlockStart: 4 };\n",
+    "export const s = { insetBlock: 6 };\n",
+    "export const s = { borderStartStartRadius: 6 };\n",
+    "export const s = { flexBasis: 120 };\n",
+    "export const s = { transform: [{ translateY: 8 }] };\n",
+    "export const s = { marginTop: +8 };\n",
+    "export const s = { marginTop: .5 };\n",
+    "export const I = () => <Icon size=\"22\" />;\n",
+    "export const C = () => <Row iconSize={22} gap={8} />;\n",
+    # Round 3: a case only the size-like-prop pattern catches, and the forms it listed.
+    "export const C = () => <Row iconSize={22} />;\n",
+    "export const s = { fontWeight: '700' };\n",
+    "export const I = () => <Icon size={'24'} />;\n",
+    "export const I = () => <Icon color={'black'} />;\n",
+    "export const s = { outlineWidth: 2 };\n",
+    "export const s = { shadowRadius: 6 };\n",
+    # Round 4: each key and weight form on its own, so dropping any one of them fails a test.
+    "export const s = { outlineOffset: 2 };\n",
+    "export const s = { textShadowRadius: 4 };\n",
+    "export const s = { fontWeight: 700 };\n",
+    "export const s = { fontWeight: 'bold' };\n",
+    # Round 4 (L6): a literal inside a ternary or a colour object, and a colour written as a template string.
+    "export const s = { color: active ? 'red' : colors.ink };\n",
+    "export const I = () => <Icon color={active ? 'red' : colors.ink} />;\n",
+    "export const S = () => <Switch trackColor={{ false: 'gray' }} />;\n",
+    "export const S = () => <Switch trackColor={{ false: colors.line, true: 'green' }} />;\n",
+    "export const s = { color: `red` };\n",
+    "export const I = () => <Icon size={big ? 24 : size.icon} />;\n",
+    "export const C = () => <Row iconSize={big ? size.icon : 16} />;\n",
+    "export const P = () => <Pressable hitSlop={{ top: 8 }} />;\n",
+    "export const s = { padding: dense ? 8 : space[2] };\n",
+    # Round 4 re-check: the type styles as a ternary branch too.
+    "export const s = { fontSize: big ? 18 : typography.body.fontSize };\n",
+    "export const s = { lineHeight: dense ? 18 : 22 };\n",
+    "export const s = { letterSpacing: wide ? 1 : 0 };\n",
+    "export const s = { fontWeight: selected ? '700' : '400' };\n",
+    "export const s = { fontFamily: mono ? 'Courier' : undefined };\n",
+    # A literal as a fallback, and a ternary whose condition holds a string.
+    "export const s = { fontSize: size ?? 14 };\n",
+    "export const s = { fontSize: props.size || 14 };\n",
+    "export const s = { color: props.color || 'black' };\n",
+    "export const s = { padding: dense && 8 };\n",
+    "export const s = { padding: Platform.OS === 'ios' ? 12 : space[2] };\n",
+    # The literal in the false branch, after an index or optional chaining, behind a comparison, nested; and props.
+    "export const s = { color: active ? colors.ink : 'red' };\n",
+    "export const s = { padding: dense ? space[1] : 8 };\n",
+    "export const s = { fontSize: big ? typography.scale[3] : 14 };\n",
+    "export const s = { padding: insets[edge] ?? 8 };\n",
+    "export const s = { fontSize: props?.size ?? 14 };\n",
+    "export const s = { padding: count >= 2 ? 8 : space[1] };\n",
+    "export const s = { padding: !open ? 8 : space[1] };\n",
+    "export const s = { fontSize: big ? sizes.large : small ? 12 : sizes.body };\n",
+    "export const I = () => <Icon size={props.size || 22} />;\n",
+    "export const C = () => <Row iconSize={compact && 16} />;\n",
+    "export const s = { padding: status !== 'paid' ? 8 : space[1] };\n",
+    'export const s = { padding: Platform.OS === "ios" ? 12 : space[2] };\n',
+    "export const s = { padding: $dense ? 8 : space[1] };\n",
+    "export const s = { padding: !!dense ? 8 : space[1] };\n",
+]
+
+
+@pytest.mark.parametrize("content", RAW_STYLES)
+def test_raw_style_values_outside_the_theme_are_rejected(repo, content):
+    write(repo, "frontend/common/components/A.tsx", content)
+    result = gate(repo)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "[raw-style]" in result.stderr
+
+
+def test_theme_tokens_and_values_outside_the_visual_system_are_allowed(repo):
+    write(
+        repo,
+        "frontend/common/components/A.tsx",
+        """\
+        export const s = {
+          padding: 0, margin: 0, top: 0, flex: 1, opacity: 0.8, zIndex: 2, aspectRatio: 1.5, elevation: 0,
+          width: '40%', borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: space[2], borderRadius: radius.pill,
+          height: size.photoHero, fontSize: typography.body.fontSize, color: colors.ink,
+        };
+        export const I = () => <Icon size={theme.size.iconMd} strokeWidth={theme.size.iconStroke} />;
+        export const t = { color: active ? colors.accent : colors.ink, backgroundColor: on ? colors.soft : 'transparent' };
+        export const u = { padding: dense ? space[1] : 0, color: `${colors.ink}` };
+        export const S = () => <Switch trackColor={{ false: colors.line, true: accent.fill }} />;
+        export const J = () => <Icon size={big ? size.iconLg : size.icon} />;
+        export const K = () => <Icon color={c} name={open ? 'chevron-up' : 'chevron-down'} />;
+        export const L = () => <Text style={{ color: colors.ink }} accessibilityLabel={on ? 'on' : 'off'} />;
+        export const M = () => <Text style={[styles.x, { marginTop: space[1] }]} numberOfLines={open ? undefined : 2} />;
+        export const hours = { start: '09:00', end: '17:00' };
+        export const columnsFor = (width: number) => (width >= 600 ? 3 : 2);
+        export const badgeFor = (color: Tone) => color === 'danger' ? 'solid' : 'soft';
+        export const contrastFor = (color: string): 'light' | 'dark' => (dark ? 'light' : 'dark');
+        export const grid = { width: w, columns: wide ? 3 : 2 };
+        let width: number; const cols = wide ? 3 : 2;
+        let height: number
+        const rows = tall ? 3 : 2
+        export const idx = { padding: space[dense ? 1 : 2], marginTop: space[level ?? 2] };
+        export const pick = { color: colors[selected ? 'accent' : 'ink'] };
+        export const color: Tone = isError ? 'danger' : 'neutral';
+        export const slot = { start: early ? '08:30' : '09:30' };
+        export const V = () => <View backgroundColor="transparent" />;
+        export const W = () => <Switch trackColor={{ false: 'transparent', true: accent.fill }} />;
+        const end: number = hasMore ? 1 : 0;
+        function choose(color: Tone = tone ?? 'neutral') {}
+        export const call = { color: colorFor(dark ? 'ink' : 'paper'), padding: scale(dense ? 1 : 2) };
+        export const pct = { width: `${half ? 50 : 100}%` };
+        export const N = () => <KeyboardAvoidingView keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0} />;
+        export const O = () => <Grid itemWidth={width / (wide ? 3 : 2)} />;
+        export const Q = () => <Icon size={sizes[big ? 1 : 0]} />;
+        export const step = { start: index > 0 ? index - 1 : 0 };
+        """,
+    )
+    assert gate(repo).returncode == 0
+
+
+def test_a_long_chain_of_operators_is_read_in_linear_time(repo):
+    # Two `[ \t]*` side by side in the ternary grammar once made each operator double the work: 22 chained `??` with no
+    # literal at the end took 7.6 s. 400 of them must now finish well inside the timeout.
+    chains = [
+        "padding: " + " ?? ".join(["a"] * 400),
+        "padding: " + "a ? b : " * 400 + "space[1]",
+        "padding: " + "a!==b?b:" * 400,
+    ]
+    lines = "".join(f"export const s{i} = {{ {chain} }};\n" for i, chain in enumerate(chains))
+    write(repo, "frontend/common/components/A.tsx", lines)
+    result = subprocess.run(
+        [sys.executable, "scripts/check_reality.py"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("rel", ["frontend/theme/colors.ts", "frontend/theme/nested/palette.ts", "frontend/a.test.tsx"])
+def test_the_theme_folder_and_tests_may_hold_raw_values(repo, rel):
+    write(repo, rel, "export const green = { mark: '#1A7F4B', fontSize: 14, padding: 8 };\n")
+    assert gate(repo).returncode == 0
+
+
+def test_the_app_entry_is_in_scope_and_nothing_outside_the_app_is(repo):
+    write(repo, "App.tsx", "export const s = { fontSize: 14 };\n")
+    assert "[raw-style]" in gate(repo).stderr
+    (repo / "App.tsx").unlink()
+    write(repo, "scripts/tool.ts", "export const s = { fontSize: 14 };\n")
+    assert gate(repo).returncode == 0
+
+
+def test_raw_style_has_no_baseline_to_hide_behind(repo):
+    write(repo, "frontend/common/components/A.tsx", "export const s = { padding: 8 };\n")
+    assert gate(repo, "--init").returncode == 1
 
 
 def test_a_rule_added_later_records_its_existing_debt_only_when_asked(repo):

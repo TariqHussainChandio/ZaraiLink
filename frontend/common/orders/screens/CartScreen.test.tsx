@@ -37,7 +37,7 @@ describe('CartScreen', () => {
     await render(<CartScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByText('Wheat seeds')).toBeTruthy();
     expect(screen.getByText('Rice seeds')).toBeTruthy();
-    expect(screen.getByText('Rs. 350')).toBeTruthy();
+    expect(screen.getByText('Rs 350')).toBeTruthy();
   });
 
   it('increments, decrements, and removes items through the store', async () => {

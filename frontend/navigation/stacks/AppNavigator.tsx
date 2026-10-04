@@ -1,10 +1,13 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams } from '@react-navigation/native';
-import { Home, MessageCircle, Package, ShoppingBag, Stethoscope, User } from 'lucide-react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { House, MessageCircle, Receipt, ScanLine, Stethoscope, Store, User } from 'lucide-react-native';
 import React from 'react';
 import { APP_TABS } from '../../common/constants/routes';
+import type { Role } from '../../common/constants/roles';
 import { useAuthStore } from '../../state/authStore';
-import { useTheme } from '../../theme';
+import { RoleScopeProvider } from '../../theme';
+import { renderTabBar, tabOptions } from '../tabOptions';
 import { ConsultationsNavigator, type ConsultationsStackParamList } from './ConsultationsNavigator';
 import { HomeNavigator, type HomeStackParamList } from './HomeNavigator';
 import { MarketplaceNavigator, type MarketplaceStackParamList } from './MarketplaceNavigator';
@@ -21,58 +24,83 @@ export type AppTabParamList = {
   [APP_TABS.Profile]: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
+type MarketRootParamList = {
+  Tabs: undefined;
+  [APP_TABS.Messages]: NavigatorScreenParams<MessagingStackParamList> | undefined;
+};
+
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
-// Shared tab shell for Buyer, Farmer, and Dealer (SRDS v4.0 §34). Expert and Admin get their
-// own dedicated navigators (ExpertNavigator, AdminNavigator) since their nav trees diverge
-// enough (no marketplace/orders for Expert; a long admin-only destination list) that
-// squeezing them into this shared tab bar would misrepresent their role's actual nav tree.
-export function AppNavigator() {
-  const theme = useTheme();
-  const role = useAuthStore(state => state.role);
-  // Dealer's SRDS nav tree omits Consultations; Buyer and Farmer include it.
-  const showConsultations = role === 'buyer' || role === 'farmer';
+const HOME_TAB = tabOptions('Home', House);
+const MARKET_TAB = tabOptions('Market', Store);
+const ORDERS_TAB = tabOptions('Orders', Receipt);
+const MESSAGES_TAB = tabOptions('Messages', MessageCircle);
+const ADVISORY_TAB = tabOptions('Advisory', ScanLine);
+const EXPERTS_TAB = tabOptions('Experts', Stethoscope);
+const ACCOUNT_TAB = tabOptions('Account', User);
 
+const Root = createNativeStackNavigator<MarketRootParamList>();
+type MarketRole = Extract<Role, 'farmer' | 'buyer' | 'dealer'>;
+
+// The marketplace roles' shells (the approved design system's "Role shells"). Each has its own tabs and accent; the
+// route names stay shared so a screen used by several roles navigates the same way in each:
+//   Farmer: Home · Market · Orders · Advisory · Account (Advisory: consultations, plus the disease scan)
+//   Buyer:  Home · Market · Orders · Experts · Account
+//   Dealer: Home · Market · Orders · Messages · Account (Home carries the inventory system's card)
+function MarketTabs({ role }: { role: MarketRole }) {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.colors.brand.primary,
-        tabBarInactiveTintColor: theme.colors.text.secondary,
-      }}
-    >
+    <Tab.Navigator tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
       <Tab.Screen
         name={APP_TABS.Home}
         component={HomeNavigator}
-        options={{ tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }}
+        options={HOME_TAB}
       />
       <Tab.Screen
         name={APP_TABS.Marketplace}
         component={MarketplaceNavigator}
-        options={{ tabBarIcon: ({ color, size }) => <ShoppingBag color={color} size={size} /> }}
+        options={MARKET_TAB}
       />
       <Tab.Screen
         name={APP_TABS.Orders}
         component={OrdersNavigator}
-        options={{ tabBarIcon: ({ color, size }) => <Package color={color} size={size} /> }}
+        options={ORDERS_TAB}
       />
-      {showConsultations && (
+      {role === 'dealer' ? (
+        <Tab.Screen
+          name={APP_TABS.Messages}
+          component={MessagingNavigator}
+          options={MESSAGES_TAB}
+        />
+      ) : (
         <Tab.Screen
           name={APP_TABS.Consultations}
           component={ConsultationsNavigator}
-          options={{ tabBarIcon: ({ color, size }) => <Stethoscope color={color} size={size} /> }}
+          options={
+            role === 'farmer'
+              ? ADVISORY_TAB
+              : EXPERTS_TAB
+          }
         />
       )}
       <Tab.Screen
-        name={APP_TABS.Messages}
-        component={MessagingNavigator}
-        options={{ tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} /> }}
-      />
-      <Tab.Screen
         name={APP_TABS.Profile}
         component={ProfileNavigator}
-        options={{ tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
+        options={ACCOUNT_TAB}
       />
     </Tab.Navigator>
+  );
+}
+
+export function AppNavigator() {
+  const role = (useAuthStore(state => state.role) ?? 'buyer') as MarketRole;
+  return (
+    <RoleScopeProvider scope={role}>
+      <Root.Navigator screenOptions={{ headerShown: false }}>
+        <Root.Screen name="Tabs">{() => <MarketTabs role={role} />}</Root.Screen>
+        {/* Farmers and buyers reach their conversations from Home's app bar; chat is a full-screen flow over the tabs.
+            Screens that start a chat navigate to Messages, which reaches this screen (or the dealer's tab) either way. */}
+        {role === 'dealer' ? null : <Root.Screen name={APP_TABS.Messages} component={MessagingNavigator} />}
+      </Root.Navigator>
+    </RoleScopeProvider>
   );
 }

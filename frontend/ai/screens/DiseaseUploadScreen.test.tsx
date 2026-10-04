@@ -48,7 +48,7 @@ describe('DiseaseUploadScreen', () => {
 
   it('disables Analyze until a photo is picked', async () => {
     await renderWithQuery(<DiseaseUploadScreen />, queryClient);
-    expect(screen.getByText('Analyze').parent?.props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Analyze' })).toBeDisabled();
   });
 
   it('picks a photo and enables Analyze', async () => {

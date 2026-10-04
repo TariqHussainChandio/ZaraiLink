@@ -184,10 +184,10 @@ async function fetchPreview(report: ReportWithReporter): Promise<string> {
       case 'message':
         return (await fetchMessageById(report.target_id)).body;
       case 'expert':
-        return (await fetchExpertById(report.target_id)).profile?.full_name ?? 'Unknown expert';
+        return (await fetchExpertById(report.target_id)).profile?.full_name || 'Unknown expert';
       case 'user': {
         const profiles = await fetchAllProfiles();
-        return profiles.find(p => p.id === report.target_id)?.full_name ?? 'Unknown user';
+        return profiles.find(p => p.id === report.target_id)?.full_name || 'Unknown user';
       }
       default:
         return report.target_id;

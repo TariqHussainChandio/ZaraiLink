@@ -4,10 +4,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Spinner } from '../../common/components';
 import { ActivityFeed } from '../../common/components/dashboards/ActivityFeed';
 import { BarChart } from '../../common/components/dashboards/BarChart';
-import { StatCard } from '../../common/components/dashboards/StatCard';
+import { StatTile } from '../../common/components/dashboards/StatTile';
 import { useFarmerAnalytics } from '../../common/analytics';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { formatRs } from '../../utils/money';
 
 export function FarmerAnalyticsScreen() {
   const theme = useTheme();
@@ -38,27 +39,27 @@ export function FarmerAnalyticsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.statsRow}>
-        <StatCard
+        <StatTile
           label="Listing Views"
           value={analytics.totalListingViews}
-          accent={theme.moduleAccents.marketplace}
+          accent={theme.colors.module.marketplace}
         />
-        <StatCard
+        <StatTile
           label="Orders"
           value={analytics.totalOrders}
-          accent={theme.moduleAccents.orders}
+          accent={theme.colors.module.orders}
         />
-        <StatCard
+        <StatTile
           label="Sales"
-          value={`Rs. ${analytics.totalSales.toFixed(0)}`}
-          accent={theme.moduleAccents.payments}
+          value={formatRs(analytics.totalSales)}
+          accent={theme.colors.module.payments}
         />
       </View>
 
       <Text style={styles.sectionTitle}>Popular Products</Text>
       <BarChart
         data={analytics.popularProducts.map(p => ({ label: p.title, value: p.unitsSold }))}
-        color={theme.roleColors.farmer}
+        color={theme.colors.accent.farmer.mark}
         emptyMessage="No completed sales yet"
       />
 
@@ -69,33 +70,32 @@ export function FarmerAnalyticsScreen() {
           id: p.listingId,
           title: p.title,
           subtitle: `${p.unitsSold} units sold`,
-          value: `Rs. ${p.revenue.toFixed(0)}`,
+          value: formatRs(p.revenue),
         }))}
       />
     </ScrollView>
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     statsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.md,
-      marginBottom: spacing.xl,
+      gap: space[3],
+      marginBottom: space[6],
     },
     sectionTitle: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
     },
   });
 }

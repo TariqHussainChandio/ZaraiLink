@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, EmptyState, Input, Sheet, Spinner } from '../../common/components';
+import { Button, EmptyState, TextField, Sheet, Spinner } from '../../common/components';
 import { useDeleteCategory, useSaveCategory } from '../hooks/admin';
 import { useCategories, type Category } from '../../common/marketplace';
 import { useAuthStore } from '../../state/authStore';
@@ -108,7 +108,7 @@ export function CategoryManagementScreen() {
               />
               <Button
                 label="Delete"
-                variant="destructive"
+                variant="danger"
                 fullWidth={false}
                 loading={savingId === item.id}
                 onPress={() => remove(item)}
@@ -136,20 +136,20 @@ export function CategoryManagementScreen() {
         <Text style={styles.sheetTitle}>
           {editing ? 'Edit Category' : 'New Category'}
         </Text>
-        <Input
+        <TextField
           label="Name"
           value={name}
           onChangeText={setName}
           placeholder="e.g. Seeds"
         />
-        <Input
+        <TextField
           label="Slug"
           value={slug}
           onChangeText={setSlug}
           placeholder="e.g. seeds"
           autoCapitalize="none"
         />
-        <Input
+        <TextField
           label="Icon (optional)"
           value={icon}
           onChangeText={setIcon}
@@ -165,45 +165,43 @@ export function CategoryManagementScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     row: {
-      paddingVertical: spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[3],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     info: {
-      marginBottom: spacing.sm,
+      marginBottom: space[2],
     },
     name: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     slug: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-      marginTop: spacing.xs / 2,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: space[1] / 2,
     },
     actions: {
       flexDirection: 'row',
-      gap: spacing.sm,
+      gap: space[2],
     },
     addButton: {
-      marginTop: spacing.lg,
+      marginTop: space[4],
     },
     sheetTitle: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.lg,
+      ...typography.title,
+      color: colors.ink,
+      marginBottom: space[4],
     },
   });
 }

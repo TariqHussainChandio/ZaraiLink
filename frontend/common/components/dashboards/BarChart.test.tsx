@@ -31,9 +31,9 @@ describe('BarChart', () => {
 
   it('formats the value with formatValue when given', async () => {
     await render(
-      <BarChart data={[{ label: 'Jan', value: 500 }]} color="#2E7D32" formatValue={v => `Rs. ${v}`} />,
+      <BarChart data={[{ label: 'Jan', value: 500 }]} color="#2E7D32" formatValue={v => `Rs ${v}`} />,
     );
-    expect(screen.getByText('Rs. 500')).toBeTruthy();
+    expect(screen.getByText('Rs 500')).toBeTruthy();
   });
 
   it('scales the tallest bar to the full available height, and shorter bars proportionally', async () => {

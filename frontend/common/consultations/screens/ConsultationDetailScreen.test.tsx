@@ -236,7 +236,7 @@ describe('ConsultationDetailScreen', () => {
     await renderWithQuery(<ConsultationDetailScreen />);
 
     await fireEvent.press(
-      await screen.findByLabelText('Recommended listing: Copper Fungicide, Rs. 850 per bottle'),
+      await screen.findByLabelText('Recommended listing: Copper Fungicide, Rs 850 per bottle'),
     );
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Marketplace, {
       screen: MARKETPLACE_ROUTES.ListingDetail,

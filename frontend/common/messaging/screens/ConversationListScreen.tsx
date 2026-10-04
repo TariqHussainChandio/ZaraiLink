@@ -36,7 +36,7 @@ export function ConversationListScreen({ navigation }: MessagingScreenProps<'Con
             onPress={() =>
               navigation.navigate(MESSAGING_ROUTES.Chat, {
                 conversationId: item.id,
-                otherUserName: item.otherParticipant?.full_name ?? 'Unknown',
+                otherUserName: item.otherParticipant?.full_name || '',
               })
             }
           />
@@ -56,7 +56,7 @@ function makeStyles({ colors }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
   });
 }

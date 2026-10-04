@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
+import { Button } from '../Button';
 
 export interface QuickAction {
   label: string;
@@ -11,6 +12,7 @@ export interface QuickActionsProps {
   actions: QuickAction[];
 }
 
+/** A dashboard's shortcuts: secondary buttons in the role's accent, so none competes with a screen's one primary action. */
 export function QuickActions({ actions }: QuickActionsProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -18,31 +20,18 @@ export function QuickActions({ actions }: QuickActionsProps) {
   return (
     <View style={styles.row}>
       {actions.map(action => (
-        <TouchableOpacity key={action.label} style={styles.action} onPress={action.onPress}>
-          <Text style={styles.label}>{action.label}</Text>
-        </TouchableOpacity>
+        <Button key={action.label} label={action.label} variant="secondary" fullWidth={false} onPress={action.onPress} />
       ))}
     </View>
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.sm,
-    },
-    action: {
-      backgroundColor: colors.brand.primary,
-      borderRadius: radii.md,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-    },
-    label: {
-      color: colors.neutral.white,
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
+      gap: space[2],
     },
   });
 }

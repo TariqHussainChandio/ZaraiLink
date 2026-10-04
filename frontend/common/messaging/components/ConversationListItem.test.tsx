@@ -28,6 +28,13 @@ describe('ConversationListItem', () => {
     expect(screen.getByText('Unknown')).toBeTruthy();
   });
 
+  it('shows "Unknown" for a participant whose name is empty, never a blank row', async () => {
+    await render(
+      <ConversationListItem conversation={{ ...baseConversation, otherParticipant: { id: 'u2', full_name: '', avatar_url: null } }} onPress={() => {}} />,
+    );
+    expect(screen.getByText('Unknown')).toBeTruthy();
+  });
+
   it('renders the last message body when present', async () => {
     const conversation: ConversationWithPreview = {
       ...baseConversation,

@@ -15,19 +15,18 @@ export function SplashScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.background.surface,
-      gap: spacing.lg,
+      backgroundColor: colors.surface,
+      gap: space[4],
     },
     title: {
-      fontSize: typography.sizes['3xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.brand.primary,
+      ...typography.display,
+      color: colors.accent.brand.ink,
     },
   });
 }

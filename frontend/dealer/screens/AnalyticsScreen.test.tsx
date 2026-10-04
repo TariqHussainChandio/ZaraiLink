@@ -47,11 +47,11 @@ describe('DealerAnalyticsScreen', () => {
     mockFetchDealerAnalytics.mockResolvedValue(analytics);
     await renderWithQuery(<DealerAnalyticsScreen />);
 
-    expect(await screen.findByText('Rs. 15000')).toBeTruthy();
+    expect(await screen.findByText('Rs 15,000')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();
     expect(screen.getByText('DAP Fertilizer')).toBeTruthy();
-    expect(screen.getByText('Rs. 8000 revenue')).toBeTruthy();
+    expect(screen.getByText('Rs 8,000 revenue')).toBeTruthy();
     expect(screen.getByText('20 units')).toBeTruthy();
   });
 
@@ -62,6 +62,6 @@ describe('DealerAnalyticsScreen', () => {
 
     mockFetchDealerAnalytics.mockResolvedValue(analytics);
     await fireEvent.press(screen.getByText('Retry'));
-    expect(await screen.findByText('Rs. 15000')).toBeTruthy();
+    expect(await screen.findByText('Rs 15,000')).toBeTruthy();
   });
 });

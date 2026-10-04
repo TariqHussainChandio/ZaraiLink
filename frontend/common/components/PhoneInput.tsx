@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input } from './Input';
+import { TextField } from './TextField';
 
 export interface PhoneInputProps {
   label?: string;
@@ -13,7 +13,7 @@ const E164_PATTERN = /^\+[1-9]\d{6,14}$/;
 
 export function PhoneInput({ label = 'Phone', value, onChange, error }: PhoneInputProps) {
   return (
-    <Input
+    <TextField
       label={label}
       keyboardType="phone-pad"
       placeholder="+923001234567"

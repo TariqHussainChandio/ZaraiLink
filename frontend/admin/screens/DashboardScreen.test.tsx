@@ -4,7 +4,7 @@ import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AdminDashboardScreen } from './DashboardScreen';
 import { fetchPlatformStats, type PlatformStats } from '../services/adminService';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
-import type { AdminHomeScreenProps } from '../../navigation/stacks/AdminNavigator';
+import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -34,7 +34,7 @@ const stats = (overrides: Partial<PlatformStats> = {}): PlatformStats => ({
 });
 
 function makeNavigation() {
-  return { navigate: jest.fn() } as unknown as AdminHomeScreenProps<'Dashboard'>['navigation'];
+  return { navigate: jest.fn() } as unknown as AdminScreenProps<'Dashboard'>['navigation'];
 }
 
 beforeEach(() => {
@@ -74,40 +74,19 @@ describe('AdminDashboardScreen', () => {
     expect(await screen.findByText('120')).toBeTruthy();
   });
 
-  it('navigates to each admin destination via Quick Actions', async () => {
+  it('links the overview to analytics and notifications; the other destinations have their own tabs', async () => {
     mockFetchStats.mockResolvedValue(stats());
     const navigation = makeNavigation();
     await renderWithQuery(<AdminDashboardScreen navigation={navigation} route={{} as never} />);
     await screen.findByText('120');
 
-    await fireEvent.press(screen.getByText('Manage Users'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.UserManagement);
-
-    await fireEvent.press(screen.getByText('Moderate Listings'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.ListingModeration);
-
-    await fireEvent.press(screen.getByText('Expert Verification'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.ExpertVerification);
-
-    const ordersMatches = screen.getAllByText('Orders');
-    const ordersTile = ordersMatches.at(-1);
-    if (!ordersTile) throw new Error('the Orders tile was not rendered');
-    await fireEvent.press(ordersTile);
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Orders);
-
-    await fireEvent.press(screen.getByText('Reports'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Reports);
-
-    await fireEvent.press(screen.getByText('Categories'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Categories);
-
-    await fireEvent.press(screen.getByText('Reference Data'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.ReferenceData);
-
-    await fireEvent.press(screen.getByText('Audit Logs'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.AuditLogs);
-
     await fireEvent.press(screen.getByText('Analytics'));
     expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Analytics);
+
+    await fireEvent.press(screen.getByText('Notifications'));
+    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Notifications);
+
+    expect(screen.queryByText('Manage Users')).toBeNull();
+    expect(screen.queryByText('Audit Logs')).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import React from 'react';
 import { MESSAGING_ROUTES } from '../../common/constants/routes';
 import { ChatScreen } from '../../common/messaging/screens/ChatScreen';
 import { ConversationListScreen } from '../../common/messaging/screens/ConversationListScreen';
+import { stackScreenOptions } from '../stackHeader';
 
 export type MessagingStackParamList = {
   [MESSAGING_ROUTES.ConversationList]: undefined;
@@ -17,7 +18,7 @@ const Stack = createNativeStackNavigator<MessagingStackParamList>();
 
 export function MessagingNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
+    <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen
         name={MESSAGING_ROUTES.ConversationList}
         component={ConversationListScreen}
@@ -26,7 +27,7 @@ export function MessagingNavigator() {
       <Stack.Screen
         name={MESSAGING_ROUTES.Chat}
         component={ChatScreen}
-        options={({ route }) => ({ title: route.params.otherUserName })}
+        options={({ route }) => ({ title: route.params.otherUserName || 'Conversation' })}
       />
     </Stack.Navigator>
   );

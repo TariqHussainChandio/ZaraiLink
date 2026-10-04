@@ -56,44 +56,42 @@ export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) 
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     container: {
-      marginTop: spacing.xl,
+      marginTop: space[6],
     },
     title: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
     },
     row: {
-      paddingVertical: spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[2],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     itemHeaderRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: spacing.sm,
+      gap: space[2],
     },
     itemTitle: {
       flex: 1,
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.primary,
+      ...typography.caption,
+      color: colors.ink,
     },
     itemValue: {
       flex: 0,
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
     },
     itemSubtitle: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

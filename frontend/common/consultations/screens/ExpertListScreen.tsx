@@ -57,14 +57,14 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      padding: spacing.lg,
+      padding: space[4],
     },
   });
 }

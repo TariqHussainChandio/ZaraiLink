@@ -1,11 +1,10 @@
 import { SlidersHorizontal } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, Input, LocationPicker, Sheet } from '../../components';
+import { Button, Chip, LocationPicker, Sheet, TextField } from '../../components';
 import { useCrops } from '../hooks/marketplace';
-import { useTheme, type Theme } from '../../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
 import type { Category } from '../types/marketplace';
-import { CategoryChip } from './CategoryChip';
 
 export interface FilterBarProps {
   search: string;
@@ -33,7 +32,8 @@ export function FilterBar({
   onApplyMoreFilters,
 }: FilterBarProps) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draftMinPrice, setDraftMinPrice] = useState(minPrice ? String(minPrice) : '');
   const [draftMaxPrice, setDraftMaxPrice] = useState(maxPrice ? String(maxPrice) : '');
@@ -79,7 +79,7 @@ export function FilterBar({
     <View style={styles.container}>
       <View style={styles.searchRow}>
         <View style={styles.searchField}>
-          <Input
+          <TextField
             placeholder="Search listings..."
             value={search}
             onChangeText={onSearchChange}
@@ -93,7 +93,7 @@ export function FilterBar({
             activeMoreFiltersCount > 0 ? `Filters, ${activeMoreFiltersCount} active` : 'Filters'
           }
         >
-          <SlidersHorizontal color={theme.colors.brand.primary} size={20} />
+          <SlidersHorizontal color={accent.mark} size={theme.size.iconButton} />
           {activeMoreFiltersCount > 0 ? (
             <View style={styles.filterBadge}>
               <Text style={styles.filterBadgeLabel}>{activeMoreFiltersCount}</Text>
@@ -106,13 +106,13 @@ export function FilterBar({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.chipRow}
       >
-        <CategoryChip
+        <Chip
           label="All"
           selected={selectedCategoryId === null}
           onPress={() => onSelectCategory(null)}
         />
         {categories.map(category => (
-          <CategoryChip
+          <Chip
             key={category.id}
             label={category.name}
             selected={selectedCategoryId === category.id}
@@ -127,7 +127,7 @@ export function FilterBar({
 
           <View style={styles.priceRow}>
             <View style={styles.priceField}>
-              <Input
+              <TextField
                 testID="filter-min-price"
                 label="Min price"
                 keyboardType="numeric"
@@ -136,7 +136,7 @@ export function FilterBar({
               />
             </View>
             <View style={styles.priceField}>
-              <Input
+              <TextField
                 testID="filter-max-price"
                 label="Max price"
                 keyboardType="numeric"
@@ -160,7 +160,7 @@ export function FilterBar({
               <Text style={styles.label}>Crop</Text>
               <View style={styles.chipRow}>
                 {crops.map(crop => (
-                  <CategoryChip
+                  <Chip
                     key={crop.id}
                     label={crop.name}
                     selected={draftCropName === crop.name}
@@ -179,71 +179,69 @@ export function FilterBar({
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, size, borders, fontWeight }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
+      paddingHorizontal: space[4],
+      paddingTop: space[3],
     },
     searchRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: spacing.sm,
+      gap: space[2],
     },
     searchField: {
       flex: 1,
     },
     filterButton: {
-      width: 44,
-      height: 44,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      borderColor: colors.border,
+      width: size.touchMin,
+      height: size.touchMin,
+      borderRadius: radius.sm,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
       alignItems: 'center',
       justifyContent: 'center',
     },
     filterBadge: {
       position: 'absolute',
-      top: -4,
-      right: -4,
-      backgroundColor: colors.brand.primary,
-      borderRadius: radii.full,
-      minWidth: 16,
-      height: 16,
-      paddingHorizontal: 3,
+      top: -space[1],
+      right: -space[1],
+      backgroundColor: accent.fill,
+      borderRadius: radius.pill,
+      minWidth: size.countBadge,
+      height: size.countBadge,
+      paddingHorizontal: space[1],
       alignItems: 'center',
       justifyContent: 'center',
     },
     filterBadgeLabel: {
-      color: colors.neutral.white,
-      fontSize: 10,
-      fontWeight: '700',
+      color: colors.onAccent,
+      ...typography.code,
+      fontWeight: fontWeight.bold,
     },
     chipRow: {
-      paddingBottom: spacing.md,
+      paddingBottom: space[3],
     },
     sheetTitle: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.md,
+      ...typography.title,
+      color: colors.ink,
+      marginBottom: space[3],
     },
     priceRow: {
       flexDirection: 'row',
-      gap: spacing.md,
+      gap: space[3],
     },
     priceField: {
       flex: 1,
     },
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[1],
     },
     applyButton: {
-      marginTop: spacing.md,
-      marginBottom: spacing.sm,
+      marginTop: space[3],
+      marginBottom: space[2],
     },
   });
 }

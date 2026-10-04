@@ -61,57 +61,54 @@ export function DiseaseUploadScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     title: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.xs,
+      ...typography.title,
+      color: colors.ink,
+      marginBottom: space[1],
     },
     subtitle: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      lineHeight: typography.lineHeights.sm,
-      marginBottom: spacing.lg,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[4],
     },
     label: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.medium,
-      color: colors.text.secondary,
-      marginBottom: spacing.sm,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[2],
     },
     preview: {
       width: '100%',
-      height: 220,
-      borderRadius: radii.md,
-      backgroundColor: colors.border,
-      marginBottom: spacing.md,
+      height: size.photoHero,
+      borderRadius: radius.sm,
+      backgroundColor: colors.line,
+      marginBottom: space[3],
     },
     addImage: {
-      height: 160,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      borderColor: colors.border,
+      height: size.cardImage,
+      borderRadius: radius.sm,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
       borderStyle: 'dashed',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     addImageLabel: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     submit: {
-      marginTop: spacing.md,
-      marginBottom: spacing['2xl'],
+      marginTop: space[3],
+      marginBottom: space[8],
     },
   });
 }

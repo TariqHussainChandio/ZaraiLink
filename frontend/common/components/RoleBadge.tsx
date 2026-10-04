@@ -1,40 +1,47 @@
+import { ShieldCheck, ShoppingBag, Sprout, Stethoscope, Store, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useTheme, type Theme } from '../../theme';
 import { ROLE_LABELS, type Role } from '../constants/roles';
+import { type Theme, useTheme } from '../../theme';
+
+const ROLE_ICON: Record<Role, LucideIcon> = {
+  farmer: Sprout,
+  buyer: ShoppingBag,
+  dealer: Store,
+  expert: Stethoscope,
+  admin: ShieldCheck,
+};
 
 export interface RoleBadgeProps {
   role: Role;
 }
 
+/** A person's role in the role's own colour (SRDS §44), with its icon. */
 export function RoleBadge({ role }: RoleBadgeProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const color = theme.roleColors[role];
+  const accent = theme.colors.accent[role];
+  const Icon = ROLE_ICON[role];
 
   return (
-    <View style={[styles.badge, { borderColor: color }]}>
-      <Text style={[styles.label, { color }]}>{ROLE_LABELS[role]}</Text>
+    <View style={[styles.badge, { backgroundColor: accent.soft }]}>
+      <Icon color={accent.ink} size={theme.size.iconSm} />
+      <Text style={[styles.label, { color: accent.ink }]}>{ROLE_LABELS[role]}</Text>
     </View>
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ components, radius, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     badge: {
       alignSelf: 'flex-start',
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs / 2,
-      borderRadius: radii.full,
-      borderWidth: 1,
-      // Deliberately literal white, not `colors.background.surface` — this badge is designed
-      // to stay legible whether it sits on the app's own background OR overlaid on a photo (e.g.
-      // marketplace listing cards), and a photo doesn't respect the app's theme.
-      backgroundColor: colors.neutral.white,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: components.badge.gap,
+      paddingHorizontal: components.badge.paddingX,
+      paddingVertical: components.badge.paddingY,
+      borderRadius: radius.pill,
     },
-    label: {
-      fontSize: typography.sizes.xs,
-      fontWeight: typography.weights.semibold,
-    },
+    label: { ...typography.caption, fontWeight: fontWeight.semibold },
   });
 }

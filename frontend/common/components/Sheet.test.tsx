@@ -20,7 +20,7 @@ describe('Sheet', () => {
         <Text>Sheet content</Text>
       </Sheet>,
     );
-    fireEvent.press(screen.getByTestId('sheet-backdrop'));
+    fireEvent.press(screen.getByTestId('sheet-backdrop', { includeHiddenElements: true }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Input } from '../../components';
+import { Banner, Button, TextField } from '../../components';
 import { useUpdatePassword } from '../../profile';
 import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
@@ -61,7 +61,7 @@ export function ResetPasswordScreen() {
         control={control}
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="New password"
             secureTextEntry
             value={value}
@@ -75,7 +75,7 @@ export function ResetPasswordScreen() {
         control={control}
         name="confirmPassword"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Confirm password"
             secureTextEntry
             value={value}
@@ -86,7 +86,15 @@ export function ResetPasswordScreen() {
         )}
       />
 
-      {submitError ? <Text style={styles.errorBanner}>{submitError}</Text> : null}
+      {submitError ? (
+
+        <View style={styles.errorBanner}>
+
+          <Banner tone="danger" title={submitError} />
+
+        </View>
+
+      ) : null}
 
       <Button
         label="Update password"
@@ -98,31 +106,29 @@ export function ResetPasswordScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
       justifyContent: 'center',
-      backgroundColor: colors.background.surface,
-      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      padding: space[4],
     },
     title: {
-      fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
-      marginBottom: spacing.sm,
+      ...typography.headline,
+      color: colors.ink,
+      marginBottom: space[2],
     },
     subtitle: {
-      fontSize: typography.sizes.base,
-      color: colors.text.secondary,
-      marginBottom: spacing.xl,
+      ...typography.body,
+      color: colors.ink2,
+      marginBottom: space[6],
     },
     errorBanner: {
-      color: colors.semantic.error,
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     submit: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
     },
   });
 }

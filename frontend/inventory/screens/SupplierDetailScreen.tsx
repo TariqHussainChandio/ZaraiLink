@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, EmptyState, Input, SelectField, Spinner } from '../../common/components';
+import { Button, EmptyState, TextField, SelectField, Spinner } from '../../common/components';
 import { useDeleteSupplier, useSaveSupplier, useSupplier } from '../hooks/dealer';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
@@ -124,7 +124,7 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
         control={control}
         name="name"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Supplier name"
             value={value}
             onChangeText={onChange}
@@ -138,7 +138,7 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
         control={control}
         name="contact"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Contact"
             value={value}
             onChangeText={onChange}
@@ -152,7 +152,7 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
         control={control}
         name="productsSupplied"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Products supplied"
             value={value}
             onChangeText={onChange}
@@ -167,7 +167,7 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
         control={control}
         name="notes"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
+          <TextField
             label="Notes"
             value={value}
             onChangeText={onChange}
@@ -194,27 +194,27 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
 
       <Button label="Save Supplier" loading={saveSupplier.isPending} onPress={handleSubmit(onSubmit)} style={styles.action} />
       {supplierId ? (
-        <Button label="Delete Supplier" variant="destructive" onPress={onDelete} style={styles.delete} />
+        <Button label="Delete Supplier" variant="danger" onPress={onDelete} style={styles.delete} />
       ) : null}
     </ScrollView>
   );
 }
 
-function makeStyles({ colors, spacing }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     action: {
-      marginTop: spacing.md,
+      marginTop: space[3],
     },
     delete: {
-      marginTop: spacing.md,
-      marginBottom: spacing['2xl'],
+      marginTop: space[3],
+      marginBottom: space[8],
     },
   });
 }

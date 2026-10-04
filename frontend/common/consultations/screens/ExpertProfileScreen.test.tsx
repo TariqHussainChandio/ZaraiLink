@@ -137,6 +137,7 @@ describe('ExpertProfileScreen', () => {
     expect(mockFindOrCreateConversation).toHaveBeenCalledWith('e1');
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
       screen: MESSAGING_ROUTES.Chat,
+      initial: false,
       params: { conversationId: 'conv1', otherUserName: 'Dr. Ahsan' },
     });
   });

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { useTheme, type Theme } from '../../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
 import type { Message } from '../types/messaging';
 
 export interface MessageBubbleProps {
@@ -12,7 +12,8 @@ export interface MessageBubbleProps {
 
 export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleProps) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
 
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
@@ -28,7 +29,7 @@ export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleP
                   style={styles.image}
                 />
               ) : (
-                <View key={path} style={[styles.image, styles.imagePlaceholder]} />
+                <View key={path} style={styles.image} />
               ),
             )}
           </View>
@@ -42,58 +43,59 @@ export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleP
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, size }: Theme, accent: Accent) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
-      marginVertical: spacing.xs / 2,
-      paddingHorizontal: spacing.lg,
+      marginVertical: space[1] / 2,
+      paddingHorizontal: space[4],
     },
     rowOwn: {
       justifyContent: 'flex-end',
     },
     bubble: {
       maxWidth: '78%',
-      borderRadius: radii.lg,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      paddingHorizontal: space[3],
+      paddingVertical: space[2],
     },
     bubbleOther: {
-      backgroundColor: colors.border,
-      borderBottomLeftRadius: radii.sm,
+      backgroundColor: colors.line,
+      borderBottomLeftRadius: radius.xs,
     },
     bubbleOwn: {
-      backgroundColor: colors.brand.primary,
-      borderBottomRightRadius: radii.sm,
+      backgroundColor: accent.fill,
+      borderBottomRightRadius: radius.xs,
     },
     imagesRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.xs,
-      marginBottom: spacing.xs,
+      gap: space[1],
+      marginBottom: space[1],
     },
     image: {
-      width: 140,
-      height: 140,
-      borderRadius: radii.md,
-      backgroundColor: colors.background.default,
+      width: size.photoLg,
+      height: size.photoLg,
+      borderRadius: radius.sm,
+      backgroundColor: colors.ground,
     },
-    imagePlaceholder: {},
     body: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.primary,
+      ...typography.bodyLg,
+      color: colors.ink,
     },
     bodyOwn: {
-      color: colors.neutral.white,
+      color: colors.onAccent,
     },
     time: {
-      marginTop: spacing.xs / 2,
-      fontSize: 10,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
       alignSelf: 'flex-end',
     },
     timeOwn: {
-      color: 'rgba(255,255,255,0.75)',
+      // Timestamps on an outgoing (filled) bubble: the text colour of the fill, a little quieter.
+      color: colors.onAccent,
+      opacity: 0.8,
     },
   });
 }

@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, Button, EmptyState, FilterChips, Input, Spinner } from '../../common/components';
+import { Badge, Button, ChipRow, EmptyState, Spinner, StatusBadge, TextField } from '../../common/components';
 import { useExpertDocumentUrl, useExpertVerifications, useReviewVerification } from '../hooks/admin';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
@@ -10,13 +10,6 @@ import type { VerificationStatus } from '../../expert';
 import { errorMessage } from '../../utils/errorMessage';
 
 type FilterValue = VerificationStatus | 'all';
-
-const STATUS_TONE: Record<VerificationStatus, 'warning' | 'success' | 'error' | 'neutral'> = {
-  pending: 'warning',
-  approved: 'success',
-  rejected: 'error',
-  suspended: 'error',
-};
 
 export function ExpertVerificationScreen() {
   const theme = useTheme();
@@ -77,7 +70,7 @@ export function ExpertVerificationScreen() {
 
   return (
     <View style={styles.container}>
-      <FilterChips options={filters} value={filter} onChange={setFilter} />
+      <ChipRow options={filters} value={filter} onChange={setFilter} />
       <FlashList
         contentContainerStyle={styles.list}
         data={experts}
@@ -88,8 +81,8 @@ export function ExpertVerificationScreen() {
           return (
             <View style={styles.card}>
               <View style={styles.headerRow}>
-                <Text style={styles.name}>{item.profile?.full_name ?? 'Unknown'}</Text>
-                <Badge label={item.verification_status} tone={STATUS_TONE[item.verification_status]} />
+                <Text style={styles.name}>{item.profile?.full_name || 'Unknown'}</Text>
+                <StatusBadge kind="application" status={item.verification_status} />
               </View>
               <Text style={styles.detail}>{item.degree ?? 'No degree listed'}</Text>
               <Text style={styles.detail}>{item.experience ?? 'No experience listed'}</Text>
@@ -103,14 +96,14 @@ export function ExpertVerificationScreen() {
               {latestVerification?.document_url ? (
                 <Button
                   label="View Document"
-                  variant="ghost"
+                  variant="quiet"
                   fullWidth={false}
                   style={styles.docButton}
                   onPress={() => viewDocument(item.id)}
                 />
               ) : null}
 
-              <Input
+              <TextField
                 placeholder="Decision note (optional)"
                 value={notes[item.id] ?? ''}
                 onChangeText={text => setNotes(prev => ({ ...prev, [item.id]: text }))}
@@ -127,7 +120,7 @@ export function ExpertVerificationScreen() {
                     />
                     <Button
                       label="Reject"
-                      variant="destructive"
+                      variant="danger"
                       fullWidth={false}
                       loading={updatingId === item.id}
                       onPress={() => decide(item, 'rejected')}
@@ -136,7 +129,7 @@ export function ExpertVerificationScreen() {
                 ) : item.verification_status === 'approved' ? (
                   <Button
                     label="Suspend"
-                    variant="destructive"
+                    variant="danger"
                     fullWidth={false}
                     loading={updatingId === item.id}
                     onPress={() => decide(item, 'suspended')}
@@ -159,55 +152,54 @@ export function ExpertVerificationScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      paddingTop: spacing.md,
+      backgroundColor: colors.surface,
+      paddingTop: space[3],
     },
     list: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.lg,
+      paddingHorizontal: space[4],
+      paddingBottom: space[4],
     },
     card: {
-      backgroundColor: colors.background.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.lg,
-      padding: spacing.md,
-      marginBottom: spacing.md,
+      backgroundColor: colors.surface,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
+      borderRadius: radius.md,
+      padding: space[3],
+      marginBottom: space[3],
     },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: spacing.xs,
+      marginBottom: space[1],
     },
     name: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     detail: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      marginTop: spacing.xs / 2,
+      ...typography.caption,
+      color: colors.ink2,
+      marginTop: space[1] / 2,
     },
     badgeRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: spacing.xs,
-      marginTop: spacing.sm,
+      gap: space[1],
+      marginTop: space[2],
     },
     docButton: {
-      marginTop: spacing.sm,
+      marginTop: space[2],
       alignSelf: 'flex-start',
     },
     actions: {
       flexDirection: 'row',
-      gap: spacing.sm,
-      marginTop: spacing.xs,
+      gap: space[2],
+      marginTop: space[1],
     },
   });
 }

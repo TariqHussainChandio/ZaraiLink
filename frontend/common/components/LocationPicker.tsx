@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Input } from './Input';
+import { TextField } from './TextField';
 
 export interface LocationPickerProps {
   country: string | null;
@@ -24,17 +24,17 @@ export function LocationPicker({
 }: LocationPickerProps) {
   return (
     <View>
-      <Input
+      <TextField
         label={labels?.country ?? 'Country'}
         value={country ?? ''}
         onChangeText={text => onCountryChange(text || null)}
       />
-      <Input
+      <TextField
         label={labels?.province ?? 'Province'}
         value={province ?? ''}
         onChangeText={text => onProvinceChange(text || null)}
       />
-      <Input
+      <TextField
         label={labels?.city ?? 'City'}
         value={city ?? ''}
         onChangeText={text => onCityChange(text || null)}

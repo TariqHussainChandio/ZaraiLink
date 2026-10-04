@@ -29,6 +29,8 @@ def change_filter(name: str) -> re.Pattern:
         ("frontend", "frontend/common/orders/hooks/orders.ts"),
         ("frontend", "frontend/services/api/client.ts"),
         ("frontend", "App.tsx"),
+        # A2: app.config.ts is type-checked by its own program (npm run typecheck runs both).
+        ("frontend", "tsconfig.node.json"),
         ("android", "frontend/navigation/stacks/RootNavigator.tsx"),
         ("backend", "backend/app/common/orders/service.py"),
         ("database", "supabase/migrations/20260928090000_admin_write_scope.sql"),

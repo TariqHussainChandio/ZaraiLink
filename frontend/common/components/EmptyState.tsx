@@ -1,22 +1,33 @@
+import { Inbox, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useTheme, type Theme } from '../../theme';
+import { type Accent, type Theme, useRoleAccent, useTheme } from '../../theme';
 import { Button } from './Button';
 
 export interface EmptyStateProps {
+  /** What is missing, plainly: "No orders yet". */
   title: string;
+  /** Why, or what will appear here. */
   description?: string;
+  icon?: LucideIcon;
   actionLabel?: string;
   onAction?: () => void;
 }
 
-export function EmptyState({ title, description, actionLabel, onAction }: EmptyStateProps) {
+/** Fills a list that has nothing in it yet, or failed to load, and offers the next step. */
+export function EmptyState({ title, description, icon: Icon = Inbox, actionLabel, onAction }: EmptyStateProps) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+      <View style={styles.disc}>
+        <Icon color={accent.ink} size={theme.size.iconLg} />
+      </View>
+      <Text style={styles.title} accessibilityRole="header">
+        {title}
+      </Text>
       {description ? <Text style={styles.description}>{description}</Text> : null}
       {actionLabel && onAction ? (
         <View style={styles.action}>
@@ -27,27 +38,20 @@ export function EmptyState({ title, description, actionLabel, onAction }: EmptyS
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, size, radius, typography }: Theme, accent: Accent) {
   return StyleSheet.create({
-    container: {
+    container: { alignItems: 'center', justifyContent: 'center', paddingVertical: space[8], paddingHorizontal: space[4], gap: space[2] },
+    disc: {
+      width: size.iconDisc,
+      height: size.iconDisc,
+      borderRadius: radius.pill,
+      backgroundColor: accent.soft,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: spacing['2xl'],
+      marginBottom: space[2],
     },
-    title: {
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      textAlign: 'center',
-    },
-    description: {
-      marginTop: spacing.xs,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      textAlign: 'center',
-    },
-    action: {
-      marginTop: spacing.lg,
-    },
+    title: { ...typography.title, color: colors.ink, textAlign: 'center' },
+    description: { ...typography.body, color: colors.ink2, textAlign: 'center' },
+    action: { marginTop: space[3] },
   });
 }

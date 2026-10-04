@@ -8,6 +8,7 @@ import { useRelatedListings } from '../../common/marketplace';
 import { useTheme, type Theme } from '../../theme';
 import { LOW_CONFIDENCE_THRESHOLD } from '../types/disease';
 import { navigateToConsultExpert } from './expertHandoff';
+import { formatRs } from '../../utils/money';
 
 // Only ever reached by Farmer — Disease Advisory is farmer-only (like Inventory is
 // dealer-only), gated at the Quick Actions level (`SellerDashboard.tsx`), so both the
@@ -107,7 +108,7 @@ export function DiseaseResultScreen() {
                   {listing.title}
                 </Text>
                 <Text style={styles.listingPrice}>
-                  {`Rs. ${listing.price.toFixed(0)}/${listing.unit}`}
+                  {`${formatRs(listing.price)}/${listing.unit}`}
                 </Text>
               </Card>
             </TouchableOpacity>
@@ -118,83 +119,81 @@ export function DiseaseResultScreen() {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, radius, typography, fontWeight, size }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     content: {
-      padding: spacing.lg,
+      padding: space[4],
     },
     image: {
       width: '100%',
-      height: 220,
-      borderRadius: radii.md,
-      backgroundColor: colors.border,
-      marginBottom: spacing.md,
+      height: size.photoHero,
+      borderRadius: radius.sm,
+      backgroundColor: colors.line,
+      marginBottom: space[3],
     },
     disclaimer: {
-      backgroundColor: colors.background.default,
-      marginBottom: spacing.lg,
+      backgroundColor: colors.ground,
+      marginBottom: space[4],
     },
     disclaimerText: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      ...typography.caption,
+      color: colors.ink2,
     },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: spacing.sm,
+      marginBottom: space[2],
     },
     disease: {
       flex: 1,
-      marginRight: spacing.sm,
-      fontSize: typography.sizes.lg,
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      marginRight: space[2],
+      ...typography.title,
+      color: colors.ink,
     },
     description: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      lineHeight: typography.lineHeights.sm,
-      marginBottom: spacing.md,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[3],
     },
     section: {
-      marginBottom: spacing.lg,
+      marginBottom: space[4],
     },
     sectionTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
-      marginBottom: spacing.xs,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
+      marginBottom: space[1],
     },
     sectionCaption: {
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
-      marginBottom: spacing.sm,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[2],
     },
     bullet: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      marginBottom: spacing.xs / 2,
+      ...typography.caption,
+      color: colors.ink2,
+      marginBottom: space[1] / 2,
     },
     action: {
-      marginBottom: spacing.lg,
+      marginBottom: space[4],
     },
     listingCard: {
-      marginBottom: spacing.sm,
+      marginBottom: space[2],
     },
     listingTitle: {
-      fontSize: typography.sizes.sm,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink,
     },
     listingPrice: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.xs,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

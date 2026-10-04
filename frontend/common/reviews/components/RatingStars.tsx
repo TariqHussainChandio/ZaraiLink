@@ -26,8 +26,8 @@ export function RatingStars({ value, size = 16, onChange }: RatingStarsProps) {
         const icon = (
           <Star
             size={size}
-            color={theme.colors.brand.accent}
-            fill={filled ? theme.colors.brand.accent : 'transparent'}
+            color={theme.colors.status.warning.mark}
+            fill={filled ? theme.colors.status.warning.mark : 'transparent'}
           />
         );
         if (!onChange) return <View key={star}>{icon}</View>;
@@ -35,7 +35,7 @@ export function RatingStars({ value, size = 16, onChange }: RatingStarsProps) {
           <TouchableOpacity
             key={star}
             onPress={() => onChange(star)}
-            hitSlop={8}
+            hitSlop={theme.space[2]}
             accessibilityRole="button"
             accessibilityLabel={`Rate ${star} star${star === 1 ? '' : 's'}`}
             accessibilityState={{ selected: star <= Math.round(value) }}
@@ -48,11 +48,11 @@ export function RatingStars({ value, size = 16, onChange }: RatingStarsProps) {
   );
 }
 
-function makeStyles({ spacing }: Theme) {
+function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
-      gap: spacing.xs / 2,
+      gap: space[1] / 2,
     },
   });
 }

@@ -1,14 +1,14 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button, Spinner } from '../../components';
-import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
+import { Button, Spinner, StatusBadge } from '../../components';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { usePayment } from '../hooks/payments';
 import { useTheme, type Theme } from '../../../theme';
 import type { Payment, PaymentMethod } from '../types/payments';
 import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 import { PAYMENT_METHOD_LABELS } from '../../constants/labels';
+import { formatRs } from '../../../utils/money';
 
 // A payment row stores the method as text; one this build does not know is shown as stored.
 function isPaymentMethod(method: string): method is PaymentMethod {
@@ -41,9 +41,9 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
 
   return (
     <View style={styles.container}>
-      <PaymentStatusBadge status={payment.status} />
+      <StatusBadge kind="payment" status={payment.status} />
       <Text style={styles.amount}>
-        {`Rs. ${payment.amount.toFixed(0)}`}
+        {formatRs(payment.amount)}
       </Text>
       <Text style={styles.method}>
         {isPaymentMethod(payment.method) ? PAYMENT_METHOD_LABELS[payment.method] : payment.method}
@@ -67,33 +67,32 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
   );
 }
 
-function makeStyles({ colors, spacing, typography }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      padding: space[4],
       alignItems: 'center',
     },
     amount: {
-      marginTop: spacing.lg,
-      fontSize: typography.sizes['2xl'],
-      fontWeight: typography.weights.bold,
-      color: colors.text.primary,
+      marginTop: space[4],
+      ...typography.headline,
+      color: colors.ink,
     },
     method: {
-      marginTop: spacing.xs,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1],
+      ...typography.caption,
+      color: colors.ink2,
     },
     waiting: {
-      marginTop: spacing.lg,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[4],
+      ...typography.caption,
+      color: colors.ink2,
       textAlign: 'center',
     },
     action: {
-      marginTop: spacing.md,
+      marginTop: space[3],
       alignSelf: 'stretch',
     },
   });

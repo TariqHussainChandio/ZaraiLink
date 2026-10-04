@@ -8,6 +8,9 @@ import { EditProfileScreen } from '../../common/profile/screens/EditProfileScree
 import { MfaEnrollmentScreen } from '../../common/profile/screens/MfaEnrollmentScreen';
 import { SettingsScreen } from '../../common/profile/screens/SettingsScreen';
 import { ViewProfileScreen } from '../../common/profile/screens/ViewProfileScreen';
+import { DesignCatalogueScreen } from '../DesignCatalogueScreen';
+import { designCatalogueAction } from '../headerActions';
+import { stackOptionsWithActions } from '../stackHeader';
 
 export type ProfileStackParamList = {
   [PROFILE_ROUTES.ViewProfile]: undefined;
@@ -16,20 +19,23 @@ export type ProfileStackParamList = {
   [PROFILE_ROUTES.ChangePassword]: undefined;
   [PROFILE_ROUTES.MfaEnrollment]: undefined;
   [PROFILE_ROUTES.DeleteAccount]: undefined;
+  [PROFILE_ROUTES.DesignCatalogue]: undefined;
 };
 
 export type ProfileScreenProps<RouteName extends keyof ProfileStackParamList> =
   NativeStackScreenProps<ProfileStackParamList, RouteName>;
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
+// Development builds only: the design catalogue, A2's evidence that every component follows the design system.
+const PROFILE_STACK_OPTIONS = stackOptionsWithActions({ [PROFILE_ROUTES.ViewProfile]: designCatalogueAction });
 
 export function ProfileNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
+    <Stack.Navigator screenOptions={PROFILE_STACK_OPTIONS}>
       <Stack.Screen
         name={PROFILE_ROUTES.ViewProfile}
         component={ViewProfileScreen}
-        options={{ title: 'Profile' }}
+        options={{ title: 'Account' }}
       />
       <Stack.Screen
         name={PROFILE_ROUTES.EditProfile}
@@ -56,6 +62,9 @@ export function ProfileNavigator() {
         component={DeleteAccountScreen}
         options={{ title: 'Delete Account' }}
       />
+      {__DEV__ ? (
+        <Stack.Screen name={PROFILE_ROUTES.DesignCatalogue} component={DesignCatalogueScreen} options={{ title: 'Design catalogue' }} />
+      ) : null}
     </Stack.Navigator>
   );
 }

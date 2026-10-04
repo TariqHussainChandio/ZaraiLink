@@ -50,7 +50,7 @@ describe('PaymentResultScreen', () => {
     await renderWithQuery(<PaymentResultScreen {...makeProps()} />);
 
     expect(await screen.findByText('Payment Confirmed')).toBeTruthy();
-    expect(screen.getByText('Rs. 1500')).toBeTruthy();
+    expect(screen.getByText('Rs 1,500')).toBeTruthy();
   });
 
   it('shows the failed copy for a failed payment', async () => {
@@ -63,6 +63,20 @@ describe('PaymentResultScreen', () => {
     });
     await renderWithQuery(<PaymentResultScreen {...makeProps()} />);
     expect(await screen.findByText('Payment Failed')).toBeTruthy();
+  });
+
+  it('reads a status this build does not know as its word instead of crashing', async () => {
+    mockFetchPayment.mockResolvedValue({
+      id: 'payment-1',
+      order_id: 'order-1',
+      amount: 1500,
+      method: 'cod',
+      status: 'partially_refunded',
+    });
+    await renderWithQuery(<PaymentResultScreen {...makeProps()} />);
+    expect(await screen.findByText('This payment has been updated.')).toBeTruthy();
+    // The badge and the title both read the vocabulary's fallback word.
+    expect(screen.getAllByText('Partially refunded')).toHaveLength(2);
   });
 
   it('shows a retryable error state when loading fails', async () => {

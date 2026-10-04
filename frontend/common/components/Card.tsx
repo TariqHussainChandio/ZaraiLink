@@ -1,23 +1,28 @@
 import React, { useMemo, useState } from 'react';
-import { Animated, StyleSheet, TouchableWithoutFeedback, View, ViewProps } from 'react-native';
-import { useTheme, type Theme } from '../../theme';
-
-const PRESSED_SCALE = 0.98;
+import { Animated, Pressable, StyleSheet, View, type ViewProps } from 'react-native';
+import { type Accent, type Theme, useRoleAccent, useTheme } from '../../theme';
 
 export interface CardProps extends ViewProps {
+  /** Makes the whole card one target. */
   onPress?: () => void;
+  /** md (16, default), sm (12, compact), none (the content pads itself, as for an image at the top). */
+  pad?: 'md' | 'sm' | 'none';
+  /** A chosen option: a 2px border in the scope's accent. */
+  selected?: boolean;
 }
 
-/** Plain static container when `onPress` is omitted (every existing usage). Becomes a
- * scale-on-press tappable surface when it is — same motion language as `Button`. */
-export function Card({ style, children, onPress, ...rest }: CardProps) {
+/** The facts about one thing (a listing, an order, an application) on `surface` with a 1px `line` border. Cards sit on
+ * `ground`, never on another card, and cast no shadow: only floating layers take elevation. */
+export function Card({ style, children, onPress, pad = 'md', selected = false, ...rest }: CardProps) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const [scale] = useState(() => new Animated.Value(1));
+  const look = [styles.card, styles[pad], selected && styles.selected, style];
 
   if (!onPress) {
     return (
-      <View style={[styles.card, style]} {...rest}>
+      <View style={look} {...rest}>
         {children}
       </View>
     );
@@ -32,26 +37,31 @@ export function Card({ style, children, onPress, ...rest }: CardProps) {
     }).start();
 
   return (
-    <TouchableWithoutFeedback
+    <Pressable
       accessibilityRole="button"
+      accessibilityState={{ selected }}
       onPress={onPress}
-      onPressIn={() => animateTo(PRESSED_SCALE)}
+      onPressIn={() => animateTo(theme.components.button.pressedScale)}
       onPressOut={() => animateTo(1)}
     >
-      <Animated.View style={[styles.card, { transform: [{ scale }] }, style]} {...rest}>
+      <Animated.View style={[look, { transform: [{ scale }] }]} {...rest}>
         {children}
       </Animated.View>
-    </TouchableWithoutFeedback>
+    </Pressable>
   );
 }
 
-function makeStyles({ colors, spacing, radii, shadows }: Theme) {
+function makeStyles({ colors, borders, components }: Theme, accent: Accent) {
   return StyleSheet.create({
     card: {
-      backgroundColor: colors.background.surface,
-      borderRadius: radii.lg,
-      padding: spacing.lg,
-      ...shadows.sm,
+      backgroundColor: colors.surface,
+      borderRadius: components.card.radius,
+      borderWidth: borders.hairline,
+      borderColor: colors.line,
     },
+    md: { padding: components.card.padding },
+    sm: { padding: components.card.paddingCompact },
+    none: { padding: 0, overflow: 'hidden' },
+    selected: { borderWidth: borders.selected, borderColor: accent.mark },
   });
 }

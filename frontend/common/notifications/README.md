@@ -7,7 +7,7 @@ In-app notifications and the unread badge.
 
 ## Public API
 
-Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `NotificationBellButton`, `useUnreadNotificationsCount`, `Notification`.
+Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `NotificationBellButton`, `Notification`.
 
 ## Inside
 

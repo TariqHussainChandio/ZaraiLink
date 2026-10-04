@@ -67,7 +67,10 @@ describe('MyListingsScreen', () => {
 
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
     expect(mockFetchListings).toHaveBeenCalledWith({ ownerId: 'user-1' });
-    expect(screen.getByText('active')).toBeTruthy();
+    // The status reads through the vocabulary: an active listing is "Listed", never the raw value.
+    expect(screen.getByText('Listed')).toBeTruthy();
+    expect(screen.queryByText('active')).toBeNull();
+    expect(screen.getByLabelText('Wheat seeds, Rs 100 per kg, Listed')).toBeTruthy();
   });
 
   it('shows an empty state when there are no listings', async () => {

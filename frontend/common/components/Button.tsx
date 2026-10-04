@@ -1,32 +1,40 @@
+import type { LucideIcon } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Pressable,
   StyleSheet,
   Text,
-  TextStyle,
-  TouchableOpacity,
-  TouchableOpacityProps,
-  ViewStyle,
+  View,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
-import { useTheme, type Theme } from '../../theme';
+import { type Accent, type Theme, useRoleAccent, useTheme } from '../../theme';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
+/** primary: the one main action on a screen; secondary: an alternative; quiet: low emphasis; danger: destructive. */
+type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'danger';
+/** lg (52) for sticky bars and form ends, md (44) inside cards, sm (36) in dense admin and inventory rows. */
+type ButtonSize = 'lg' | 'md' | 'sm';
 
-export interface ButtonProps extends TouchableOpacityProps {
+export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
+  /** Starts with a verb that names the result: "Place order", "Talk to an expert". */
   label: string;
   variant?: ButtonVariant;
+  size?: ButtonSize;
+  icon?: LucideIcon;
   loading?: boolean;
+  /** Stretch to the container's width (default). */
   fullWidth?: boolean;
+  style?: StyleProp<ViewStyle>;
 }
-
-// Scale-down-on-press, on top of the existing opacity feedback — a button should feel pressed,
-// not just dimmed. 0.97 (not smaller) so it reads as tactile rather than jumpy.
-const PRESSED_SCALE = 0.97;
 
 export function Button({
   label,
   variant = 'primary',
+  size = 'md',
+  icon: Icon,
   loading = false,
   fullWidth = true,
   disabled,
@@ -36,10 +44,14 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  const variantStyle = useMemo(() => variantStyles(theme)[variant], [theme, variant]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const isDisabled = disabled || loading;
   const [scale] = useState(() => new Animated.Value(1));
+  const { button } = theme.components;
+  const height = button.height[size];
+  const tone = isDisabled ? styles.disabled : styles[variant];
+  const labelColor = isDisabled ? theme.colors.inkDisabled : foreground(theme, accent, variant);
 
   const animateTo = (toValue: number) =>
     Animated.timing(scale, {
@@ -51,82 +63,58 @@ export function Button({
 
   return (
     <Animated.View style={[fullWidth && styles.fullWidth, { transform: [{ scale }] }, style]}>
-      <TouchableOpacity
+      <Pressable
         accessibilityRole="button"
-        accessibilityState={{ disabled: isDisabled }}
-        activeOpacity={0.75}
+        accessibilityLabel={label}
+        accessibilityState={{ disabled: isDisabled, busy: loading }}
         disabled={isDisabled}
+        hitSlop={theme.components.hitSlop(height)}
         onPressIn={e => {
-          animateTo(PRESSED_SCALE);
+          animateTo(button.pressedScale);
           onPressIn?.(e);
         }}
         onPressOut={e => {
           animateTo(1);
           onPressOut?.(e);
         }}
-        style={[styles.base, variantStyle.container, isDisabled && styles.disabled]}
+        style={[styles.base, { minHeight: height, paddingHorizontal: button.paddingX[size] }, tone]}
         {...rest}
       >
         {loading ? (
-          <ActivityIndicator
-            color={
-              variant === 'primary' || variant === 'destructive'
-                ? theme.colors.neutral.white
-                : theme.colors.brand.primary
-            }
-          />
+          <ActivityIndicator color={labelColor} />
         ) : (
-          <Text style={[styles.label, variantStyle.label]}>{label}</Text>
+          <View style={styles.content}>
+            {Icon ? <Icon color={labelColor} size={theme.size.iconButton} /> : null}
+            <Text style={[size === 'sm' ? styles.labelSm : styles.label, { color: labelColor }]}>{label}</Text>
+          </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 }
 
-function makeStyles({ spacing, radii, typography }: Theme) {
-  return StyleSheet.create({
-    base: {
-      borderRadius: radii.md,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-    },
-    fullWidth: {
-      alignSelf: 'stretch',
-    },
-    disabled: {
-      opacity: 0.5,
-    },
-    label: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold as TextStyle['fontWeight'],
-    },
-  });
+function foreground({ colors }: Theme, accent: Accent, variant: ButtonVariant): string {
+  if (variant === 'primary' || variant === 'danger') return colors.onAccent;
+  return accent.ink;
 }
 
-function variantStyles({ colors }: Theme): Record<ButtonVariant, { container: ViewStyle; label: TextStyle }> {
-  return {
-    primary: {
-      container: { backgroundColor: colors.brand.primary },
-      label: { color: colors.neutral.white },
+function makeStyles({ colors, components, borders, typography, fontWeight }: Theme, accent: Accent) {
+  return StyleSheet.create({
+    fullWidth: { alignSelf: 'stretch' },
+    base: {
+      borderRadius: components.button.radius,
+      borderWidth: borders.control,
+      borderColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    secondary: {
-      container: {
-        backgroundColor: colors.background.surface,
-        borderWidth: 1,
-        borderColor: colors.brand.primary,
-      },
-      label: { color: colors.brand.primary },
-    },
-    ghost: {
-      container: { backgroundColor: 'transparent' },
-      label: { color: colors.brand.primary },
-    },
-    destructive: {
-      container: { backgroundColor: colors.semantic.error },
-      label: { color: colors.neutral.white },
-    },
-  };
+    content: { flexDirection: 'row', alignItems: 'center', gap: components.button.gap },
+    primary: { backgroundColor: accent.fill },
+    secondary: { backgroundColor: colors.surface, borderColor: colors.lineStrong },
+    quiet: { backgroundColor: 'transparent' },
+    danger: { backgroundColor: colors.status.danger.fill },
+    disabled: { backgroundColor: colors.surfaceSunken },
+    label: { ...typography.label, textAlign: 'center' },
+    labelSm: { ...typography.caption, fontWeight: fontWeight.semibold, textAlign: 'center' },
+  });
 }

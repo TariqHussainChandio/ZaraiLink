@@ -90,7 +90,7 @@ describe('ConversationListScreen', () => {
     });
   });
 
-  it("falls back to 'Unknown' when the other participant is missing", async () => {
+  it('passes no name to the chat when the other participant is missing, so the chat titles itself', async () => {
     mockFetchConversations.mockResolvedValue([conversation({ otherParticipant: null })]);
     const navigation = makeNavigation();
     await renderWithQuery(<ConversationListScreen navigation={navigation} route={{} as never} />);
@@ -98,7 +98,7 @@ describe('ConversationListScreen', () => {
     await fireEvent.press(await screen.findByText('Unknown'));
     expect(navigation.navigate).toHaveBeenCalledWith(MESSAGING_ROUTES.Chat, {
       conversationId: 'conv-1',
-      otherUserName: 'Unknown',
+      otherUserName: '',
     });
   });
 });

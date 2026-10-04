@@ -6,12 +6,13 @@ import { Card, EmptyState, Spinner } from '../../common/components';
 import { HOME_ROUTES } from '../../common/constants/routes';
 import { useFarms } from '../hooks/farmer';
 import { useAuthStore } from '../../state/authStore';
-import { useTheme, type Theme } from '../../theme';
+import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
 export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const userId = useAuthStore(state => state.user?.id);
   const { data: farms = [], isPending, error, refetch } = useFarms(!!userId);
   const loading = isPending && !!userId;
@@ -63,6 +64,7 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
         }
       />
       <TouchableOpacity
+        accessibilityRole="button"
         style={styles.fab}
         onPress={() => navigation.navigate(HOME_ROUTES.CreateFarm)}
       >
@@ -72,42 +74,41 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography, shadows }: Theme) {
+function makeStyles({ colors, space, radius, typography, shadows }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
+      backgroundColor: colors.surface,
     },
     list: {
-      padding: spacing.lg,
-      paddingBottom: spacing['3xl'],
+      padding: space[4],
+      paddingBottom: space[12],
     },
     card: {
-      marginBottom: spacing.md,
+      marginBottom: space[3],
     },
     name: {
-      fontSize: typography.sizes.base,
-      fontWeight: typography.weights.semibold,
-      color: colors.text.primary,
+      ...typography.bodyStrong,
+      color: colors.ink,
     },
     meta: {
-      marginTop: spacing.xs / 2,
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
+      marginTop: space[1] / 2,
+      ...typography.caption,
+      color: colors.ink2,
     },
     fab: {
       position: 'absolute',
-      right: spacing.lg,
-      bottom: spacing.lg,
-      backgroundColor: colors.brand.primary,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      borderRadius: radii.full,
-      ...shadows.md,
+      right: space[4],
+      bottom: space[4],
+      backgroundColor: accent.fill,
+      paddingHorizontal: space[4],
+      paddingVertical: space[3],
+      borderRadius: radius.pill,
+      ...shadows.elev2,
     },
     fabLabel: {
-      color: colors.neutral.white,
-      fontWeight: '700',
+      ...typography.label,
+      color: colors.onAccent,
     },
   });
 }

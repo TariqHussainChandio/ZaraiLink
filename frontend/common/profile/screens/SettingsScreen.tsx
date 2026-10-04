@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { Button } from '../../components';
+import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
+import { Button, Chip } from '../../components';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { useUpdateProfile } from '../hooks/profile';
 import { useAuthStore } from '../../../state/authStore';
 import { useThemeStore, type ThemeMode } from '../../../state/themeStore';
-import { useTheme, type Theme } from '../../../theme';
+import { type Theme, useRoleAccent, useTheme } from '../../../theme';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
 
@@ -18,6 +18,7 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
   const role = useAuthStore(state => state.role);
   const refreshProfile = useAuthStore(state => state.refreshProfile);
   const theme = useTheme();
+  const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { mutateAsync: updateProfile } = useUpdateProfile();
   const themeMode = useThemeStore(state => state.mode);
@@ -52,29 +53,14 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
           value={profile?.notifications_enabled ?? true}
           onValueChange={onToggleNotifications}
           disabled={savingNotifications}
-          trackColor={{ true: theme.colors.brand.primary }}
+          trackColor={{ true: accent.mark }}
         />
       </View>
       <View style={styles.row}>
         <Text style={styles.rowLabel}>Appearance</Text>
         <View style={styles.chipRow}>
           {THEME_MODES.map(value => (
-            <TouchableOpacity
-              key={value}
-              style={[styles.chip, themeMode === value && styles.chipSelected]}
-              onPress={() => setThemeMode(value)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: themeMode === value }}
-            >
-              <Text
-                style={[
-                  styles.chipLabel,
-                  themeMode === value && styles.chipLabelSelected,
-                ]}
-              >
-                {THEME_MODE_LABELS[value]}
-              </Text>
-            </TouchableOpacity>
+            <Chip key={value} label={THEME_MODE_LABELS[value]} selected={themeMode === value} onPress={() => setThemeMode(value)} />
           ))}
         </View>
       </View>
@@ -101,55 +87,36 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
         onPress={() => navigation.navigate(PROFILE_ROUTES.DeleteAccount)}
         style={styles.action}
       />
-      <Button label="Sign Out" variant="destructive" onPress={signOut} style={styles.action} />
+      <Button label="Sign Out" variant="danger" onPress={signOut} style={styles.action} />
     </View>
   );
 }
 
-function makeStyles({ colors, spacing, radii, typography }: Theme) {
+function makeStyles({ colors, space, typography, borders }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.surface,
-      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      padding: space[4],
     },
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingVertical: space[3],
+      borderBottomWidth: borders.hairline,
+      borderBottomColor: colors.line,
     },
     rowLabel: {
-      fontSize: typography.sizes.base,
-      color: colors.text.primary,
+      ...typography.body,
+      color: colors.ink,
     },
     chipRow: {
       flexDirection: 'row',
-      gap: spacing.xs,
-    },
-    chip: {
-      paddingVertical: spacing.xs,
-      paddingHorizontal: spacing.md,
-      borderRadius: radii.full,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    chipSelected: {
-      backgroundColor: colors.brand.primary,
-      borderColor: colors.brand.primary,
-    },
-    chipLabel: {
-      fontSize: typography.sizes.sm,
-      color: colors.text.secondary,
-      fontWeight: typography.weights.medium,
-    },
-    chipLabelSelected: {
-      color: colors.neutral.white,
+      gap: space[1],
     },
     action: {
-      marginTop: spacing.xl,
+      marginTop: space[6],
     },
   });
 }
