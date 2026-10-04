@@ -1,7 +1,8 @@
 # ZaraiLink Plan of Record
 
 > **Status (2026-10-04): A0, A1 and A2 closed; A3a closed (PR #25, merge commit `59d57fc`); A3b next. The A3a migration
-> and the reauthentication template are not yet on the hosted project (they wait for the maintainer's approval).**
+> is on the hosted project (pushed 2026-10-04); the reauthentication template waits for `config push` with the SMTP
+> secrets set.**
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is
 >   configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
 >   Supabase's password rules, reauthentication for old sessions, phone sign-up off).

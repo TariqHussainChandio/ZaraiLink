@@ -469,8 +469,10 @@ approval email goes through a backend SMTP seam (local Mailpit; hosted Blocked u
   Android build and `ci-required`.
 - `zl-verifier` round 1: NOT VERIFIED (the admin side could not decide on a device), every finding fixed; round 2:
   VERIFIED WITH FINDINGS (Low only), fixed or recorded below.
-- Not yet on the hosted project: the migration (`npx supabase db push`) and the reauthentication template (`npx
-  supabase config push`), each after the maintainer's approval at the time.
+- Hosted project: the migration was pushed on 2026-10-04 with the maintainer's approval (`npx supabase db push`;
+  58 migrations, local and remote in step). The reauthentication template is not pushed: `npx supabase config push`
+  needs the `SUPABASE_AUTH_SMTP_*` secrets set in the maintainer's shell, or it would blank the hosted SMTP settings;
+  until then an old hosted session gets Supabase's default code email.
 - **Database** (`20261005080000_account_status.sql`, ported by hand from the parked branch and rebuilt on today's
   policies; its listings section would have restored the admin branch without a second factor):
   - `profiles.account_status`, `account_status_reason` and `account_status_changed_at`;
