@@ -464,8 +464,13 @@ third check of that found no false positive and one slow case (chained operators
 its own; `account_status` is `pending | approved | rejected`, with suspension staying `profiles.is_suspended`; the
 approval email goes through a backend SMTP seam (local Mailpit; hosted Blocked until G1).
 
-**A3a status (2026-10-04): built on branch `a3a/account-status`. `zl-verifier` round 1: NOT VERIFIED (the admin
-side could not decide on a device), every finding fixed; round 2: VERIFIED WITH FINDINGS (Low only). Ready to merge.**
+**A3a status (2026-10-04): done.**
+- PR #25 was merged with a merge commit (`59d57fc`); CI green on the PR (run 37202258186), every job including the
+  Android build and `ci-required`.
+- `zl-verifier` round 1: NOT VERIFIED (the admin side could not decide on a device), every finding fixed; round 2:
+  VERIFIED WITH FINDINGS (Low only), fixed or recorded below.
+- Not yet on the hosted project: the migration (`npx supabase db push`) and the reauthentication template (`npx
+  supabase config push`), each after the maintainer's approval at the time.
 - **Database** (`20261005080000_account_status.sql`, ported by hand from the parked branch and rebuilt on today's
   policies; its listings section would have restored the admin branch without a second factor):
   - `profiles.account_status`, `account_status_reason` and `account_status_changed_at`;

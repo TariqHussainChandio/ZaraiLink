@@ -1,7 +1,7 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-10-04): A0, A1 and A2 closed; A3 in progress (A3a verified on `a3a/account-status`, ready to
-> merge; A3b next).**
+> **Status (2026-10-04): A0, A1 and A2 closed; A3a closed (PR #25, merge commit `59d57fc`); A3b next. The A3a migration
+> and the reauthentication template are not yet on the hosted project (they wait for the maintainer's approval).**
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is
 >   configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
 >   Supabase's password rules, reauthentication for old sessions, phone sign-up off).
@@ -146,7 +146,7 @@ Agreed before the phase that needs them. Each has a contract test, so a lane can
 
 | Contract | Producer → consumer | Shape | Phase |
 |---|---|---|---|
-| Account status | `zl-db`, `zl-backend-core` → every lane | `profiles.account_status` (`pending`, `approved`, `rejected`) for dealers and experts; SUSPENDED stays `profiles.is_suspended` (maintainer, 2026-10-04). DB helpers `is_account_approved()`, `is_approved_dealer()`, `is_approved_expert()`, `caller_role()`, `is_seller_role(id)`; a decision only through `decide_account_status()` (aal2, audited in the same transaction). API: every `get_current_user` and `require_role` dependency admits a dealer or expert only when approved (403 `account_not_approved`); `get_current_user_any_status` and `require_role_any_status` for the few routes a pending user needs; a session from before the approval gets 403 `sign_in_again` | A3 (A3a done on its branch) |
+| Account status | `zl-db`, `zl-backend-core` → every lane | `profiles.account_status` (`pending`, `approved`, `rejected`) for dealers and experts; SUSPENDED stays `profiles.is_suspended` (maintainer, 2026-10-04). DB helpers `is_account_approved()`, `is_approved_dealer()`, `is_approved_expert()`, `caller_role()`, `is_seller_role(id)`; a decision only through `decide_account_status()` (aal2, audited in the same transaction). API: every `get_current_user` and `require_role` dependency admits a dealer or expert only when approved (403 `account_not_approved`); `get_current_user_any_status` and `require_role_any_status` for the few routes a pending user needs; a session from before the approval gets 403 `sign_in_again` | A3 (A3a done, PR #25) |
 | Module public API | each module → the others | frontend `index.ts` exports; backend `service.py` functions; no deep imports | A1 |
 | OpenAPI document | API lanes → app lanes | `backend/openapi.json` and the generated client, regenerated at each checkpoint | all |
 | Order dispatched event | `zl-commerce` → `zl-inventory-api` | an `order_events` row (`id`, `order_id`, `order_item_id`, `seller_id`, `listing_id`, `quantity`, `type = 'dispatched'`, `created_at`) written in the dispatch transaction, unique per order line | A4 → B3 |
