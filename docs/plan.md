@@ -1,6 +1,6 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-10-04): A0 and A1 closed; A2 verified, awaiting the merge. Next: A3.**
+> **Status (2026-10-04): A0, A1 and A2 closed. Next: A3.**
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is
 >   configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
 >   Supabase's password rules, reauthentication for old sessions, phone sign-up off).
@@ -9,11 +9,11 @@
 > - **A1, modular restructure** (PR #15, merge commit `8ddd846`): the code is in the SRDS module layout (section 2),
 >   with no behaviour change; the strict `module-boundary` rule is at zero, and `zl-verifier` signed it off after four
 >   rounds (`docs/plan-ecommerce.md` A1).
-> - **A2, design system and app shell** (branch `a2/design-system`, not yet merged): the theme, components and five
->   role shells from the approved design system (D14), with the strict `raw-style` rule at zero; proven on the Pixel 8
->   emulator as each role, in light and dark (`docs/plan-ecommerce.md` A2). `zl-verifier` rounds 1–3 found ten, twelve
->   and eight issues, all fixed; round 4 verified it; its seven Low follow-ups and the five small
->   items a re-check of them found are fixed. The merge is next.
+> - **A2, design system and app shell** (PR #22, merge commit `64fa667`): the theme, components and five role shells
+>   from the approved design system (D14), with the strict `raw-style` and `header-right` rules at zero; proven on the
+>   Pixel 8 emulator as each role, in light and dark. `zl-verifier` signed it off in its fourth round, and narrower
+>   checks of the follow-up fixes left nothing above Low (`docs/plan-ecommerce.md` A2). The same PR patched transitive
+>   npm advisories that newly failed the dependency scan.
 > - An early build of A3's account status, email-only sign-in and Application Status screen is parked, unmerged, on
 >   branch `wip/a3-account-status` (its migration is not pushed); A3 ports it by hand with `scripts/a1/moves.json`.
 >

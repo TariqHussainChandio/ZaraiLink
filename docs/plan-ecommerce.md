@@ -283,12 +283,21 @@ shells and the status vocabulary.
 
 **Exit:** component catalogue screenshots in light and dark; `raw-style` and `module-boundary` at zero.
 
-**Status (2026-10-04): built on branch `a2/design-system`, in one sequential pass (the maintainer's choice).
+**Status (2026-10-04): done.**
+- PR #22 was merged with a merge commit (`64fa667`).
+- `zl-verifier` verified it in its fourth round; every finding of the four rounds and of the narrower checks of the
+  follow-up fixes is fixed or recorded as a known limit below.
+- CI is green on the PR (run 37163173336), every job including the Android build and `ci-required`. The run before it
+  failed the dependency scan on new advisories against transitive npm packages that `main` already shipped; the PR
+  moved `brace-expansion`, `fast-uri` and `joi` to their patched versions (lockfile only) and recorded `braces` (jest)
+  and `node-forge` (`@expo/cli`), which have no fixed release, in `osv-scanner.toml` until 2026-12-15.
+
+A2 was built on branch `a2/design-system` in one sequential pass (the maintainer's choice).
 `zl-verifier` rounds 1 (2026-09-28), 2 and 3 (2026-10-03): verified with findings, all fixed below; round 4
 (2026-10-03): verified, with seven Low follow-ups; a re-check of those (2026-10-04) found them holding, with four Low
 and one Info item more, fixed below except the inventory lists' raw status words (B4). Two checks of those fixes found
 them holding, but the rule's new ternary reading still failed valid code; it was rewritten as a small grammar, and a
-third check of that found no false positive and one slow case (chained operators), fixed below. The merge is next.**
+third check of that found no false positive and one slow case (chained operators), fixed below.
 
 - **Theme** (`frontend/theme/`): `colors`, `typography`, `spacing`, `dimensions`, `borders`, `shadows`, `components`,
   `motion`, `themes`, `ThemeContext` and `RoleScope` (each shell sets its accent once; components read it with
