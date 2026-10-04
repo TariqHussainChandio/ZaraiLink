@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 import httpx._transports.default as _httpx_transport
-from supabase import AsyncClient, create_async_client
+from supabase import AsyncClient, AsyncClientOptions, create_async_client
 
 from app.config.settings import settings
 
@@ -66,8 +66,13 @@ async def get_user_scoped_client(access_token: str) -> AsyncClient:
     calling user's own JWT via PostgREST's Authorization header — so RLS applies exactly as it
     does for the mobile app calling Supabase directly today. Not cached/reused across requests
     (each caller has a different token, and `postgrest.auth(token)` mutates shared state, which
-    would be unsafe to share across concurrent requests from different users)."""
-    client = await create_async_client(settings.supabase_url, settings.supabase_anon_key)
+    would be unsafe to share across concurrent requests from different users).
+
+    The token goes in as the client's own Authorization header, not only through `postgrest.auth()`: Storage reads
+    the same header, and without it a storage call (a signed link to an application document, A3b) ran as `anon`,
+    which the private buckets' policies refuse."""
+    options = AsyncClientOptions(headers={"Authorization": f"Bearer {access_token}"})
+    client = await create_async_client(settings.supabase_url, settings.supabase_anon_key, options)
     client.postgrest.auth(access_token)
     return client
 

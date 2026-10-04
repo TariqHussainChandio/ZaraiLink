@@ -4,6 +4,7 @@ from postgrest.exceptions import APIError
 from supabase import AuthError
 
 from app.common.errors import AppHTTPException
+from app.common.rows import as_rows
 from app.database.supabase_client import get_reauth_client, get_service_role_client, get_user_scoped_client
 
 # P4 (4A.5), account deletion: buckets whose objects are stored under a `{user_id}/...` prefix,
@@ -12,7 +13,7 @@ from app.database.supabase_client import get_reauth_client, get_service_role_cli
 # conversation/consultation id, not user id (grep-verified), so finding "this user's" objects
 # there needs a join through messages/consultation_messages, not a prefix list. Known gap, not
 # silently dropped: see the account-deletion service's own docstring.
-_OWNER_PREFIXED_BUCKETS = ("avatars", "disease-images", "expert-documents")
+_OWNER_PREFIXED_BUCKETS = ("avatars", "disease-images", "expert-documents", "dealer-documents")
 
 
 async def update_profile(access_token: str, user_id: str, patch: dict[str, Any]) -> None:
@@ -93,15 +94,39 @@ async def log_self_deletion(user_id: str) -> None:
     )
 
 
-async def resubmit_application(access_token: str) -> None:
-    """resubmit_application() checks the caller is a rejected dealer or expert and not suspended
-    (20261005080000_account_status.sql); anything else is its 23514, a 409 here."""
+async def fetch_required_documents(access_token: str, role: str) -> list[dict]:
+    client = await get_user_scoped_client(access_token)
+    response = (
+        await client.table("required_documents")
+        .select("*")
+        .eq("role", role)
+        .eq("active", True)
+        .order("sort_order")
+        .order("label")
+        .execute()
+    )
+    return as_rows(response)
+
+
+# submit_application() names what is missing in this form (20261012080000_applications.sql).
+_MISSING_PREFIX = "The application is missing"
+
+
+async def submit_application(access_token: str) -> None:
+    """submit_application() checks the caller is a dealer or expert with a draft or rejected application that is
+    complete, and not suspended (20261012080000_applications.sql). An incomplete one is `application_incomplete` with
+    the database's list of what is missing; any other refusal (under review, approved, not an applicant) is
+    `invalid_transition`; a suspended account is 403."""
     client = await get_user_scoped_client(access_token)
     try:
-        await client.rpc("resubmit_application", {}).execute()
+        await client.rpc("submit_application", {}).execute()
     except APIError as exc:
+        if exc.code == "23514" and (exc.message or "").startswith(_MISSING_PREFIX):
+            raise AppHTTPException(409, exc.message or _MISSING_PREFIX, "application_incomplete") from exc
         if exc.code == "23514":
             raise AppHTTPException(
-                409, exc.message or "There is no rejected application to send", "invalid_transition"
+                409, exc.message or "This application cannot be sent now", "invalid_transition"
             ) from exc
+        if exc.code == "42501":
+            raise AppHTTPException(403, exc.message or "This account cannot send an application", "forbidden") from exc
         raise

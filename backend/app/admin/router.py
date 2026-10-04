@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends
 
 from app.admin import service
 from app.admin.schemas import (
-    AccountDecision,
     AccountStatus,
     AuditLogEntryWithActor,
     DecideAccountRequest,
     PlatformStats,
     Profile,
     ReportWithReporter,
+    RequiredDocumentInput,
+    RequiredDocumentUpdate,
     ResolveReportRequest,
     Role,
     SuspendUserRequest,
@@ -17,6 +18,8 @@ from app.admin.schemas import (
 from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2
 from app.common.orders.schemas import OrderWithItems
 from app.common.pagination import Page, paginate
+from app.common.schemas import AccountDecision, RequiredDocument, SignedUrl
+from app.dealer.schemas import DealerApplicationForAdmin
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -57,6 +60,46 @@ async def decide_dealer_application(
     profile_id: str, request: DecideAccountRequest, user: AuthenticatedUser = Depends(require_admin_aal2)
 ) -> dict:
     return await service.decide_dealer_application(user, profile_id, request.status, request.reason)
+
+
+@router.get("/dealer-applications", response_model=list[DealerApplicationForAdmin])
+async def list_dealer_applications(
+    status: AccountStatus = "pending", user: AuthenticatedUser = Depends(require_admin), page: Page = Depends(paginate)
+) -> list[dict]:
+    """The dealer queue (SRDS §12): submitted applications waiting for a decision, oldest first, by default."""
+    return page.finish(await service.fetch_dealer_applications(user, status))
+
+
+@router.get("/dealer-applications/{dealer_id}", response_model=DealerApplicationForAdmin)
+async def get_dealer_application(dealer_id: str, user: AuthenticatedUser = Depends(require_admin)) -> dict:
+    return await service.fetch_dealer_application(user, dealer_id)
+
+
+@router.get("/dealer-applications/{dealer_id}/documents/{document_id}/url", response_model=SignedUrl)
+async def get_dealer_document_url(
+    dealer_id: str, document_id: str, user: AuthenticatedUser = Depends(require_admin)
+) -> SignedUrl:
+    """A ten-minute link to one of the dealer's documents, so the admin inspects it before deciding (SRDS §12)."""
+    return SignedUrl(url=await service.dealer_document_url(user, dealer_id, document_id))
+
+
+@router.get("/required-documents", response_model=list[RequiredDocument])
+async def list_required_documents(user: AuthenticatedUser = Depends(require_admin)) -> list[dict]:
+    return await service.fetch_required_documents(user)
+
+
+@router.post("/required-documents", response_model=RequiredDocument, status_code=201)
+async def create_required_document(
+    request: RequiredDocumentInput, user: AuthenticatedUser = Depends(require_admin_aal2)
+) -> dict:
+    return await service.create_required_document(user, request.model_dump())
+
+
+@router.patch("/required-documents/{document_id}", response_model=RequiredDocument)
+async def update_required_document(
+    document_id: str, request: RequiredDocumentUpdate, user: AuthenticatedUser = Depends(require_admin_aal2)
+) -> dict:
+    return await service.update_required_document(user, document_id, request.model_dump(exclude_unset=True))
 
 
 @router.get("/reports", response_model=list[ReportWithReporter])

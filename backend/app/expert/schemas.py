@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.common.schemas import Location
+from app.common.schemas import ApplicationDocument, Location
 
 Specialization = Literal[
     "crop_management",
@@ -27,11 +27,10 @@ class ExpertProfileInput(BaseModel):
     province: str | None = None
     city: str | None = None
     specializations: list[Specialization]
-
-
-class SubmitApplicationRequest(BaseModel):
-    profile: ExpertProfileInput
-    document_path: str | None = None
+    # SRDS §10 (A3b). Optional here so an approved expert's profile edit that leaves them out keeps them;
+    # submit_application() requires both before an application reaches the queue.
+    years_experience: int | None = Field(default=None, ge=0, le=70)
+    institution_affiliation: str | None = Field(default=None, min_length=2, max_length=200)
 
 
 class ReviewVerificationRequest(BaseModel):
@@ -47,10 +46,6 @@ class ReviewVerificationRequest(BaseModel):
         if self.decision == "rejected" and len((self.notes or "").strip()) < 10:
             raise ValueError("A rejection needs a reason of at least 10 characters")
         return self
-
-
-class DocumentUrlResponse(BaseModel):
-    url: str | None
 
 
 # ---- response models (P7 7A)
@@ -83,6 +78,8 @@ class Expert(BaseModel):
     professional_description: str | None = None
     location: Location | None = None
     contact: str | None = None
+    years_experience: int | None = None
+    institution_affiliation: str | None = None
     verification_status: VerificationStatus
     created_at: str
     updated_at: str
@@ -90,7 +87,18 @@ class Expert(BaseModel):
     expert_specializations: list[ExpertSpecializationRef] = []
 
 
-class ExpertForAdmin(Expert):
-    """The admin reads add the verification history."""
+class ExpertApplicantRef(ExpertProfileRef):
+    """The account half of an expert's application, for the admin (SRDS §12)."""
 
+    phone: str | None = None
+    account_status: Literal["pending", "approved", "rejected"] = "approved"
+    account_status_reason: str | None = None
+    application_submitted_at: str | None = None
+
+
+class ExpertForAdmin(Expert):
+    """The admin reads add the account, the verification history (one record per submission) and the documents."""
+
+    profile: ExpertApplicantRef | None = None
     expert_verifications: list[ExpertVerification] = []
+    expert_documents: list[ApplicationDocument] = []

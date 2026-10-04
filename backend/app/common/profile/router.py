@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from app.auth.dependencies import AuthenticatedUser, get_current_user_any_status
 from app.common.profile import service
 from app.common.profile.schemas import DeleteAccountRequest, ProfileUpdateRequest
+from app.common.schemas import RequiredDocument
 
 router = APIRouter(prefix="/api/v1/profile", tags=["profile"])
 
@@ -25,8 +26,16 @@ async def delete_own_account(
     await service.delete_own_account(user, request.password)
 
 
-@router.post("/application/resubmit", status_code=204)
-async def resubmit_application(user: AuthenticatedUser = Depends(get_current_user_any_status)) -> None:
-    """A rejected dealer or expert sends their application back for review (D10). Open to a pending or rejected
-    account by design: it is the one thing a rejected applicant does."""
-    await service.resubmit_application(user)
+@router.get("/application/required-documents", response_model=list[RequiredDocument])
+async def list_required_documents(user: AuthenticatedUser = Depends(get_current_user_any_status)) -> list[dict]:
+    """The documents the caller's role is asked for (SRDS §7, §10), as an admin last set them; empty for a role
+    that does not apply."""
+    return await service.fetch_required_documents(user)
+
+
+@router.post("/application/submit", status_code=204)
+async def submit_application(user: AuthenticatedUser = Depends(get_current_user_any_status)) -> None:
+    """A dealer or expert sends their application for review, the first time or after a rejection (SRDS §8, §11;
+    D10). The database checks it is complete first (submit_application()); `application_incomplete` names what is
+    missing. Open to a pending or rejected account by design: it is how one becomes approved."""
+    await service.submit_application(user)

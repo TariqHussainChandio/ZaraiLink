@@ -3,39 +3,22 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.auth.dependencies import AuthenticatedUser
+from app.common import application_documents
+from app.common.errors import AppHTTPException
 from app.expert import service
 from app.main import app
 
 client = TestClient(app)
 
-ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok")
-
 
 @pytest.mark.asyncio
-async def test_document_url_returns_none_when_no_verification_exists():
-    with patch(
-        "app.expert.service.fetch_expert_for_admin_by_id",
-        return_value={"expert_verifications": []},
-    ):
-        assert await service.get_document_url(ADMIN, "expert-1") is None
-
-
-@pytest.mark.asyncio
-async def test_document_url_uses_newest_verifications_document_path_not_a_client_supplied_one():
-    expert = {
-        "expert_verifications": [
-            {"document_url": "expert-1/newest.pdf", "created_at": "2026-02-01T00:00:00Z"},
-        ]
-    }
-    with patch("app.expert.service.fetch_expert_for_admin_by_id", return_value=expert):
-        with patch(
-            "app.expert.service.repo.create_document_signed_url", return_value="https://signed/newest.pdf"
-        ) as mock_sign:
-            url = await service.get_document_url(ADMIN, "expert-1")
-
-    mock_sign.assert_called_once_with(ADMIN.access_token, "expert-1/newest.pdf")
-    assert url == "https://signed/newest.pdf"
+async def test_a_document_outside_the_applicants_own_folder_is_refused_before_any_write():
+    # The database refuses it too (fill_application_document); the API says so first, with a clear message.
+    with pytest.raises(AppHTTPException) as caught:
+        await application_documents.register(
+            "tok", application_documents.EXPERT, "expert-1", "expert-2/degree.pdf", "degree.pdf", None
+        )
+    assert caught.value.status_code == 422
 
 
 def test_sorted_verifications_puts_newest_first():
@@ -52,8 +35,14 @@ def test_sorted_verifications_puts_newest_first():
 
 
 def test_document_url_route_requires_admin():
+    response = client.get("/api/v1/expert/admin/expert-1/documents/doc-1/url")
+    assert response.status_code == 401
+
+
+def test_the_old_single_document_route_is_gone():
+    # A3b: every document is opened by its own id; the route that guessed "the newest" is retired.
     response = client.get("/api/v1/expert/admin/expert-1/document-url")
-    assert response.status_code != 200
+    assert response.status_code in (401, 404)
 
 
 def test_list_experts_route_is_public():

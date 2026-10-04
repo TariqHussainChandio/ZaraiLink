@@ -23,6 +23,30 @@
     "requestId": true,
     "status": 403
   },
+  "application_incomplete": {
+    "body": {
+      "code": "application_incomplete",
+      "instance": "/api/v1/profile/application/submit",
+      "status": 409,
+      "title": "The application is missing: business details, Business registration certificate, Business licence",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 409
+  },
+  "application_locked": {
+    "body": {
+      "code": "application_locked",
+      "instance": "/api/v1/dealer/application",
+      "status": 403,
+      "title": "This application cannot be changed now: it is under review, or already approved",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 403
+  },
   "idempotency_key_reused": {
     "body": {
       "code": "idempotency_key_reused",

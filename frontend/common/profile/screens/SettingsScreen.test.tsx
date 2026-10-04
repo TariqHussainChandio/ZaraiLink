@@ -81,6 +81,16 @@ describe('SettingsScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.ChangePassword);
   });
 
+  it('sends an admin to Account security, which holds email, password and two-step verification (A3b)', async () => {
+    useAuthStore.setState({ role: 'admin' });
+    const navigation = makeNavigation();
+    await renderWithQuery(<SettingsScreen navigation={navigation} route={{} as never} />);
+    expect(screen.queryByText('Change Password')).toBeNull();
+    await fireEvent.press(screen.getByText('Account security'));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.AccountSecurity);
+    useAuthStore.setState({ role: null });
+  });
+
   it('signs out when Sign Out is pressed', async () => {
     const signOut = jest.fn();
     useAuthStore.setState({ signOut });

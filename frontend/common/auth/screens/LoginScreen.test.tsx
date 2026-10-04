@@ -59,12 +59,12 @@ describe('LoginScreen', () => {
     expect(mockSignIn).not.toHaveBeenCalled();
   });
 
-  it('navigates to Register and ForgotPassword', async () => {
+  it('navigates to account creation and ForgotPassword', async () => {
     const navigation = makeNavigation();
     await renderWithQuery(<LoginScreen navigation={navigation} route={{} as never} />);
     await fireEvent.press(screen.getByText('Forgot your password?'));
     expect(navigation.navigate).toHaveBeenCalledWith(AUTH_ROUTES.ForgotPassword);
     await fireEvent.press(screen.getByText(' Sign up'));
-    expect(navigation.navigate).toHaveBeenCalledWith(AUTH_ROUTES.Register);
+    expect(navigation.navigate).toHaveBeenCalledWith(AUTH_ROUTES.CreateAccount);
   });
 });

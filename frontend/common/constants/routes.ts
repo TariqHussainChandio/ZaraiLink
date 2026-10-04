@@ -1,5 +1,7 @@
 export const AUTH_ROUTES = {
   Login: 'Login',
+  // A3b: the four ways to register (SRDS §4), then the form for the chosen one.
+  CreateAccount: 'CreateAccount',
   Register: 'Register',
   ForgotPassword: 'ForgotPassword',
   VerifyOtp: 'VerifyOtp',
@@ -8,7 +10,8 @@ export const AUTH_ROUTES = {
 // A dealer or expert whose application is pending or rejected sees only these (A3a, decision D10).
 export const APPROVAL_ROUTES = {
   ApplicationStatus: 'ApplicationStatus',
-  ExpertApplication: 'ApprovalExpertApplication',
+  // A3b: the dealer's or expert's application, details, documents and review.
+  ApplicationWizard: 'ApplicationWizard',
   DeleteAccount: 'ApprovalDeleteAccount',
 } as const;
 
@@ -103,6 +106,8 @@ export const HOME_ROUTES = {
   DiseaseProcessing: 'DiseaseProcessing',
   DiseaseResult: 'DiseaseResult',
   Products: 'Products',
+  // A3b: an approved dealer's business details.
+  BusinessDetails: 'BusinessDetails',
   Stores: 'Stores',
   StoreDetail: 'StoreDetail',
   Suppliers: 'Suppliers',
@@ -118,7 +123,11 @@ export const ADMIN_HOME_ROUTES = {
   Dashboard: 'Dashboard',
   Analytics: 'Analytics',
   Notifications: 'Notifications',
-  ExpertVerification: 'ExpertVerification',
+  // A3b: the dealer and expert review queue, one application, a photographed document, the required-document list.
+  Approvals: 'ApprovalQueue',
+  ApplicationDetail: 'ApplicationDetail',
+  DocumentViewer: 'DocumentViewer',
+  RequiredDocuments: 'RequiredDocuments',
   ModerationHub: 'ModerationHub',
   UserManagement: 'UserManagement',
   ListingModeration: 'ListingModeration',
@@ -149,6 +158,9 @@ export const PROFILE_ROUTES = {
   ChangePassword: 'ChangePassword',
   // P4 (4A.4, admin-only) and (4A.5, every role).
   MfaEnrollment: 'MfaEnrollment',
+  // A3b, admin only: email, password and two-step verification together, and the email change itself.
+  AccountSecurity: 'AccountSecurity',
+  ChangeEmail: 'ChangeEmail',
   DeleteAccount: 'DeleteAccount',
   // Development builds only (A2): every shared component in the current theme.
   DesignCatalogue: 'DesignCatalogue',

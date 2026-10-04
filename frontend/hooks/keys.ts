@@ -46,6 +46,13 @@ export const queryKeys = {
   profile: {
     farmer: () => ['profile', 'farmer'] as const,
   },
+  // A3b: the signed-in applicant's own application.
+  application: {
+    all: ['application'] as const,
+    requiredDocuments: () => ['application', 'required-documents'] as const,
+    dealer: () => ['application', 'dealer'] as const,
+    documents: (role: string) => ['application', 'documents', role] as const,
+  },
   admin: {
     all: ['admin'] as const,
     stats: () => ['admin', 'stats'] as const,
@@ -56,6 +63,10 @@ export const queryKeys = {
     moderationListings: () => ['admin', 'moderation-listings'] as const,
     verifications: (status: string | undefined) => ['admin', 'verifications', status ?? null] as const,
     reports: (status: string | undefined) => ['admin', 'reports', status ?? null] as const,
+    dealerApplications: (status: string) => ['admin', 'dealer-applications', status] as const,
+    dealerApplication: (id: string) => ['admin', 'dealer-applications', 'detail', id] as const,
+    expertApplication: (id: string) => ['admin', 'expert-applications', 'detail', id] as const,
+    requiredDocuments: () => ['admin', 'required-documents'] as const,
     reportPreviews: (ids: string[]) => ['admin', 'report-previews', ids] as const,
   },
   consultations: {

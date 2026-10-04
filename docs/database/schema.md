@@ -5,7 +5,7 @@
 
 What each table is for, and the business rules behind the design, are in [notes.md](notes.md).
 
-33 tables, 1 view(s), 12 enum types, 92 row-level-security policies on tables and 18 on storage objects.
+37 tables, 1 view(s), 14 enum types, 103 row-level-security policies on tables and 22 on storage objects.
 
 Realtime publishes changes of: `consultation_messages`, `messages`, `notifications`.
 
@@ -200,6 +200,67 @@ Indexes:
 | `currencies_admin_update` | UPDATE | ( SELECT is_admin_aal2() AS is_admin_aal2) | ( SELECT is_admin_aal2() AS is_admin_aal2) |
 | `currencies_select_all` | SELECT | true | - |
 
+### `dealer_documents`
+
+Row-level security: **on**. Grants: authenticated: delete, insert, select.
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid | no | gen_random_uuid() |
+| `dealer_id` | uuid | no |  |
+| `required_document_id` | uuid | yes |  |
+| `storage_path` | text | no |  |
+| `file_name` | text | no |  |
+| `mime_type` | text | yes |  |
+| `size_bytes` | bigint | yes |  |
+| `created_at` | timestamp with time zone | no | now() |
+
+Constraints: `dealer_documents_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `dealer_documents_file_name_check`: CHECK (((char_length(btrim(file_name)) >= 1) AND (char_length(btrim(file_name)) <= 200))); `dealer_documents_pkey`: PRIMARY KEY (id); `dealer_documents_required_document_id_fkey`: FOREIGN KEY (required_document_id) REFERENCES required_documents(id); `dealer_documents_storage_path_check`: CHECK ((char_length(storage_path) <= 300)); `dealer_documents_storage_path_key`: UNIQUE (storage_path).
+
+Indexes:
+- `CREATE INDEX dealer_documents_dealer_id_idx ON public.dealer_documents USING btree (dealer_id)`
+- `CREATE INDEX dealer_documents_required_document_id_idx ON public.dealer_documents USING btree (required_document_id)`
+- `CREATE UNIQUE INDEX dealer_documents_pkey ON public.dealer_documents USING btree (id)`
+- `CREATE UNIQUE INDEX dealer_documents_storage_path_key ON public.dealer_documents USING btree (storage_path)`
+
+| Policy | Command | Using | With check |
+|---|---|---|---|
+| `dealer_documents_delete_own` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) | - |
+| `dealer_documents_insert_own` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) |
+| `dealer_documents_select_own_or_admin` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
+
+Triggers: `fill_application_document`, `guard_application_document_delete`.
+
+### `dealer_profiles`
+
+Row-level security: **on**. Grants: authenticated: insert, select, update.
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid | no |  |
+| `business_name` | text | no |  |
+| `business_type` | dealer_business_type | no |  |
+| `registration_number` | text | no |  |
+| `business_address` | text | no |  |
+| `country` | text | no |  |
+| `province` | text | no |  |
+| `city` | text | no |  |
+| `created_at` | timestamp with time zone | no | now() |
+| `updated_at` | timestamp with time zone | no | now() |
+
+Constraints: `dealer_profiles_business_address_check`: CHECK (((char_length(btrim(business_address)) >= 5) AND (char_length(btrim(business_address)) <= 300))); `dealer_profiles_business_name_check`: CHECK (((char_length(btrim(business_name)) >= 2) AND (char_length(btrim(business_name)) <= 120))); `dealer_profiles_city_check`: CHECK (((char_length(btrim(city)) >= 2) AND (char_length(btrim(city)) <= 100))); `dealer_profiles_country_check`: CHECK (((char_length(btrim(country)) >= 2) AND (char_length(btrim(country)) <= 100))); `dealer_profiles_id_fkey`: FOREIGN KEY (id) REFERENCES profiles(id) ON DELETE CASCADE; `dealer_profiles_pkey`: PRIMARY KEY (id); `dealer_profiles_province_check`: CHECK (((char_length(btrim(province)) >= 2) AND (char_length(btrim(province)) <= 100))); `dealer_profiles_registration_number_check`: CHECK (((char_length(btrim(registration_number)) >= 2) AND (char_length(btrim(registration_number)) <= 60))).
+
+Indexes:
+- `CREATE UNIQUE INDEX dealer_profiles_pkey ON public.dealer_profiles USING btree (id)`
+
+| Policy | Command | Using | With check |
+|---|---|---|---|
+| `dealer_profiles_insert_own` | INSERT | - | ((id = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND (( SELECT is_application_editable() AS is_application_editable) OR (( SELECT is_account_approved() AS is_account_approved) AND (NOT ( SELECT is_suspended() AS is_suspended))))) |
+| `dealer_profiles_select_own_or_admin` | SELECT | ((id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
+| `dealer_profiles_update_own` | UPDATE | ((id = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND (( SELECT is_application_editable() AS is_application_editable) OR (( SELECT is_account_approved() AS is_account_approved) AND (NOT ( SELECT is_suspended() AS is_suspended))))) | ((id = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND (( SELECT is_application_editable() AS is_application_editable) OR (( SELECT is_account_approved() AS is_account_approved) AND (NOT ( SELECT is_suspended() AS is_suspended))))) |
+
+Triggers: `dealer_profiles_updated_at`, `guard_application_details`.
+
 ### `dealer_stores`
 
 Row-level security: **on**. Grants: authenticated: delete, insert, select, update.
@@ -281,6 +342,37 @@ Indexes:
 |---|---|---|---|
 | `disease_predictions_select_owner_or_admin` | SELECT | (EXISTS ( SELECT 1 FROM disease_cases dc WHERE ((dc.id = disease_predictions.disease_case_id) AND ((dc.user_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))))) | - |
 
+### `expert_documents`
+
+Row-level security: **on**. Grants: authenticated: delete, insert, select.
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid | no | gen_random_uuid() |
+| `expert_id` | uuid | no |  |
+| `required_document_id` | uuid | yes |  |
+| `storage_path` | text | no |  |
+| `file_name` | text | no |  |
+| `mime_type` | text | yes |  |
+| `size_bytes` | bigint | yes |  |
+| `created_at` | timestamp with time zone | no | now() |
+
+Constraints: `expert_documents_expert_id_fkey`: FOREIGN KEY (expert_id) REFERENCES experts(id) ON DELETE CASCADE; `expert_documents_file_name_check`: CHECK (((char_length(btrim(file_name)) >= 1) AND (char_length(btrim(file_name)) <= 200))); `expert_documents_pkey`: PRIMARY KEY (id); `expert_documents_required_document_id_fkey`: FOREIGN KEY (required_document_id) REFERENCES required_documents(id); `expert_documents_storage_path_check`: CHECK ((char_length(storage_path) <= 300)); `expert_documents_storage_path_key`: UNIQUE (storage_path).
+
+Indexes:
+- `CREATE INDEX expert_documents_expert_id_idx ON public.expert_documents USING btree (expert_id)`
+- `CREATE INDEX expert_documents_required_document_id_idx ON public.expert_documents USING btree (required_document_id)`
+- `CREATE UNIQUE INDEX expert_documents_pkey ON public.expert_documents USING btree (id)`
+- `CREATE UNIQUE INDEX expert_documents_storage_path_key ON public.expert_documents USING btree (storage_path)`
+
+| Policy | Command | Using | With check |
+|---|---|---|---|
+| `expert_documents_delete_own` | DELETE | ((expert_id = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) | - |
+| `expert_documents_insert_own` | INSERT | - | ((expert_id = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) |
+| `expert_documents_select_own_or_admin` | SELECT | ((expert_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
+
+Triggers: `fill_application_document`, `guard_application_document_delete`.
+
 ### `expert_specializations`
 
 Row-level security: **on**. Grants: anon: select; authenticated: delete, insert, select, update.
@@ -297,10 +389,12 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `expert_specializations_owner_delete` | DELETE | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) OR ( SELECT is_admin() AS is_admin)) | - |
-| `expert_specializations_owner_insert` | INSERT | - | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) OR ( SELECT is_admin() AS is_admin)) |
-| `expert_specializations_owner_update` | UPDATE | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) OR ( SELECT is_admin() AS is_admin)) | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) OR ( SELECT is_admin() AS is_admin)) |
+| `expert_specializations_owner_delete` | DELETE | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND (( SELECT is_application_editable() AS is_application_editable) OR ( SELECT is_account_approved() AS is_account_approved))) OR ( SELECT is_admin() AS is_admin)) | - |
+| `expert_specializations_owner_insert` | INSERT | - | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND (( SELECT is_application_editable() AS is_application_editable) OR ( SELECT is_account_approved() AS is_account_approved))) OR ( SELECT is_admin() AS is_admin)) |
+| `expert_specializations_owner_update` | UPDATE | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND (( SELECT is_application_editable() AS is_application_editable) OR ( SELECT is_account_approved() AS is_account_approved))) OR ( SELECT is_admin() AS is_admin)) | (((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND (( SELECT is_application_editable() AS is_application_editable) OR ( SELECT is_account_approved() AS is_account_approved))) OR ( SELECT is_admin() AS is_admin)) |
 | `expert_specializations_select_all` | SELECT | true | - |
+
+Triggers: `guard_application_details`.
 
 ### `expert_verifications`
 
@@ -326,7 +420,6 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `expert_verifications_insert_owner` | INSERT | - | ((expert_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) |
 | `expert_verifications_select_owner_or_admin` | SELECT | ((expert_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
 ### `experts`
@@ -345,19 +438,21 @@ Row-level security: **on**. Grants: anon: select; authenticated: insert, select,
 | `verification_status` | verification_status | no | 'pending'::verification_status |
 | `created_at` | timestamp with time zone | no | now() |
 | `updated_at` | timestamp with time zone | no | now() |
+| `years_experience` | smallint | yes |  |
+| `institution_affiliation` | text | yes |  |
 
-Constraints: `experts_id_fkey`: FOREIGN KEY (id) REFERENCES profiles(id) ON DELETE CASCADE; `experts_pkey`: PRIMARY KEY (id).
+Constraints: `experts_id_fkey`: FOREIGN KEY (id) REFERENCES profiles(id) ON DELETE CASCADE; `experts_institution_affiliation_check`: CHECK (((char_length(btrim(institution_affiliation)) >= 2) AND (char_length(btrim(institution_affiliation)) <= 200))); `experts_pkey`: PRIMARY KEY (id); `experts_years_experience_check`: CHECK (((years_experience >= 0) AND (years_experience <= 70))).
 
 Indexes:
 - `CREATE UNIQUE INDEX experts_pkey ON public.experts USING btree (id)`
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `experts_insert_own` | INSERT | - | ((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) |
+| `experts_insert_own` | INSERT | - | ((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) |
 | `experts_select_verified_or_own_or_admin` | SELECT | (((verification_status = 'approved'::verification_status) AND ( SELECT is_approved_expert_id(experts.id) AS is_approved_expert_id)) OR (id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
-| `experts_update_own_or_admin` | UPDATE | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
+| `experts_update_own_or_admin` | UPDATE | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT is_application_editable() AS is_application_editable) OR ( SELECT is_account_approved() AS is_account_approved))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT is_application_editable() AS is_application_editable) OR ( SELECT is_account_approved() AS is_account_approved))) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
 
-Triggers: `guard_experts_admin_update`, `guard_experts_verification_status`, `set_experts_updated_at`.
+Triggers: `guard_application_details`, `guard_experts_admin_update`, `guard_experts_verification_status`, `set_experts_updated_at`.
 
 ### `farm_crops`
 
@@ -815,10 +910,12 @@ Row-level security: **on**. Grants: anon: select; authenticated: insert, select,
 | `account_status` | account_status | no | 'approved'::account_status |
 | `account_status_reason` | text | yes |  |
 | `account_status_changed_at` | timestamp with time zone | yes |  |
+| `application_submitted_at` | timestamp with time zone | yes |  |
 
 Constraints: `profiles_account_status_reason_check`: CHECK ((char_length(account_status_reason) <= 1000)); `profiles_id_fkey`: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE; `profiles_pkey`: PRIMARY KEY (id).
 
 Indexes:
+- `CREATE INDEX profiles_application_queue_idx ON public.profiles USING btree (role, application_submitted_at) WHERE ((account_status = 'pending'::account_status) AND (application_submitted_at IS NOT NULL))`
 - `CREATE INDEX profiles_review_queue_idx ON public.profiles USING btree (role, created_at) WHERE (account_status <> 'approved'::account_status)`
 - `CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)`
 
@@ -860,6 +957,37 @@ Indexes:
 | `reports_admin_update` | UPDATE | ( SELECT is_admin_aal2() AS is_admin_aal2) | ( SELECT is_admin_aal2() AS is_admin_aal2) |
 | `reports_insert_reporter` | INSERT | - | ((reporter_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) |
 | `reports_select_own_or_admin` | SELECT | ((reporter_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
+
+### `required_documents`
+
+Row-level security: **on**. Grants: authenticated: insert, select, update.
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid | no | gen_random_uuid() |
+| `role` | application_role | no |  |
+| `code` | text | no |  |
+| `label` | text | no |  |
+| `description` | text | yes |  |
+| `is_required` | boolean | no | true |
+| `active` | boolean | no | true |
+| `sort_order` | integer | no | 0 |
+| `created_at` | timestamp with time zone | no | now() |
+| `updated_at` | timestamp with time zone | no | now() |
+
+Constraints: `required_documents_code_check`: CHECK ((code ~ '^[a-z][a-z0-9_]{1,49}$'::text)); `required_documents_description_check`: CHECK ((char_length(description) <= 500)); `required_documents_label_check`: CHECK (((char_length(btrim(label)) >= 2) AND (char_length(btrim(label)) <= 120))); `required_documents_pkey`: PRIMARY KEY (id); `required_documents_role_code_key`: UNIQUE (role, code).
+
+Indexes:
+- `CREATE UNIQUE INDEX required_documents_pkey ON public.required_documents USING btree (id)`
+- `CREATE UNIQUE INDEX required_documents_role_code_key ON public.required_documents USING btree (role, code)`
+
+| Policy | Command | Using | With check |
+|---|---|---|---|
+| `required_documents_admin_insert` | INSERT | - | ( SELECT is_admin_aal2() AS is_admin_aal2) |
+| `required_documents_admin_update` | UPDATE | ( SELECT is_admin_aal2() AS is_admin_aal2) | ( SELECT is_admin_aal2() AS is_admin_aal2) |
+| `required_documents_select_authenticated` | SELECT | true | - |
+
+Triggers: `audit_required_documents`, `required_documents_updated_at`.
 
 ### `reviews`
 
@@ -955,8 +1083,10 @@ Indexes:
 ## Enum types
 
 - `account_status`: pending · approved · rejected
+- `application_role`: dealer · expert
 - `consultation_priority`: low · medium · high
 - `consultation_status`: requested · accepted · in_progress · resolved · closed · rejected · cancelled · expired
+- `dealer_business_type`: agri_input_retailer · wholesaler · distributor · manufacturer · other
 - `expert_specialization`: crop_management · plant_diseases · pest_management · fertilizer_management · irrigation · soil_management · crop_nutrition · general_agriculture
 - `inventory_transaction_type`: addition · reduction · adjustment · sale · restock · correction
 - `listing_status`: active · inactive · sold
@@ -972,11 +1102,16 @@ Indexes:
 | Function | Returns | Security | Config |
 |---|---|---|---|
 | `adjust_stock(uuid,text,numeric,uuid,text)` | inventory | invoker | search_path=public, pg_temp |
+| `audit_admin_email_change()` | trigger | definer | search_path=public, pg_temp |
+| `audit_required_documents()` | trigger | definer | search_path=public, pg_temp |
 | `available_stock(uuid[])` | TABLE(listing_id uuid, available numeric) | definer | search_path=public, pg_temp |
 | `caller_role()` | user_role | definer | search_path=public, pg_temp |
 | `commit_stock_on_confirm()` | trigger | definer | search_path=public, pg_temp |
 | `create_notification(uuid,text,jsonb,boolean)` | void | definer | search_path=public, pg_temp |
 | `decide_account_status(uuid,account_status,text)` | TABLE(role user_role, previous_status account_status, new_status account_status) | definer | search_path=public, pg_temp |
+| `fill_application_document()` | trigger | invoker | search_path=public, pg_temp |
+| `guard_application_details()` | trigger | invoker | search_path=public, pg_temp |
+| `guard_application_document_delete()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_consultations_update()` | trigger | invoker | search_path="" |
 | `guard_experts_admin_update()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_experts_verification_status()` | trigger | invoker | search_path=public, pg_temp |
@@ -992,11 +1127,13 @@ Indexes:
 | `is_account_approved()` | boolean | definer | search_path=public, pg_temp |
 | `is_admin_aal2()` | boolean | definer | search_path=public, pg_temp |
 | `is_admin()` | boolean | definer | search_path=public, pg_temp |
+| `is_application_editable()` | boolean | definer | search_path=public, pg_temp |
 | `is_approved_dealer()` | boolean | definer | search_path=public, pg_temp |
 | `is_approved_expert_id(uuid)` | boolean | definer | search_path=public, pg_temp |
 | `is_approved_expert()` | boolean | definer | search_path=public, pg_temp |
 | `is_seller_role(uuid)` | boolean | definer | search_path=public, pg_temp |
 | `is_suspended()` | boolean | definer | search_path=public, pg_temp |
+| `lock_editable_application(uuid)` | boolean | invoker | search_path=public, pg_temp |
 | `notify_account_status_changed()` | trigger | definer | search_path=public, pg_temp |
 | `notify_account_suspension_changed()` | trigger | definer | search_path=public, pg_temp |
 | `notify_consultation_created()` | trigger | definer | search_path=public, pg_temp |
@@ -1011,10 +1148,10 @@ Indexes:
 | `record_payment_event()` | trigger | definer | search_path=public, pg_temp |
 | `reduce_stock_for_order(uuid,uuid)` | void | invoker | search_path=public, pg_temp |
 | `reset_expert_on_role_change()` | trigger | definer | search_path=public, pg_temp |
-| `resubmit_application()` | account_status | definer | search_path=public, pg_temp |
 | `rls_auto_enable()` | event_trigger | definer | search_path=pg_catalog |
 | `set_listings_seller_role()` | trigger | invoker | search_path=public, pg_temp |
 | `set_updated_at()` | trigger | invoker | search_path=public, pg_temp |
+| `submit_application()` | account_status | definer | search_path=public, pg_temp |
 | `sync_order_subtotal()` | trigger | definer | search_path=public, pg_temp |
 
 ## Storage buckets
@@ -1023,6 +1160,7 @@ Indexes:
 |---|---|---|---|
 | `avatars` | yes | 5242880 | image/jpeg, image/png, image/webp |
 | `consultation-attachments` | no | 10485760 | image/jpeg, image/png, image/webp |
+| `dealer-documents` | no | 10485760 | application/pdf, image/jpeg, image/png, image/webp |
 | `disease-images` | no | 8388608 | image/jpeg, image/png, image/webp |
 | `expert-documents` | no | 10485760 | application/pdf, image/jpeg, image/png, image/webp |
 | `listing-images` | yes | 8388608 | image/jpeg, image/png, image/webp |
@@ -1039,12 +1177,16 @@ Indexes:
 | `avatars_public_read` | SELECT | (bucket_id = 'avatars'::text) | - |
 | `consultation_attachments_participant_insert` | INSERT | - | ((bucket_id = 'consultation-attachments'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_account_approved() AS is_account_approved) AND (EXISTS ( SELECT 1 FROM consultations c WHERE (((c.id)::text = (storage.foldername(objects.name))[1]) AND ((c.user_id = ( SELECT auth.uid() AS uid)) OR (c.expert_id = ( SELECT auth.uid() AS uid))))))) |
 | `consultation_attachments_select_participants` | SELECT | ((bucket_id = 'consultation-attachments'::text) AND (EXISTS ( SELECT 1 FROM consultations c WHERE (((c.id)::text = (storage.foldername(objects.name))[1]) AND ((c.user_id = ( SELECT auth.uid() AS uid)) OR (c.expert_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)))))) | - |
+| `dealer_documents_owner_delete` | DELETE | ((bucket_id = 'dealer-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND ( SELECT is_application_editable() AS is_application_editable) AND (NOT (EXISTS ( SELECT 1 FROM dealer_documents d WHERE (d.storage_path = objects.name))))) | - |
+| `dealer_documents_owner_or_admin_read` | SELECT | ((bucket_id = 'dealer-documents'::text) AND ((owner = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))) | - |
+| `dealer_documents_owner_write` | INSERT | - | ((bucket_id = 'dealer-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) |
 | `disease_images_owner_delete` | DELETE | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) | - |
 | `disease_images_owner_or_admin_read` | SELECT | ((bucket_id = 'disease-images'::text) AND ((owner = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))) | - |
 | `disease_images_owner_update` | UPDATE | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) | - |
 | `disease_images_owner_write` | INSERT | - | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) |
+| `expert_documents_owner_delete` | DELETE | ((bucket_id = 'expert-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND ( SELECT is_application_editable() AS is_application_editable) AND (NOT (EXISTS ( SELECT 1 FROM expert_documents x WHERE (x.storage_path = objects.name))))) | - |
 | `expert_documents_owner_or_admin_read` | SELECT | ((bucket_id = 'expert-documents'::text) AND ((owner = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))) | - |
-| `expert_documents_owner_write` | INSERT | - | ((bucket_id = 'expert-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role)) |
+| `expert_documents_owner_write` | INSERT | - | ((bucket_id = 'expert-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) |
 | `listing_images_owner_delete` | DELETE | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) | - |
 | `listing_images_owner_update` | UPDATE | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) | - |
 | `listing_images_owner_write` | INSERT | - | ((bucket_id = 'listing-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) |

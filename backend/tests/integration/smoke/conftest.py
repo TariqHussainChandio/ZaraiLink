@@ -84,6 +84,11 @@ def backend_url():
         # The default 200/minute per caller would throttle the property-based contract test (hundreds of requests as one
         # user) into 429s. The limiter itself is proven separately, on its own server (test_smoke_proxy_headers.py).
         "RATE_LIMIT_DEFAULT": "100000/minute",
+        # The decision emails go to the mail catcher of the stack (Mailpit); test_smoke_applications.py reads them.
+        "EMAIL_ENABLED": "true",
+        "SMTP_HOST": "127.0.0.1",
+        "SMTP_PORT": "54325",
+        "SMTP_STARTTLS": "false",
     }
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".log", encoding="utf-8") as log_file:
         # ZARAILINK_COVERAGE=1 runs the backend under coverage (serve_measured.py), so the combined-coverage gate
@@ -183,21 +188,84 @@ def sign_in(email: str) -> str:
         return token_resp.json()["access_token"]
 
 
-# The expert application every approved fixture expert sends before an admin decides it.
-EXPERT_APPLICATION = {
-    "profile": {
-        "qualifications": "PhD Agronomy",
-        "degree": "PhD",
-        "experience": "10 years",
-        "professional_description": "Smoke-test expert",
-        "contact": "smoke@example.test",
-        "specializations": ["plant_diseases", "crop_management"],
-    },
+# The applications every approved fixture dealer and expert sends before an admin decides (A3b): the details, one file
+# for every required document, then the submission, all through the real API and Storage as the app does it.
+DEALER_APPLICATION = {
+    "business_name": "Smoke Agri Inputs",
+    "business_type": "agri_input_retailer",
+    "registration_number": "REG-SMOKE-1",
+    "business_address": "1 Grain Market Road",
+    "country": "Pakistan",
+    "province": "Sindh",
+    "city": "Hyderabad",
 }
+EXPERT_APPLICATION = {
+    "qualifications": "PhD Agronomy",
+    "degree": "PhD",
+    "experience": "10 years",
+    "professional_description": "Smoke-test expert",
+    "contact": "smoke@example.test",
+    "specializations": ["plant_diseases", "crop_management"],
+    "years_experience": 10,
+    "institution_affiliation": "Sindh Agriculture University",
+}
+# The smallest file Storage accepts as a PDF for these buckets (they allow PDF and images only).
+PDF_BYTES = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+BUCKETS = {"dealer": "dealer-documents", "expert": "expert-documents"}
 
 
-def approve_dealer(backend_url: str, admin_token: str, dealer_id: str) -> None:
-    """Approves a pending dealer the way an admin does (PATCH /admin/users/{id}/account-status, second factor)."""
+def upload_document(role: str, user_id: str, token: str, name: str, content: bytes = PDF_BYTES) -> str:
+    """Uploads a file into the applicant's own folder of their role's bucket with their own token, as the app does,
+    and returns its path."""
+    path = f"{user_id}/{name}"
+    with httpx.Client(base_url=LOCAL_URL, timeout=30) as http:
+        response = http.post(
+            f"/storage/v1/object/{BUCKETS[role]}/{path}",
+            headers={"apikey": ANON_KEY, "Authorization": f"Bearer {token}", "Content-Type": "application/pdf"},
+            content=content,
+        )
+    assert response.status_code == 200, response.text
+    return path
+
+
+def fill_application(backend_url: str, role: str, user_id: str, token: str) -> None:
+    """Fills in a complete application (details and every required document) without submitting it."""
+    auth = {"Authorization": f"Bearer {token}"}
+    with httpx.Client(base_url=backend_url, timeout=60) as c:
+        if role == "dealer":
+            saved = c.put("/api/v1/dealer/application", headers=auth, json=DEALER_APPLICATION)
+        else:
+            saved = c.post("/api/v1/expert/application", headers=auth, json=EXPERT_APPLICATION)
+        assert saved.status_code == 200, saved.text
+        required = c.get("/api/v1/profile/application/required-documents", headers=auth)
+        assert required.status_code == 200, required.text
+        for document in required.json():
+            if not document["is_required"]:
+                continue
+            path = upload_document(role, user_id, token, f"{document['code']}.pdf")
+            attached = c.post(
+                f"/api/v1/{role}/application/documents",
+                headers=auth,
+                json={
+                    "storage_path": path,
+                    "file_name": f"{document['code']}.pdf",
+                    "required_document_id": document["id"],
+                },
+            )
+            assert attached.status_code == 201, attached.text
+
+
+def submit_application(backend_url: str, token: str) -> None:
+    with httpx.Client(base_url=backend_url, timeout=60) as c:
+        submitted = c.post("/api/v1/profile/application/submit", headers={"Authorization": f"Bearer {token}"})
+    assert submitted.status_code == 204, submitted.text
+
+
+def approve_dealer(backend_url: str, admin_token: str, dealer_id: str, dealer_token: str) -> None:
+    """The dealer sends a complete application, then an admin approves it the way the app does
+    (PATCH /admin/users/{id}/account-status, second factor)."""
+    fill_application(backend_url, "dealer", dealer_id, dealer_token)
+    submit_application(backend_url, dealer_token)
     with httpx.Client(base_url=backend_url, timeout=60) as c:
         response = c.patch(
             f"/api/v1/admin/users/{dealer_id}/account-status",
@@ -208,20 +276,16 @@ def approve_dealer(backend_url: str, admin_token: str, dealer_id: str) -> None:
 
 
 def approve_expert(backend_url: str, admin_token: str, expert_id: str, expert_token: str) -> None:
-    """The expert applies (open to a pending expert), then an admin approves the application."""
+    """The expert sends a complete application (open to a pending expert), then an admin approves it."""
+    fill_application(backend_url, "expert", expert_id, expert_token)
+    submit_application(backend_url, expert_token)
     with httpx.Client(base_url=backend_url, timeout=60) as c:
-        applied = c.post(
-            "/api/v1/expert/application",
-            headers={"Authorization": f"Bearer {expert_token}"},
-            json=EXPERT_APPLICATION,
-        )
-        assert applied.status_code in (200, 201), applied.text
         decided = c.patch(
             f"/api/v1/expert/admin/{expert_id}/verification",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"decision": "approved", "notes": "smoke matrix"},
         )
-    assert decided.status_code == 204, decided.text
+    assert decided.status_code == 200, decided.text
 
 
 def enrol_totp_and_get_aal2_token(access_token: str) -> str:
@@ -347,11 +411,11 @@ def world(backend_url: str) -> World:
     assert cats.json(), "categories table must have at least one row (seed.sql)"
     category_id = cats.json()[0]["id"]
 
-    # Dealers and experts start pending (A3a, D10) and may do nothing until an admin approves them. The world's
-    # dealer is approved from User Management; the expert sends an application (an `experts` row, which
-    # consultations reference, and which RLS shows to others only once approved) and is approved from Approvals.
+    # Dealers and experts start pending (A3a, D10) and may do nothing until an admin approves them. Each sends a
+    # complete application with documents (A3b); the dealer is approved on the users route, the expert from Approvals
+    # (their `experts` row, which consultations reference, shows to others only once approved).
     # Each then signs in again, as the app makes them do (a session from before the decision gets `sign_in_again`).
-    approve_dealer(backend_url, admin_tok, dealer_id)
+    approve_dealer(backend_url, admin_tok, dealer_id, dealer_tok)
     dealer_tok = sign_in(dealer_email)
     approve_expert(backend_url, admin_tok, expert_id, expert_tok)
     expert_tok = sign_in(expert_email)
@@ -476,6 +540,21 @@ def make_actor():
     return make_user
 
 
+@pytest.fixture
+def make_applicant(backend_url):
+    """A fresh dealer or expert with a complete application (A3b), submitted unless `submit=False`; returns
+    (id, email, token). Only a submitted application can be decided (decide_account_status())."""
+
+    def _make(role: str, submit: bool = True) -> tuple[str, str, str]:
+        user_id, email, token = make_user(role)
+        fill_application(backend_url, role, user_id, token)
+        if submit:
+            submit_application(backend_url, token)
+        return user_id, email, token
+
+    return _make
+
+
 @pytest.fixture(scope="session")
 def matrix_actors(backend_url: str) -> dict[str, str]:
     """One fresh, real user per role for the authorization matrix (its own users, so its ~120 requests
@@ -490,8 +569,8 @@ def matrix_actors(backend_url: str) -> dict[str, str]:
     promote_to_admin(admin_id)
     tokens["admin_aal1"] = admin_aal1
     tokens["admin"] = enrol_totp_and_get_aal2_token(admin_aal1)
-    dealer_id, dealer_email, _ = make_user("dealer")
-    approve_dealer(backend_url, tokens["admin"], dealer_id)
+    dealer_id, dealer_email, dealer_token = make_user("dealer")
+    approve_dealer(backend_url, tokens["admin"], dealer_id, dealer_token)
     tokens["dealer"] = sign_in(dealer_email)
     expert_id, expert_email, expert_token = make_user("expert")
     approve_expert(backend_url, tokens["admin"], expert_id, expert_token)

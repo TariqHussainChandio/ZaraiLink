@@ -54,8 +54,7 @@
    "SIM117:tests/common/payments/test_payments.py": 5,
    "SIM117:tests/common/reference_data/test_reference_data.py": 2,
    "SIM117:tests/common/reviews/test_reviews.py": 4,
-   "SIM117:tests/dealer/test_dealer.py": 2,
-   "SIM117:tests/expert/test_expert.py": 1
+   "SIM117:tests/dealer/test_dealer.py": 2
   },
   "ruff-format": {}
  }

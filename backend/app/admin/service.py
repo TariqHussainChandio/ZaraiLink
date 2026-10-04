@@ -5,7 +5,9 @@ from app.auth.dependencies import AuthenticatedUser, forget_profile
 from app.common import account_status
 from app.common.audit_log import log_admin_action
 from app.common.errors import AppHTTPException
+from app.common.notifications import service as notifications
 from app.common.orders import service as orders_service
+from app.dealer import service as dealer_service
 
 
 async def fetch_platform_stats(user: AuthenticatedUser) -> dict:
@@ -73,7 +75,11 @@ async def decide_dealer_application(
         raise AppHTTPException(404, "No such account", "not_found")
     if role != "dealer":
         raise AppHTTPException(409, "Only a dealer is decided here; experts are reviewed in Approvals", "conflict")
-    return await account_status.decide(user, profile_id, decision, reason)
+    result = await account_status.decide(user, profile_id, decision, reason)
+    # After the commit: the email reports a decision that has happened (SRDS §8, §9), and the admin is told whether
+    # it went out.
+    result["email_delivered"] = await notifications.send_application_decision(user, profile_id, role, decision, reason)
+    return result
 
 
 async def fetch_reports(user: AuthenticatedUser, status: str | None) -> list[dict]:
@@ -100,3 +106,36 @@ async def fetch_audit_logs(user: AuthenticatedUser, target_entity: str | None, a
 
 async def fetch_all_orders(user: AuthenticatedUser) -> list[dict]:
     return await orders_service.fetch_all_orders(user)
+
+
+# --- dealer applications (A3b; SRDS §8, §12). The dealer's tables belong to the dealer module, reached through its
+# service; the decision stays on decide_dealer_application() above.
+
+
+async def fetch_dealer_applications(user: AuthenticatedUser, status: str) -> list[dict]:
+    return await dealer_service.fetch_applications_for_admin(user, status)
+
+
+async def fetch_dealer_application(user: AuthenticatedUser, dealer_id: str) -> dict:
+    return await dealer_service.fetch_application_for_admin(user, dealer_id)
+
+
+async def dealer_document_url(user: AuthenticatedUser, dealer_id: str, document_id: str) -> str:
+    return await dealer_service.document_url_for_admin(user, dealer_id, document_id)
+
+
+# --- required documents (A3b; SRDS §7)
+
+
+async def fetch_required_documents(user: AuthenticatedUser) -> list[dict]:
+    return await repo.fetch_required_documents(user.access_token)
+
+
+async def create_required_document(user: AuthenticatedUser, fields: dict) -> dict:
+    return await repo.create_required_document(user.access_token, fields)
+
+
+async def update_required_document(user: AuthenticatedUser, document_id: str, fields: dict) -> dict:
+    if not fields:
+        raise AppHTTPException(422, "Nothing to change", "validation_failed")
+    return await repo.update_required_document(user.access_token, document_id, fields)

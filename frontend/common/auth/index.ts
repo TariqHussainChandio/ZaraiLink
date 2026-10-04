@@ -3,3 +3,6 @@
 export { useEnrollTotp, useUnenrollTotp, useVerifiedTotpFactor, useVerifyTotpEnrollment } from './hooks/mfa';
 export type { TotpEnrollment } from './hooks/mfa';
 export { mapMfaErrorMessage, mapPasswordFlowErrorMessage } from './screens/mapAuthError';
+export type { ApplicationDocument, BusinessType, RequiredDocument } from './types/application';
+export { useDealerApplication } from './hooks/application';
+export { DealerBusinessStep } from './components/application/DealerBusinessStep';

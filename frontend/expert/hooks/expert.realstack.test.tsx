@@ -53,7 +53,8 @@ describeReal('expert and admin hooks against the real backend', () => {
 
   beforeAll(async () => {
     process.env.EXPO_PUBLIC_API_BASE_URL = API_URL;
-    expertToken = await signUp('expert');
+    // Pending, as every expert is until approved: since A3b an approved expert's application is closed.
+    expertToken = await signUp('expert', { pending: true });
     farmerToken = await signUp('farmer');
     experts = require('./experts');
     consultations = require('../../common/consultations/hooks/consultations');
@@ -64,13 +65,12 @@ describeReal('expert and admin hooks against the real backend', () => {
 
   it('lets an expert apply and see their pending profile, which no one else can find in the expert list', async () => {
     signInAs(expertToken);
-    const expert = await renderHook(() => ({ own: experts.useOwnExpertProfile(true), save: experts.useSaveExpertProfile(idOf(expertToken)) }), { wrapper });
+    const expert = await renderHook(() => ({ own: experts.useOwnExpertProfile(true), save: experts.useSaveExpertProfile() }), { wrapper });
     await waitFor(() => expect(expert.result.current.own.data).toBeNull());
 
     await act(async () => {
       await expert.result.current.save.mutateAsync({
-        isEditing: false,
-        document: null,
+        exists: false,
         input: {
           qualifications: 'BSc Agriculture',
           degree: 'BSc',

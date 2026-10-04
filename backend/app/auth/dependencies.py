@@ -16,7 +16,7 @@ AccountStatus = Literal["pending", "approved", "rejected"]
 
 # Roles an admin must approve before they may act as that role (SRDS §8, §11, §13; plan decision D10). The status is
 # `profiles.account_status`, set at sign-up by handle_new_user and changed only by decide_account_status() and
-# resubmit_application() (20261005080000_account_status.sql).
+# submit_application() (20261005080000_account_status.sql, 20261012080000_applications.sql).
 APPROVAL_ROLES: frozenset[str] = frozenset({"dealer", "expert"})
 
 
@@ -187,7 +187,7 @@ def require_role(*roles: Role):
 
 
 def require_role_any_status(*roles: Role):
-    """`require_role` without the approval check, for the routes a pending expert needs to apply."""
+    """`require_role` without the approval check, for the routes a pending dealer or expert needs to apply."""
 
     async def _dependency(user: AuthenticatedUser = Depends(get_current_user_any_status)) -> AuthenticatedUser:
         if user.role not in roles:
@@ -205,6 +205,8 @@ require_dealer = require_role("dealer")
 require_farmer = require_role("farmer")
 require_buyer = require_role("buyer")
 require_expert_any_status = require_role_any_status("expert")
+# A3b: a pending or rejected dealer fills in and sends their application.
+require_dealer_any_status = require_role_any_status("dealer")
 
 
 async def require_admin_aal2(user: AuthenticatedUser = Depends(require_admin)) -> AuthenticatedUser:

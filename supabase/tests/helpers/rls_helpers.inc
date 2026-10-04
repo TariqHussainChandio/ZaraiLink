@@ -213,22 +213,63 @@ begin
 end;
 $$;
 
--- Accounts waiting for a decision, for the account-status tests (A3a): PD a pending dealer, PE a pending expert who
--- has sent an application, PE0 a pending expert who has not, RD a dealer an admin rejected with a reason. Kept out
--- of world() so the other tests' row counts do not move.
+-- A complete application as A3b (20261012080000_applications.sql) checks it, written as the owner: the details, and
+-- for every active required document of the role its file in Storage and its row (the row skips the Storage lookup as
+-- the owner; submit_application() still requires the file).
+create or replace function tests.complete_application(_id uuid) returns void language plpgsql as $$
+declare
+  r public.user_role := (select role from public.profiles where id = _id);
+begin
+  if r = 'dealer' then
+    insert into public.dealer_profiles (id, business_name, business_type, registration_number, business_address, country, province, city)
+    values (_id, 'Green Inputs', 'agri_input_retailer', 'REG-1234', '12 Mandi Road', 'Pakistan', 'Sindh', 'Hyderabad')
+    on conflict (id) do nothing;
+    insert into storage.objects (bucket_id, name, owner, metadata)
+    select 'dealer-documents', _id || '/' || rd.code || '.pdf', _id, '{"mimetype": "application/pdf", "size": 100}'
+      from public.required_documents rd where rd.role = 'dealer' and rd.active and rd.is_required;
+    insert into public.dealer_documents (dealer_id, required_document_id, storage_path, file_name)
+    select _id, rd.id, _id || '/' || rd.code || '.pdf', rd.code || '.pdf'
+      from public.required_documents rd where rd.role = 'dealer' and rd.active and rd.is_required;
+  else
+    insert into public.experts (id, qualifications, years_experience, institution_affiliation)
+    values (_id, 'MSc Plant Pathology', 8, 'Sindh Agriculture University')
+    on conflict (id) do update set qualifications = excluded.qualifications,
+      years_experience = excluded.years_experience, institution_affiliation = excluded.institution_affiliation;
+    insert into public.expert_specializations (expert_id, specialization) values (_id, 'plant_diseases')
+    on conflict do nothing;
+    insert into storage.objects (bucket_id, name, owner, metadata)
+    select 'expert-documents', _id || '/' || rd.code || '.pdf', _id, '{"mimetype": "application/pdf", "size": 100}'
+      from public.required_documents rd where rd.role = 'expert' and rd.active and rd.is_required;
+    insert into public.expert_documents (expert_id, required_document_id, storage_path, file_name)
+    select _id, rd.id, _id || '/' || rd.code || '.pdf', rd.code || '.pdf'
+      from public.required_documents rd where rd.role = 'expert' and rd.active and rd.is_required;
+  end if;
+end;
+$$;
+
+-- Accounts waiting for a decision, for the account-status tests (A3a, A3b): PD a pending dealer and PE a pending
+-- expert, each with a complete application under review; PE0 a pending expert with a draft (an experts row, not
+-- submitted); PD0 a pending dealer who has filled in nothing; RD a dealer an admin rejected with a reason, whose
+-- complete application is ready to send again. Kept out of world() so the other tests' row counts do not move.
 create or replace function tests.approval_world() returns void language plpgsql as $$
 declare
   pd uuid := tests.make_user('PD', 'dealer');
   pe uuid := tests.make_user('PE', 'expert');
   pe0 uuid := tests.make_user('PE0', 'expert');
+  pd0 uuid := tests.make_user('PD0', 'dealer');
   rd uuid := tests.make_user('RD', 'dealer');
 begin
-  insert into public.experts (id) values (pe);
+  perform tests.complete_application(pd);
+  perform tests.complete_application(pe);
+  perform tests.complete_application(rd);
+  insert into public.experts (id) values (pe0);
   with x as (insert into public.expert_verifications (expert_id) values (pe) returning id)
     insert into tests.fixtures select 'PEV', id from x;
   alter table public.profiles disable trigger notify_account_status_changed;
+  update public.profiles set application_submitted_at = now() where id in (pd, pe);
   update public.profiles
-     set account_status = 'rejected', account_status_reason = 'The business licence is missing.'
+     set account_status = 'rejected', account_status_reason = 'The business licence is missing.',
+         application_submitted_at = now() - interval '1 day'
    where id = rd;
   alter table public.profiles enable trigger notify_account_status_changed;
 end;

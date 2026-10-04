@@ -1,6 +1,13 @@
 import { apiFetch } from '../../services/api/client';
 import {
+  createRequiredDocument,
+  decideDealerApplication,
   dismissReport,
+  fetchAllRequiredDocuments,
+  fetchDealerApplication,
+  fetchDealerApplications,
+  resolveDealerDocumentUrl,
+  updateRequiredDocument,
   fetchAllOrders,
   fetchAllProfiles,
   fetchAuditLogs,
@@ -138,5 +145,41 @@ describe('fetchAllOrders', () => {
     mockApiFetch.mockResolvedValue([]);
     await fetchAllOrders();
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/orders');
+  });
+});
+
+describe('dealer applications (A3b)', () => {
+  it('reads the queue by status, one application, and a document link by its id', async () => {
+    mockApiFetch.mockResolvedValueOnce([]).mockResolvedValueOnce({}).mockResolvedValueOnce({ url: 'https://signed/doc' });
+    await fetchDealerApplications('pending');
+    await fetchDealerApplication('dealer-1');
+    const url = await resolveDealerDocumentUrl('dealer-1', 'doc-1');
+    expect(mockApiFetch).toHaveBeenNthCalledWith(1, '/api/v1/admin/dealer-applications', { query: { status: 'pending' } });
+    expect(mockApiFetch).toHaveBeenNthCalledWith(2, '/api/v1/admin/dealer-applications/dealer-1');
+    expect(mockApiFetch).toHaveBeenNthCalledWith(3, '/api/v1/admin/dealer-applications/dealer-1/documents/doc-1/url');
+    expect(url).toBe('https://signed/doc');
+  });
+
+  it('decides with a trimmed reason and returns whether the email went out', async () => {
+    mockApiFetch.mockResolvedValue({ new_status: 'rejected', email_delivered: true });
+    const result = await decideDealerApplication('dealer-1', 'rejected', '  The licence has expired.  ');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/users/dealer-1/account-status', {
+      method: 'PATCH',
+      body: { status: 'rejected', reason: 'The licence has expired.' },
+    });
+    expect(result.email_delivered).toBe(true);
+  });
+});
+
+describe('required documents (A3b)', () => {
+  it('lists, creates and changes entries', async () => {
+    mockApiFetch.mockResolvedValue({});
+    const input = { role: 'dealer' as const, code: 'tax', label: 'Tax certificate', description: null, is_required: true, sort_order: 40 };
+    await fetchAllRequiredDocuments();
+    await createRequiredDocument(input);
+    await updateRequiredDocument('d1', { active: false });
+    expect(mockApiFetch).toHaveBeenNthCalledWith(1, '/api/v1/admin/required-documents');
+    expect(mockApiFetch).toHaveBeenNthCalledWith(2, '/api/v1/admin/required-documents', { method: 'POST', body: input });
+    expect(mockApiFetch).toHaveBeenNthCalledWith(3, '/api/v1/admin/required-documents/d1', { method: 'PATCH', body: { active: false } });
   });
 });

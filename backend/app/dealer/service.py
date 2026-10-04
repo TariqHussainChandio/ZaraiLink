@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
 from app.auth.dependencies import AuthenticatedUser
+from app.common import application_documents as documents
 from app.common.errors import AppHTTPException
 from app.dealer import repository as repo
 
@@ -141,3 +142,46 @@ async def update_supplier(user: AuthenticatedUser, supplier_id: str, fields: dic
 
 async def delete_supplier(user: AuthenticatedUser, supplier_id: str) -> None:
     await repo.delete_supplier(user.access_token, supplier_id)
+
+
+# --- the dealer application (A3b; SRDS §7, §8, §12) -----------------------------------------------------------------
+
+
+async def fetch_my_application(user: AuthenticatedUser) -> dict | None:
+    return await repo.fetch_dealer_profile(user.access_token, user.id)
+
+
+async def save_my_application(user: AuthenticatedUser, fields: dict) -> dict:
+    saved = await repo.save_dealer_profile(user.access_token, user.id, fields)
+    if saved is None:
+        raise AppHTTPException(403, documents.LOCKED, "application_locked")
+    return saved
+
+
+async def fetch_my_documents(user: AuthenticatedUser) -> list[dict]:
+    return await documents.list_documents(user.access_token, documents.DEALER, user.id)
+
+
+async def add_my_document(
+    user: AuthenticatedUser, storage_path: str, file_name: str, required_document_id: str | None
+) -> dict:
+    return await documents.register(
+        user.access_token, documents.DEALER, user.id, storage_path, file_name, required_document_id
+    )
+
+
+async def remove_my_document(user: AuthenticatedUser, document_id: str) -> None:
+    await documents.remove(user.access_token, documents.DEALER, user.id, document_id)
+
+
+async def fetch_applications_for_admin(user: AuthenticatedUser, status: str) -> list[dict]:
+    """For the admin module's dealer queue: it reaches the dealer's tables only through this service."""
+    return await repo.fetch_applications_for_admin(user.access_token, status)
+
+
+async def fetch_application_for_admin(user: AuthenticatedUser, dealer_id: str) -> dict:
+    return await repo.fetch_application_for_admin(user.access_token, dealer_id)
+
+
+async def document_url_for_admin(user: AuthenticatedUser, dealer_id: str, document_id: str) -> str:
+    return await documents.signed_url(user.access_token, documents.DEALER, dealer_id, document_id)

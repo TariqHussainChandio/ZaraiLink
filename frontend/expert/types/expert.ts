@@ -20,6 +20,9 @@ export interface Expert {
   professional_description: string | null;
   location: GeoLocation | null;
   contact: string | null;
+  /** SRDS §10 (A3b). */
+  years_experience: number | null;
+  institution_affiliation: string | null;
   verification_status: VerificationStatus;
   created_at: string;
   updated_at: string;

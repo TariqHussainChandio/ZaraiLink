@@ -16,12 +16,11 @@ select is(
   (select array_agg(p.proname::text order by p.proname) from pg_proc p
     where p.pronamespace = 'public'::regnamespace and p.prosecdef
       and p.proname in ('is_account_approved', 'is_approved_dealer', 'is_approved_expert', 'caller_role',
-                        'is_approved_expert_id', 'is_seller_role', 'decide_account_status', 'resubmit_application',
+                        'is_approved_expert_id', 'is_seller_role', 'decide_account_status',
                         'notify_account_status_changed', 'reset_expert_on_role_change')
       and exists (select 1 from unnest(p.proconfig) c where c like 'search_path=%')),
   array['caller_role', 'decide_account_status', 'is_account_approved', 'is_approved_dealer', 'is_approved_expert',
-        'is_approved_expert_id', 'is_seller_role', 'notify_account_status_changed', 'reset_expert_on_role_change',
-        'resubmit_application'],
+        'is_approved_expert_id', 'is_seller_role', 'notify_account_status_changed', 'reset_expert_on_role_change'],
   'every new definer function sets search_path');
 select tests.expect(null, 'select 1 where public.is_approved_dealer()', 'err:42501', 'helpers: anon cannot call the caller helpers');
 select tests.expect(null, 'select public.decide_account_status(' || tests.l('PD') || $$, 'approved')$$, 'err:42501', 'decide_account_status: anon cannot call it');
@@ -77,11 +76,12 @@ select tests.expect(tests.fx('PD'), 'insert into public.disease_cases (user_id, 
 select tests.expect(tests.fx('PD'), 'insert into public.listing_views (listing_id, viewer_id) values (' || tests.l('L1') || ', ' || tests.l('PD') || ')', 'err:42501', 'listing_views: a pending dealer records no view');
 select tests.expect(tests.fx('PD'), 'update public.notifications set read = true where user_id = ' || tests.l('PD'), 'n:0', 'notifications: a pending dealer still marks their own (none yet)');
 
--- Experts: the application stays open to a pending expert, the work does not ----------------------------------------
-select tests.expect(tests.fx('PE'), $$update public.experts set qualifications = 'MSc Plant Pathology' where id = $$ || tests.l('PE'), 'n:1', 'experts: a pending expert edits their application');
-select tests.expect(tests.fx('PE'), 'insert into public.expert_specializations (expert_id, specialization) values (' || tests.l('PE') || $$, 'soil_management')$$, 'n:1', 'expert_specializations: a pending expert adds one');
-select tests.expect(tests.fx('PE'), $$insert into storage.objects (bucket_id, name, owner) values ('expert-documents', $$ || quote_literal(tests.fx('PE') || '/degree.pdf') || ', ' || tests.l('PE') || ')', 'n:1', 'expert-documents: a pending expert uploads into their own folder');
-select tests.expect(tests.fx('PE'), $$insert into storage.objects (bucket_id, name, owner) values ('expert-documents', $$ || quote_literal(tests.fx('E') || '/degree.pdf') || ', ' || tests.l('PE') || ')', 'err:42501', 'expert-documents: not into someone else''s folder');
+-- Experts: the application stays open to a pending expert, the work does not. PE0's application is a draft; since
+-- 20261012080000 one under review (PE) is frozen, which that migration's own test file proves.
+select tests.expect(tests.fx('PE0'), $$update public.experts set qualifications = 'MSc Plant Pathology' where id = $$ || tests.l('PE0'), 'n:1', 'experts: a pending expert edits their application');
+select tests.expect(tests.fx('PE0'), 'insert into public.expert_specializations (expert_id, specialization) values (' || tests.l('PE0') || $$, 'soil_management')$$, 'n:1', 'expert_specializations: a pending expert adds one');
+select tests.expect(tests.fx('PE0'), $$insert into storage.objects (bucket_id, name, owner) values ('expert-documents', $$ || quote_literal(tests.fx('PE0') || '/degree.pdf') || ', ' || tests.l('PE0') || ')', 'n:1', 'expert-documents: a pending expert uploads into their own folder');
+select tests.expect(tests.fx('PE0'), $$insert into storage.objects (bucket_id, name, owner) values ('expert-documents', $$ || quote_literal(tests.fx('E') || '/degree.pdf') || ', ' || tests.l('PE0') || ')', 'err:42501', 'expert-documents: not into someone else''s folder');
 select tests.expect(tests.fx('B'), $$insert into storage.objects (bucket_id, name, owner) values ('expert-documents', $$ || quote_literal(tests.fx('B') || '/degree.pdf') || ', ' || tests.l('B') || ')', 'err:42501', 'expert-documents: a buyer cannot upload at all');
 select tests.expect(tests.fx('B'), 'insert into public.expert_specializations (expert_id, specialization) values (' || tests.l('B') || $$, 'soil_management')$$, 'err:42501', 'expert_specializations: a buyer cannot add one');
 select tests.expect(tests.fx('B'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('B') || ', ' || tests.l('PE') || $$, 'Help')$$, 'err:42501', 'consultations: nobody can consult a pending expert');
@@ -99,7 +99,7 @@ select tests.expect(tests.fx('D'), 'select public.decide_account_status(' || tes
 select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PD') || $$, 'approved')$$, 'err:42501', 'decide: an admin without a second factor cannot');
 select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PD') || $$, 'rejected', 'no')$$, 'err:23514', 'decide: a rejection needs a reason of 10 characters', 'aal2');
 select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('F') || $$, 'approved')$$, 'err:23514', 'decide: farmers are not reviewed', 'aal2');
-select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PE0') || $$, 'approved')$$, 'err:23514', 'decide: an expert who has not applied cannot be approved', 'aal2');
+select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PE0') || $$, 'approved')$$, 'err:23514', 'decide: an expert who has not submitted cannot be approved (20261012080000)', 'aal2');
 select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('D') || $$, 'rejected', 'Taking the approval back')$$, 'err:23514', 'decide: an approval is not taken back by a decision (suspension is the tool)', 'aal2');
 select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PD') || $$, 'approved')$$, 'rows:1', 'decide: an admin with a second factor approves', 'aal2');
 select is((select account_status::text from public.profiles where id = tests.fx('PD')), 'approved', 'decide: the dealer is approved');
@@ -119,12 +119,12 @@ select is((select verification_status::text from public.experts where id = tests
 select is((select decision::text || ' by ' || (reviewed_by = tests.fx('A'))::text from public.expert_verifications where id = tests.fx('PEV')), 'rejected by true', 'decide: the verification row records the decision and the reviewer');
 select ok(exists (select 1 from public.audit_logs where action = 'expert_application_rejected' and target_id = tests.fx('PE')), 'decide: the rejection is audited');
 
--- resubmit_application: a rejected applicant sends it again (D10) ---------------------------------------------------
-select tests.expect(tests.fx('ND'), 'select public.resubmit_application()', 'err:23514', 'resubmit: a pending applicant has nothing to resubmit');
-select tests.expect(tests.fx('F'), 'select public.resubmit_application()', 'err:23514', 'resubmit: a farmer has no application');
-select tests.expect(tests.fx('RD'), 'select public.resubmit_application()', 'rows:1', 'resubmit: a rejected dealer sends it again');
+-- Sending it again (D10): since 20261012080000 through submit_application(), which checks the application first ---
+select tests.expect(tests.fx('ND'), 'select public.submit_application()', 'err:23514', 'resubmit: a pending applicant with nothing filled in cannot submit');
+select tests.expect(tests.fx('F'), 'select public.submit_application()', 'err:23514', 'resubmit: a farmer has no application');
+select tests.expect(tests.fx('RD'), 'select public.submit_application()', 'rows:1', 'resubmit: a rejected dealer sends it again');
 select is((select account_status::text || ' / ' || coalesce(account_status_reason, 'no reason') from public.profiles where id = tests.fx('RD')), 'pending / no reason', 'resubmit: back to pending, the reason cleared');
-select tests.expect(tests.fx('PE'), 'select public.resubmit_application()', 'rows:1', 'resubmit: a rejected expert sends it again');
+select tests.expect(tests.fx('PE'), 'select public.submit_application()', 'rows:1', 'resubmit: a rejected expert sends it again');
 select is((select verification_status::text from public.experts where id = tests.fx('PE')), 'pending', 'resubmit: the expert verification goes back to pending');
 
 -- A role change is not an approval ---------------------------------------------------------------------------------
@@ -146,10 +146,9 @@ select is(
   (select array_agg(schemaname || '.' || tablename || ' ' || policyname order by 1) from pg_policies
     where schemaname in ('public', 'storage') and cmd <> 'SELECT'
       and coalesce(qual, '') || coalesce(with_check, '') like '%is_suspended%'
-      and coalesce(qual, '') || coalesce(with_check, '') !~ '(is_account_approved|is_approved_dealer|is_approved_expert|caller_role|is_seller_role)'),
-  array['public.experts experts_update_own_or_admin', 'public.notifications notifications_update_own',
-        'public.profiles profiles_update_own_or_admin'],
-  'ratchet: only the own profile, notifications and the expert application stay open while pending');
+      and coalesce(qual, '') || coalesce(with_check, '') !~ '(is_account_approved|is_approved_dealer|is_approved_expert|caller_role|is_seller_role|is_application_editable)'),
+  array['public.notifications notifications_update_own', 'public.profiles profiles_update_own_or_admin'],
+  'ratchet: only the own profile and notifications stay open while pending (the expert application checks editability since 20261012080000)');
 
 select * from finish();
 rollback;

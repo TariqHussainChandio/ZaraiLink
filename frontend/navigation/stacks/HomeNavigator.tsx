@@ -12,6 +12,7 @@ import { CropListScreen } from '../../farmer/screens/CropListScreen';
 import { FarmDetailScreen } from '../../farmer/screens/FarmDetailScreen';
 import { FarmListScreen } from '../../farmer/screens/FarmListScreen';
 import { DealerAnalyticsScreen } from '../../dealer/screens/AnalyticsScreen';
+import { BusinessDetailsScreen } from '../../dealer/screens/BusinessDetailsScreen';
 import { InventoryScreen } from '../../inventory/screens/InventoryScreen';
 import { InventoryTransactionScreen } from '../../inventory/screens/InventoryTransactionScreen';
 import { StoreDetailScreen } from '../../inventory/screens/StoreDetailScreen';
@@ -39,6 +40,7 @@ export type HomeStackParamList = {
   [HOME_ROUTES.DiseaseProcessing]: { imageUri: string; imageFileName: string | null; imageType: string | null; cropId: string | null };
   [HOME_ROUTES.DiseaseResult]: { diseaseCaseId: string };
   [HOME_ROUTES.Products]: undefined;
+  [HOME_ROUTES.BusinessDetails]: undefined;
   [HOME_ROUTES.Stores]: undefined;
   [HOME_ROUTES.StoreDetail]: { storeId?: string };
   [HOME_ROUTES.Suppliers]: undefined;
@@ -131,6 +133,7 @@ export function HomeNavigator() {
         component={MyListingsScreen}
         options={{ title: 'Products' }}
       />
+      <Stack.Screen name={HOME_ROUTES.BusinessDetails} component={BusinessDetailsScreen} options={{ title: 'Business details' }} />
       <Stack.Screen name={HOME_ROUTES.Stores} component={StoreListScreen} options={{ title: 'Stores' }} />
       <Stack.Screen
         name={HOME_ROUTES.StoreDetail}

@@ -1,14 +1,24 @@
 import { supabase } from '../../../services/supabase/client';
-import type { Role } from '../../constants/roles';
+import type { RegistrableRole } from '../../constants/roles';
 
 // Email only (A3a): Supabase Auth sends every code (sign-up, recovery, reauthentication) by email. Phone sign-up is off
 // in supabase/config.toml because no SMS provider is configured (G2). Password strength, code length and expiry are
 // Supabase's settings (config.toml); the app checks the same rules first only to answer sooner.
+/**
+ * What the sign-up form sends (SRDS §5–§7, §10). Everything besides the email and password goes as sign-up metadata,
+ * which handle_new_user() copies into the profile, trimmed and cut to length; the village only for a farmer.
+ */
 export interface SignUpInput {
   email: string;
   password: string;
   fullName: string;
-  role: Role;
+  role: RegistrableRole;
+  phone: string;
+  country?: string;
+  province?: string;
+  city?: string;
+  street?: string;
+  village?: string;
 }
 
 export interface SignInInput {
@@ -16,15 +26,12 @@ export interface SignInInput {
   password: string;
 }
 
-export async function signUp({ email, password, fullName, role }: SignUpInput) {
+export async function signUp({ email, password, fullName, role, phone, country, province, city, street, village }: SignUpInput) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        full_name: fullName,
-        role,
-      },
+      data: { full_name: fullName, role, phone, country, province, city, street, village },
     },
   });
 

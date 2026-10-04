@@ -105,7 +105,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
           <Button label="Forgot your password?" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)} />
           <View style={styles.footer}>
             <Text style={styles.footerText}>{"Don't have an account?"}</Text>
-            <Button label="Sign up" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Register)} />
+            <Button label="Sign up" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)} />
           </View>
         </View>
       </ScrollView>

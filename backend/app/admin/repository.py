@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 
+from postgrest.exceptions import APIError
 from postgrest.types import CountMethod
 
+from app.common.errors import AppHTTPException
 from app.common.pagination import page_range
-from app.common.rows import as_rows
+from app.common.rows import as_rows, first_row
 from app.database.supabase_client import get_user_scoped_client
 
 REPORT_SELECT = "*, reporter:profiles!reports_reporter_id_fkey(id,full_name)"
@@ -95,3 +97,30 @@ async def fetch_audit_logs(access_token: str, target_entity: str | None, actor_i
         query = query.eq("actor_id", actor_id)
     response = await query.range(*page_range()).execute()
     return as_rows(response)
+
+
+# --- required documents (A3b). Every write is audited by the table's own trigger (audit_required_documents), so a
+# write through the Data API is audited exactly like one through here; this code writes no audit row of its own.
+
+
+async def fetch_required_documents(access_token: str) -> list[dict]:
+    client = await get_user_scoped_client(access_token)
+    response = await client.table("required_documents").select("*").order("role").order("sort_order").execute()
+    return as_rows(response)
+
+
+async def create_required_document(access_token: str, fields: dict) -> dict:
+    client = await get_user_scoped_client(access_token)
+    try:
+        response = await client.table("required_documents").insert(fields).execute()
+    except APIError as exc:
+        if exc.code == "23505":
+            raise AppHTTPException(409, "That code is already used for this role", "conflict") from exc
+        raise
+    return first_row(response)
+
+
+async def update_required_document(access_token: str, document_id: str, fields: dict) -> dict:
+    client = await get_user_scoped_client(access_token)
+    response = await client.table("required_documents").update(fields).eq("id", document_id).execute()
+    return first_row(response)

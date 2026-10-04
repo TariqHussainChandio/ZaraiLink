@@ -100,7 +100,22 @@ class DecideAccountRequest(BaseModel):
         return self
 
 
-class AccountDecision(BaseModel):
-    role: Role
-    previous_status: AccountStatus
-    new_status: AccountStatus
+class RequiredDocumentInput(BaseModel):
+    """A new document applicants of a role are asked for (SRDS §7: configurable). `code` is a stable machine name."""
+
+    role: Literal["dealer", "expert"]
+    code: str = Field(pattern=r"^[a-z][a-z0-9_]{1,49}$")
+    label: str = Field(min_length=2, max_length=120)
+    description: str | None = Field(default=None, max_length=500)
+    is_required: bool = True
+    sort_order: int = 0
+
+
+class RequiredDocumentUpdate(BaseModel):
+    """A change to one entry. It is never deleted, only retired (`active: false`): sent documents point at it."""
+
+    label: str | None = Field(default=None, min_length=2, max_length=120)
+    description: str | None = Field(default=None, max_length=500)
+    is_required: bool | None = None
+    active: bool | None = None
+    sort_order: int | None = None

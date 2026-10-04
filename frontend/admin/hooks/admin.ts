@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  createRequiredDocument,
   decideDealerApplication,
   dismissReport,
+  fetchAllRequiredDocuments,
+  fetchDealerApplication,
+  fetchDealerApplications,
+  resolveDealerDocumentUrl,
+  updateRequiredDocument,
+  type DealerApplicationForAdmin,
+  type RequiredDocumentInput,
   fetchAllOrders,
   fetchAllProfiles,
   fetchAuditLogs,
@@ -14,6 +22,7 @@ import {
 import { fetchAdminAnalytics } from '../../common/analytics';
 import {
   fetchExpertById,
+  fetchExpertForAdminById,
   fetchExpertsForAdmin,
   resolveExpertDocumentUrl,
   reviewExpertVerification,
@@ -63,13 +72,9 @@ function useInvalidateAdmin() {
 
 // ---- users
 
-/** All users, or only the dealers waiting for a decision (A3a), filtered by the API. */
-export function useProfiles(filter: 'all' | 'pendingDealers' = 'all') {
-  return useQuery({
-    queryKey: queryKeys.admin.profiles(filter),
-    queryFn: () => fetchAllProfiles(filter === 'pendingDealers' ? { role: 'dealer', accountStatus: 'pending' } : {}),
-    staleTime: 0,
-  });
+/** Every user. Dealer applications are decided from Approvals, after reading them (A3b). */
+export function useProfiles() {
+  return useQuery({ queryKey: queryKeys.admin.profiles(), queryFn: () => fetchAllProfiles(), staleTime: 0 });
 }
 
 export function useSetProfileSuspended() {
@@ -170,9 +175,65 @@ export function useReviewVerification() {
   });
 }
 
-/** A short-lived signed link to the expert's certificate, opened on demand rather than kept in the cache. */
-export function useExpertDocumentUrl() {
-  return useMutation({ mutationFn: (expertId: string) => resolveExpertDocumentUrl(expertId) });
+export function useExpertApplication(expertId: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.expertApplication(expertId),
+    queryFn: () => fetchExpertForAdminById(expertId),
+    // The detail screen asks for one role's application; the other query stays idle.
+    enabled: !!expertId,
+    staleTime: 0,
+  });
+}
+
+// ---- dealer applications (A3b)
+
+export function useDealerApplications(status: DealerApplicationForAdmin['account_status']) {
+  return useQuery({
+    queryKey: queryKeys.admin.dealerApplications(status),
+    queryFn: () => fetchDealerApplications(status),
+    staleTime: 0,
+  });
+}
+
+export function useDealerApplication(dealerId: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.dealerApplication(dealerId),
+    queryFn: () => fetchDealerApplication(dealerId),
+    // The detail screen asks for one role's application; the other query stays idle.
+    enabled: !!dealerId,
+    staleTime: 0,
+  });
+}
+
+/**
+ * A ten-minute signed link to one application document, asked for when the admin opens it and never kept in the cache.
+ * The server looks the file up from the document's own row under that applicant.
+ */
+export function useApplicationDocumentUrl() {
+  return useMutation({
+    mutationFn: ({ role, applicantId, documentId }: { role: 'dealer' | 'expert'; applicantId: string; documentId: string }) =>
+      role === 'dealer' ? resolveDealerDocumentUrl(applicantId, documentId) : resolveExpertDocumentUrl(applicantId, documentId),
+  });
+}
+
+// ---- required documents (A3b)
+
+export function useAllRequiredDocuments() {
+  return useQuery({ queryKey: queryKeys.admin.requiredDocuments(), queryFn: fetchAllRequiredDocuments, staleTime: 0 });
+}
+
+export function useSaveRequiredDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input, changes }: { id?: string; input?: RequiredDocumentInput; changes?: Parameters<typeof updateRequiredDocument>[1] }) =>
+      id ? updateRequiredDocument(id, changes ?? {}) : createRequiredDocument(input as RequiredDocumentInput),
+    // Applicants read the list too, so their copy refreshes with the admin's.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.requiredDocuments() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.application.requiredDocuments() }),
+      ]),
+  });
 }
 
 // ---- reports

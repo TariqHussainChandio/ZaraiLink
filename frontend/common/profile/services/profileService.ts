@@ -78,7 +78,17 @@ export async function deleteOwnAccount(password: string): Promise<void> {
   await apiFetch('/api/v1/profile/me', { method: 'DELETE', body: { password } });
 }
 
-/** A rejected dealer or expert sends their application back for review (A3a, D10). The API refuses anyone else (409). */
-export async function resubmitApplication(): Promise<void> {
-  await apiFetch('/api/v1/profile/application/resubmit', { method: 'POST' });
+/**
+ * Starts an email change (A3b, admin Account Security). Supabase Auth emails a code to the current address and one to
+ * the new address (supabase/config.toml double_confirm_changes) and changes nothing until both are entered.
+ */
+export async function requestEmailChange(newEmail: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ email: newEmail });
+  if (error) throw error;
+}
+
+/** One of the two email-change codes, checked against the address it was sent to. */
+export async function confirmEmailChangeCode(email: string, token: string): Promise<void> {
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email_change' });
+  if (error) throw error;
 }

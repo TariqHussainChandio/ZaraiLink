@@ -13,6 +13,7 @@ import os
 import time
 
 import httpx
+from conftest import fill_application
 
 REST = os.environ.get("LOCAL_SUPABASE_URL", "") + "/rest/v1"
 ANON_KEY = os.environ.get("LOCAL_SUPABASE_ANON_KEY", "")
@@ -46,13 +47,18 @@ def own_profile(token: str, user_id: str) -> dict:
 
 
 def test_a_pending_dealer_is_refused_through_both_doors_and_an_approved_one_is_not(
-    world, api_client, make_actor, fresh_sign_in
+    world, api_client, make_actor, make_applicant, fresh_sign_in
 ):
     pending_id, _, pending = make_actor("dealer")
-    approved_id, approved_email, _ = make_actor("dealer")
+    approved_id, approved_email, _ = make_applicant("dealer")
     decided = decide(api_client, world, approved_id, "approved")
     assert decided.status_code == 200, decided.text
-    assert decided.json() == {"role": "dealer", "previous_status": "pending", "new_status": "approved"}
+    assert decided.json() == {
+        "role": "dealer",
+        "previous_status": "pending",
+        "new_status": "approved",
+        "email_delivered": True,
+    }
     approved = fresh_sign_in(approved_email)
 
     # FastAPI: refused for their status, not their role.
@@ -82,9 +88,9 @@ def test_a_buyer_cannot_open_a_dealer_store_through_postgrest(world):
 
 
 def test_nobody_approves_themselves_and_an_admin_decides_only_with_a_second_factor(
-    make_actor, api_client, world, matrix_actors
+    make_applicant, api_client, world, matrix_actors
 ):
-    pending_id, _, pending = make_actor("dealer")
+    pending_id, _, pending = make_applicant("dealer")
     self_approval = rest("PATCH", "profiles", pending, f"id=eq.{pending_id}", {"account_status": "approved"})
     assert refused_by_rls(self_approval), self_approval.text
     # Not even the admin decides by a direct write: no audit row would follow it.
@@ -107,8 +113,8 @@ def test_nobody_approves_themselves_and_an_admin_decides_only_with_a_second_fact
     assert decide(api_client, world, pending_id, "approved").status_code == 200
 
 
-def test_every_decision_is_audited_with_the_srds_event_name(world, api_client, make_actor):
-    dealer_id, _, _ = make_actor("dealer")
+def test_every_decision_is_audited_with_the_srds_event_name(world, api_client, make_applicant):
+    dealer_id, _, _ = make_applicant("dealer")
     assert decide(api_client, world, dealer_id, "rejected", REASON).status_code == 200
     logs = api_client("GET", "/api/v1/admin/audit-logs?target_entity=profiles", world.admin.token)
     assert logs.status_code == 200, logs.text
@@ -137,24 +143,25 @@ def test_only_a_pending_dealer_is_decided_here(world, api_client, make_actor):
     assert short.status_code == 422, short.text
 
 
-def test_a_rejected_dealer_reads_the_reason_and_resubmits(world, api_client, make_actor):
-    dealer_id, _, token = make_actor("dealer")
+def test_a_rejected_dealer_reads_the_reason_and_resubmits(world, api_client, make_applicant):
+    dealer_id, _, token = make_applicant("dealer")
     assert decide(api_client, world, dealer_id, "rejected", REASON).status_code == 200
     assert own_profile(token, dealer_id) == {"account_status": "rejected", "account_status_reason": REASON}
     still_refused = api_client("GET", "/api/v1/dealer/inventory", token)
     assert still_refused.json()["code"] == "account_not_approved", still_refused.text
-    resubmitted = api_client("POST", "/api/v1/profile/application/resubmit", token)
+    # Since A3b a resubmission is a submission: submit_application() checks the application is still complete.
+    resubmitted = api_client("POST", "/api/v1/profile/application/submit", token)
     assert resubmitted.status_code == 204, resubmitted.text
     assert own_profile(token, dealer_id) == {"account_status": "pending", "account_status_reason": None}
-    twice = api_client("POST", "/api/v1/profile/application/resubmit", token)
+    twice = api_client("POST", "/api/v1/profile/application/submit", token)
     assert twice.status_code == 409, twice.text
     assert twice.json()["code"] == "invalid_transition"
-    farmer = api_client("POST", "/api/v1/profile/application/resubmit", world.farmer.token)
+    farmer = api_client("POST", "/api/v1/profile/application/submit", world.farmer.token)
     assert farmer.status_code == 409, farmer.text
 
 
-def test_a_session_from_before_the_approval_must_sign_in_again(world, api_client, make_actor, fresh_sign_in):
-    dealer_id, dealer_email, old_session = make_actor("dealer")
+def test_a_session_from_before_the_approval_must_sign_in_again(world, api_client, make_applicant, fresh_sign_in):
+    dealer_id, dealer_email, old_session = make_applicant("dealer")
     # The token's sign-in time (`amr`) is whole seconds, and a sign-in in the decision's own second counts as after
     # it; a real applicant signs in well before an admin decides.
     time.sleep(1.2)
@@ -166,7 +173,9 @@ def test_a_session_from_before_the_approval_must_sign_in_again(world, api_client
     assert fresh.status_code == 200, fresh.text
 
 
-def test_an_expert_applies_while_pending_and_is_approved_from_approvals(world, api_client, make_actor, fresh_sign_in):
+def test_an_expert_applies_while_pending_and_is_approved_from_approvals(
+    world, api_client, make_actor, fresh_sign_in, backend_url
+):
     expert_id, expert_email, token = make_actor("expert")
     # Independent verification F1 of the parked branch: the application row itself must not carry a decision.
     forged = rest("POST", "experts", token, body={"id": expert_id, "verification_status": "approved"})
@@ -179,23 +188,18 @@ def test_an_expert_applies_while_pending_and_is_approved_from_approvals(world, a
         json={"decision": "approved"},
     )
     assert early.status_code == 409, early.text
-    applied = api_client(
-        "POST",
-        "/api/v1/expert/application",
-        token,
-        json={
-            "profile": {
-                "qualifications": "MSc Plant Pathology",
-                "degree": "MSc",
-                "experience": "6 years",
-                "professional_description": "Rice diseases",
-                "contact": "expert@example.test",
-                "specializations": ["plant_diseases"],
-            }
-        },
-    )
-    assert applied.status_code in (200, 201), applied.text
+    # The details and the required documents (A3b), all open to a pending expert.
+    fill_application(backend_url, "expert", expert_id, token)
     assert api_client("GET", "/api/v1/expert/me", token).status_code == 200
+    # Filled in is not sent: only a submitted application reaches the admin.
+    unsent = api_client(
+        "PATCH",
+        f"/api/v1/expert/admin/{expert_id}/verification",
+        world.admin.token,
+        json={"decision": "approved"},
+    )
+    assert unsent.status_code == 409, unsent.text
+    assert api_client("POST", "/api/v1/profile/application/submit", token).status_code == 204
     detail = api_client("GET", f"/api/v1/expert/admin/{expert_id}", world.admin.token)
     assert detail.status_code == 200, detail.text
     assert detail.json()["verification_status"] == "pending"
@@ -211,7 +215,8 @@ def test_an_expert_applies_while_pending_and_is_approved_from_approvals(world, a
         world.admin.token,
         json={"decision": "approved", "notes": "Degree checked"},
     )
-    assert decided.status_code == 204, decided.text
+    assert decided.status_code == 200, decided.text
+    assert decided.json()["email_delivered"] is True
     fresh = fresh_sign_in(expert_email)
     assert api_client("GET", "/api/v1/consultations/assigned", fresh).status_code == 200
     public = api_client("GET", f"/api/v1/expert/{expert_id}")
