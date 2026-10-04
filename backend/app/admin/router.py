@@ -2,11 +2,15 @@ from fastapi import APIRouter, Depends
 
 from app.admin import service
 from app.admin.schemas import (
+    AccountDecision,
+    AccountStatus,
     AuditLogEntryWithActor,
+    DecideAccountRequest,
     PlatformStats,
     Profile,
     ReportWithReporter,
     ResolveReportRequest,
+    Role,
     SuspendUserRequest,
     UpdateUserRoleRequest,
 )
@@ -25,8 +29,13 @@ async def get_platform_stats(user: AuthenticatedUser = Depends(require_admin)) -
 
 
 @router.get("/users", response_model=list[Profile])
-async def list_users(user: AuthenticatedUser = Depends(require_admin), page: Page = Depends(paginate)) -> list[dict]:
-    return page.finish(await service.fetch_all_profiles(user))
+async def list_users(
+    role: Role | None = None,
+    account_status: AccountStatus | None = None,
+    user: AuthenticatedUser = Depends(require_admin),
+    page: Page = Depends(paginate),
+) -> list[dict]:
+    return page.finish(await service.fetch_all_profiles(user, role, account_status))
 
 
 @router.patch("/users/{profile_id}/suspend", status_code=204)
@@ -41,6 +50,13 @@ async def change_user_role(
     profile_id: str, request: UpdateUserRoleRequest, user: AuthenticatedUser = Depends(require_admin_aal2)
 ) -> None:
     await service.update_user_role(user, profile_id, request.role)
+
+
+@router.patch("/users/{profile_id}/account-status", response_model=AccountDecision)
+async def decide_dealer_application(
+    profile_id: str, request: DecideAccountRequest, user: AuthenticatedUser = Depends(require_admin_aal2)
+) -> dict:
+    return await service.decide_dealer_application(user, profile_id, request.status, request.reason)
 
 
 @router.get("/reports", response_model=list[ReportWithReporter])

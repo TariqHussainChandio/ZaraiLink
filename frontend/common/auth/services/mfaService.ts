@@ -36,3 +36,14 @@ export async function unenrollTotp(factorId: string): Promise<void> {
   const { error } = await supabase.auth.mfa.unenroll({ factorId });
   if (error) throw error;
 }
+
+/**
+ * The second factor at sign-in (A3a verification, H1): the code from the authenticator turns this session into aal2, which
+ * every admin write needs. Supabase then emits MFA_CHALLENGE_VERIFIED and the auth store applies the stronger session.
+ */
+export async function verifySecondFactor(code: string): Promise<void> {
+  const factorId = await getVerifiedTotpFactorId();
+  if (!factorId) throw new Error('No authenticator is set up for this account');
+  const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
+  if (error) throw error;
+}

@@ -11,6 +11,8 @@ export const ERROR_CODE_MESSAGES: Record<ErrorCode, string> = {
   session_expired: 'Your session has expired. Please sign in again.',
   auth_unavailable: 'We could not verify your sign-in just now. Please try again in a moment.',
   account_suspended: 'Your account is suspended.',
+  account_not_approved: 'Your application is waiting for an administrator.',
+  sign_in_again: 'Your account was approved. Sign in again to continue.',
   insufficient_role: 'You are not allowed to do this.',
   mfa_required: 'This action needs two-step verification.',
   incorrect_password: 'That password is not correct.',

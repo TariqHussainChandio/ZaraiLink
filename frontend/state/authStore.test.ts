@@ -214,3 +214,125 @@ describe('useAuthStore.refreshProfile', () => {
     expect(state.role).toBe('farmer');
   });
 });
+
+// A3a (D10; SRDS §8, §11): a dealer or expert waiting for a decision sees only the Application Status screen, and one
+// approved while signed in signs in again before the dashboard.
+function mockProfile(row: Record<string, unknown>) {
+  mockedSupabase.from.mockImplementation(() => {
+    const builder: any = {};
+    builder.select = jest.fn(() => builder);
+    builder.eq = jest.fn(() => builder);
+    builder.single = jest.fn(() => Promise.resolve({ data: row, error: null }));
+    return builder;
+  });
+}
+
+describe('useAuthStore: account status', () => {
+  it.each([
+    ['dealer', 'pending', 'awaitingApproval'],
+    ['expert', 'rejected', 'awaitingApproval'],
+    ['dealer', 'approved', 'authenticated'],
+    ['farmer', 'approved', 'authenticated'],
+  ])('a signed-in %s whose application is %s is %s', async (role, accountStatus, expected) => {
+    mockedSupabase.auth.getSession.mockResolvedValue({ data: { session }, error: null });
+    mockProfile({ ...profileRow, role, account_status: accountStatus });
+
+    let unsubscribe!: () => void;
+    await act(async () => {
+      unsubscribe = useAuthStore.getState().initialize();
+    });
+    await waitFor(() => expect(useAuthStore.getState().status).toBe(expected));
+    unsubscribe();
+  });
+
+  it('a suspended account is suspended even while its application is pending', async () => {
+    mockedSupabase.auth.getSession.mockResolvedValue({ data: { session }, error: null });
+    mockProfile({ ...profileRow, role: 'dealer', account_status: 'pending', is_suspended: true });
+
+    let unsubscribe!: () => void;
+    await act(async () => {
+      unsubscribe = useAuthStore.getState().initialize();
+    });
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('suspended'));
+    unsubscribe();
+  });
+
+  it('an approval seen while waiting asks the user to sign in again, not straight into the dashboard', async () => {
+    act(() => {
+      useAuthStore.setState({ user: session.user as never, status: 'awaitingApproval' });
+    });
+    mockProfile({ ...profileRow, role: 'dealer', account_status: 'approved' });
+
+    await act(async () => {
+      await useAuthStore.getState().refreshProfile();
+    });
+
+    expect(useAuthStore.getState().status).toBe('approvalGranted');
+  });
+
+  it('a rejection seen while waiting keeps the Application Status screen, with the reason', async () => {
+    act(() => {
+      useAuthStore.setState({ user: session.user as never, status: 'awaitingApproval' });
+    });
+    mockProfile({ ...profileRow, role: 'dealer', account_status: 'rejected', account_status_reason: 'Licence missing' });
+
+    await act(async () => {
+      await useAuthStore.getState().refreshProfile();
+    });
+
+    expect(useAuthStore.getState().status).toBe('awaitingApproval');
+    expect(useAuthStore.getState().profile?.account_status_reason).toBe('Licence missing');
+  });
+
+  it('a refresh during a password reset keeps the reset screen', async () => {
+    act(() => {
+      useAuthStore.setState({ user: session.user as never, status: 'passwordRecovery' });
+    });
+    mockProfile({ ...profileRow, role: 'dealer', account_status: 'pending' });
+
+    await act(async () => {
+      await useAuthStore.getState().refreshProfile();
+    });
+
+    expect(useAuthStore.getState().status).toBe('passwordRecovery');
+  });
+});
+
+// A3a verification round 1, H1: an admin with an authenticator gives the second factor before the console opens.
+describe('useAuthStore: the admin second factor', () => {
+  async function signIn(role: string, levels: { currentLevel: string; nextLevel: string }) {
+    mockedSupabase.auth.getSession.mockResolvedValue({ data: { session }, error: null });
+    mockProfile({ ...profileRow, role, account_status: 'approved' });
+    mockedSupabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({ data: levels, error: null } as never);
+    let unsubscribe!: () => void;
+    await act(async () => {
+      unsubscribe = useAuthStore.getState().initialize();
+    });
+    return unsubscribe;
+  }
+
+  it('asks an admin who signed in with the password only for the code', async () => {
+    const unsubscribe = await signIn('admin', { currentLevel: 'aal1', nextLevel: 'aal2' });
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('secondFactor'));
+    unsubscribe();
+  });
+
+  it('opens the console once the session has used the second factor', async () => {
+    const unsubscribe = await signIn('admin', { currentLevel: 'aal2', nextLevel: 'aal2' });
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
+    unsubscribe();
+  });
+
+  it('opens the console for an admin with no authenticator yet (they set one up in Settings)', async () => {
+    const unsubscribe = await signIn('admin', { currentLevel: 'aal1', nextLevel: 'aal1' });
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
+    unsubscribe();
+  });
+
+  it('never asks anyone but an admin', async () => {
+    const unsubscribe = await signIn('farmer', { currentLevel: 'aal1', nextLevel: 'aal2' });
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
+    expect(mockedSupabase.auth.mfa.getAuthenticatorAssuranceLevel).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+});

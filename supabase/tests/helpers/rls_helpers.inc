@@ -65,6 +65,16 @@ begin
 end;
 $$;
 
+-- Approve accounts as the owner (a user session may not write the status; only decide_account_status() decides),
+-- with the decision notification paused for the statement.
+create or replace function tests.approve(_ids uuid[]) returns void language plpgsql as $$
+begin
+  alter table public.profiles disable trigger notify_account_status_changed;
+  update public.profiles set account_status = 'approved' where id = any (_ids);
+  alter table public.profiles enable trigger notify_account_status_changed;
+end;
+$$;
+
 create or replace function tests.world() returns void language plpgsql as $$
 declare
   f uuid; f2 uuid; b uuid; b2 uuid; d uuid; d2 uuid; e uuid; s uuid; a uuid;
@@ -85,6 +95,9 @@ begin
   update public.profiles set role = 'admin' where id = a;
   alter table public.profiles enable trigger guard_profiles_role;
   update public.profiles set is_suspended = true where id = s;
+  -- Dealers and experts start pending (20261005080000_account_status.sql); the policy fixtures are approved ones, so
+  -- approve them as the owner, with the decision notification paused so no fixture notification appears.
+  perform tests.approve(array[d, d2, e]);
 
   insert into public.listings (owner_id, title, price, quantity, status, seller_role)
     values (f, 'L active', 100, 10, 'active', 'farmer') returning id into l1;
@@ -128,7 +141,7 @@ begin
   with x as (insert into public.inventory_transactions (inventory_id, type, quantity) values (inv1, 'addition', 1) returning id)
     insert into tests.fixtures select 'IT1', id from x;
 
-  insert into public.experts (id) values (e);
+  insert into public.experts (id, verification_status) values (e, 'approved');
   insert into public.expert_specializations (expert_id, specialization) values (e, 'plant_diseases');
   insert into public.expert_verifications (expert_id) values (e) returning id into ev1;
   insert into tests.fixtures values ('EV1', ev1);
@@ -174,6 +187,7 @@ declare
   farm uuid;
 begin
   update public.profiles set is_suspended = true where id in (sf, sd, se);
+  perform tests.approve(array[sd, se]);
   insert into public.farms (owner_id, name) values (sf, 'Suspended farm') returning id into farm;
   insert into tests.fixtures values ('SFARM', farm);
   with x as (insert into public.farm_crops (farm_id) values (farm) returning id)
@@ -196,5 +210,26 @@ begin
     insert into tests.fixtures select 'SC', id from x;
   with x as (insert into public.messages (conversation_id, sender_id, body) values (tests.fx('SC'), tests.fx('F'), 'to the suspended') returning id)
     insert into tests.fixtures select 'SM', id from x;
+end;
+$$;
+
+-- Accounts waiting for a decision, for the account-status tests (A3a): PD a pending dealer, PE a pending expert who
+-- has sent an application, PE0 a pending expert who has not, RD a dealer an admin rejected with a reason. Kept out
+-- of world() so the other tests' row counts do not move.
+create or replace function tests.approval_world() returns void language plpgsql as $$
+declare
+  pd uuid := tests.make_user('PD', 'dealer');
+  pe uuid := tests.make_user('PE', 'expert');
+  pe0 uuid := tests.make_user('PE0', 'expert');
+  rd uuid := tests.make_user('RD', 'dealer');
+begin
+  insert into public.experts (id) values (pe);
+  with x as (insert into public.expert_verifications (expert_id) values (pe) returning id)
+    insert into tests.fixtures select 'PEV', id from x;
+  alter table public.profiles disable trigger notify_account_status_changed;
+  update public.profiles
+     set account_status = 'rejected', account_status_reason = 'The business licence is missing.'
+   where id = rd;
+  alter table public.profiles enable trigger notify_account_status_changed;
 end;
 $$;

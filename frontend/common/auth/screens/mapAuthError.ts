@@ -11,7 +11,7 @@ export function mapPasswordFlowErrorMessage(error: unknown, fallbackMessage: str
 
   switch (code) {
     case 'invalid_credentials':
-      return 'Incorrect email, phone or password.';
+      return 'Incorrect email or password.';
     case 'email_not_confirmed':
     case 'phone_not_confirmed':
       return 'Confirm your account with the code we sent, then sign in.';
@@ -20,9 +20,14 @@ export function mapPasswordFlowErrorMessage(error: unknown, fallbackMessage: str
     case 'phone_exists':
       return 'An account with these details already exists. Try signing in.';
     case 'weak_password':
-      return 'That password is too weak. Use a longer one.';
+      return 'That password is too weak. Use at least 8 characters, with letters and numbers.';
     case 'same_password':
       return 'Choose a password different from your current one.';
+    // A3a: a password change confirmed with the emailed code (secure_password_change).
+    case 'reauthentication_not_valid':
+      return 'That code is wrong or has expired. Send a new one and try again.';
+    case 'reauthentication_needed':
+      return 'Confirm it is you with the code we email you.';
     case 'over_email_send_rate_limit':
     case 'over_sms_send_rate_limit':
     case 'over_request_rate_limit':

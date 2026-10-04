@@ -97,15 +97,18 @@ export async function fetchExpertForAdminById(expertId: string): Promise<ExpertW
  * Approve/reject/suspend/reactivate. No `actorId` param — the backend derives the acting admin
  * from the verified session token and writes the audit_logs row itself.
  */
+/**
+ * An admin's decision on a pending expert application (A3a). The account, the verification and its latest record move
+ * together with the audit row in one database transaction; a rejection's `notes` is the reason the expert reads.
+ */
 export async function reviewExpertVerification(
   expertId: string,
-  verificationId: string,
-  decision: VerificationStatus,
+  decision: 'approved' | 'rejected',
   notes: string,
 ): Promise<void> {
   await apiFetch(`/api/v1/expert/admin/${expertId}/verification`, {
     method: 'PATCH',
-    body: { verification_id: verificationId, decision, notes: notes || null },
+    body: { decision, notes: notes.trim() || null },
   });
 }
 

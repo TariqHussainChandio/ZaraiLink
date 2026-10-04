@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import uuid
 from pathlib import Path
 
@@ -98,6 +99,18 @@ def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_a
     assert suspend.status_code == 204, suspend.text
     observed["account_suspended"] = _observe(api_client("GET", "/api/v1/orders", suspended_token))
 
+    # A3a: a dealer waiting for a decision, and an approved dealer's session from before the approval.
+    observed["account_not_approved"] = _observe(
+        api_client("GET", "/api/v1/dealer/inventory", matrix_actors["dealer_pending"])
+    )
+    approved_id, _, stale_token = make_actor("dealer")
+    time.sleep(1.2)  # the token's sign-in time is whole seconds; see test_smoke_account_status.py
+    approve = api_client(
+        "PATCH", f"/api/v1/admin/users/{approved_id}/account-status", world.admin.token, json={"status": "approved"}
+    )
+    assert approve.status_code == 200, approve.text
+    observed["sign_in_again"] = _observe(api_client("GET", "/api/v1/dealer/inventory", stale_token))
+
     for name, result in observed.items():
         assert result["contentType"] == "application/problem+json", name
         assert result["requestId"], f"{name}: no X-Request-ID on an error response"
@@ -107,7 +120,9 @@ def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_a
     if os.environ.get("UPDATE_PROBLEM_FIXTURES") == "1":
         existing = json.loads(FIXTURES.read_text(encoding="utf-8")) if FIXTURES.exists() else {}
         FIXTURES.parent.mkdir(parents=True, exist_ok=True)
-        FIXTURES.write_text(json.dumps({**existing, **stable}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        FIXTURES.write_text(
+            json.dumps({**existing, **stable}, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+        )
     recorded = json.loads(FIXTURES.read_text(encoding="utf-8"))
     for name, result in stable.items():
         assert recorded[name] == result, f"{name} no longer matches {FIXTURES}"

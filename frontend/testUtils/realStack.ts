@@ -29,6 +29,10 @@ const http = jest.requireActual('http') as {
   ): ClientRequest;
 };
 
+const childProcess = jest.requireActual('child_process') as {
+  execFileSync(file: string, args: string[], options: { encoding: 'utf8' }): string;
+};
+
 function nodeFetch(url: string, init: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal } = {}) {
   return new Promise<unknown>((resolve, reject) => {
     const request = http.request(url, { method: init.method ?? 'GET', headers: init.headers }, incoming => {
@@ -66,7 +70,29 @@ const ANON_KEY = process.env.REALSTACK_ANON_KEY ?? '';
 const SERVICE_KEY = process.env.REALSTACK_SERVICE_KEY ?? '';
 export const API_URL = process.env.REALSTACK_API_URL ?? 'http://127.0.0.1:8000';
 
-export async function signUp(role: 'buyer' | 'dealer' | 'farmer' | 'expert'): Promise<string> {
+/**
+ * Dealers and experts sign up pending (A3a, profiles.account_status). Only an admin with a second factor approves them
+ * through the API, which the backend smoke suite drives end to end (tests/integration/smoke/test_smoke_account_status
+ * .py). A hook test needs a usable dealer, so this approves it in the local stack's database as the owner, as the smoke
+ * suite's `promote_to_admin` does for its admin; a non-`authenticated` session may set the status. The decision time
+ * stays empty, so the session already open is not asked to sign in again.
+ */
+export function approveInLocalDatabase(userId: string): void {
+  if (!/^[0-9a-f-]{36}$/.test(userId)) throw new Error(`not a user id: ${userId}`);
+  const names = childProcess.execFileSync('docker', ['ps', '--format', '{{.Names}}'], { encoding: 'utf8' }).split(/\s+/);
+  const container = names.find(name => name.startsWith('supabase_db_'));
+  if (!container) throw new Error('no local Supabase database container is running');
+  const sql = `update public.profiles set account_status = 'approved' where id = '${userId}'`;
+  childProcess.execFileSync('docker', ['exec', container, 'psql', '-U', 'postgres', '-d', 'postgres', '-c', sql], {
+    encoding: 'utf8',
+  });
+}
+
+/** A real user signed in through Supabase Auth. A dealer or expert is approved unless `pending` is asked for. */
+export async function signUp(
+  role: 'buyer' | 'dealer' | 'farmer' | 'expert',
+  { pending = false }: { pending?: boolean } = {},
+): Promise<string> {
   const email = `rs-${role}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.test`;
   const admin = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' };
   const created = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
@@ -75,6 +101,9 @@ export async function signUp(role: 'buyer' | 'dealer' | 'farmer' | 'expert'): Pr
     body: JSON.stringify({ email, password: 'Passw0rd!123', email_confirm: true, user_metadata: { role } }),
   });
   if (!created.ok) throw new Error(`could not create a user: ${created.status} ${await created.text()}`);
+  if ((role === 'dealer' || role === 'expert') && !pending) {
+    approveInLocalDatabase(((await created.json()) as { id: string }).id);
+  }
   const login = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: { apikey: ANON_KEY, 'Content-Type': 'application/json' },

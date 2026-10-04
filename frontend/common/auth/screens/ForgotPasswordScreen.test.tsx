@@ -30,7 +30,7 @@ describe('ForgotPasswordScreen', () => {
     expect(mockResetPassword).toHaveBeenCalledWith('farmer@example.com');
     expect(navigation.navigate).toHaveBeenCalledWith('VerifyOtp', {
       purpose: 'recovery',
-      identifier: 'farmer@example.com',
+      email: 'farmer@example.com',
     });
   });
 

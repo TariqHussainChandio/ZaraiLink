@@ -99,37 +99,55 @@ describe('ExpertVerificationScreen', () => {
     expect(mockFetchExperts).toHaveBeenLastCalledWith('approved');
   });
 
-  it('approves a pending expert with the decision note', async () => {
+  it('approves a pending expert, with an optional note', async () => {
     mockFetchExperts.mockResolvedValue([expert()]);
     mockReviewVerification.mockResolvedValue(undefined);
     await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
-    await fireEvent.changeText(screen.getByPlaceholderText('Decision note (optional)'), 'Looks good');
+    await fireEvent.changeText(screen.getByLabelText('Reason'), 'Degree checked');
     await fireEvent.press(screen.getByText('Approve'));
 
-    expect(mockReviewVerification).toHaveBeenCalledWith('expert-1', 'ver-1', 'approved', 'Looks good');
+    expect(mockReviewVerification).toHaveBeenCalledWith('expert-1', 'approved', 'Degree checked');
   });
 
-  it('rejects a pending expert', async () => {
+  it('will not reject without a reason the expert can read', async () => {
+    mockFetchExperts.mockResolvedValue([expert()]);
+    await renderWithQuery(<ExpertVerificationScreen />);
+    await screen.findByText('Dr. Ali');
+
+    await fireEvent.changeText(screen.getByLabelText('Reason'), 'no');
+    await fireEvent.press(screen.getByText('Reject'));
+
+    expect(await screen.findByText('Write at least 10 characters')).toBeTruthy();
+    expect(mockReviewVerification).not.toHaveBeenCalled();
+  });
+
+  it('rejects a pending expert with the reason', async () => {
     mockFetchExperts.mockResolvedValue([expert()]);
     mockReviewVerification.mockResolvedValue(undefined);
     await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
+    await fireEvent.changeText(screen.getByLabelText('Reason'), 'Please upload your degree certificate.');
     await fireEvent.press(screen.getByText('Reject'));
 
-    expect(mockReviewVerification).toHaveBeenCalledWith('expert-1', 'ver-1', 'rejected', '');
+    expect(mockReviewVerification).toHaveBeenCalledWith(
+      'expert-1',
+      'rejected',
+      'Please upload your degree certificate.',
+    );
   });
 
-  it('suspends an approved expert and can reactivate a suspended one', async () => {
+  it('offers no decision on an approved expert: suspension is the account\'s, in User Management', async () => {
     mockFetchExperts.mockResolvedValue([expert({ verification_status: 'approved' })]);
-    mockReviewVerification.mockResolvedValue(undefined);
     await renderWithQuery(<ExpertVerificationScreen />);
     await screen.findByText('Dr. Ali');
 
-    await fireEvent.press(screen.getByText('Suspend'));
-    expect(mockReviewVerification).toHaveBeenCalledWith('expert-1', 'ver-1', 'suspended', '');
+    expect(screen.queryByText('Suspend')).toBeNull();
+    expect(screen.queryByText('Approve')).toBeNull();
+    expect(screen.queryByLabelText('Reason')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Suspended' })).toBeNull();
   });
 
   it('opens the verification document via resolved URL', async () => {

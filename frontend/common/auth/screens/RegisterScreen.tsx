@@ -3,42 +3,34 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, type ChipOption, ChipRow, isValidE164, PhoneInput, TextField } from '../../components';
+import { Banner, Button, type ChipOption, ChipRow, TextField } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { ROLE_LABELS, ROLES, type Role } from '../../constants/roles';
-import { useSignUp, type AuthChannel } from '../hooks/auth';
+import { useSignUp } from '../hooks/auth';
 import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
 const REGISTRABLE_ROLES = ROLES.filter(role => role !== 'admin') as Exclude<Role, 'admin'>[];
 const ROLE_OPTIONS: ChipOption<Exclude<Role, 'admin'>>[] = REGISTRABLE_ROLES.map(role => ({ value: role, label: ROLE_LABELS[role] }));
-const CHANNELS: ChipOption<'email' | 'phone'>[] = [
-  { value: 'email', label: 'Email' },
-  { value: 'phone', label: 'Phone number' },
-];
+// Supabase's own password rule (supabase/config.toml: minimum_password_length 8, password_requirements
+// letters_digits); checked here first only to answer sooner, Supabase still decides.
+const PASSWORD_RULE = 'Use at least 8 characters, with letters and numbers';
+const PASSWORD_HELP = '8 or more characters, with letters and numbers';
 
 function makeRegisterSchema() {
-  return z
-    .object({
-      channel: z.enum(['email', 'phone']),
-      fullName: z.string().min(2, 'Enter your full name'),
-      email: z.string().optional(),
-      phone: z.string().nullable().optional(),
-      password: z.string().min(6, 'Password must be at least 6 characters'),
-      role: z.enum(REGISTRABLE_ROLES as [Role, ...Role[]], {
-        message: 'Select a role',
-      }),
-    })
-    .superRefine((data, ctx) => {
-      if (data.channel === 'email') {
-        if (!data.email || !z.string().email().safeParse(data.email).success) {
-          ctx.addIssue({ code: 'custom', path: ['email'], message: 'Enter a valid email' });
-        }
-      } else if (!data.phone || !isValidE164(data.phone)) {
-        ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Enter a valid phone number' });
-      }
-    });
+  return z.object({
+    fullName: z.string().trim().min(2, 'Enter your full name'),
+    email: z.string().trim().email('Enter a valid email'),
+    password: z
+      .string()
+      .min(8, PASSWORD_RULE)
+      .regex(/[A-Za-z]/, PASSWORD_RULE)
+      .regex(/\d/, PASSWORD_RULE),
+    role: z.enum(REGISTRABLE_ROLES as [Role, ...Role[]], {
+      message: 'Select a role',
+    }),
+  });
 }
 
 type RegisterFormValues = z.infer<ReturnType<typeof makeRegisterSchema>>;
@@ -55,26 +47,26 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { channel: 'email', fullName: '', email: '', phone: null, password: '', role: 'farmer' },
+    defaultValues: { fullName: '', email: '', password: '', role: 'farmer' },
   });
 
-  const channel = useWatch({ control, name: 'channel' }) as AuthChannel;
+  const role = useWatch({ control, name: 'role' });
+  const reviewed = role === 'dealer' || role === 'expert';
 
   const onSubmit = async (values: RegisterFormValues) => {
     setSubmitError(null);
     try {
-      const identifier = values.channel === 'email' ? values.email! : values.phone!;
+      const email = values.email.trim();
       const { session } = await signUp({
-        channel: values.channel,
-        identifier,
+        email,
         password: values.password,
-        fullName: values.fullName,
+        fullName: values.fullName.trim(),
         role: values.role,
       });
       // No session back means the OTP must be confirmed before sign-in; authStore's
       // onAuthStateChange picks up the session automatically once verifyOtp succeeds.
       if (!session) {
-        navigation.navigate(AUTH_ROUTES.VerifyOtp, { purpose: 'signup', channel: values.channel, identifier });
+        navigation.navigate(AUTH_ROUTES.VerifyOtp, { purpose: 'signup', email });
       }
     } catch (error) {
       setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to create account'));
@@ -104,42 +96,23 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           )}
         />
 
-        <Text style={styles.label}>Verify with</Text>
         <Controller
           control={control}
-          name="channel"
-          render={({ field: { onChange, value } }) => <ChipRow options={CHANNELS} value={value} onChange={onChange} />}
+          name="email"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField
+              label="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.email?.message}
+            />
+          )}
         />
 
-        {channel === 'email' ? (
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextField
-                label="Email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={value ?? ''}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={errors.email?.message}
-              />
-            )}
-          />
-        ) : (
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field: { onChange, value } }) => (
-              <PhoneInput value={value ?? null} onChange={onChange} error={errors.phone?.message} />
-            )}
-          />
-        )}
-
-        <Text style={styles.hint}>
-          {channel === 'email' ? "We'll email you a 6-digit code to verify your account." : "We'll text you a 6-digit code to verify your account."}
-        </Text>
+        <Text style={styles.hint}>We&apos;ll email you a 6-digit code to verify your account.</Text>
 
         <Controller
           control={control}
@@ -147,6 +120,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           render={({ field: { onChange, onBlur, value } }) => (
             <TextField
               label="Password"
+              helper={PASSWORD_HELP}
               secureTextEntry
               value={value}
               onChangeText={onChange}
@@ -165,6 +139,11 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           )}
         />
         {errors.role?.message ? <Text style={styles.errorText}>{errors.role.message}</Text> : null}
+        {reviewed ? (
+          <Banner tone="info">
+            An administrator reviews every dealer and expert account. You can use it once it is approved.
+          </Banner>
+        ) : null}
 
         {submitError ? (
 

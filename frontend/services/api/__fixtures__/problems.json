@@ -1,4 +1,16 @@
 {
+  "account_not_approved": {
+    "body": {
+      "code": "account_not_approved",
+      "instance": "/api/v1/dealer/inventory",
+      "status": 403,
+      "title": "Account not approved",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 403
+  },
   "account_suspended": {
     "body": {
       "code": "account_suspended",
@@ -120,6 +132,18 @@
     "contentType": "application/problem+json",
     "requestId": true,
     "status": 503
+  },
+  "sign_in_again": {
+    "body": {
+      "code": "sign_in_again",
+      "instance": "/api/v1/dealer/inventory",
+      "status": 403,
+      "title": "Your account was approved. Sign in again to continue.",
+      "type": "about:blank"
+    },
+    "contentType": "application/problem+json",
+    "requestId": true,
+    "status": 403
   },
   "token_invalid": {
     "body": {

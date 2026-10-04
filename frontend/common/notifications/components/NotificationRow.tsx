@@ -33,6 +33,7 @@ const TYPE_META: Record<string, TypeMeta> = {
   inventory_low_stock: { icon: AlertTriangle, tint: c => c.accent.dealer, label: 'Low stock warning' },
   expert_verification_changed: { icon: ShieldCheck, tint: c => c.accent.expert, label: 'Verification update' },
   account_suspension_changed: { icon: ShieldAlert, tint: c => c.accent.admin, label: 'Account status changed' },
+  account_status_changed: { icon: ShieldCheck, tint: c => c.accent.brand, label: 'Application update' },
 };
 
 const DEFAULT_META: TypeMeta = { icon: Bell, tint: c => ({ mark: c.module.notifications, soft: c.module.notificationsSoft }), label: 'Notification' };
@@ -61,6 +62,9 @@ function describe(notification: Notification): string {
     return `Stock down to ${notification.payload?.stock_quantity ?? '?'} (threshold ${notification.payload?.min_stock_threshold ?? '?'})`;
   }
   if (notification.type === 'expert_verification_changed' && notification.payload?.status) {
+    return `${meta.label}: ${statusMeta('application', notification.payload.status).label}`;
+  }
+  if (notification.type === 'account_status_changed' && notification.payload?.status) {
     return `${meta.label}: ${statusMeta('application', notification.payload.status).label}`;
   }
   if (notification.type === 'account_suspension_changed') {

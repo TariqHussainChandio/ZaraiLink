@@ -1,8 +1,10 @@
 import asyncio
 
 from app.admin import repository as repo
-from app.auth.dependencies import AuthenticatedUser
+from app.auth.dependencies import AuthenticatedUser, forget_profile
+from app.common import account_status
 from app.common.audit_log import log_admin_action
+from app.common.errors import AppHTTPException
 from app.common.orders import service as orders_service
 
 
@@ -24,12 +26,15 @@ async def fetch_platform_stats(user: AuthenticatedUser) -> dict:
     }
 
 
-async def fetch_all_profiles(user: AuthenticatedUser) -> list[dict]:
-    return await repo.fetch_all_profiles(user.access_token)
+async def fetch_all_profiles(
+    user: AuthenticatedUser, role: str | None = None, account_status: str | None = None
+) -> list[dict]:
+    return await repo.fetch_all_profiles(user.access_token, role, account_status)
 
 
 async def set_profile_suspended(user: AuthenticatedUser, profile_id: str, is_suspended: bool) -> None:
     await repo.set_profile_suspended(user.access_token, profile_id, is_suspended)
+    forget_profile(profile_id)
     await log_admin_action(
         user,
         "suspend_user" if is_suspended else "reactivate_user",
@@ -47,6 +52,7 @@ async def update_user_role(user: AuthenticatedUser, profile_id: str, new_role: s
     # security boundary.
     previous_role = await repo.fetch_profile_role(user.access_token, profile_id)
     await repo.update_profile_role(user.access_token, profile_id, new_role)
+    forget_profile(profile_id)
     await log_admin_action(
         user,
         "change_role",
@@ -55,6 +61,19 @@ async def update_user_role(user: AuthenticatedUser, profile_id: str, new_role: s
         previous_state={"role": previous_role},
         new_state={"role": new_role},
     )
+
+
+async def decide_dealer_application(
+    user: AuthenticatedUser, profile_id: str, decision: account_status.Decision, reason: str | None
+) -> dict:
+    """A dealer's application from User Management. Experts are decided from their verification route, which shows
+    their application; this route refuses them so each role has one place where it is reviewed."""
+    role = await repo.fetch_profile_role(user.access_token, profile_id)
+    if role is None:
+        raise AppHTTPException(404, "No such account", "not_found")
+    if role != "dealer":
+        raise AppHTTPException(409, "Only a dealer is decided here; experts are reviewed in Approvals", "conflict")
+    return await account_status.decide(user, profile_id, decision, reason)
 
 
 async def fetch_reports(user: AuthenticatedUser, status: str | None) -> list[dict]:

@@ -31,7 +31,6 @@
    "types:frontend/common/orders/types/orders.ts": 1,
    "types:frontend/navigation/stacks/AdminNavigator.tsx": 2,
    "types:frontend/navigation/stacks/AuthNavigator.tsx": 1,
-   "types:frontend/state/authStore.ts": 1,
    "types:frontend/state/marketplaceStore.ts": 1
   },
   "mypy": {},

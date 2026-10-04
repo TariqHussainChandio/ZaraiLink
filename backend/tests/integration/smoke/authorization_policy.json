@@ -41,6 +41,12 @@
    "admin"
   ]
  },
+ "PATCH /api/v1/admin/users/{profile_id}/account-status": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
  "PATCH /api/v1/admin/users/{profile_id}/role": {
   "kind": "aal2",
   "roles": [
@@ -333,19 +339,22 @@
   "kind": "roles",
   "roles": [
    "expert"
-  ]
+  ],
+  "any_status": true
  },
  "POST /api/v1/expert/application": {
   "kind": "roles",
   "roles": [
    "expert"
-  ]
+  ],
+  "any_status": true
  },
  "GET /api/v1/expert/me": {
   "kind": "roles",
   "roles": [
    "expert"
-  ]
+  ],
+  "any_status": true
  },
  "GET /api/v1/expert/{expert_id}": {
   "kind": "public",
@@ -773,7 +782,19 @@
    "dealer",
    "expert",
    "farmer"
-  ]
+  ],
+  "any_status": true
+ },
+ "POST /api/v1/profile/application/resubmit": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ],
+  "any_status": true
  },
  "DELETE /api/v1/profile/me": {
   "kind": "auth",
@@ -783,7 +804,8 @@
    "dealer",
    "expert",
    "farmer"
-  ]
+  ],
+  "any_status": true
  },
  "GET /api/v1/reference-data/currencies": {
   "kind": "public",

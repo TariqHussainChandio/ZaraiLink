@@ -22,7 +22,10 @@ insert into public.order_items (order_id, listing_id, quantity, unit_price) valu
 
 select tests.expect(tests.fx('D'), 'insert into public.inventory (dealer_id, listing_id) values (' || tests.l('D') || ',' || tests.l('L1') || ')', 'err:42501', 'inventory: a dealer cannot plant a row for someone else''s listing');
 select tests.expect(tests.fx('D'), 'update public.inventory set listing_id = ' || tests.l('L1') || ' where id = ' || tests.l('INV1'), 'err:42501', 'inventory: nor point their own row at it');
-select tests.expect(tests.fx('F'), 'insert into public.inventory (dealer_id, listing_id) values (' || tests.l('F') || ',' || tests.l('L1') || ')', 'err:23505', 'inventory: a listing has one row per owner');
+select throws_ok(
+  format('insert into public.inventory (dealer_id, listing_id) values (%L, %L)', tests.fx('F'), tests.fx('L1')),
+  '23505', null, 'inventory: a listing has one row per owner');
+select tests.expect(tests.fx('F'), 'insert into public.inventory (dealer_id) values (' || tests.l('F') || ')', 'err:42501', 'inventory: only an approved dealer keeps inventory (20261005080000)');
 
 select is(
   (select available from public.available_stock(array[tests.fx('L1')])),

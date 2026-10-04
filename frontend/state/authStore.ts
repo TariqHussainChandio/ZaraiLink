@@ -9,7 +9,20 @@ import { logger } from '../utils/logger';
 // 'passwordRecovery': the user tapped a password-reset email link. A real session now exists
 // (via exchangeCodeForSession below) but they haven't set a new password yet — RootNavigator
 // routes this status to ResetPasswordScreen instead of the normal authenticated app shell.
-export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'suspended' | 'passwordRecovery';
+// 'awaitingApproval': a dealer or expert whose application is pending or rejected. They see only the Application
+// Status screen (decision D10; SRDS §8, §11). 'approvalGranted': the application was approved while they were signed
+// in; SRDS §8 has them sign in again before using their role, and the API refuses the old session (`sign_in_again`).
+export type AuthStatus =
+  | 'loading'
+  | 'authenticated'
+  | 'unauthenticated'
+  | 'suspended'
+  | 'passwordRecovery'
+  | 'awaitingApproval'
+  | 'approvalGranted'
+  // An admin with an authenticator who has signed in with the password only: every admin write needs the second
+  // factor (aal2), so the code is asked for before the console opens (A3a verification, H1).
+  | 'secondFactor';
 
 interface AuthState {
   session: Session | null;
@@ -22,6 +35,30 @@ interface AuthState {
   signOut: () => Promise<void>;
   /** Re-fetches the current user's profile row, e.g. after Edit Profile saves. */
   refreshProfile: () => Promise<void>;
+}
+
+/** The status a signed-in user's profile puts them in: suspension first, then an application still waiting. */
+function statusFor(profile: Profile | null): AuthStatus {
+  if (profile?.is_suspended) return 'suspended';
+  if (
+    (profile?.role === 'dealer' || profile?.role === 'expert') &&
+    (profile.account_status === 'pending' || profile.account_status === 'rejected')
+  ) {
+    return 'awaitingApproval';
+  }
+  return 'authenticated';
+}
+
+/** True when the account has a verified authenticator but this session has not used it yet (aal1, next aal2). */
+async function needsSecondFactor(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error || !data) return false;
+    return data.currentLevel === 'aal1' && data.nextLevel === 'aal2';
+  } catch (err) {
+    logger.warn('authStore: could not read the assurance level', err);
+    return false;
+  }
 }
 
 async function loadProfile(userId: string): Promise<Profile | null> {
@@ -54,6 +91,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       const profile = await loadProfile(session.user.id);
+      const secondFactor = profile?.role === 'admin' && !profile.is_suspended && (await needsSecondFactor());
       if (cancelled) return;
 
       set({
@@ -61,7 +99,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: session.user,
         profile,
         role: profile?.role ?? null,
-        status: profile?.is_suspended ? 'suspended' : 'authenticated',
+        status: secondFactor ? 'secondFactor' : statusFor(profile),
       });
     };
 
@@ -111,6 +149,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const userId = get().user?.id;
     if (!userId) return;
     const profile = await loadProfile(userId);
-    set({ profile, role: profile?.role ?? null });
+    const current = get().status;
+    // Only a signed-in shell follows the profile; a password reset or a sign-out in progress keeps its own status.
+    if (current === 'passwordRecovery' || current === 'unauthenticated' || current === 'loading') {
+      set({ profile, role: profile?.role ?? null });
+      return;
+    }
+    let status = statusFor(profile);
+    // Approved while waiting (or already asked to sign in again): they sign in again before the dashboard opens (SRDS §8).
+    if (status === 'authenticated' && (current === 'awaitingApproval' || current === 'approvalGranted')) {
+      status = 'approvalGranted';
+    }
+    set({ profile, role: profile?.role ?? null, status });
   },
 }));

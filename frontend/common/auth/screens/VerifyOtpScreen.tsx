@@ -26,8 +26,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
   const { mutateAsync: verifySignupOtp } = useVerifySignupOtp();
   const { mutateAsync: resendRecoveryOtp } = useResendRecoveryOtp();
   const { mutateAsync: resendSignupOtp } = useResendSignupOtp();
-  const { purpose, identifier } = route.params;
-  const channel = purpose === 'signup' ? route.params.channel : 'email';
+  const { purpose, email } = route.params;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -51,9 +50,9 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
       // session); authStore's onAuthStateChange listener picks up the result automatically and
       // RootNavigator swaps screens with no further action needed here.
       if (purpose === 'recovery') {
-        await verifyRecoveryOtp({ email: identifier, token: code });
+        await verifyRecoveryOtp({ email, token: code });
       } else {
-        await verifySignupOtp({ channel, identifier, token: code });
+        await verifySignupOtp({ email, token: code });
       }
     } catch (err) {
       setError(mapAuthErrorMessage(err, 'Invalid or expired code'));
@@ -67,9 +66,9 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
     setResending(true);
     try {
       if (purpose === 'recovery') {
-        await resendRecoveryOtp(identifier);
+        await resendRecoveryOtp(email);
       } else {
-        await resendSignupOtp({ channel, identifier });
+        await resendSignupOtp(email);
       }
       setCooldown(RESEND_COOLDOWN_SECONDS);
       cooldownInterval.current = setInterval(() => {
@@ -95,16 +94,11 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
     setCode(value.replace(/\D/g, '').slice(0, 6));
   };
 
-  const title =
-    purpose === 'recovery'
-      ? 'Enter your reset code'
-      : channel === 'email'
-        ? 'Verify your email'
-        : 'Verify your phone';
+  const title = purpose === 'recovery' ? 'Enter your reset code' : 'Verify your email';
   const subtitle =
     purpose === 'recovery'
-      ? `We sent a password reset code to ${identifier}. Enter it below to continue.`
-      : `We sent a verification code to ${identifier}. Enter it below to activate your account.`;
+      ? `We sent a password reset code to ${email}. Enter it below to continue.`
+      : `We sent a verification code to ${email}. Enter it below to activate your account.`;
   const backLabel = purpose === 'recovery' ? 'Back' : 'Back to sign up';
 
   return (
@@ -118,14 +112,14 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
 
         <TextField
           label="Verification code"
-          accessibilityHint="6-digit code sent to your email or phone"
+          accessibilityHint="6-digit code sent to your email"
           keyboardType="number-pad"
           maxLength={6}
           value={code}
           onChangeText={onChangeCode}
           error={error ?? undefined}
           textContentType="oneTimeCode"
-          autoComplete={channel === 'phone' ? 'sms-otp' : 'email-otp'}
+          autoComplete="email-otp"
         />
 
         <Button

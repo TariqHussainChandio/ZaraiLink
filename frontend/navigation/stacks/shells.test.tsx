@@ -74,3 +74,61 @@ describe('role shells', () => {
     expect(screen.getAllByRole('button', { name: 'Notifications, 3 unread' })).toHaveLength(1);
   });
 });
+
+// A3a (D10): the root routes a dealer or expert waiting for a decision to their application status only, before any
+// role shell, and one approved while signed in to the screen that asks them to sign in again.
+jest.mock('../../common/auth/screens/ApplicationStatusScreen', () => {
+  const { Text } = jest.requireActual('react-native');
+  return { ApplicationStatusScreen: () => <Text>Application status</Text> };
+});
+
+describe('root routing for an account waiting for a decision', () => {
+  // Required lazily so the mocks above apply to the root navigator's imports.
+  const { RootNavigator } = jest.requireActual('./RootNavigator') as typeof import('./RootNavigator');
+
+  async function renderRoot() {
+    await render(
+      <SafeAreaProvider initialMetrics={PHONE}>
+        <QueryClientProvider client={createTestQueryClient()}>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+  }
+
+  it.each(['dealer', 'expert'] as const)('shows a waiting %s their application, with no tabs', async role => {
+    useAuthStore.setState({ role, status: 'awaitingApproval', user: { id: `user-${role}` } as never });
+    await renderRoot();
+    expect(await screen.findByText('Application status')).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Your application' })).toBeTruthy();
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+  });
+
+  it('asks an approved dealer to sign in again before any shell mounts', async () => {
+    useAuthStore.setState({ role: 'dealer', status: 'approvalGranted', user: { id: 'user-dealer' } as never });
+    await renderRoot();
+    expect(screen.getByText('Your account is approved')).toBeTruthy();
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+  });
+});
+
+describe('root routing for an admin with an authenticator (A3a verification round 1, H1)', () => {
+  const { RootNavigator } = jest.requireActual('./RootNavigator') as typeof import('./RootNavigator');
+
+  it('asks for the second factor before the admin console mounts', async () => {
+    useAuthStore.setState({ role: 'admin', status: 'secondFactor', user: { id: 'user-admin' } as never });
+    await render(
+      <SafeAreaProvider initialMetrics={PHONE}>
+        <QueryClientProvider client={createTestQueryClient()}>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+    expect(screen.getByRole('header', { name: 'Two-step verification' })).toBeTruthy();
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+  });
+});

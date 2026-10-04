@@ -41,7 +41,7 @@ select is(
     'authenticated disease_predictions SELECT',
     'authenticated expert_specializations DELETE,INSERT,SELECT,UPDATE',
     -- INSERT is column-level (expert_id, document_url) since 20260928090000, so it is not a table grant.
-    'authenticated expert_verifications SELECT,UPDATE',
+    'authenticated expert_verifications SELECT',
     'authenticated experts INSERT,SELECT,UPDATE',
     'authenticated farm_crops DELETE,INSERT,SELECT,UPDATE',
     'authenticated farmer_profiles INSERT,SELECT,UPDATE',
@@ -81,6 +81,7 @@ select is(
     'anon guard_profiles_role()',
     'anon is_admin_aal2()',
     'anon is_admin()',
+    'anon is_approved_expert_id(uuid)',
     'anon is_suspended()',
     'anon set_listings_seller_role()',
     'anon set_updated_at()'
@@ -94,9 +95,15 @@ select is(
   array[
     'authenticated adjust_stock(uuid,text,numeric,uuid,text)',
     'authenticated available_stock(uuid[])',
-    'authenticated is_seller_role(uuid)'
+    'authenticated caller_role()',
+    'authenticated decide_account_status(uuid,account_status,text)',
+    'authenticated is_account_approved()',
+    'authenticated is_approved_dealer()',
+    'authenticated is_approved_expert()',
+    'authenticated is_seller_role(uuid)',
+    'authenticated resubmit_application()'
   ],
-  'the extra functions signed-in users can execute are the two stock reads, adjust_stock and is_seller_role');
+  'the extra functions signed-in users can execute: the stock reads and adjust_stock, is_seller_role, and the account-status helpers and decisions (20261005080000)');
 
 -- profiles_public: exactly id, name, avatar ------------------------------------------------------------
 select is(
@@ -132,9 +139,10 @@ select tests.expect(tests.fx('F'), 'update public.payments set order_id = ' || t
 select tests.expect(tests.fx('A'), 'update public.payments set amount = 2 where id = ' || tests.l('PAY1'), 'n:0', 'guard_payments_update: an admin has no payment action at all');
 select tests.expect(tests.fx('F'), $$update public.messages set body = 'edited' where id = $$ || tests.l('M1'), 'err:P0001', 'guard_messages_updates: a participant cannot edit a body');
 select tests.expect(tests.fx('F'), 'update public.messages set sender_id = ' || tests.l('F') || ' where id = ' || tests.l('M1'), 'err:42501', 'guard_messages_updates: nobody can change the sender (column grant)');
-select tests.expect(tests.fx('E'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('E'), 'err:P0001', 'guard_experts_verification_status: an expert cannot approve themselves');
-select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('E'), 'n:0', 'experts_update_own_or_admin: an admin without a second factor cannot decide (20260928090000)');
-select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('E'), 'n:1', 'guard_experts_verification_status: an admin with a second factor can', 'aal2');
+select tests.approval_world();
+select tests.expect(tests.fx('PE'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'err:42501', 'guard_experts_verification_status: an expert cannot approve themselves');
+select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'n:0', 'experts_update_own_or_admin: an admin without a second factor cannot decide (20260928090000)');
+select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'err:42501', 'guard_experts_verification_status: nor can an admin with a second factor, directly; decide_account_status() decides (20261005080000)', 'aal2');
 
 -- notification triggers: the event reaches the right person --------------------------------------------------
 select is((select count(*) from public.notifications where user_id = tests.fx('F') and type = 'order_new'), 1::bigint, 'notify_new_order: the seller is told of a new order');
@@ -147,10 +155,9 @@ update public.orders set status = 'confirmed' where id = tests.fx('O1');
 select is((select count(*) from public.notifications where user_id = tests.fx('B') and type = 'order_status_changed'), 1::bigint, 'notify_order_status_changed: the buyer is told');
 update public.listings set status = 'sold' where id = tests.fx('L1');
 select is((select count(*) from public.notifications where user_id = tests.fx('F') and type = 'listing_status_changed'), 1::bigint, 'notify_listing_status_changed: the owner is told when someone else changes it');
-alter table public.experts disable trigger guard_experts_verification_status;
-update public.experts set verification_status = 'approved' where id = tests.fx('E');
-select is((select count(*) from public.notifications where user_id = tests.fx('E') and type = 'expert_verification_changed'), 1::bigint, 'notify_expert_verification_changed: the expert is told');
-alter table public.experts enable trigger guard_experts_verification_status;
+select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PE') || $$, 'approved')$$, 'rows:1', 'decide_account_status: an admin with a second factor approves the expert', 'aal2');
+select is((select count(*) from public.notifications where user_id = tests.fx('PE') and type = 'account_status_changed'), 1::bigint, 'notify_account_status_changed: the applicant is told of the decision');
+select is((select count(*) from public.notifications where user_id = tests.fx('PE') and type = 'expert_verification_changed'), 0::bigint, 'notify_expert_verification_changed: no second notification for the same decision');
 
 select * from finish();
 rollback;

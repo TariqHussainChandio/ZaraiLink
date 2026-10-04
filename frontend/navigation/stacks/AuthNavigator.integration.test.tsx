@@ -6,7 +6,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { signUp, verifySignupOtp } from '../../common/auth/services/authService';
 
 // Real NavigationContainer + AuthNavigator stack — proves RegisterScreen actually hands the
-// channel/identifier the user typed to VerifyOtpScreen via real route params, not just that
+// email the user typed to VerifyOtpScreen via real route params, not just that
 // each screen calls navigation.navigate with the right mocked arguments in isolation.
 
 jest.mock('../../common/auth/services/authService', () => ({
@@ -45,8 +45,7 @@ describe('Auth flow: register -> verify OTP', () => {
     await fireEvent.press(screen.getByText('Create account'));
 
     expect(mockSignUp).toHaveBeenCalledWith({
-      channel: 'email',
-      identifier: 'farmer@example.com',
+      email: 'farmer@example.com',
       password: 'secret123',
       fullName: 'Farmer Test',
       role: 'farmer',
@@ -58,6 +57,6 @@ describe('Auth flow: register -> verify OTP', () => {
     await fireEvent.changeText(screen.getByLabelText('Verification code'), '123456');
     await fireEvent.press(screen.getByText('Verify'));
 
-    expect(mockVerify).toHaveBeenCalledWith('email', 'farmer@example.com', '123456');
+    expect(mockVerify).toHaveBeenCalledWith('farmer@example.com', '123456');
   });
 });

@@ -5,6 +5,13 @@ export const AUTH_ROUTES = {
   VerifyOtp: 'VerifyOtp',
 } as const;
 
+// A dealer or expert whose application is pending or rejected sees only these (A3a, decision D10).
+export const APPROVAL_ROUTES = {
+  ApplicationStatus: 'ApplicationStatus',
+  ExpertApplication: 'ApprovalExpertApplication',
+  DeleteAccount: 'ApprovalDeleteAccount',
+} as const;
+
 export const APP_TABS = {
   Home: 'Home',
   Marketplace: 'Marketplace',

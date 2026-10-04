@@ -11,7 +11,9 @@ export type NotificationType =
   | 'listing_status_changed'
   | 'inventory_low_stock'
   | 'expert_verification_changed'
-  | 'account_suspension_changed';
+  | 'account_suspension_changed'
+  // A3a: a decision on a dealer's or expert's application, or its resubmission (notify_account_status_changed).
+  | 'account_status_changed';
 
 export interface Notification {
   id: string;

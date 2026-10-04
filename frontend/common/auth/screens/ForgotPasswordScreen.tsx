@@ -39,7 +39,7 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
     setSubmitError(null);
     try {
       await resetPassword(values.email);
-      navigation.navigate(AUTH_ROUTES.VerifyOtp, { purpose: 'recovery', identifier: values.email });
+      navigation.navigate(AUTH_ROUTES.VerifyOtp, { purpose: 'recovery', email: values.email });
     } catch (error) {
       setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to send reset email'));
     }

@@ -26,14 +26,14 @@ const mockResendRecovery = resendRecoveryOtp as jest.Mock;
 function makeProps() {
   return {
     navigation: { navigate: jest.fn(), goBack: jest.fn() },
-    route: { params: { purpose: 'signup' as const, channel: 'email' as const, identifier: 'farmer@example.com' } },
+    route: { params: { purpose: 'signup' as const, email: 'farmer@example.com' } },
   } as unknown as AuthScreenProps<'VerifyOtp'>;
 }
 
 function makeRecoveryProps() {
   return {
     navigation: { navigate: jest.fn(), goBack: jest.fn() },
-    route: { params: { purpose: 'recovery' as const, identifier: 'farmer@example.com' } },
+    route: { params: { purpose: 'recovery' as const, email: 'farmer@example.com' } },
   } as unknown as AuthScreenProps<'VerifyOtp'>;
 }
 
@@ -46,7 +46,7 @@ describe('VerifyOtpScreen — signup', () => {
     jest.useRealTimers();
   });
 
-  it('shows the identifier the code was sent to and disables Verify until a full code is entered', async () => {
+  it('shows the email the code was sent to and disables Verify until a full code is entered', async () => {
     await renderWithQuery(<VerifyOtpScreen {...makeProps()} />);
     expect(screen.getByText(/farmer@example.com/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Verify' })).toBeDisabled();
@@ -73,7 +73,7 @@ describe('VerifyOtpScreen — signup', () => {
     await fireEvent.changeText(screen.getByLabelText('Verification code'), '123456');
     await fireEvent.press(screen.getByText('Verify'));
 
-    expect(mockVerify).toHaveBeenCalledWith('email', 'farmer@example.com', '123456');
+    expect(mockVerify).toHaveBeenCalledWith('farmer@example.com', '123456');
   });
 
   it('maps a known GoTrue error code to readable copy instead of the raw message', async () => {
@@ -101,7 +101,7 @@ describe('VerifyOtpScreen — signup', () => {
     await renderWithQuery(<VerifyOtpScreen {...makeProps()} />);
     await fireEvent.press(screen.getByText('Resend code'));
 
-    expect(mockResend).toHaveBeenCalledWith('email', 'farmer@example.com');
+    expect(mockResend).toHaveBeenCalledWith('farmer@example.com');
     expect(await screen.findByText(/Resend code in 30s/)).toBeTruthy();
   });
 
