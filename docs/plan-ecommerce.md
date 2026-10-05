@@ -602,9 +602,13 @@ VERIFIED WITH FINDINGS (one Medium, six Low) and round 2 VERIFIED WITH FINDINGS 
   user" (deciding works; no email). Locally the database lets a document be registered in the instant its file is
   deleted; submitting then names it missing.
 - Hosted project: the migration was pushed on 2026-10-05 with the maintainer's approval (dry run: exactly
-  `20261012080000_applications.sql`; afterwards local and remote list the same 59 migrations). Still to come: the
-  reauthentication and `email_change` templates (`config push`, once the SMTP values are in the git-ignored
-  `supabase/.env`), and the API's decision emails through Gmail (`EMAIL_ENABLED` and `SMTP_*`; G1).
+  `20261012080000_applications.sql`; afterwards local and remote list the same 59 migrations). The reauthentication and
+  `email_change` templates were pushed the same day (`config push`, reading the Gmail sender from the git-ignored
+  `supabase/.env`; Auth config then up to date). Live check of the API's sender: a throwaway API with
+  `EMAIL_ENABLED=true` and the Gmail `SMTP_*` settings from the git-ignored `backend/.env` approved a test dealer, the
+  decision answered `email_delivered: true`, and the maintainer received the approval email. Local runs, agents included,
+  keep `EMAIL_ENABLED=false` and send to Mailpit. Hosted decision emails start when the API is deployed with those
+  settings (A9).
 
 **Parked head start:** branch `wip/a3-account-status` (commit `0d7edd8`, not merged, its migration not pushed) holds an
 early build of this phase's status work: `profiles.account_status` with its guards and helpers, the FastAPI
