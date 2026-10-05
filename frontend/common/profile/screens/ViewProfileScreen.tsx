@@ -14,6 +14,9 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
 
   if (!profile) return null;
 
+  // The structured place from sign-up and Edit Profile (A3b); the old free-text field only when none is set.
+  const place = [profile.village, profile.city, profile.province, profile.country].filter(Boolean).join(', ');
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -28,7 +31,8 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
       <View style={styles.section}>
         <Row styles={styles} label="Email" value={email ?? '—'} />
         <Row styles={styles} label="Phone" value={profile.phone ?? '—'} />
-        <Row styles={styles} label="Location" value={profile.location ?? '—'} />
+        <Row styles={styles} label="Location" value={place || profile.location || '—'} />
+        <Row styles={styles} label="Address" value={profile.street ?? '—'} />
       </View>
 
       <Button
@@ -36,6 +40,14 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
         onPress={() => navigation.navigate(PROFILE_ROUTES.EditProfile)}
         style={styles.action}
       />
+      {profile.role === 'dealer' ? (
+        <Button
+          label="Business details"
+          variant="secondary"
+          onPress={() => navigation.navigate(PROFILE_ROUTES.BusinessDetails)}
+          style={styles.action}
+        />
+      ) : null}
       <Button
         label="Settings"
         variant="secondary"
@@ -77,6 +89,7 @@ function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
+      gap: space[3],
       paddingVertical: space[2],
       borderBottomWidth: borders.hairline,
       borderBottomColor: colors.line,
@@ -89,6 +102,8 @@ function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
       ...typography.body,
       color: colors.ink,
       fontWeight: fontWeight.medium,
+      flexShrink: 1,
+      textAlign: 'right',
     },
     action: {
       marginBottom: space[3],

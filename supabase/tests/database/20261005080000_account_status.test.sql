@@ -11,6 +11,8 @@ select tests.approval_world();
 
 -- Structure ----------------------------------------------------------------------------------------------------------
 select is(enum_range(null::public.account_status)::text, '{pending,approved,rejected}', 'account_status: pending, approved, rejected');
+-- SRDS §3 and §53 rule 1: exactly five roles. A sixth label would need a migration, and this test with it.
+select is(enum_range(null::public.user_role)::text, '{farmer,buyer,dealer,expert,admin}', 'user_role: exactly the five SRDS roles (§3, rule 1)');
 select col_not_null('public', 'profiles', 'account_status', 'profiles.account_status is not null');
 select is(
   (select array_agg(p.proname::text order by p.proname) from pg_proc p

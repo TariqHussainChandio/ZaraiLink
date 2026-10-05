@@ -29,8 +29,14 @@ function makeSchema() {
 
 type Values = z.infer<ReturnType<typeof makeSchema>>;
 
-/** The dealer's business details (SRDS §7): the second step of their application. */
-export function DealerBusinessStep({ onDone }: { onDone: () => void }) {
+/** The dealer's business details (SRDS §7): the second step of their application, and the dealer's profile form. */
+export function DealerBusinessStep({
+  onDone,
+  submitLabel = 'Save and continue',
+}: {
+  onDone: () => void;
+  submitLabel?: string;
+}) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { data: saved, isLoading } = useDealerApplication();
@@ -138,7 +144,7 @@ export function DealerBusinessStep({ onDone }: { onDone: () => void }) {
         <Text style={styles.error}>Enter the country, province and city of your business</Text>
       ) : null}
       {save.error ? <Banner tone="danger">{errorMessage(save.error)}</Banner> : null}
-      <Button label="Save and continue" loading={save.isPending} onPress={handleSubmit(onSubmit)} />
+      <Button label={submitLabel} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
     </View>
   );
 }

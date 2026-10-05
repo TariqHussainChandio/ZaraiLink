@@ -470,9 +470,8 @@ approval email goes through a backend SMTP seam (local Mailpit; hosted Blocked u
 - `zl-verifier` round 1: NOT VERIFIED (the admin side could not decide on a device), every finding fixed; round 2:
   VERIFIED WITH FINDINGS (Low only), fixed or recorded below.
 - Hosted project: the migration was pushed on 2026-10-04 with the maintainer's approval (`npx supabase db push`;
-  58 migrations, local and remote in step). The reauthentication template is not pushed: `npx supabase config push`
-  needs the `SUPABASE_AUTH_SMTP_*` secrets set in the maintainer's shell, or it would blank the hosted SMTP settings;
-  until then an old hosted session gets Supabase's default code email.
+  58 migrations, local and remote in step). The reauthentication template followed on 2026-10-05
+  (`npx supabase config push`, once the `SUPABASE_AUTH_SMTP_*` values were in the git-ignored `supabase/.env`; see A3b).
 - **Database** (`20261005080000_account_status.sql`, ported by hand from the parked branch and rebuilt on today's
   policies; its listings section would have restored the admin branch without a second factor):
   - `profiles.account_status`, `account_status_reason` and `account_status_changed_at`;
@@ -556,6 +555,21 @@ VERIFIED WITH FINDINGS (one Medium, six Low) and round 2 VERIFIED WITH FINDINGS 
   - L4: Android shows three alert buttons, so the picker's Cancel never appeared; the menu is now cancelable.
   - L5: an expert under review got `forbidden`; now `application_locked`, like a dealer.
   - L6: the register now says what the release check covered and what it did not.
+- **A3 completion check (2026-10-05)**, before A4 and B0: every register and traceability row assigned to A3 read
+  against the code. Closed: pgTAP now pins the five roles (§3, rule 1); a dealer opens their business details from the
+  profile (the `zl-dealer` lane task: business details yes; the documents they sent stay an admin view), and the
+  profile shows the structured place and street from sign-up or Edit Profile; the stale
+  rows (password change on the hosted project, §3 hosted delivery, §14, §16) now say what is true. A3's lane tasks and
+  exit are all met; what remains in those rows belongs to A7 (consultation and AI moderation) and B4 (the IMS option).
+  Device run (Pixel 8 emulator, debug build, real API, local Supabase): a test dealer made through the Auth API with
+  the place metadata the farmer and buyer forms send, then applied and approved through the real API. Their Account
+  tab showed "Hyderabad, Sindh, Pakistan" and the street, Business details opened their saved application, and Save
+  (`PUT /api/v1/dealer/application`, 200) returned to the profile. The
+  dealer form itself sends no place, so a dealer registered in the app sees "—" until they set one in Edit Profile.
+  `zl-verifier`: round 1 VERIFIED WITH FINDINGS (two Medium on evidence wording and hosted-email claims, six Low), all
+  fixed; round 2 VERIFIED WITH FINDINGS (Low: the count, the §3 wording, a test for the profile form), all fixed.
+  Gates: Jest 1,220 passed (19 skipped; `BusinessDetailsScreen.test.tsx` new), pgTAP 708, lint, typecheck, the knip
+  gate and the migration check.
 - **Verifier round 2:** every round-1 fix held, re-proved against a fresh API (round-1 scripts, both race orders,
   insert against submit, eight concurrent submits); regressions checked (document removal, cleanup after a refused
   attach, account deletion, the lock for another user and for a suspended one). Fixed:

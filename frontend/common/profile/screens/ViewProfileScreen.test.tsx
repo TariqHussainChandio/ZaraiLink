@@ -49,7 +49,40 @@ describe('ViewProfileScreen', () => {
     expect(screen.getByText('Farmer')).toBeTruthy();
     expect(screen.getByText('ahmed@example.com')).toBeTruthy();
     expect(screen.getByText('+923001234567')).toBeTruthy();
+    expect(screen.getByText('Multan, Punjab, Pakistan')).toBeTruthy();
+  });
+
+  it('shows the structured place from sign-up, the village first, and the address (A3b)', async () => {
+    useAuthStore.setState({
+      profile: profile({ village: 'Goth Ali', city: 'Hyderabad', province: 'Sindh', street: 'House 4, Main Road' }),
+      user: { email: 'ahmed@example.com' } as never,
+    });
+    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    expect(screen.getByText('Goth Ali, Hyderabad, Sindh, Pakistan')).toBeTruthy();
+    expect(screen.getByText('House 4, Main Road')).toBeTruthy();
+  });
+
+  it('falls back to the old free-text location when no structured place is set', async () => {
+    useAuthStore.setState({
+      profile: profile({ country: null, province: null, city: null, location: 'Multan, Punjab' }),
+      user: { email: 'ahmed@example.com' } as never,
+    });
+    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByText('Multan, Punjab')).toBeTruthy();
+  });
+
+  it('opens a dealer\'s business details, and offers them to no other role', async () => {
+    useAuthStore.setState({ profile: profile({ role: 'dealer' }), user: { email: 'd@example.com' } as never });
+    const navigation = makeNavigation();
+    await renderWithQuery(<ViewProfileScreen navigation={navigation} route={{} as never} />);
+    await fireEvent.press(screen.getByText('Business details'));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.BusinessDetails);
+  });
+
+  it.each(['farmer', 'buyer', 'expert', 'admin'] as const)('shows no business details for a %s', async (role) => {
+    useAuthStore.setState({ profile: profile({ role }), user: { email: 'ahmed@example.com' } as never });
+    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
+    expect(screen.queryByText('Business details')).toBeNull();
   });
 
   it('shows a placeholder for an empty name', async () => {
@@ -60,11 +93,11 @@ describe('ViewProfileScreen', () => {
 
   it('shows placeholders for missing phone and location', async () => {
     useAuthStore.setState({
-      profile: profile({ phone: null, location: null }),
+      profile: profile({ phone: null, location: null, country: null, province: null, city: null }),
       user: { email: 'ahmed@example.com' } as never,
     });
     await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(screen.getAllByText('—').length).toBe(2);
+    expect(screen.getAllByText('—').length).toBe(3);
   });
 
   it('navigates to EditProfile and Settings', async () => {
