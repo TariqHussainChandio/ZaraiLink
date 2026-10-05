@@ -539,8 +539,9 @@ approval email goes through a backend SMTP seam (local Mailpit; hosted Blocked u
   workspace after signing in again; Change Password took the emailed code and the old password stopped working. The
   admin's decisions on the device run were made through the API with a second-factor session.
 
-**A3b status (2026-10-05): built on branch `a3b/applications`; `zl-verifier` round 1 VERIFIED WITH FINDINGS (one
-Medium, six Low) and round 2 VERIFIED WITH FINDINGS (Low only), every finding fixed. Ready to merge.**
+**A3b status (2026-10-05): done.** PR #28 merged with a merge commit (`1c57d38`); CI green on the PR (run
+37246518525), every job including the Android build (debug and release) and `ci-required`. `zl-verifier` round 1
+VERIFIED WITH FINDINGS (one Medium, six Low) and round 2 VERIFIED WITH FINDINGS (Low only), every finding fixed.
 - **Verifier round 1:** every two-user attack held (database, Storage, API), and four protections reverted in turn
   each turned a pgTAP case red. Fixed:
   - M1: a submitted document's file could be deleted from Storage, and the admin's link then answered 500. A file a
