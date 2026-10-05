@@ -71,7 +71,7 @@ them until A9.
 ## 2. SRDS §53: the forty non-negotiable rules
 
 Today: **22 met, 5 met but untested, 5 partial, 8 not yet**, counting rules 4, 5, 7, 8 and 9 met by A3b
-(PR #28; rule 7 locally, hosted email waits for G1; the A3b migration reaches the hosted project with `db push`). The Field Manual scorecard reads from this table.
+(PR #28; rule 7 locally, hosted email waits for G1; the A3b migration is on the hosted project, pushed 2026-10-05). The Field Manual scorecard reads from this table.
 
 | # | Rule | Status | Phase | Proof |
 |---|---|---|---|---|
