@@ -52,6 +52,9 @@ COVERED = {
     ("DELETE", "/api/v1/marketplace/categories/{category_id}"),
     ("PATCH", "/api/v1/marketplace/listings/{listing_id}/status"),
     ("DELETE", "/api/v1/reviews/{review_id}"),
+    # A3b: audited by the table's own trigger (audit_required_documents); proven in test_smoke_applications.py.
+    ("POST", "/api/v1/admin/required-documents"),
+    ("PATCH", "/api/v1/admin/required-documents/{document_id}"),
 }
 NOT_AUDITED: dict[tuple[str, str], str] = {}
 
@@ -111,27 +114,16 @@ def test_resolving_and_dismissing_a_report_are_audited(world, api_client):
     _assert_audited(world, "dismiss_report", dismissed)
 
 
-def test_an_expert_verification_decision_is_audited(world, api_client, make_actor):
-    expert_id, _, expert_token = make_actor("expert")
-    application = {
-        "profile": {
-            "qualifications": "PhD",
-            "degree": "PhD",
-            "experience": "5 years",
-            "professional_description": "audit smoke",
-            "contact": "audit@example.test",
-            "specializations": ["plant_diseases"],
-        }
-    }
-    assert api_client("POST", "/api/v1/expert/application", expert_token, json=application).status_code in (200, 201)
+def test_an_expert_verification_decision_is_audited(world, api_client, make_applicant):
+    expert_id = make_applicant("expert")[0]
     verified = _patch(api_client, world, f"/api/v1/expert/admin/{expert_id}/verification", decision="approved")
-    assert verified.status_code == 204, verified.text
+    assert verified.status_code == 200, verified.text
     # The audit row is written by decide_account_status() in the decision's own transaction (SRDS §51 names).
     _assert_audited(world, "expert_application_approved", expert_id)
 
 
-def test_a_dealer_application_decision_is_audited(world, api_client, make_actor):
-    dealer_id = make_actor("dealer")[0]
+def test_a_dealer_application_decision_is_audited(world, api_client, make_applicant):
+    dealer_id = make_applicant("dealer")[0]
     decided = _patch(api_client, world, f"/api/v1/admin/users/{dealer_id}/account-status", status="approved")
     assert decided.status_code == 200, decided.text
     _assert_audited(world, "dealer_application_approved", dealer_id)

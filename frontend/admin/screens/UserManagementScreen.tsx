@@ -4,7 +4,6 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import {
   Button,
-  ChipRow,
   EmptyState,
   ListGroup,
   ListRow,
@@ -12,37 +11,25 @@ import {
   Sheet,
   Spinner,
   StatusBadge,
-  TextField,
 } from '../../common/components';
 import { ROLES, ROLE_LABELS } from '../../common/constants/roles';
-import { useDecideDealerApplication, useProfiles, useSetProfileSuspended, useUpdateUserRole } from '../hooks/admin';
+import { useProfiles, useSetProfileSuspended, useUpdateUserRole } from '../hooks/admin';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { errorMessage } from '../../utils/errorMessage';
 import type { Profile } from '../../common/types/profile';
 
-type UserFilter = 'all' | 'pendingDealers';
-const FILTERS: { value: UserFilter; label: string }[] = [
-  { value: 'all', label: 'All users' },
-  { value: 'pendingDealers', label: 'Pending dealers' },
-];
-// The dealer reads a rejection's reason on their Application Status screen, so it must say something (A3a).
-const MIN_REASON = 10;
-
+// Every user: role and suspension. A dealer's or expert's application is decided in Approvals, after reading it and its
+// documents (A3b), so this list shows the status but offers no decision.
 export function UserManagementScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const currentUserId = useAuthStore(state => state.user?.id);
   const suspend = useSetProfileSuspended();
   const updateRole = useUpdateUserRole();
-  const decideDealer = useDecideDealerApplication();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [roleSheetFor, setRoleSheetFor] = useState<Profile | null>(null);
-  const [rejectSheetFor, setRejectSheetFor] = useState<Profile | null>(null);
-  const [reason, setReason] = useState('');
-  const [reasonError, setReasonError] = useState<string | undefined>(undefined);
-  const [filter, setFilter] = useState<UserFilter>('all');
-  const { data: shown = [], isPending: loading, refetch } = useProfiles(filter);
+  const { data: shown = [], isPending: loading, refetch } = useProfiles();
 
   useFocusEffect(
     useCallback(() => {
@@ -75,48 +62,10 @@ export function UserManagementScreen() {
     }
   };
 
-  const approveDealer = async (profile: Profile) => {
-    setUpdatingId(profile.id);
-    try {
-      await decideDealer.mutateAsync({ id: profile.id, status: 'approved' });
-    } catch (error) {
-      Alert.alert('Could not approve the dealer', errorMessage(error));
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const openReject = (profile: Profile) => {
-    setReason('');
-    setReasonError(undefined);
-    setRejectSheetFor(profile);
-  };
-
-  const rejectDealer = async () => {
-    if (!rejectSheetFor) return;
-    if (reason.trim().length < MIN_REASON) {
-      setReasonError(`Write at least ${MIN_REASON} characters`);
-      return;
-    }
-    const profile = rejectSheetFor;
-    setRejectSheetFor(null);
-    setUpdatingId(profile.id);
-    try {
-      await decideDealer.mutateAsync({ id: profile.id, status: 'rejected', reason });
-    } catch (error) {
-      Alert.alert('Could not reject the dealer', errorMessage(error));
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   if (loading) return <Spinner fullscreen />;
 
   return (
     <>
-      <View style={styles.filters}>
-        <ChipRow options={FILTERS} value={filter} onChange={setFilter} />
-      </View>
       <FlashList
         style={styles.container}
         contentContainerStyle={styles.list}
@@ -138,23 +87,6 @@ export function UserManagementScreen() {
             </View>
             {item.id !== currentUserId ? (
               <View style={styles.actions}>
-                {item.role === 'dealer' && item.account_status === 'pending' ? (
-                  <>
-                    <Button
-                      label="Approve"
-                      fullWidth={false}
-                      loading={updatingId === item.id}
-                      onPress={() => approveDealer(item)}
-                    />
-                    <Button
-                      label="Reject"
-                      variant="danger"
-                      fullWidth={false}
-                      loading={updatingId === item.id}
-                      onPress={() => openReject(item)}
-                    />
-                  </>
-                ) : null}
                 <Button
                   label="Change Role"
                   variant="secondary"
@@ -174,7 +106,7 @@ export function UserManagementScreen() {
           </View>
         )}
         ListEmptyComponent={
-          <EmptyState title={filter === 'pendingDealers' ? 'No dealer is waiting for a decision' : 'No users found'} />
+          <EmptyState title="No users found" />
         }
       />
 
@@ -185,24 +117,6 @@ export function UserManagementScreen() {
           ))}
         </ListGroup>
       </Sheet>
-
-      <Sheet
-        visible={!!rejectSheetFor}
-        onClose={() => setRejectSheetFor(null)}
-        title={`Reject ${rejectSheetFor?.full_name || 'this dealer'}`}
-      >
-        <View style={styles.sheetBody}>
-          <TextField
-            label="Reason"
-            helper="The dealer reads this and can send the application again."
-            value={reason}
-            onChangeText={setReason}
-            error={reasonError}
-            multiline
-          />
-          <Button label="Reject application" variant="danger" onPress={rejectDealer} />
-        </View>
-      </Sheet>
     </>
   );
 }
@@ -212,14 +126,6 @@ function makeStyles({ colors, space, typography, borders }: Theme) {
     container: {
       flex: 1,
       backgroundColor: colors.surface,
-    },
-    filters: {
-      paddingTop: space[3],
-      paddingHorizontal: space[4],
-      backgroundColor: colors.surface,
-    },
-    sheetBody: {
-      gap: space[3],
     },
     list: {
       padding: space[4],

@@ -1,6 +1,7 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-10-04): A0, A1 and A2 closed; A3a closed (PR #25, merge commit `59d57fc`); A3b next. The A3a migration
+> **Status (2026-10-05): A0, A1 and A2 closed; A3a closed (PR #25, merge commit `59d57fc`); A3b built on
+> `a3b/applications`, in verification. The A3a migration
 > is on the hosted project (pushed 2026-10-04); the reauthentication template waits for `config push` with the SMTP
 > secrets set.**
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is

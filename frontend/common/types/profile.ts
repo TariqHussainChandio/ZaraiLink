@@ -22,6 +22,9 @@ export interface Profile {
   /** The admin's reason, shown to a rejected applicant on the Application Status screen. */
   account_status_reason: string | null;
   account_status_changed_at: string | null;
+  /** When a dealer or expert last sent their application for review (A3b). Pending with none is a draft still being
+   * filled in; pending with one is under review, and frozen until the decision. */
+  application_submitted_at: string | null;
   notifications_enabled: boolean;
   created_at: string;
   updated_at: string;

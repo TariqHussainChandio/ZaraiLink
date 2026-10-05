@@ -107,7 +107,9 @@ enabled = true
 # Port to use for the email testing server web interface.
 port = 54324
 # Uncomment to expose additional ports for testing user applications that send emails.
-# smtp_port = 54325
+# A3b: FastAPI sends the approval and rejection emails over SMTP (backend/app/common/email.py); locally they land
+# here, on this port, and the smoke tests read them back through the web API on 54324.
+smtp_port = 54325
 # pop3_port = 54326
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
@@ -266,6 +268,12 @@ content_path = "./supabase/templates/recovery.html"
 [auth.email.template.reauthentication]
 subject = "Your ZaraiLink confirmation code"
 content_path = "./supabase/templates/reauthentication.html"
+
+# A3b: an admin changing their email (Account Security) gets a code at each address (double_confirm_changes) and
+# enters both in ChangeEmailScreen.
+[auth.email.template.email_change]
+subject = "Your ZaraiLink email change code"
+content_path = "./supabase/templates/email_change.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

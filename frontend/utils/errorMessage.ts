@@ -26,6 +26,9 @@ export const ERROR_CODE_MESSAGES: Record<ErrorCode, string> = {
   insufficient_stock: 'That quantity is not available.',
   listing_unavailable: 'This listing is no longer available.',
   invalid_transition: 'That change is not possible at this stage.',
+  // A3b. The review step lists what is missing itself; the server's list is in English, which is never shown.
+  application_incomplete: 'Your application is missing something. Check the list of required items.',
+  application_locked: 'Your application is with an administrator and cannot be changed until they decide.',
   rate_limited: 'Too many requests. Please try again in a minute.',
   service_unavailable: 'The service is not available right now. Please try again shortly.',
   server_error: 'Something went wrong on our side. Please try again shortly.',

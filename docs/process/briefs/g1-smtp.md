@@ -106,3 +106,19 @@ Privacy and cost:              Only the recipient's email address and the transa
 - Flip the feature register's "Email sign-up with code verification" and "Password reset" rows
   from `Blocked` to `Works` once the live smoke test (AT11) passes.
 - `docs/process/standardization-plan.md` §1.5's C3 row updates from "P4 (4A-4C)" partial to done.
+
+## A3b: the API sends email too
+
+Since A3b (`backend/app/common/email.py`) FastAPI emails the applicant after each dealer or expert decision (SRDS §8,
+§9, §11). It uses the same provider account over SMTP, with its own settings in the API host's environment (never in
+git or chat):
+
+| Setting | Value |
+|---|---|
+| `EMAIL_ENABLED` | `true` (the default is off, so an unconfigured host sends nothing) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_STARTTLS` | the provider's, for Gmail `smtp.gmail.com`, `587`, `true` |
+| `SMTP_USERNAME`, `SMTP_PASSWORD` | the sending account and its app password (a secret) |
+| `SMTP_FROM` | `ZaraiLink <the sending address>` |
+
+Until they are set, decisions still work and the admin is told the email was not delivered. The admin email change
+also needs the `email_change` template pushed with `npx supabase config push`.

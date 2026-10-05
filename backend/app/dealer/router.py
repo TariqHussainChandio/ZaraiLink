@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends
 
-from app.auth.dependencies import AuthenticatedUser, require_dealer
+from app.auth.dependencies import AuthenticatedUser, require_dealer, require_dealer_any_status
 from app.common.pagination import Page, paginate
+from app.common.schemas import ApplicationDocument, RegisterDocumentRequest
 from app.dealer import service
 from app.dealer.schemas import (
     AdjustStockRequest,
+    DealerApplicationInput,
+    DealerProfile,
     DealerStore,
     InventoryInput,
     InventoryItem,
@@ -20,6 +23,41 @@ from app.dealer.schemas import (
 )
 
 router = APIRouter(prefix="/api/v1/dealer", tags=["dealer"])
+
+
+# --- the application (A3b): open to a pending or rejected dealer, who has nothing else -----------------------------
+
+
+@router.get("/application", response_model=DealerProfile | None)
+async def get_my_application(user: AuthenticatedUser = Depends(require_dealer_any_status)) -> dict | None:
+    return await service.fetch_my_application(user)
+
+
+@router.put("/application", response_model=DealerProfile)
+async def save_my_application(
+    request: DealerApplicationInput, user: AuthenticatedUser = Depends(require_dealer_any_status)
+) -> dict:
+    """The business details (SRDS §7). Accepted while the application is a draft or rejected, and once approved;
+    refused with `application_locked` while it is under review, so the admin decides on what they read."""
+    return await service.save_my_application(user, request.model_dump())
+
+
+@router.get("/application/documents", response_model=list[ApplicationDocument])
+async def list_my_documents(user: AuthenticatedUser = Depends(require_dealer_any_status)) -> list[dict]:
+    return await service.fetch_my_documents(user)
+
+
+@router.post("/application/documents", response_model=ApplicationDocument, status_code=201)
+async def add_my_document(
+    request: RegisterDocumentRequest, user: AuthenticatedUser = Depends(require_dealer_any_status)
+) -> dict:
+    """Attaches a file the dealer uploaded to `dealer-documents/<their id>/...`."""
+    return await service.add_my_document(user, request.storage_path, request.file_name, request.required_document_id)
+
+
+@router.delete("/application/documents/{document_id}", status_code=204)
+async def remove_my_document(document_id: str, user: AuthenticatedUser = Depends(require_dealer_any_status)) -> None:
+    await service.remove_my_document(user, document_id)
 
 
 # --- inventory ------------------------------------------------------------------------------

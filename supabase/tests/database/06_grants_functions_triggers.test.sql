@@ -36,11 +36,14 @@ select is(
     'authenticated conversations INSERT,SELECT',
     'authenticated crops DELETE,INSERT,SELECT,UPDATE',
     'authenticated currencies DELETE,INSERT,SELECT,UPDATE',
+    'authenticated dealer_documents DELETE,INSERT,SELECT',
+    'authenticated dealer_profiles INSERT,SELECT,UPDATE',
     'authenticated dealer_stores DELETE,INSERT,SELECT,UPDATE',
     'authenticated disease_cases INSERT,SELECT',
     'authenticated disease_predictions SELECT',
+    'authenticated expert_documents DELETE,INSERT,SELECT',
     'authenticated expert_specializations DELETE,INSERT,SELECT,UPDATE',
-    -- INSERT is column-level (expert_id, document_url) since 20260928090000, so it is not a table grant.
+    -- No INSERT since 20261012080000: submit_application() writes the submission record.
     'authenticated expert_verifications SELECT',
     'authenticated experts INSERT,SELECT,UPDATE',
     'authenticated farm_crops DELETE,INSERT,SELECT,UPDATE',
@@ -61,6 +64,7 @@ select is(
     'authenticated profiles INSERT,SELECT,UPDATE',
     'authenticated profiles_public SELECT',
     'authenticated reports INSERT,SELECT,UPDATE',
+    'authenticated required_documents INSERT,SELECT,UPDATE',
     'authenticated reviews DELETE,INSERT,SELECT',
     'authenticated suppliers DELETE,INSERT,SELECT,UPDATE',
     'authenticated units DELETE,INSERT,SELECT,UPDATE',
@@ -98,12 +102,14 @@ select is(
     'authenticated caller_role()',
     'authenticated decide_account_status(uuid,account_status,text)',
     'authenticated is_account_approved()',
+    'authenticated is_application_editable()',
     'authenticated is_approved_dealer()',
     'authenticated is_approved_expert()',
     'authenticated is_seller_role(uuid)',
-    'authenticated resubmit_application()'
+    'authenticated lock_editable_application(uuid)',
+    'authenticated submit_application()'
   ],
-  'the extra functions signed-in users can execute: the stock reads and adjust_stock, is_seller_role, and the account-status helpers and decisions (20261005080000)');
+  'the extra functions signed-in users can execute: the stock reads and adjust_stock, is_seller_role, and the account-status helpers and decisions (20261005080000), the application helper and submission (20261012080000)');
 
 -- profiles_public: exactly id, name, avatar ------------------------------------------------------------
 select is(
@@ -140,7 +146,7 @@ select tests.expect(tests.fx('A'), 'update public.payments set amount = 2 where 
 select tests.expect(tests.fx('F'), $$update public.messages set body = 'edited' where id = $$ || tests.l('M1'), 'err:P0001', 'guard_messages_updates: a participant cannot edit a body');
 select tests.expect(tests.fx('F'), 'update public.messages set sender_id = ' || tests.l('F') || ' where id = ' || tests.l('M1'), 'err:42501', 'guard_messages_updates: nobody can change the sender (column grant)');
 select tests.approval_world();
-select tests.expect(tests.fx('PE'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'err:42501', 'guard_experts_verification_status: an expert cannot approve themselves');
+select tests.expect(tests.fx('PE0'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE0'), 'err:42501', 'guard_experts_verification_status: an expert cannot approve themselves');
 select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'n:0', 'experts_update_own_or_admin: an admin without a second factor cannot decide (20260928090000)');
 select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'err:42501', 'guard_experts_verification_status: nor can an admin with a second factor, directly; decide_account_status() decides (20261005080000)', 'aal2');
 

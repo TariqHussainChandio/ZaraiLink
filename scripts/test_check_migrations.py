@@ -118,11 +118,14 @@ ONE_LINE = "create table public.t (id uuid primary key, owner_id uuid references
         (GOOD + ' create policy "ad" on public.things for insert with check (is_approved_dealer());', "bare"),
         (GOOD + ' create policy "ae" on public.things for update using (public.is_approved_expert());', "bare"),
         (GOOD + """ create policy "cr" on public.things for insert with check (public.caller_role() = 'expert');""", "bare"),
+        # A3b's application helper too.
+        (GOOD + ' create policy "ed" on public.things for delete using (public.is_application_editable());', "bare"),
     ],
     ids=[
         "one-line-no-rls", "one-line-unindexed-fk", "table-in-do-block", "grant-all", "anon-insert", "for-all-true",
         "insert-check-true", "add-column-fk", "add-constraint-fk", "alter-policy-bare", "bare-is-admin", "bare-jwt",
         "bare-is-account-approved", "bare-is-approved-dealer", "bare-is-approved-expert", "bare-caller-role",
+        "bare-is-application-editable",
     ],
 )
 def test_the_gaps_found_by_verification_are_closed(broken, expected):

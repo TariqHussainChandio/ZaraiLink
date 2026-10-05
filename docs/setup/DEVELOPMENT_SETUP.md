@@ -279,4 +279,6 @@ asks before applying. The MCP server has no tool for Auth settings. The Supabase
 | `npm run android` fails while generating the project | Run `npm run prebuild:clean`; check `node -v` is 22.11 or newer |
 | Taking a photo asks for camera permission | Expected: the Expo picker needs it (the old picker did not) |
 | Sign-up email never arrives | Open the local mail inbox at `http://127.0.0.1:54324` |
+| An admin's document link does not open on the emulator | The API signs links with its own Supabase address (`127.0.0.1:54321`); run `adb reverse tcp:54321 tcp:54321` |
+| No decision email in the local inbox | Start the API with `EMAIL_ENABLED=true SMTP_HOST=127.0.0.1 SMTP_PORT=54325 SMTP_STARTTLS=false` (A3b; `backend/.env.example`) |
 | Metro crashes with `ENOENT` on Windows | The watcher; `metro.config.js` already excludes native build output |

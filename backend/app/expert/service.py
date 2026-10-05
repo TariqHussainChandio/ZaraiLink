@@ -2,7 +2,9 @@ from fastapi import HTTPException
 
 from app.auth.dependencies import AuthenticatedUser
 from app.common import account_status
+from app.common import application_documents as documents
 from app.common.errors import AppHTTPException
+from app.common.notifications import service as notifications
 from app.expert import repository as repo
 
 
@@ -13,7 +15,7 @@ def _to_location(country: str | None, province: str | None, city: str | None) ->
 
 
 def _to_fields(profile) -> dict:
-    return {
+    fields = {
         "qualifications": profile.qualifications or None,
         "degree": profile.degree or None,
         "experience": profile.experience or None,
@@ -21,16 +23,29 @@ def _to_fields(profile) -> dict:
         "contact": profile.contact or None,
         "location": _to_location(profile.country, profile.province, profile.city),
     }
+    # Left out when not sent, so an edit from a form without them (an approved expert's profile) keeps them.
+    if profile.years_experience is not None:
+        fields["years_experience"] = profile.years_experience
+    if profile.institution_affiliation is not None:
+        fields["institution_affiliation"] = profile.institution_affiliation.strip()
+    return fields
 
 
-async def submit_application(user: AuthenticatedUser, profile, document_path: str | None) -> dict:
-    return await repo.submit_application(
-        user.access_token, user.id, _to_fields(profile), profile.specializations, document_path
-    )
+async def create_application(user: AuthenticatedUser, profile) -> dict:
+    created = await repo.create_application(user.access_token, user.id, _to_fields(profile), profile.specializations)
+    if created is None:
+        raise AppHTTPException(403, documents.LOCKED, "application_locked")
+    return created
 
 
 async def update_profile(user: AuthenticatedUser, profile) -> dict:
-    return await repo.update_profile(user.access_token, user.id, _to_fields(profile), profile.specializations)
+    updated = await repo.update_profile(user.access_token, user.id, _to_fields(profile), profile.specializations)
+    if updated is None:
+        # Their own row is there but the policies hid it from the update: frozen under review (A3b verification, L5).
+        if await repo.fetch_own_expert_profile(user.access_token, user.id) is None:
+            raise AppHTTPException(404, "Fill in your professional details first", "not_found")
+        raise AppHTTPException(403, documents.LOCKED, "application_locked")
+    return updated
 
 
 async def fetch_my_profile(user: AuthenticatedUser) -> dict | None:
@@ -78,7 +93,7 @@ async def fetch_expert_for_admin_by_id(user: AuthenticatedUser, expert_id: str) 
 
 async def review_verification(
     user: AuthenticatedUser, expert_id: str, decision: account_status.Decision, notes: str | None
-) -> None:
+) -> dict:
     # One place per role: an expert is decided here, a dealer in User Management (A3a verification, L5).
     role = await repo.fetch_profile_role(user.access_token, expert_id)
     if role is None:
@@ -87,18 +102,33 @@ async def review_verification(
         raise AppHTTPException(409, "Only an expert is decided here; dealers are reviewed in Users", "conflict")
     # The account, the expert's verification and its latest record move together, with the audit row, in one
     # database transaction (decide_account_status); before A3a these were three separate writes.
-    await account_status.decide(user, expert_id, decision, notes)
+    result = await account_status.decide(user, expert_id, decision, notes)
+    # After the commit: the email reports a decision that has happened (SRDS §9, §11), and the admin is told whether
+    # it went out.
+    result["email_delivered"] = await notifications.send_application_decision(user, expert_id, role, decision, notes)
+    return result
 
 
-async def get_document_url(user: AuthenticatedUser, expert_id: str) -> str | None:
-    """
-    Doesn't accept a storage path from the client at all — the path is looked up server-side
-    from the expert's own (sorted-newest-first) verification history, so the caller can only
-    ever resolve the document that's actually associated with the expertId they asked about
-    (rule: "verify the requested expert/document relationship before generating a signed URL").
-    """
-    expert = await fetch_expert_for_admin_by_id(user, expert_id)
-    verifications = expert.get("expert_verifications") or []
-    if not verifications or not verifications[0].get("document_url"):
-        return None
-    return await repo.create_document_signed_url(user.access_token, verifications[0]["document_url"])
+async def fetch_my_documents(user: AuthenticatedUser) -> list[dict]:
+    return await documents.list_documents(user.access_token, documents.EXPERT, user.id)
+
+
+async def add_my_document(
+    user: AuthenticatedUser, storage_path: str, file_name: str, required_document_id: str | None
+) -> dict:
+    if await repo.fetch_own_expert_profile(user.access_token, user.id) is None:
+        # Documents hang off the expert's row (expert_documents.expert_id), so the details come first.
+        raise AppHTTPException(409, "Fill in your professional details first", "conflict")
+    return await documents.register(
+        user.access_token, documents.EXPERT, user.id, storage_path, file_name, required_document_id
+    )
+
+
+async def remove_my_document(user: AuthenticatedUser, document_id: str) -> None:
+    await documents.remove(user.access_token, documents.EXPERT, user.id, document_id)
+
+
+async def document_url_for_admin(user: AuthenticatedUser, expert_id: str, document_id: str) -> str:
+    """A signed link to one of this expert's documents. The path is looked up from the document's own row (never
+    taken from the client), so only a document that belongs to the expert asked about can be opened."""
+    return await documents.signed_url(user.access_token, documents.EXPERT, expert_id, document_id)

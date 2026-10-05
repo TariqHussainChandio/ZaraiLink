@@ -3,31 +3,19 @@ import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertApplicationScreen } from './ExpertApplicationScreen';
-import {
-  fetchExpertProfile,
-  submitExpertApplication,
-  updateExpertProfile,
-  uploadExpertDocument,
-} from '../services/expertService';
-import { pickPhotos } from '../../utils/photoPicker';
+import { createExpertApplication, fetchExpertProfile, updateExpertProfile } from '../services/expertService';
 import { useAuthStore } from '../../state/authStore';
 import type { ExpertWithProfile } from '../types/expert';
 
 jest.mock('../services/expertService', () => ({
   fetchExpertProfile: jest.fn(),
-  submitExpertApplication: jest.fn(),
+  createExpertApplication: jest.fn(),
   updateExpertProfile: jest.fn(),
-  uploadExpertDocument: jest.fn(),
-}));
-jest.mock('../../utils/photoPicker', () => ({
-  pickPhotos: jest.fn(),
 }));
 
 const mockFetchExpertProfile = fetchExpertProfile as jest.Mock;
-const mockSubmitExpertApplication = submitExpertApplication as jest.Mock;
+const mockCreate = createExpertApplication as jest.Mock;
 const mockUpdateExpertProfile = updateExpertProfile as jest.Mock;
-const mockUploadExpertDocument = uploadExpertDocument as jest.Mock;
-const mockPickPhotos = pickPhotos as jest.Mock;
 
 const existingProfile: ExpertWithProfile = {
   id: 'expert1',
@@ -37,6 +25,8 @@ const existingProfile: ExpertWithProfile = {
   professional_description: 'Crop specialist',
   location: { country: 'Pakistan', province: 'Punjab', city: 'Lahore' },
   contact: '0300-0000000',
+  years_experience: 10,
+  institution_affiliation: 'University of Agriculture Faisalabad',
   verification_status: 'approved',
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
@@ -44,13 +34,10 @@ const existingProfile: ExpertWithProfile = {
   expert_specializations: [{ specialization: 'plant_diseases' }],
 };
 
+// Since A3b this is the expert's profile editor; the application itself (with documents) is ApplicationWizardScreen.
 describe('ExpertApplicationScreen', () => {
   beforeEach(() => {
-    mockFetchExpertProfile.mockReset();
-    mockSubmitExpertApplication.mockReset();
-    mockUpdateExpertProfile.mockReset();
-    mockUploadExpertDocument.mockReset();
-    mockPickPhotos.mockReset();
+    jest.clearAllMocks();
     useAuthStore.setState({ user: { id: 'expert1' } as never });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
@@ -59,25 +46,16 @@ describe('ExpertApplicationScreen', () => {
     jest.restoreAllMocks();
   });
 
-  it('shows a blank form for a first-time applicant', async () => {
-    mockFetchExpertProfile.mockResolvedValue(null);
-    await renderWithQuery(<ExpertApplicationScreen />);
-
-    expect(await screen.findByLabelText('Qualifications')).toBeTruthy();
-    expect(screen.getByLabelText('Qualifications').props.value).toBe('');
-    expect(screen.getByText('Submit Application')).toBeTruthy();
-    expect(screen.getByText('+ Add a photo of your certificate')).toBeTruthy();
-  });
-
-  it('pre-fills the form and switches to edit mode when a profile already exists', async () => {
+  it('pre-fills the form with the saved profile, the years and the institution included', async () => {
     mockFetchExpertProfile.mockResolvedValue(existingProfile);
     await renderWithQuery(<ExpertApplicationScreen />);
 
     expect(await screen.findByLabelText('Qualifications')).toBeTruthy();
     expect(screen.getByLabelText('Qualifications').props.value).toBe('PhD Agronomy');
-    expect(screen.getByLabelText('Contact').props.value).toBe('0300-0000000');
-    expect(screen.getByText('Save Changes')).toBeTruthy();
-    expect(screen.queryByText('+ Add a photo of your certificate')).toBeNull();
+    expect(screen.getByLabelText('Years of experience').props.value).toBe('10');
+    expect(screen.getByLabelText('Institution affiliation').props.value).toBe('University of Agriculture Faisalabad');
+    expect(screen.getByText('Save changes')).toBeTruthy();
+    expect(screen.queryByText(/Add a photo/)).toBeNull();
   });
 
   it('shows a retryable error state when loading fails', async () => {
@@ -96,63 +74,41 @@ describe('ExpertApplicationScreen', () => {
     await renderWithQuery(<ExpertApplicationScreen />);
     await screen.findByLabelText('Qualifications');
 
-    await fireEvent.press(screen.getByText('Submit Application'));
+    await fireEvent.press(screen.getByText('Save changes'));
     expect(await screen.findByText('Enter your qualifications')).toBeTruthy();
-    expect(mockSubmitExpertApplication).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('requires at least one specialization before submitting', async () => {
+  it('requires at least one specialization', async () => {
     mockFetchExpertProfile.mockResolvedValue(null);
     await renderWithQuery(<ExpertApplicationScreen />);
     await fireEvent.changeText(await screen.findByLabelText('Qualifications'), 'PhD Agronomy, extension work');
 
-    await fireEvent.press(screen.getByText('Submit Application'));
+    await fireEvent.press(screen.getByText('Save changes'));
     expect(Alert.alert).toHaveBeenCalledWith('Select at least one specialization');
-    expect(mockSubmitExpertApplication).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('submits a new application with a picked document', async () => {
+  it('starts the profile when there is none yet', async () => {
     mockFetchExpertProfile.mockResolvedValue(null);
-    mockPickPhotos.mockResolvedValue([{ uri: 'file://cert.jpg', fileName: 'cert.jpg', mimeType: 'image/jpeg' }]);
-    mockUploadExpertDocument.mockResolvedValue('expert1/cert.jpg');
-    mockSubmitExpertApplication.mockResolvedValue({ id: 'expert1' });
-
+    mockCreate.mockResolvedValue({ id: 'expert1' });
     await renderWithQuery(<ExpertApplicationScreen />);
     await fireEvent.changeText(await screen.findByLabelText('Qualifications'), 'PhD Agronomy, extension work');
     await fireEvent.press(screen.getByText('Crop Management'));
-    await fireEvent.press(screen.getByText('+ Add a photo of your certificate'));
-    await screen.findByText('Submit Application');
 
-    await fireEvent.press(screen.getByText('Submit Application'));
+    await fireEvent.press(screen.getByText('Save changes'));
 
-    expect(mockUploadExpertDocument).toHaveBeenCalledWith('expert1', {
-      uri: 'file://cert.jpg',
-      fileName: 'cert.jpg',
-      mimeType: 'image/jpeg',
-    });
-    expect(mockSubmitExpertApplication).toHaveBeenCalledWith(
-      {
-        qualifications: 'PhD Agronomy, extension work',
-        degree: '',
-        experience: '',
-        professionalDescription: '',
-        contact: '',
-        country: null,
-        province: null,
-        city: null,
-        specializations: ['crop_management'],
-      },
-      'expert1/cert.jpg',
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ qualifications: 'PhD Agronomy, extension work', specializations: ['crop_management'] }),
     );
-    expect(Alert.alert).toHaveBeenCalledWith('Application submitted', 'An admin will review your application.');
   });
 
-  it('updates an existing profile without touching document upload', async () => {
+  it('updates an existing profile, keeping the years and the institution', async () => {
     mockFetchExpertProfile.mockResolvedValue(existingProfile);
     mockUpdateExpertProfile.mockResolvedValue(existingProfile);
     await renderWithQuery(<ExpertApplicationScreen />);
 
-    await fireEvent.press(await screen.findByText('Save Changes'));
+    await fireEvent.press(await screen.findByText('Save changes'));
 
     expect(mockUpdateExpertProfile).toHaveBeenCalledWith({
       qualifications: 'PhD Agronomy',
@@ -164,9 +120,10 @@ describe('ExpertApplicationScreen', () => {
       province: 'Punjab',
       city: 'Lahore',
       specializations: ['plant_diseases'],
+      yearsExperience: 10,
+      institutionAffiliation: 'University of Agriculture Faisalabad',
     });
-    expect(mockUploadExpertDocument).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Profile updated', 'An admin will review your application.');
+    expect(Alert.alert).toHaveBeenCalledWith('Profile updated');
   });
 
   it('shows an error alert when saving fails', async () => {
@@ -174,7 +131,7 @@ describe('ExpertApplicationScreen', () => {
     mockUpdateExpertProfile.mockRejectedValue(new Error('Server unavailable'));
     await renderWithQuery(<ExpertApplicationScreen />);
 
-    await fireEvent.press(await screen.findByText('Save Changes'));
+    await fireEvent.press(await screen.findByText('Save changes'));
     expect(Alert.alert).toHaveBeenCalledWith('Could not save', 'Server unavailable');
   });
 });

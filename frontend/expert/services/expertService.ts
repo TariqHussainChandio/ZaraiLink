@@ -1,7 +1,4 @@
-import type { PickedPhoto } from '../../utils/photoPicker';
-import { extensionFromMimeType } from '../../utils/mimeExtension';
 import { apiFetch } from '../../services/api/client';
-import { supabase } from '../../services/supabase/client';
 import type {
   Expert,
   ExpertSpecialization,
@@ -20,6 +17,9 @@ export interface ExpertProfileInput {
   province: string | null;
   city: string | null;
   specializations: ExpertSpecialization[];
+  /** SRDS §10 (A3b). Left out (undefined) by a form that does not ask, so an edit keeps the saved value. */
+  yearsExperience?: number;
+  institutionAffiliation?: string;
 }
 
 function toApiProfile(input: ExpertProfileInput) {
@@ -33,23 +33,18 @@ function toApiProfile(input: ExpertProfileInput) {
     province: input.province,
     city: input.city,
     specializations: input.specializations,
+    years_experience: input.yearsExperience,
+    institution_affiliation: input.institutionAffiliation,
   };
 }
 
 /**
- * Creates the `experts` row (defaults to `verification_status = 'pending'`) plus the first
- * `expert_verifications` row logging the application. `document_url` is a storage path in the
- * private `expert-documents` bucket, resolved to a signed URL only when an admin reviews it —
- * never rendered directly. No `userId` param — the backend always uses the caller's own id.
+ * Starts the expert's application with their professional details (a draft, `verification_status = 'pending'`). The
+ * documents are attached next and the application is submitted for review separately (A3b). No `userId` param: the
+ * backend always uses the caller's own id.
  */
-export async function submitExpertApplication(
-  input: ExpertProfileInput,
-  documentPath: string | null,
-): Promise<Expert> {
-  return apiFetch('/api/v1/expert/application', {
-    method: 'POST',
-    body: { profile: toApiProfile(input), document_path: documentPath },
-  });
+export async function createExpertApplication(input: ExpertProfileInput): Promise<Expert> {
+  return apiFetch('/api/v1/expert/application', { method: 'POST', body: toApiProfile(input) });
 }
 
 export async function updateExpertProfile(input: ExpertProfileInput): Promise<Expert> {
@@ -74,8 +69,29 @@ export async function fetchExperts({ specialization }: FetchExpertsParams = {}):
   return apiFetch('/api/v1/expert', { query: { specialization } });
 }
 
-export interface ExpertWithVerifications extends ExpertWithProfile {
+interface ExpertApplicationDocument {
+  id: string;
+  required_document_id: string | null;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  created_at: string;
+  required_document: { id: string; code: string; label: string } | null;
+}
+
+/** An expert as the admin reviews them (SRDS §12): the account, one verification record per submission, the documents. */
+export interface ExpertWithVerifications extends Omit<ExpertWithProfile, 'profile'> {
+  profile: {
+    id: string;
+    full_name: string;
+    avatar_url: string | null;
+    phone: string | null;
+    account_status: 'pending' | 'approved' | 'rejected';
+    account_status_reason: string | null;
+    application_submitted_at: string | null;
+  } | null;
   expert_verifications: ExpertVerification[];
+  expert_documents: ExpertApplicationDocument[];
 }
 
 /**
@@ -93,50 +109,35 @@ export async function fetchExpertForAdminById(expertId: string): Promise<ExpertW
   return apiFetch(`/api/v1/expert/admin/${expertId}`);
 }
 
+/** What an admin's decision returns: the move, and whether the applicant's email went out (SRDS §9). */
+export interface ApplicationDecision {
+  role: string;
+  previous_status: 'pending' | 'approved' | 'rejected';
+  new_status: 'pending' | 'approved' | 'rejected';
+  email_delivered: boolean;
+}
+
 /**
- * Approve/reject/suspend/reactivate. No `actorId` param — the backend derives the acting admin
- * from the verified session token and writes the audit_logs row itself.
- */
-/**
- * An admin's decision on a pending expert application (A3a). The account, the verification and its latest record move
- * together with the audit row in one database transaction; a rejection's `notes` is the reason the expert reads.
+ * An admin's decision on a submitted expert application (A3a, A3b). The account, the verification and its latest record
+ * move together with the audit row in one database transaction; a rejection's `notes` is the reason the expert reads.
+ * The expert is emailed after the decision is recorded.
  */
 export async function reviewExpertVerification(
   expertId: string,
   decision: 'approved' | 'rejected',
   notes: string,
-): Promise<void> {
-  await apiFetch(`/api/v1/expert/admin/${expertId}/verification`, {
+): Promise<ApplicationDecision> {
+  return apiFetch(`/api/v1/expert/admin/${expertId}/verification`, {
     method: 'PATCH',
     body: { decision, notes: notes.trim() || null },
   });
 }
 
 /**
- * Signed URL for the expert's current verification document. Takes `expertId`, not a raw
- * storage path — the backend looks up which document actually belongs to that expert and mints
- * a signed URL for that, so a caller can't ask it to resolve an arbitrary path.
+ * A ten-minute link to one of the expert's documents. The backend finds the file from the document's own row, under
+ * this expert, so a caller cannot ask it to sign an arbitrary path.
  */
-export async function resolveExpertDocumentUrl(expertId: string): Promise<string | null> {
-  const { url } = await apiFetch<{ url: string | null }>(`/api/v1/expert/admin/${expertId}/document-url`);
+export async function resolveExpertDocumentUrl(expertId: string, documentId: string): Promise<string> {
+  const { url } = await apiFetch<{ url: string }>(`/api/v1/expert/admin/${expertId}/documents/${documentId}/url`);
   return url;
-}
-
-// Storage-direct, unchanged — owner-scoped RLS on the private `expert-documents` bucket already
-// correctly restricts this to the uploading expert.
-export async function uploadExpertDocument(userId: string, file: PickedPhoto): Promise<string | null> {
-  if (!file.uri) return null;
-
-  const extension = extensionFromMimeType(file.mimeType, 'pdf');
-  const path = `${userId}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${extension}`;
-
-  const response = await fetch(file.uri);
-  const arrayBuffer = await response.arrayBuffer();
-
-  const { error } = await supabase.storage
-    .from('expert-documents')
-    .upload(path, arrayBuffer, { contentType: file.mimeType ?? 'application/octet-stream' });
-  if (error) throw error;
-
-  return path;
 }

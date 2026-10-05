@@ -18,7 +18,7 @@ interface IncomingMessage {
 interface ClientRequest {
   on(event: 'error', listener: (error: Error) => void): void;
   destroy(error?: Error): void;
-  write(body: string): void;
+  write(body: string | Uint8Array): void;
   end(): void;
 }
 const http = jest.requireActual('http') as {
@@ -33,7 +33,9 @@ const childProcess = jest.requireActual('child_process') as {
   execFileSync(file: string, args: string[], options: { encoding: 'utf8' }): string;
 };
 
-function nodeFetch(url: string, init: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal } = {}) {
+type Body = string | ArrayBuffer | Uint8Array;
+
+function nodeFetch(url: string, init: { method?: string; headers?: Record<string, string>; body?: Body; signal?: AbortSignal } = {}) {
   return new Promise<unknown>((resolve, reject) => {
     const request = http.request(url, { method: init.method ?? 'GET', headers: init.headers }, incoming => {
       const chunks: Uint8Array[] = [];
@@ -53,7 +55,8 @@ function nodeFetch(url: string, init: { method?: string; headers?: Record<string
     });
     request.on('error', reject);
     init.signal?.addEventListener('abort', () => request.destroy(new Error('aborted')));
-    if (init.body) request.write(init.body);
+    // A file upload (A3b) sends bytes; everything else sends JSON text.
+    if (init.body) request.write(typeof init.body === 'string' ? init.body : new Uint8Array(init.body));
     request.end();
   });
 }
@@ -110,4 +113,33 @@ export async function signUp(
     body: JSON.stringify({ email, password: 'Passw0rd!123' }),
   });
   return ((await login.json()) as { access_token: string }).access_token;
+}
+
+/**
+ * The part of supabase-js Storage the app uses (upload, remove), done as real HTTP calls to the local Storage API with
+ * the user's own token, so the bucket policies decide exactly as they do for the app on a device. supabase-js itself
+ * needs a fetch with streaming bodies that this test environment does not have; the requests are the same.
+ */
+export function storageFor(token: string) {
+  const headers = { apikey: ANON_KEY, Authorization: `Bearer ${token}` };
+  return {
+    from: (bucket: string) => ({
+      upload: async (path: string, content: ArrayBuffer, options: { contentType: string }) => {
+        const response = (await nodeFetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': options.contentType },
+          body: content,
+        })) as { ok: boolean; text(): Promise<string> };
+        return response.ok ? { data: { path }, error: null } : { data: null, error: new Error(await response.text()) };
+      },
+      remove: async (paths: string[]) => {
+        await nodeFetch(`${SUPABASE_URL}/storage/v1/object/${bucket}`, {
+          method: 'DELETE',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prefixes: paths }),
+        });
+        return { data: [], error: null };
+      },
+    }),
+  };
 }

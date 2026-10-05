@@ -132,8 +132,9 @@ def test_an_expert_cannot_apply_already_approved(make_actor, api_client, world):
     assert applied.json()[0]["verification_status"] == "pending"
     decided = rest("POST", "expert_verifications", token, body={"expert_id": expert_id, "decision": "approved"})
     assert refused_by_database(decided), decided.text
+    # Since A3b the expert files no submission record at all: submit_application() writes one per submission.
     filed = rest("POST", "expert_verifications", token, body={"expert_id": expert_id, "document_url": "x/cert.jpg"})
-    assert filed.status_code == 201, filed.text
+    assert refused_by_database(filed), filed.text
 
 
 def test_a_decision_that_cannot_happen_is_not_audited(world, api_client, make_actor):

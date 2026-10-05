@@ -5,6 +5,24 @@
    "admin"
   ]
  },
+ "GET /api/v1/admin/dealer-applications": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/dealer-applications/{dealer_id}": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/dealer-applications/{dealer_id}/documents/{document_id}/url": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
  "GET /api/v1/admin/orders": {
   "kind": "roles",
   "roles": [
@@ -24,6 +42,24 @@
   ]
  },
  "PATCH /api/v1/admin/reports/{report_id}/resolve": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/required-documents": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "POST /api/v1/admin/required-documents": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/admin/required-documents/{document_id}": {
   "kind": "aal2",
   "roles": [
    "admin"
@@ -162,6 +198,41 @@
    "expert",
    "farmer"
   ]
+ },
+ "GET /api/v1/dealer/application": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ],
+  "any_status": true
+ },
+ "PUT /api/v1/dealer/application": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ],
+  "any_status": true
+ },
+ "GET /api/v1/dealer/application/documents": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ],
+  "any_status": true
+ },
+ "POST /api/v1/dealer/application/documents": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ],
+  "any_status": true
+ },
+ "DELETE /api/v1/dealer/application/documents/{document_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ],
+  "any_status": true
  },
  "GET /api/v1/dealer/inventory": {
   "kind": "roles",
@@ -323,7 +394,7 @@
    "admin"
   ]
  },
- "GET /api/v1/expert/admin/{expert_id}/document-url": {
+ "GET /api/v1/expert/admin/{expert_id}/documents/{document_id}/url": {
   "kind": "roles",
   "roles": [
    "admin"
@@ -343,6 +414,27 @@
   "any_status": true
  },
  "POST /api/v1/expert/application": {
+  "kind": "roles",
+  "roles": [
+   "expert"
+  ],
+  "any_status": true
+ },
+ "GET /api/v1/expert/application/documents": {
+  "kind": "roles",
+  "roles": [
+   "expert"
+  ],
+  "any_status": true
+ },
+ "POST /api/v1/expert/application/documents": {
+  "kind": "roles",
+  "roles": [
+   "expert"
+  ],
+  "any_status": true
+ },
+ "DELETE /api/v1/expert/application/documents/{document_id}": {
   "kind": "roles",
   "roles": [
    "expert"
@@ -785,7 +877,18 @@
   ],
   "any_status": true
  },
- "POST /api/v1/profile/application/resubmit": {
+ "GET /api/v1/profile/application/required-documents": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ],
+  "any_status": true
+ },
+ "POST /api/v1/profile/application/submit": {
   "kind": "auth",
   "roles": [
    "admin",

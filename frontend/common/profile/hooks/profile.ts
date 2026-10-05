@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { fetchFarmerProfile, upsertFarmerProfile } from '../../../farmer';
 import {
+  confirmEmailChangeCode,
   deleteOwnAccount,
+  requestEmailChange,
   requestReauthentication,
-  resubmitApplication,
   updatePassword,
   updateProfile,
   uploadAvatar,
@@ -28,11 +29,6 @@ export function useDeleteOwnAccount() {
   return useMutation({ mutationFn: (password: string) => deleteOwnAccount(password) });
 }
 
-/** Sending a rejected application back for review; the caller refreshes the profile to show it pending. */
-export function useResubmitApplication() {
-  return useMutation({ mutationFn: () => resubmitApplication() });
-}
-
 export function useUpdateProfile() {
   return useMutation({ mutationFn: (input: Parameters<typeof updateProfile>[0]) => updateProfile(input) });
 }
@@ -49,4 +45,18 @@ export function useFarmerProfile(enabled: boolean) {
 
 export function useUpsertFarmerProfile() {
   return useMutation({ mutationFn: (input: Parameters<typeof upsertFarmerProfile>[0]) => upsertFarmerProfile(input) });
+}
+
+export function useRequestEmailChange() {
+  return useMutation({ mutationFn: (newEmail: string) => requestEmailChange(newEmail) });
+}
+
+/** Both codes, the current address's first; the email changes when the second is accepted. */
+export function useConfirmEmailChange() {
+  return useMutation({
+    mutationFn: async ({ currentEmail, currentCode, newEmail, newCode }: { currentEmail: string; currentCode: string; newEmail: string; newCode: string }) => {
+      await confirmEmailChangeCode(currentEmail, currentCode);
+      await confirmEmailChangeCode(newEmail, newCode);
+    },
+  });
 }

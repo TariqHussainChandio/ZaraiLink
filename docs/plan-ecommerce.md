@@ -539,6 +539,70 @@ approval email goes through a backend SMTP seam (local Mailpit; hosted Blocked u
   workspace after signing in again; Change Password took the emailed code and the old password stopped working. The
   admin's decisions on the device run were made through the API with a second-factor session.
 
+**A3b status (2026-10-05): built on branch `a3b/applications`; `zl-verifier` round 1 VERIFIED WITH FINDINGS (one
+Medium, six Low) and round 2 VERIFIED WITH FINDINGS (Low only), every finding fixed. Ready to merge.**
+- **Verifier round 1:** every two-user attack held (database, Storage, API), and four protections reverted in turn
+  each turned a pgTAP case red. Fixed:
+  - M1: a submitted document's file could be deleted from Storage, and the admin's link then answered 500. A file a
+    document names can no longer be deleted (the storage delete policies check it), `submit_application()` counts a
+    document only with its file, and a missing file answers 404.
+  - L1: a document removed while the application was being submitted could slip through. Document inserts and
+    deletes now take the owner's profile row (`lock_editable_application()`), the row the submission locks, and decide
+    on it; the verifier's race now ends with the submission refused.
+  - L2: deleting and re-uploading a registered file let its stored type drift; closed by M1's policy (no update
+    policy either).
+  - L3: pgTAP failed after a real-stack run (it counted every required document); it counts the starting rows.
+  - L4: Android shows three alert buttons, so the picker's Cancel never appeared; the menu is now cancelable.
+  - L5: an expert under review got `forbidden`; now `application_locked`, like a dealer.
+  - L6: the register now says what the release check covered and what it did not.
+- **Verifier round 2:** every round-1 fix held, re-proved against a fresh API (round-1 scripts, both race orders,
+  insert against submit, eight concurrent submits); regressions checked (document removal, cleanup after a refused
+  attach, account deletion, the lock for another user and for a suspended one). Fixed:
+  - N1: the details (business details, expert details and specializations) could still change during a submission;
+    they now take the same lock (`guard_application_details`).
+  - N2: deciding on an applicant who had deleted their account answered 500 after the decision was saved; the
+    recipient lookup failure now means `email_delivered: false`.
+  - T1: nothing exercised the lock concurrently; `test_smoke_application_races.py` races two real database sessions,
+    and all three tests fail with `for share` removed from the lock (checked).
+  - T2: the expert half of M1 had no test; pgTAP now refuses an expert's delete of a registered file.
+  - The dev API on :8000 had served pre-fix code during the round-1 device checks (no `--reload`); it was restarted
+    with `--reload` and the affected paths are covered by the real-stack tests above.
+- Maintainer decisions (2026-10-04): five fixed business types; a bucket per role (`dealer-documents` beside
+  `expert-documents`); experts keep their model (`expert_verifications`, one record per submission); photos and PDFs
+  (`expo-document-picker`).
+- Database (`20261012080000_applications.sql`): `profiles.application_submitted_at` (pending without it is a draft,
+  with it under review and frozen); `is_application_editable()`; `required_documents` (admin, aal2, audited by a
+  trigger); `dealer_profiles`, `dealer_documents`, `expert_documents`, whose file must be the caller's own upload, its
+  type and size read from Storage; `submit_application()` replaces `resubmit_application()` and refuses an incomplete
+  application; `decide_account_status()` decides only a submitted one; `handle_new_user` keeps phone and location;
+  an admin's email change is audited.
+- Backend: the SMTP seam `common/email.py` (off unless `EMAIL_ENABLED`), decision emails covering SRDS §9, applicant
+  routes (`/dealer/application`, `/expert/application/documents`, `/profile/application/submit`), the admin dealer
+  queue and signed document links, required documents. The user-scoped client now sends the caller's token to
+  Storage too: it went as `anon`, so no signed document link could have worked.
+- App: Create your account (four roles), one form per role, the application wizard (`StepIndicator`,
+  `DocumentTile`), the three Application Status states, Approvals with application detail and document viewer,
+  Required documents, admin Account security and Change email, the approved dealer's business details.
+- **Evidence (after round 2's fixes):** pgTAP 707, also after a full real-stack run; backend unit 224, real-stack 307; Jest 1,230 (1,211 passed, 19 skipped real-stack); app real-stack 19/19; gates at zero. **After round 1's fixes:** pgTAP 706; real-stack 303. **Before:** pgTAP 698 on a database rebuilt from migrations; backend unit 224, real-stack 301 (new
+  `test_smoke_applications.py` reads both emails from Mailpit and compares a signed link's bytes with the upload);
+  Jest 1,229 (1,210 passed, 19 skipped real-stack); app real-stack 19/19 (new `applications.realstack.test.ts`); gates
+  at zero (ruff 53 → 52). On the Pixel 8 emulator: all four registrations; a dealer attached a real PDF through the
+  system file picker and a gallery photo, submitted, was rejected in the app by the admin (second factor) with a
+  reason, read it, replaced the photo (its file left Storage too) and resubmitted; approved, the screen changed live,
+  both emails were in Mailpit, and after signing in again the dealer created a store; an expert sent three documents
+  and was approved in the app; the admin changed their email with both codes, it showed in Audit, and they signed in
+  with the new address; a required document added in the app was asked of a new dealer, then retired.
+- **Known limits:** the release APK builds locally (once Device Guard was turned off by the maintainer) and opens on
+  the emulator, but the document picker was not exercised in it: a release build refuses plain HTTP, so it cannot sign
+  in to the local stack, and a throwaway cleartext variant was not built. CI builds the release APK. The expert queue lists newest first, the dealer queue oldest first. Signed links carry the API's
+  Supabase address, so a local device run needs `adb reverse tcp:54321 tcp:54321`. Retired smoke-test rows build up in
+  the local required-documents list (local only). The email change starts an aal1 session, so the admin passes the
+  second factor again. An applicant who deletes their account while under review stays in the queue as "Deleted
+  user" (deciding works; no email). Locally the database lets a document be registered in the instant its file is
+  deleted; submitting then names it missing.
+- Not yet on the hosted project: the migration (`db push`) and the `email_change` template (`config push`), each after
+  the maintainer's approval; hosted email needs the backend `SMTP_*` secrets (G1).
+
 **Parked head start:** branch `wip/a3-account-status` (commit `0d7edd8`, not merged, its migration not pushed) holds an
 early build of this phase's status work: `profiles.account_status` with its guards and helpers, the FastAPI
 `account_not_approved` check, an audited admin decision route, email-only sign-in with Supabase's password rule and

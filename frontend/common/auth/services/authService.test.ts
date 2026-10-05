@@ -23,15 +23,37 @@ beforeEach(() => {
 });
 
 describe('signUp', () => {
-  it('sends email + password + full_name/role metadata', async () => {
+  it('sends email + password, and the sign-up details as metadata for handle_new_user (A3b)', async () => {
     mockedSupabase.auth.signUp.mockResolvedValue({ data: { session: null, user: null }, error: null } as never);
 
-    await signUp({ email: 'farmer@example.com', password: 'secret123', fullName: 'Farmer Test', role: 'farmer' });
+    await signUp({
+      email: 'farmer@example.com',
+      password: 'secret123',
+      fullName: 'Farmer Test',
+      role: 'farmer',
+      phone: '+923001234567',
+      country: 'Pakistan',
+      province: 'Sindh',
+      city: 'Hyderabad',
+      street: 'House 4',
+      village: 'Goth Ali',
+    });
 
     expect(mockedSupabase.auth.signUp).toHaveBeenCalledWith({
       email: 'farmer@example.com',
       password: 'secret123',
-      options: { data: { full_name: 'Farmer Test', role: 'farmer' } },
+      options: {
+        data: {
+          full_name: 'Farmer Test',
+          role: 'farmer',
+          phone: '+923001234567',
+          country: 'Pakistan',
+          province: 'Sindh',
+          city: 'Hyderabad',
+          street: 'House 4',
+          village: 'Goth Ali',
+        },
+      },
     });
   });
 
@@ -40,7 +62,7 @@ describe('signUp', () => {
     mockedSupabase.auth.signUp.mockResolvedValue({ data: { session: null, user: null }, error } as never);
 
     await expect(
-      signUp({ email: 'dup@example.com', password: 'secret123', fullName: 'Dup', role: 'buyer' }),
+      signUp({ email: 'dup@example.com', password: 'secret123', fullName: 'Dup', role: 'buyer', phone: '+923001234567' }),
     ).rejects.toThrow('Email already registered');
   });
 });

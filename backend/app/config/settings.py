@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APP_DIR = Path(__file__).resolve().parent.parent
@@ -67,6 +67,19 @@ class Settings(BaseSettings):
     # Empty means error tracking is off (common/observability.py). Public identifier, not a secret, but it
     # still comes from the environment so each deployment reports to its own Sentry project.
     sentry_dsn: str = ""
+
+    # Outgoing email (common/email.py): the approval and rejection emails of SRDS §8, §9 and §11. Off unless a
+    # deployment turns it on, so nothing is sent from an environment nobody configured. Locally it points at the mail
+    # catcher of the Supabase stack (Mailpit, SMTP on 54325); the hosted API gets its own provider's values, from the
+    # host's secrets, after gate G1 (docs/process/briefs/g1-smtp.md). The password never has a default.
+    email_enabled: bool = False
+    smtp_host: str = "127.0.0.1"
+    smtp_port: int = 54325
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    smtp_from: str = "ZaraiLink <no-reply@zarailink.local>"
+    # STARTTLS before signing in; on for a real provider (Gmail 587), off for the local mail catcher.
+    smtp_starttls: bool = False
 
     @field_validator("supabase_url", "supabase_anon_key", "supabase_service_role_key")
     @classmethod

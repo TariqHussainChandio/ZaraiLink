@@ -1,8 +1,8 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from app.common.schemas import Location
+from app.common.schemas import ApplicationDocument, Location
 
 DealerEntityStatus = Literal["active", "inactive"]
 InventoryTransactionType = Literal["addition", "reduction", "adjustment", "sale", "restock", "correction"]
@@ -129,3 +129,44 @@ class Supplier(BaseModel):
     status: DealerEntityStatus
     created_at: str
     updated_at: str
+
+
+# ---- The dealer application (A3b; SRDS §7, §12) ---------------------------------------------------------------------
+
+# The five business types the maintainer decided on (2026-10-04); the enum dealer_business_type matches.
+BusinessType = Literal["agri_input_retailer", "wholesaler", "distributor", "manufacturer", "other"]
+
+
+class DealerApplicationInput(BaseModel):
+    """The business half of a dealer's application. The lengths match the table's checks."""
+
+    business_name: str = Field(min_length=2, max_length=120)
+    business_type: BusinessType
+    registration_number: str = Field(min_length=2, max_length=60)
+    business_address: str = Field(min_length=5, max_length=300)
+    country: str = Field(min_length=2, max_length=100)
+    province: str = Field(min_length=2, max_length=100)
+    city: str = Field(min_length=2, max_length=100)
+
+
+class DealerProfile(DealerApplicationInput):
+    id: str
+    created_at: str
+    updated_at: str
+
+
+class DealerApplicant(BaseModel):
+    """The account half an admin reviews next to the business (SRDS §12)."""
+
+    id: str
+    full_name: str
+    phone: str | None = None
+    account_status: Literal["pending", "approved", "rejected"]
+    account_status_reason: str | None = None
+    application_submitted_at: str | None = None
+    created_at: str
+
+
+class DealerApplicationForAdmin(DealerApplicant):
+    dealer_profile: DealerProfile | None = None
+    dealer_documents: list[ApplicationDocument] = []

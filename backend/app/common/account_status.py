@@ -17,7 +17,8 @@ async def decide(user: AuthenticatedUser, profile_id: str, decision: Decision, r
     this caller writes no audit row of its own: a decision and its audit record cannot come apart.
 
     Kept in the common core because two modules decide applications (admin for dealers, expert for experts) and
-    neither may reach into the other. Returns the role and the previous and new status."""
+    neither may reach into the other. Returns the role and the previous and new status. Each caller then emails the
+    applicant (common/notifications), after the commit, so a mail failure cannot undo a decision."""
     client = await get_user_scoped_client(user.access_token)
     try:
         response = await client.rpc(

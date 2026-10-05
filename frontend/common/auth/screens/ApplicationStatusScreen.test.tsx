@@ -1,10 +1,8 @@
 import React from 'react';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ApplicationStatusScreen } from './ApplicationStatusScreen';
 import { APPROVAL_ROUTES } from '../../constants/routes';
-import { fetchExpertProfile } from '../../../expert/services/expertService';
-import { resubmitApplication } from '../../profile/services/profileService';
 import { useRealtimeNotifications } from '../../../hooks/realtime/useRealtimeNotifications';
 import { useAuthStore } from '../../../state/authStore';
 import type { Profile } from '../../types/profile';
@@ -14,12 +12,8 @@ jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => ({ navigate: mockNavigate }),
 }));
-jest.mock('../../../expert/services/expertService', () => ({ fetchExpertProfile: jest.fn() }));
-jest.mock('../../profile/services/profileService', () => ({ resubmitApplication: jest.fn() }));
 jest.mock('../../../hooks/realtime/useRealtimeNotifications', () => ({ useRealtimeNotifications: jest.fn() }));
 
-const mockFetchExpertProfile = fetchExpertProfile as jest.Mock;
-const mockResubmit = resubmitApplication as jest.Mock;
 const mockRealtime = useRealtimeNotifications as jest.Mock;
 
 function profile(overrides: Partial<Profile>): Profile {
@@ -39,6 +33,7 @@ function profile(overrides: Partial<Profile>): Profile {
     account_status: 'pending',
     account_status_reason: null,
     account_status_changed_at: null,
+    application_submitted_at: null,
     notifications_enabled: true,
     created_at: '2026-10-05T08:00:00Z',
     updated_at: '2026-10-05T08:00:00Z',
@@ -60,57 +55,57 @@ function signedInAs(p: Profile) {
   });
 }
 
-beforeEach(() => {
-  jest.clearAllMocks();
-  mockFetchExpertProfile.mockResolvedValue(null);
-});
+beforeEach(() => jest.clearAllMocks());
 
-describe('ApplicationStatusScreen (A3a, D10)', () => {
-  it('tells a pending dealer an administrator is reviewing the account, and offers no dealer tools', async () => {
-    signedInAs(profile({ role: 'dealer', account_status: 'pending' }));
+describe('ApplicationStatusScreen (A3a, A3b, D10)', () => {
+  it('leads a dealer who has sent nothing yet to the application', async () => {
+    signedInAs(profile({ role: 'dealer' }));
     await renderWithQuery(<ApplicationStatusScreen />);
 
     expect(screen.getByText('Your dealer account')).toBeTruthy();
-    expect(screen.getByText('Under review')).toBeTruthy();
-    expect(screen.getByText(/An administrator reviews every dealer account/)).toBeTruthy();
-    expect(screen.queryByText('Send again for review')).toBeNull();
-    expect(screen.queryByText('Complete your application')).toBeNull();
-    expect(screen.queryByText('View your application')).toBeNull();
+    expect(screen.getByText(/Send your business details and documents/)).toBeTruthy();
+    expect(screen.queryByText('Under review')).toBeNull();
+    await fireEvent.press(screen.getByText('Complete your application'));
+    expect(mockNavigate).toHaveBeenCalledWith(APPROVAL_ROUTES.ApplicationWizard);
   });
 
-  it('shows a rejected dealer the reason and sends the application again', async () => {
-    signedInAs(profile({ account_status: 'rejected', account_status_reason: 'The business licence is missing.' }));
-    mockResubmit.mockResolvedValue(undefined);
+  it('leads an expert who has sent nothing yet to the application', async () => {
+    signedInAs(profile({ role: 'expert' }));
+    await renderWithQuery(<ApplicationStatusScreen />);
+
+    expect(screen.getByText(/Send your professional details and documents/)).toBeTruthy();
+    expect(screen.getByText('Complete your application')).toBeTruthy();
+  });
+
+  it('shows an application under review, which can be viewed but offers no dealer tools', async () => {
+    signedInAs(profile({ role: 'dealer', application_submitted_at: '2026-10-12T08:00:00Z' }));
+    await renderWithQuery(<ApplicationStatusScreen />);
+
+    expect(screen.getByText('Under review')).toBeTruthy();
+    expect(screen.getByText(/An administrator reviews every dealer account/)).toBeTruthy();
+    expect(screen.queryByText('Complete your application')).toBeNull();
+    await fireEvent.press(screen.getByText('View your application'));
+    expect(mockNavigate).toHaveBeenCalledWith(APPROVAL_ROUTES.ApplicationWizard);
+  });
+
+  it('shows a rejected dealer the reason and leads back to the application to correct it', async () => {
+    signedInAs(
+      profile({
+        account_status: 'rejected',
+        account_status_reason: 'The business licence is missing.',
+        application_submitted_at: '2026-10-12T08:00:00Z',
+      }),
+    );
     await renderWithQuery(<ApplicationStatusScreen />);
 
     expect(screen.getByText('Not approved')).toBeTruthy();
     expect(screen.getByText('The business licence is missing.')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Send again for review'));
-
-    await waitFor(() => expect(mockResubmit).toHaveBeenCalledTimes(1));
-    expect(refreshProfile).toHaveBeenCalled();
-  });
-
-  it('asks a pending expert who has not applied to complete the application', async () => {
-    signedInAs(profile({ role: 'expert', account_status: 'pending' }));
-    await renderWithQuery(<ApplicationStatusScreen />);
-
-    await fireEvent.press(await screen.findByText('Complete your application'));
-    expect(mockNavigate).toHaveBeenCalledWith(APPROVAL_ROUTES.ExpertApplication);
-  });
-
-  it('lets a pending expert who has applied view the application while it is reviewed', async () => {
-    signedInAs(profile({ role: 'expert', account_status: 'pending' }));
-    mockFetchExpertProfile.mockResolvedValue({ id: 'user-1', verification_status: 'pending' });
-    await renderWithQuery(<ApplicationStatusScreen />);
-
-    expect(await screen.findByText('View your application')).toBeTruthy();
-    expect(screen.queryByText('Complete your application')).toBeNull();
-    expect(screen.getByText(/An administrator is reviewing your application/)).toBeTruthy();
+    await fireEvent.press(screen.getByText('Update and resubmit'));
+    expect(mockNavigate).toHaveBeenCalledWith(APPROVAL_ROUTES.ApplicationWizard);
   });
 
   it('checks again when the decision notification arrives, and on request', async () => {
-    signedInAs(profile({ account_status: 'pending' }));
+    signedInAs(profile({ application_submitted_at: '2026-10-12T08:00:00Z' }));
     await renderWithQuery(<ApplicationStatusScreen />);
 
     const [userId, onChange] = mockRealtime.mock.calls[0];
@@ -125,7 +120,7 @@ describe('ApplicationStatusScreen (A3a, D10)', () => {
   });
 
   it('signs out, and opens account deletion', async () => {
-    signedInAs(profile({ account_status: 'pending' }));
+    signedInAs(profile({}));
     await renderWithQuery(<ApplicationStatusScreen />);
 
     await fireEvent.press(screen.getByText('Sign out'));

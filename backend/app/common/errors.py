@@ -33,6 +33,8 @@ ErrorCode = Literal[
     "insufficient_stock",
     "listing_unavailable",
     "invalid_transition",
+    "application_incomplete",
+    "application_locked",
     "rate_limited",
     "service_unavailable",
     "server_error",

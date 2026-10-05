@@ -1,14 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { Button, Chip, EmptyState, TextField, LocationPicker, Spinner } from '../../common/components';
 import { useOwnExpertProfile, useSaveExpertProfile } from '../hooks/experts';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { ExpertSpecialization } from '../types/expert';
-import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
 import { errorMessage } from '../../utils/errorMessage';
 import { SPECIALIZATION_LABELS } from '../../common/constants/labels';
 
@@ -31,6 +30,11 @@ function buildApplicationSchema() {
     experience: z.string(),
     professionalDescription: z.string(),
     contact: z.string(),
+    yearsExperience: z
+      .string()
+      .trim()
+      .regex(/^\d{0,2}$/, 'Enter a number of years'),
+    institutionAffiliation: z.string().trim(),
     country: z.string().nullable(),
     province: z.string().nullable(),
     city: z.string().nullable(),
@@ -39,15 +43,17 @@ function buildApplicationSchema() {
 
 type ApplicationFormValues = z.infer<ReturnType<typeof buildApplicationSchema>>;
 
+/**
+ * The expert's professional profile: what clients see in the directory. A pending expert fills it in as the first step
+ * of their application (ApplicationWizardScreen, A3b); an approved expert keeps it current here.
+ */
 export function ExpertApplicationScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const { data: ownProfile, isLoading: loading, error, refetch } = useOwnExpertProfile(!!userId);
-  const saveProfile = useSaveExpertProfile(userId);
-  const [isEditing, setIsEditing] = useState(false);
+  const saveProfile = useSaveExpertProfile();
   const [specializations, setSpecializations] = useState<ExpertSpecialization[]>([]);
-  const [document, setDocument] = useState<PickedPhoto | null>(null);
   const load = () => refetch();
   const applicationSchema = useMemo(() => buildApplicationSchema(), []);
 
@@ -66,6 +72,8 @@ export function ExpertApplicationScreen() {
       experience: '',
       professionalDescription: '',
       contact: '',
+      yearsExperience: '',
+      institutionAffiliation: '',
       country: null,
       province: null,
       city: null,
@@ -77,7 +85,6 @@ export function ExpertApplicationScreen() {
   useEffect(() => {
     if (!ownProfile || filled.current) return;
     filled.current = true;
-    setIsEditing(true);
     setSpecializations(ownProfile.expert_specializations.map(s => s.specialization));
     reset({
       qualifications: ownProfile.qualifications ?? '',
@@ -85,6 +92,8 @@ export function ExpertApplicationScreen() {
       experience: ownProfile.experience ?? '',
       professionalDescription: ownProfile.professional_description ?? '',
       contact: ownProfile.contact ?? '',
+      yearsExperience: ownProfile.years_experience === null ? '' : String(ownProfile.years_experience),
+      institutionAffiliation: ownProfile.institution_affiliation ?? '',
       country: ownProfile.location?.country ?? null,
       province: ownProfile.location?.province ?? null,
       city: ownProfile.location?.city ?? null,
@@ -97,15 +106,6 @@ export function ExpertApplicationScreen() {
     );
   };
 
-  const pickDocument = async () => {
-    // No document-picker dependency exists in this project — a photo of the certificate is the
-    // deliberate, buildable choice here rather than adding a new native dependency.
-    // `pickPhotos` offers camera-or-gallery, so an applicant can photograph a physical
-    // certificate directly instead of needing an existing gallery photo of it.
-    const assets = await pickPhotos({ selectionLimit: 1 });
-    if (assets[0]) setDocument(assets[0]);
-  };
-
   const onSubmit = async (values: ApplicationFormValues) => {
     if (!userId) return;
     if (specializations.length === 0) {
@@ -113,15 +113,15 @@ export function ExpertApplicationScreen() {
       return;
     }
     try {
-      const input = { ...values, specializations };
-      await saveProfile.mutateAsync({ input, isEditing, document });
-      setIsEditing(true);
-      Alert.alert(
-        isEditing
-          ? 'Profile updated'
-          : 'Application submitted',
-        'An admin will review your application.',
-      );
+      const { yearsExperience, institutionAffiliation, ...rest } = values;
+      const input = {
+        ...rest,
+        specializations,
+        yearsExperience: yearsExperience ? Number(yearsExperience) : undefined,
+        institutionAffiliation: institutionAffiliation || undefined,
+      };
+      await saveProfile.mutateAsync({ input, exists: !!ownProfile });
+      Alert.alert('Profile updated');
     } catch (err) {
       Alert.alert('Could not save', errorMessage(err));
     }
@@ -171,6 +171,27 @@ export function ExpertApplicationScreen() {
       />
       <Controller
         control={control}
+        name="yearsExperience"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <TextField
+            label="Years of experience"
+            keyboardType="number-pad"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            error={errors.yearsExperience?.message}
+          />
+        )}
+      />
+      <Controller
+        control={control}
+        name="institutionAffiliation"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <TextField label="Institution affiliation" value={value} onChangeText={onChange} onBlur={onBlur} />
+        )}
+      />
+      <Controller
+        control={control}
         name="professionalDescription"
         render={({ field: { onChange, onBlur, value } }) => (
           <TextField
@@ -214,25 +235,8 @@ export function ExpertApplicationScreen() {
         })}
       </View>
 
-      {!isEditing ? (
-        <>
-          <Text style={styles.label}>Qualification Document (optional)</Text>
-          {document ? (
-            <Image source={{ uri: document.uri }} style={styles.documentPreview} />
-          ) : (
-            <TouchableOpacity style={styles.documentPicker} onPress={pickDocument} accessibilityRole="button">
-              <Text style={styles.documentPickerLabel}>+ Add a photo of your certificate</Text>
-            </TouchableOpacity>
-          )}
-        </>
-      ) : null}
-
       <Button
-        label={
-          isEditing
-            ? 'Save Changes'
-            : 'Submit Application'
-        }
+        label="Save changes"
         loading={saveProfile.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
@@ -241,7 +245,7 @@ export function ExpertApplicationScreen() {
   );
 }
 
-function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -260,27 +264,6 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme)
       flexWrap: 'wrap',
       gap: space[2],
       marginBottom: space[3],
-    },
-    documentPreview: {
-      width: size.photoLg,
-      height: size.photoLg,
-      borderRadius: radius.sm,
-      marginBottom: space[3],
-      backgroundColor: colors.line,
-    },
-    documentPicker: {
-      height: size.photoMd,
-      borderRadius: radius.sm,
-      borderWidth: borders.hairline,
-      borderColor: colors.line,
-      borderStyle: 'dashed',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: space[3],
-    },
-    documentPickerLabel: {
-      ...typography.caption,
-      color: colors.ink2,
     },
     submit: {
       marginTop: space[3],

@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AdminChangeUserRoleData, AdminChangeUserRoleErrors, AdminChangeUserRoleResponses, AdminDecideDealerApplicationData, AdminDecideDealerApplicationErrors, AdminDecideDealerApplicationResponses, AdminDismissReportData, AdminDismissReportErrors, AdminDismissReportResponses, AdminGetPlatformStatsData, AdminGetPlatformStatsErrors, AdminGetPlatformStatsResponses, AdminListAllOrdersData, AdminListAllOrdersErrors, AdminListAllOrdersResponses, AdminListAuditLogsData, AdminListAuditLogsErrors, AdminListAuditLogsResponses, AdminListReportsData, AdminListReportsErrors, AdminListReportsResponses, AdminListUsersData, AdminListUsersErrors, AdminListUsersResponses, AdminResolveReportData, AdminResolveReportErrors, AdminResolveReportResponses, AdminSuspendUserData, AdminSuspendUserErrors, AdminSuspendUserResponses, AnalyticsGetAdminAnalyticsData, AnalyticsGetAdminAnalyticsErrors, AnalyticsGetAdminAnalyticsResponses, AnalyticsGetDealerAnalyticsData, AnalyticsGetDealerAnalyticsErrors, AnalyticsGetDealerAnalyticsResponses, AnalyticsGetExpertAnalyticsData, AnalyticsGetExpertAnalyticsErrors, AnalyticsGetExpertAnalyticsResponses, AnalyticsGetFarmerAnalyticsData, AnalyticsGetFarmerAnalyticsErrors, AnalyticsGetFarmerAnalyticsResponses, ConsultationsCreateRequestData, ConsultationsCreateRequestErrors, ConsultationsCreateRequestResponses, ConsultationsGetConsultationData, ConsultationsGetConsultationErrors, ConsultationsGetConsultationResponses, ConsultationsListForExpertData, ConsultationsListForExpertErrors, ConsultationsListForExpertResponses, ConsultationsListForUserData, ConsultationsListForUserErrors, ConsultationsListForUserResponses, ConsultationsListMessagesData, ConsultationsListMessagesErrors, ConsultationsListMessagesResponses, ConsultationsSendMessageData, ConsultationsSendMessageErrors, ConsultationsSendMessageResponses, ConsultationsUpdateImagesData, ConsultationsUpdateImagesErrors, ConsultationsUpdateImagesResponses, ConsultationsUpdateStatusData, ConsultationsUpdateStatusErrors, ConsultationsUpdateStatusResponses, DealerAdjustStockData, DealerAdjustStockErrors, DealerAdjustStockResponses, DealerCreateInventoryItemData, DealerCreateInventoryItemErrors, DealerCreateInventoryItemResponses, DealerCreateStoreData, DealerCreateStoreErrors, DealerCreateStoreResponses, DealerCreateSupplierData, DealerCreateSupplierErrors, DealerCreateSupplierResponses, DealerDeleteInventoryItemData, DealerDeleteInventoryItemErrors, DealerDeleteInventoryItemResponses, DealerDeleteStoreData, DealerDeleteStoreErrors, DealerDeleteStoreResponses, DealerDeleteSupplierData, DealerDeleteSupplierErrors, DealerDeleteSupplierResponses, DealerGetInventoryItemData, DealerGetInventoryItemErrors, DealerGetInventoryItemResponses, DealerGetStoreData, DealerGetStoreErrors, DealerGetStoreResponses, DealerGetSupplierData, DealerGetSupplierErrors, DealerGetSupplierResponses, DealerListDealerListingsData, DealerListDealerListingsErrors, DealerListDealerListingsResponses, DealerListInventoryData, DealerListInventoryErrors, DealerListInventoryResponses, DealerListInventoryTransactionsData, DealerListInventoryTransactionsErrors, DealerListInventoryTransactionsResponses, DealerListStoresData, DealerListStoresErrors, DealerListStoresResponses, DealerListSuppliersData, DealerListSuppliersErrors, DealerListSuppliersResponses, DealerUpdateInventoryItemData, DealerUpdateInventoryItemErrors, DealerUpdateInventoryItemResponses, DealerUpdateStoreData, DealerUpdateStoreErrors, DealerUpdateStoreResponses, DealerUpdateSupplierData, DealerUpdateSupplierErrors, DealerUpdateSupplierResponses, DiseaseCreateCaseData, DiseaseCreateCaseErrors, DiseaseCreateCaseResponses, DiseaseGetCaseData, DiseaseGetCaseErrors, DiseaseGetCaseResponses, DiseasePredictDiseaseData, DiseasePredictDiseaseErrors, DiseasePredictDiseaseResponses, ExpertGetDocumentUrlData, ExpertGetDocumentUrlErrors, ExpertGetDocumentUrlResponses, ExpertGetExpertData, ExpertGetExpertErrors, ExpertGetExpertForAdminData, ExpertGetExpertForAdminErrors, ExpertGetExpertForAdminResponses, ExpertGetExpertResponses, ExpertGetMyProfileData, ExpertGetMyProfileErrors, ExpertGetMyProfileResponses, ExpertListExpertsData, ExpertListExpertsErrors, ExpertListExpertsForAdminData, ExpertListExpertsForAdminErrors, ExpertListExpertsForAdminResponses, ExpertListExpertsResponses, ExpertReviewVerificationData, ExpertReviewVerificationErrors, ExpertReviewVerificationResponses, ExpertSubmitApplicationData, ExpertSubmitApplicationErrors, ExpertSubmitApplicationResponses, ExpertUpdateProfileData, ExpertUpdateProfileErrors, ExpertUpdateProfileResponses, FarmerCreateFarmCropData, FarmerCreateFarmCropErrors, FarmerCreateFarmCropResponses, FarmerCreateFarmData, FarmerCreateFarmErrors, FarmerCreateFarmResponses, FarmerDeleteFarmCropData, FarmerDeleteFarmCropErrors, FarmerDeleteFarmCropResponses, FarmerDeleteFarmData, FarmerDeleteFarmErrors, FarmerDeleteFarmResponses, FarmerGetFarmCropData, FarmerGetFarmCropErrors, FarmerGetFarmCropResponses, FarmerGetFarmData, FarmerGetFarmerProfileData, FarmerGetFarmerProfileErrors, FarmerGetFarmerProfileResponses, FarmerGetFarmErrors, FarmerGetFarmResponses, FarmerListFarmCropsData, FarmerListFarmCropsErrors, FarmerListFarmCropsResponses, FarmerListFarmsData, FarmerListFarmsErrors, FarmerListFarmsResponses, FarmerUpdateFarmCropData, FarmerUpdateFarmCropErrors, FarmerUpdateFarmCropResponses, FarmerUpdateFarmData, FarmerUpdateFarmErrors, FarmerUpdateFarmResponses, FarmerUpsertFarmerProfileData, FarmerUpsertFarmerProfileErrors, FarmerUpsertFarmerProfileResponses, MarketplaceCreateCategoryData, MarketplaceCreateCategoryErrors, MarketplaceCreateCategoryResponses, MarketplaceCreateListingData, MarketplaceCreateListingErrors, MarketplaceCreateListingResponses, MarketplaceDeleteCategoryData, MarketplaceDeleteCategoryErrors, MarketplaceDeleteCategoryResponses, MarketplaceDeleteListingData, MarketplaceDeleteListingErrors, MarketplaceDeleteListingResponses, MarketplaceGetListingData, MarketplaceGetListingErrors, MarketplaceGetListingResponses, MarketplaceGetListingViewCountsData, MarketplaceGetListingViewCountsErrors, MarketplaceGetListingViewCountsResponses, MarketplaceListCategoriesData, MarketplaceListCategoriesErrors, MarketplaceListCategoriesResponses, MarketplaceListCropsData, MarketplaceListCropsErrors, MarketplaceListCropsResponses, MarketplaceListListingsData, MarketplaceListListingsErrors, MarketplaceListListingsForModerationData, MarketplaceListListingsForModerationErrors, MarketplaceListListingsForModerationResponses, MarketplaceListListingsResponses, MarketplaceRecordListingViewData, MarketplaceRecordListingViewErrors, MarketplaceRecordListingViewResponses, MarketplaceUpdateCategoryData, MarketplaceUpdateCategoryErrors, MarketplaceUpdateCategoryResponses, MarketplaceUpdateListingData, MarketplaceUpdateListingErrors, MarketplaceUpdateListingResponses, MarketplaceUpdateListingStatusData, MarketplaceUpdateListingStatusErrors, MarketplaceUpdateListingStatusResponses, MessagingFindOrCreateConversationData, MessagingFindOrCreateConversationErrors, MessagingFindOrCreateConversationResponses, MessagingGetMessageData, MessagingGetMessageErrors, MessagingGetMessageResponses, MessagingListConversationsData, MessagingListConversationsErrors, MessagingListConversationsResponses, MessagingListMessagesData, MessagingListMessagesErrors, MessagingListMessagesResponses, MessagingMarkConversationReadData, MessagingMarkConversationReadErrors, MessagingMarkConversationReadResponses, MessagingRedactMessageData, MessagingRedactMessageErrors, MessagingRedactMessageResponses, MessagingSendMessageData, MessagingSendMessageErrors, MessagingSendMessageResponses, NotificationsListNotificationsData, NotificationsListNotificationsErrors, NotificationsListNotificationsResponses, NotificationsMarkAllReadData, NotificationsMarkAllReadErrors, NotificationsMarkAllReadResponses, NotificationsMarkReadData, NotificationsMarkReadErrors, NotificationsMarkReadResponses, NotificationsUnreadCountData, NotificationsUnreadCountErrors, NotificationsUnreadCountResponses, OrdersCheckoutData, OrdersCheckoutErrors, OrdersCheckoutResponses, OrdersGetOrderData, OrdersGetOrderErrors, OrdersGetOrderResponses, OrdersGetStatusHistoryData, OrdersGetStatusHistoryErrors, OrdersGetStatusHistoryResponses, OrdersListOrdersData, OrdersListOrdersErrors, OrdersListOrdersResponses, OrdersUpdateOrderStatusData, OrdersUpdateOrderStatusErrors, OrdersUpdateOrderStatusResponses, PaymentsGetPaymentByOrderData, PaymentsGetPaymentByOrderErrors, PaymentsGetPaymentByOrderResponses, PaymentsGetPaymentData, PaymentsGetPaymentErrors, PaymentsGetPaymentResponses, PaymentsInitiatePaymentData, PaymentsInitiatePaymentErrors, PaymentsInitiatePaymentResponses, PaymentsListPaymentTransactionsData, PaymentsListPaymentTransactionsErrors, PaymentsListPaymentTransactionsResponses, PaymentsMarkFailedData, PaymentsMarkFailedErrors, PaymentsMarkFailedResponses, PaymentsMarkReceivedData, PaymentsMarkReceivedErrors, PaymentsMarkReceivedResponses, ProfileDeleteOwnAccountData, ProfileDeleteOwnAccountErrors, ProfileDeleteOwnAccountResponses, ProfileResubmitApplicationData, ProfileResubmitApplicationErrors, ProfileResubmitApplicationResponses, ProfileUpdateProfileData, ProfileUpdateProfileErrors, ProfileUpdateProfileResponses, ReferenceDataCreateRowData, ReferenceDataCreateRowErrors, ReferenceDataCreateRowResponses, ReferenceDataDeleteRowData, ReferenceDataDeleteRowErrors, ReferenceDataDeleteRowResponses, ReferenceDataListCurrenciesData, ReferenceDataListCurrenciesErrors, ReferenceDataListCurrenciesResponses, ReferenceDataListRowsData, ReferenceDataListRowsErrors, ReferenceDataListRowsResponses, ReferenceDataListUnitsData, ReferenceDataListUnitsErrors, ReferenceDataListUnitsResponses, ReferenceDataUpdateRowData, ReferenceDataUpdateRowErrors, ReferenceDataUpdateRowResponses, ReviewsCreateConsultationReviewData, ReviewsCreateConsultationReviewErrors, ReviewsCreateConsultationReviewResponses, ReviewsCreateReviewData, ReviewsCreateReviewErrors, ReviewsCreateReviewResponses, ReviewsDeleteReviewData, ReviewsDeleteReviewErrors, ReviewsDeleteReviewResponses, ReviewsGetReviewByConsultationData, ReviewsGetReviewByConsultationErrors, ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByOrderData, ReviewsGetReviewByOrderErrors, ReviewsGetReviewByOrderResponses, ReviewsGetReviewData, ReviewsGetReviewErrors, ReviewsGetReviewResponses, ReviewsListReviewsForExpertData, ReviewsListReviewsForExpertErrors, ReviewsListReviewsForExpertResponses, ReviewsListReviewsForListingData, ReviewsListReviewsForListingErrors, ReviewsListReviewsForListingResponses, ReviewsListReviewsForSellerData, ReviewsListReviewsForSellerErrors, ReviewsListReviewsForSellerResponses, RootHealthData, RootHealthErrors, RootHealthResponses, RootLivenessData, RootLivenessErrors, RootLivenessResponses, RootReadinessData, RootReadinessErrors, RootReadinessResponses, RootVersionData, RootVersionErrors, RootVersionResponses } from './types.gen';
+import type { AdminChangeUserRoleData, AdminChangeUserRoleErrors, AdminChangeUserRoleResponses, AdminCreateRequiredDocumentData, AdminCreateRequiredDocumentErrors, AdminCreateRequiredDocumentResponses, AdminDecideDealerApplicationData, AdminDecideDealerApplicationErrors, AdminDecideDealerApplicationResponses, AdminDismissReportData, AdminDismissReportErrors, AdminDismissReportResponses, AdminGetDealerApplicationData, AdminGetDealerApplicationErrors, AdminGetDealerApplicationResponses, AdminGetDealerDocumentUrlData, AdminGetDealerDocumentUrlErrors, AdminGetDealerDocumentUrlResponses, AdminGetPlatformStatsData, AdminGetPlatformStatsErrors, AdminGetPlatformStatsResponses, AdminListAllOrdersData, AdminListAllOrdersErrors, AdminListAllOrdersResponses, AdminListAuditLogsData, AdminListAuditLogsErrors, AdminListAuditLogsResponses, AdminListDealerApplicationsData, AdminListDealerApplicationsErrors, AdminListDealerApplicationsResponses, AdminListReportsData, AdminListReportsErrors, AdminListReportsResponses, AdminListRequiredDocumentsData, AdminListRequiredDocumentsErrors, AdminListRequiredDocumentsResponses, AdminListUsersData, AdminListUsersErrors, AdminListUsersResponses, AdminResolveReportData, AdminResolveReportErrors, AdminResolveReportResponses, AdminSuspendUserData, AdminSuspendUserErrors, AdminSuspendUserResponses, AdminUpdateRequiredDocumentData, AdminUpdateRequiredDocumentErrors, AdminUpdateRequiredDocumentResponses, AnalyticsGetAdminAnalyticsData, AnalyticsGetAdminAnalyticsErrors, AnalyticsGetAdminAnalyticsResponses, AnalyticsGetDealerAnalyticsData, AnalyticsGetDealerAnalyticsErrors, AnalyticsGetDealerAnalyticsResponses, AnalyticsGetExpertAnalyticsData, AnalyticsGetExpertAnalyticsErrors, AnalyticsGetExpertAnalyticsResponses, AnalyticsGetFarmerAnalyticsData, AnalyticsGetFarmerAnalyticsErrors, AnalyticsGetFarmerAnalyticsResponses, ConsultationsCreateRequestData, ConsultationsCreateRequestErrors, ConsultationsCreateRequestResponses, ConsultationsGetConsultationData, ConsultationsGetConsultationErrors, ConsultationsGetConsultationResponses, ConsultationsListForExpertData, ConsultationsListForExpertErrors, ConsultationsListForExpertResponses, ConsultationsListForUserData, ConsultationsListForUserErrors, ConsultationsListForUserResponses, ConsultationsListMessagesData, ConsultationsListMessagesErrors, ConsultationsListMessagesResponses, ConsultationsSendMessageData, ConsultationsSendMessageErrors, ConsultationsSendMessageResponses, ConsultationsUpdateImagesData, ConsultationsUpdateImagesErrors, ConsultationsUpdateImagesResponses, ConsultationsUpdateStatusData, ConsultationsUpdateStatusErrors, ConsultationsUpdateStatusResponses, DealerAddMyDocumentData, DealerAddMyDocumentErrors, DealerAddMyDocumentResponses, DealerAdjustStockData, DealerAdjustStockErrors, DealerAdjustStockResponses, DealerCreateInventoryItemData, DealerCreateInventoryItemErrors, DealerCreateInventoryItemResponses, DealerCreateStoreData, DealerCreateStoreErrors, DealerCreateStoreResponses, DealerCreateSupplierData, DealerCreateSupplierErrors, DealerCreateSupplierResponses, DealerDeleteInventoryItemData, DealerDeleteInventoryItemErrors, DealerDeleteInventoryItemResponses, DealerDeleteStoreData, DealerDeleteStoreErrors, DealerDeleteStoreResponses, DealerDeleteSupplierData, DealerDeleteSupplierErrors, DealerDeleteSupplierResponses, DealerGetInventoryItemData, DealerGetInventoryItemErrors, DealerGetInventoryItemResponses, DealerGetMyApplicationData, DealerGetMyApplicationErrors, DealerGetMyApplicationResponses, DealerGetStoreData, DealerGetStoreErrors, DealerGetStoreResponses, DealerGetSupplierData, DealerGetSupplierErrors, DealerGetSupplierResponses, DealerListDealerListingsData, DealerListDealerListingsErrors, DealerListDealerListingsResponses, DealerListInventoryData, DealerListInventoryErrors, DealerListInventoryResponses, DealerListInventoryTransactionsData, DealerListInventoryTransactionsErrors, DealerListInventoryTransactionsResponses, DealerListMyDocumentsData, DealerListMyDocumentsErrors, DealerListMyDocumentsResponses, DealerListStoresData, DealerListStoresErrors, DealerListStoresResponses, DealerListSuppliersData, DealerListSuppliersErrors, DealerListSuppliersResponses, DealerRemoveMyDocumentData, DealerRemoveMyDocumentErrors, DealerRemoveMyDocumentResponses, DealerSaveMyApplicationData, DealerSaveMyApplicationErrors, DealerSaveMyApplicationResponses, DealerUpdateInventoryItemData, DealerUpdateInventoryItemErrors, DealerUpdateInventoryItemResponses, DealerUpdateStoreData, DealerUpdateStoreErrors, DealerUpdateStoreResponses, DealerUpdateSupplierData, DealerUpdateSupplierErrors, DealerUpdateSupplierResponses, DiseaseCreateCaseData, DiseaseCreateCaseErrors, DiseaseCreateCaseResponses, DiseaseGetCaseData, DiseaseGetCaseErrors, DiseaseGetCaseResponses, DiseasePredictDiseaseData, DiseasePredictDiseaseErrors, DiseasePredictDiseaseResponses, ExpertAddMyDocumentData, ExpertAddMyDocumentErrors, ExpertAddMyDocumentResponses, ExpertCreateApplicationData, ExpertCreateApplicationErrors, ExpertCreateApplicationResponses, ExpertGetDocumentUrlData, ExpertGetDocumentUrlErrors, ExpertGetDocumentUrlResponses, ExpertGetExpertData, ExpertGetExpertErrors, ExpertGetExpertForAdminData, ExpertGetExpertForAdminErrors, ExpertGetExpertForAdminResponses, ExpertGetExpertResponses, ExpertGetMyProfileData, ExpertGetMyProfileErrors, ExpertGetMyProfileResponses, ExpertListExpertsData, ExpertListExpertsErrors, ExpertListExpertsForAdminData, ExpertListExpertsForAdminErrors, ExpertListExpertsForAdminResponses, ExpertListExpertsResponses, ExpertListMyDocumentsData, ExpertListMyDocumentsErrors, ExpertListMyDocumentsResponses, ExpertRemoveMyDocumentData, ExpertRemoveMyDocumentErrors, ExpertRemoveMyDocumentResponses, ExpertReviewVerificationData, ExpertReviewVerificationErrors, ExpertReviewVerificationResponses, ExpertUpdateProfileData, ExpertUpdateProfileErrors, ExpertUpdateProfileResponses, FarmerCreateFarmCropData, FarmerCreateFarmCropErrors, FarmerCreateFarmCropResponses, FarmerCreateFarmData, FarmerCreateFarmErrors, FarmerCreateFarmResponses, FarmerDeleteFarmCropData, FarmerDeleteFarmCropErrors, FarmerDeleteFarmCropResponses, FarmerDeleteFarmData, FarmerDeleteFarmErrors, FarmerDeleteFarmResponses, FarmerGetFarmCropData, FarmerGetFarmCropErrors, FarmerGetFarmCropResponses, FarmerGetFarmData, FarmerGetFarmerProfileData, FarmerGetFarmerProfileErrors, FarmerGetFarmerProfileResponses, FarmerGetFarmErrors, FarmerGetFarmResponses, FarmerListFarmCropsData, FarmerListFarmCropsErrors, FarmerListFarmCropsResponses, FarmerListFarmsData, FarmerListFarmsErrors, FarmerListFarmsResponses, FarmerUpdateFarmCropData, FarmerUpdateFarmCropErrors, FarmerUpdateFarmCropResponses, FarmerUpdateFarmData, FarmerUpdateFarmErrors, FarmerUpdateFarmResponses, FarmerUpsertFarmerProfileData, FarmerUpsertFarmerProfileErrors, FarmerUpsertFarmerProfileResponses, MarketplaceCreateCategoryData, MarketplaceCreateCategoryErrors, MarketplaceCreateCategoryResponses, MarketplaceCreateListingData, MarketplaceCreateListingErrors, MarketplaceCreateListingResponses, MarketplaceDeleteCategoryData, MarketplaceDeleteCategoryErrors, MarketplaceDeleteCategoryResponses, MarketplaceDeleteListingData, MarketplaceDeleteListingErrors, MarketplaceDeleteListingResponses, MarketplaceGetListingData, MarketplaceGetListingErrors, MarketplaceGetListingResponses, MarketplaceGetListingViewCountsData, MarketplaceGetListingViewCountsErrors, MarketplaceGetListingViewCountsResponses, MarketplaceListCategoriesData, MarketplaceListCategoriesErrors, MarketplaceListCategoriesResponses, MarketplaceListCropsData, MarketplaceListCropsErrors, MarketplaceListCropsResponses, MarketplaceListListingsData, MarketplaceListListingsErrors, MarketplaceListListingsForModerationData, MarketplaceListListingsForModerationErrors, MarketplaceListListingsForModerationResponses, MarketplaceListListingsResponses, MarketplaceRecordListingViewData, MarketplaceRecordListingViewErrors, MarketplaceRecordListingViewResponses, MarketplaceUpdateCategoryData, MarketplaceUpdateCategoryErrors, MarketplaceUpdateCategoryResponses, MarketplaceUpdateListingData, MarketplaceUpdateListingErrors, MarketplaceUpdateListingResponses, MarketplaceUpdateListingStatusData, MarketplaceUpdateListingStatusErrors, MarketplaceUpdateListingStatusResponses, MessagingFindOrCreateConversationData, MessagingFindOrCreateConversationErrors, MessagingFindOrCreateConversationResponses, MessagingGetMessageData, MessagingGetMessageErrors, MessagingGetMessageResponses, MessagingListConversationsData, MessagingListConversationsErrors, MessagingListConversationsResponses, MessagingListMessagesData, MessagingListMessagesErrors, MessagingListMessagesResponses, MessagingMarkConversationReadData, MessagingMarkConversationReadErrors, MessagingMarkConversationReadResponses, MessagingRedactMessageData, MessagingRedactMessageErrors, MessagingRedactMessageResponses, MessagingSendMessageData, MessagingSendMessageErrors, MessagingSendMessageResponses, NotificationsListNotificationsData, NotificationsListNotificationsErrors, NotificationsListNotificationsResponses, NotificationsMarkAllReadData, NotificationsMarkAllReadErrors, NotificationsMarkAllReadResponses, NotificationsMarkReadData, NotificationsMarkReadErrors, NotificationsMarkReadResponses, NotificationsUnreadCountData, NotificationsUnreadCountErrors, NotificationsUnreadCountResponses, OrdersCheckoutData, OrdersCheckoutErrors, OrdersCheckoutResponses, OrdersGetOrderData, OrdersGetOrderErrors, OrdersGetOrderResponses, OrdersGetStatusHistoryData, OrdersGetStatusHistoryErrors, OrdersGetStatusHistoryResponses, OrdersListOrdersData, OrdersListOrdersErrors, OrdersListOrdersResponses, OrdersUpdateOrderStatusData, OrdersUpdateOrderStatusErrors, OrdersUpdateOrderStatusResponses, PaymentsGetPaymentByOrderData, PaymentsGetPaymentByOrderErrors, PaymentsGetPaymentByOrderResponses, PaymentsGetPaymentData, PaymentsGetPaymentErrors, PaymentsGetPaymentResponses, PaymentsInitiatePaymentData, PaymentsInitiatePaymentErrors, PaymentsInitiatePaymentResponses, PaymentsListPaymentTransactionsData, PaymentsListPaymentTransactionsErrors, PaymentsListPaymentTransactionsResponses, PaymentsMarkFailedData, PaymentsMarkFailedErrors, PaymentsMarkFailedResponses, PaymentsMarkReceivedData, PaymentsMarkReceivedErrors, PaymentsMarkReceivedResponses, ProfileDeleteOwnAccountData, ProfileDeleteOwnAccountErrors, ProfileDeleteOwnAccountResponses, ProfileListRequiredDocumentsData, ProfileListRequiredDocumentsErrors, ProfileListRequiredDocumentsResponses, ProfileSubmitApplicationData, ProfileSubmitApplicationErrors, ProfileSubmitApplicationResponses, ProfileUpdateProfileData, ProfileUpdateProfileErrors, ProfileUpdateProfileResponses, ReferenceDataCreateRowData, ReferenceDataCreateRowErrors, ReferenceDataCreateRowResponses, ReferenceDataDeleteRowData, ReferenceDataDeleteRowErrors, ReferenceDataDeleteRowResponses, ReferenceDataListCurrenciesData, ReferenceDataListCurrenciesErrors, ReferenceDataListCurrenciesResponses, ReferenceDataListRowsData, ReferenceDataListRowsErrors, ReferenceDataListRowsResponses, ReferenceDataListUnitsData, ReferenceDataListUnitsErrors, ReferenceDataListUnitsResponses, ReferenceDataUpdateRowData, ReferenceDataUpdateRowErrors, ReferenceDataUpdateRowResponses, ReviewsCreateConsultationReviewData, ReviewsCreateConsultationReviewErrors, ReviewsCreateConsultationReviewResponses, ReviewsCreateReviewData, ReviewsCreateReviewErrors, ReviewsCreateReviewResponses, ReviewsDeleteReviewData, ReviewsDeleteReviewErrors, ReviewsDeleteReviewResponses, ReviewsGetReviewByConsultationData, ReviewsGetReviewByConsultationErrors, ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByOrderData, ReviewsGetReviewByOrderErrors, ReviewsGetReviewByOrderResponses, ReviewsGetReviewData, ReviewsGetReviewErrors, ReviewsGetReviewResponses, ReviewsListReviewsForExpertData, ReviewsListReviewsForExpertErrors, ReviewsListReviewsForExpertResponses, ReviewsListReviewsForListingData, ReviewsListReviewsForListingErrors, ReviewsListReviewsForListingResponses, ReviewsListReviewsForSellerData, ReviewsListReviewsForSellerErrors, ReviewsListReviewsForSellerResponses, RootHealthData, RootHealthErrors, RootHealthResponses, RootLivenessData, RootLivenessErrors, RootLivenessResponses, RootReadinessData, RootReadinessErrors, RootReadinessResponses, RootVersionData, RootVersionErrors, RootVersionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,6 +24,37 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 export const adminListAuditLogs = <ThrowOnError extends boolean = false>(options?: Options<AdminListAuditLogsData, ThrowOnError>): RequestResult<AdminListAuditLogsResponses, AdminListAuditLogsErrors, ThrowOnError> => (options?.client ?? client).get<AdminListAuditLogsResponses, AdminListAuditLogsErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/admin/audit-logs',
+    ...options
+});
+
+/**
+ * List Dealer Applications
+ *
+ * The dealer queue (SRDS §12): submitted applications waiting for a decision, oldest first, by default.
+ */
+export const adminListDealerApplications = <ThrowOnError extends boolean = false>(options?: Options<AdminListDealerApplicationsData, ThrowOnError>): RequestResult<AdminListDealerApplicationsResponses, AdminListDealerApplicationsErrors, ThrowOnError> => (options?.client ?? client).get<AdminListDealerApplicationsResponses, AdminListDealerApplicationsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/dealer-applications',
+    ...options
+});
+
+/**
+ * Get Dealer Application
+ */
+export const adminGetDealerApplication = <ThrowOnError extends boolean = false>(options: Options<AdminGetDealerApplicationData, ThrowOnError>): RequestResult<AdminGetDealerApplicationResponses, AdminGetDealerApplicationErrors, ThrowOnError> => (options.client ?? client).get<AdminGetDealerApplicationResponses, AdminGetDealerApplicationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/dealer-applications/{dealer_id}',
+    ...options
+});
+
+/**
+ * Get Dealer Document Url
+ *
+ * A ten-minute link to one of the dealer's documents, so the admin inspects it before deciding (SRDS §12).
+ */
+export const adminGetDealerDocumentUrl = <ThrowOnError extends boolean = false>(options: Options<AdminGetDealerDocumentUrlData, ThrowOnError>): RequestResult<AdminGetDealerDocumentUrlResponses, AdminGetDealerDocumentUrlErrors, ThrowOnError> => (options.client ?? client).get<AdminGetDealerDocumentUrlResponses, AdminGetDealerDocumentUrlErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/dealer-applications/{dealer_id}/documents/{document_id}/url',
     ...options
 });
 
@@ -64,6 +95,41 @@ export const adminDismissReport = <ThrowOnError extends boolean = false>(options
 export const adminResolveReport = <ThrowOnError extends boolean = false>(options: Options<AdminResolveReportData, ThrowOnError>): RequestResult<AdminResolveReportResponses, AdminResolveReportErrors, ThrowOnError> => (options.client ?? client).patch<AdminResolveReportResponses, AdminResolveReportErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/admin/reports/{report_id}/resolve',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Required Documents
+ */
+export const adminListRequiredDocuments = <ThrowOnError extends boolean = false>(options?: Options<AdminListRequiredDocumentsData, ThrowOnError>): RequestResult<AdminListRequiredDocumentsResponses, AdminListRequiredDocumentsErrors, ThrowOnError> => (options?.client ?? client).get<AdminListRequiredDocumentsResponses, AdminListRequiredDocumentsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/required-documents',
+    ...options
+});
+
+/**
+ * Create Required Document
+ */
+export const adminCreateRequiredDocument = <ThrowOnError extends boolean = false>(options: Options<AdminCreateRequiredDocumentData, ThrowOnError>): RequestResult<AdminCreateRequiredDocumentResponses, AdminCreateRequiredDocumentErrors, ThrowOnError> => (options.client ?? client).post<AdminCreateRequiredDocumentResponses, AdminCreateRequiredDocumentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/required-documents',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Update Required Document
+ */
+export const adminUpdateRequiredDocument = <ThrowOnError extends boolean = false>(options: Options<AdminUpdateRequiredDocumentData, ThrowOnError>): RequestResult<AdminUpdateRequiredDocumentResponses, AdminUpdateRequiredDocumentErrors, ThrowOnError> => (options.client ?? client).patch<AdminUpdateRequiredDocumentResponses, AdminUpdateRequiredDocumentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/required-documents/{document_id}',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -250,6 +316,64 @@ export const consultationsUpdateStatus = <ThrowOnError extends boolean = false>(
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Get My Application
+ */
+export const dealerGetMyApplication = <ThrowOnError extends boolean = false>(options?: Options<DealerGetMyApplicationData, ThrowOnError>): RequestResult<DealerGetMyApplicationResponses, DealerGetMyApplicationErrors, ThrowOnError> => (options?.client ?? client).get<DealerGetMyApplicationResponses, DealerGetMyApplicationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/dealer/application',
+    ...options
+});
+
+/**
+ * Save My Application
+ *
+ * The business details (SRDS §7). Accepted while the application is a draft or rejected, and once approved;
+ * refused with `application_locked` while it is under review, so the admin decides on what they read.
+ */
+export const dealerSaveMyApplication = <ThrowOnError extends boolean = false>(options: Options<DealerSaveMyApplicationData, ThrowOnError>): RequestResult<DealerSaveMyApplicationResponses, DealerSaveMyApplicationErrors, ThrowOnError> => (options.client ?? client).put<DealerSaveMyApplicationResponses, DealerSaveMyApplicationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/dealer/application',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List My Documents
+ */
+export const dealerListMyDocuments = <ThrowOnError extends boolean = false>(options?: Options<DealerListMyDocumentsData, ThrowOnError>): RequestResult<DealerListMyDocumentsResponses, DealerListMyDocumentsErrors, ThrowOnError> => (options?.client ?? client).get<DealerListMyDocumentsResponses, DealerListMyDocumentsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/dealer/application/documents',
+    ...options
+});
+
+/**
+ * Add My Document
+ *
+ * Attaches a file the dealer uploaded to `dealer-documents/<their id>/...`.
+ */
+export const dealerAddMyDocument = <ThrowOnError extends boolean = false>(options: Options<DealerAddMyDocumentData, ThrowOnError>): RequestResult<DealerAddMyDocumentResponses, DealerAddMyDocumentErrors, ThrowOnError> => (options.client ?? client).post<DealerAddMyDocumentResponses, DealerAddMyDocumentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/dealer/application/documents',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove My Document
+ */
+export const dealerRemoveMyDocument = <ThrowOnError extends boolean = false>(options: Options<DealerRemoveMyDocumentData, ThrowOnError>): RequestResult<DealerRemoveMyDocumentResponses, DealerRemoveMyDocumentErrors, ThrowOnError> => (options.client ?? client).delete<DealerRemoveMyDocumentResponses, DealerRemoveMyDocumentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/dealer/application/documents/{document_id}',
+    ...options
 });
 
 /**
@@ -505,7 +629,7 @@ export const expertGetExpertForAdmin = <ThrowOnError extends boolean = false>(op
  */
 export const expertGetDocumentUrl = <ThrowOnError extends boolean = false>(options: Options<ExpertGetDocumentUrlData, ThrowOnError>): RequestResult<ExpertGetDocumentUrlResponses, ExpertGetDocumentUrlErrors, ThrowOnError> => (options.client ?? client).get<ExpertGetDocumentUrlResponses, ExpertGetDocumentUrlErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/expert/admin/{expert_id}/document-url',
+    url: '/api/v1/expert/admin/{expert_id}/documents/{document_id}/url',
     ...options
 });
 
@@ -536,9 +660,12 @@ export const expertUpdateProfile = <ThrowOnError extends boolean = false>(option
 });
 
 /**
- * Submit Application
+ * Create Application
+ *
+ * Starts the expert's application with their professional details (a draft). Documents are attached next, and
+ * POST /profile/application/submit sends it for review (A3b).
  */
-export const expertSubmitApplication = <ThrowOnError extends boolean = false>(options: Options<ExpertSubmitApplicationData, ThrowOnError>): RequestResult<ExpertSubmitApplicationResponses, ExpertSubmitApplicationErrors, ThrowOnError> => (options.client ?? client).post<ExpertSubmitApplicationResponses, ExpertSubmitApplicationErrors, ThrowOnError>({
+export const expertCreateApplication = <ThrowOnError extends boolean = false>(options: Options<ExpertCreateApplicationData, ThrowOnError>): RequestResult<ExpertCreateApplicationResponses, ExpertCreateApplicationErrors, ThrowOnError> => (options.client ?? client).post<ExpertCreateApplicationResponses, ExpertCreateApplicationErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/expert/application',
     ...options,
@@ -546,6 +673,39 @@ export const expertSubmitApplication = <ThrowOnError extends boolean = false>(op
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * List My Documents
+ */
+export const expertListMyDocuments = <ThrowOnError extends boolean = false>(options?: Options<ExpertListMyDocumentsData, ThrowOnError>): RequestResult<ExpertListMyDocumentsResponses, ExpertListMyDocumentsErrors, ThrowOnError> => (options?.client ?? client).get<ExpertListMyDocumentsResponses, ExpertListMyDocumentsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/expert/application/documents',
+    ...options
+});
+
+/**
+ * Add My Document
+ *
+ * Attaches a file the expert uploaded to `expert-documents/<their id>/...`.
+ */
+export const expertAddMyDocument = <ThrowOnError extends boolean = false>(options: Options<ExpertAddMyDocumentData, ThrowOnError>): RequestResult<ExpertAddMyDocumentResponses, ExpertAddMyDocumentErrors, ThrowOnError> => (options.client ?? client).post<ExpertAddMyDocumentResponses, ExpertAddMyDocumentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/expert/application/documents',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove My Document
+ */
+export const expertRemoveMyDocument = <ThrowOnError extends boolean = false>(options: Options<ExpertRemoveMyDocumentData, ThrowOnError>): RequestResult<ExpertRemoveMyDocumentResponses, ExpertRemoveMyDocumentErrors, ThrowOnError> => (options.client ?? client).delete<ExpertRemoveMyDocumentResponses, ExpertRemoveMyDocumentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/expert/application/documents/{document_id}',
+    ...options
 });
 
 /**
@@ -1060,14 +1220,27 @@ export const profileUpdateProfile = <ThrowOnError extends boolean = false>(optio
 });
 
 /**
- * Resubmit Application
+ * List Required Documents
  *
- * A rejected dealer or expert sends their application back for review (D10). Open to a pending or rejected
- * account by design: it is the one thing a rejected applicant does.
+ * The documents the caller's role is asked for (SRDS §7, §10), as an admin last set them; empty for a role
+ * that does not apply.
  */
-export const profileResubmitApplication = <ThrowOnError extends boolean = false>(options?: Options<ProfileResubmitApplicationData, ThrowOnError>): RequestResult<ProfileResubmitApplicationResponses, ProfileResubmitApplicationErrors, ThrowOnError> => (options?.client ?? client).post<ProfileResubmitApplicationResponses, ProfileResubmitApplicationErrors, ThrowOnError>({
+export const profileListRequiredDocuments = <ThrowOnError extends boolean = false>(options?: Options<ProfileListRequiredDocumentsData, ThrowOnError>): RequestResult<ProfileListRequiredDocumentsResponses, ProfileListRequiredDocumentsErrors, ThrowOnError> => (options?.client ?? client).get<ProfileListRequiredDocumentsResponses, ProfileListRequiredDocumentsErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/profile/application/resubmit',
+    url: '/api/v1/profile/application/required-documents',
+    ...options
+});
+
+/**
+ * Submit Application
+ *
+ * A dealer or expert sends their application for review, the first time or after a rejection (SRDS §8, §11;
+ * D10). The database checks it is complete first (submit_application()); `application_incomplete` names what is
+ * missing. Open to a pending or rejected account by design: it is how one becomes approved.
+ */
+export const profileSubmitApplication = <ThrowOnError extends boolean = false>(options?: Options<ProfileSubmitApplicationData, ThrowOnError>): RequestResult<ProfileSubmitApplicationResponses, ProfileSubmitApplicationErrors, ThrowOnError> => (options?.client ?? client).post<ProfileSubmitApplicationResponses, ProfileSubmitApplicationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/profile/application/submit',
     ...options
 });
 

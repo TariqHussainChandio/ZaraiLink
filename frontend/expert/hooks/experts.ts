@@ -3,14 +3,12 @@ import {
   fetchExpertById,
   fetchExpertProfile,
   fetchExperts,
-  submitExpertApplication,
+  createExpertApplication,
   updateExpertProfile,
-  uploadExpertDocument,
   type ExpertProfileInput,
 } from '../services/expertService';
 import { fetchReviewsForExpert } from '../../common/reviews';
 import type { ExpertSpecialization } from '../types/expert';
-import type { PickedPhoto } from '../../utils/photoPicker';
 import { queryKeys } from '../../hooks/keys';
 
 /** Verified experts, optionally narrowed to one specialization. */
@@ -37,15 +35,15 @@ export function useOwnExpertProfile(enabled: boolean) {
   return useQuery({ queryKey: queryKeys.experts.own(), queryFn: fetchExpertProfile, enabled });
 }
 
-/** Files a new application (with its certificate photo), or updates the profile of an expert who already applied. */
-export function useSaveExpertProfile(userId: string | undefined) {
+/**
+ * Saves the expert's professional details: starts the application the first time, updates it after (A3b). Documents
+ * and the submission are separate steps of the application.
+ */
+export function useSaveExpertProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ input, isEditing, document }: { input: ExpertProfileInput; isEditing: boolean; document: PickedPhoto | null }) => {
-      if (isEditing) return updateExpertProfile(input);
-      const documentPath = document && userId ? await uploadExpertDocument(userId, document) : null;
-      return submitExpertApplication(input, documentPath);
-    },
+    mutationFn: ({ input, exists }: { input: ExpertProfileInput; exists: boolean }) =>
+      exists ? updateExpertProfile(input) : createExpertApplication(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.experts.all }),
   });
 }

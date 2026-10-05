@@ -4,15 +4,18 @@ import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-
 import { BadgeCheck, Flag, LayoutDashboard, ScrollText, User } from 'lucide-react-native';
 import React from 'react';
 import { AdminAnalyticsScreen } from '../../admin/screens/AnalyticsScreen';
+import { ApplicationDetailScreen } from '../../admin/screens/ApplicationDetailScreen';
+import { ApprovalsScreen } from '../../admin/screens/ApprovalsScreen';
 import { AuditLogScreen } from '../../admin/screens/AuditLogScreen';
 import { CategoryManagementScreen } from '../../admin/screens/CategoryManagementScreen';
 import { AdminDashboardScreen } from '../../admin/screens/DashboardScreen';
-import { ExpertVerificationScreen } from '../../admin/screens/ExpertVerificationScreen';
+import { DocumentViewerScreen } from '../../admin/screens/DocumentViewerScreen';
 import { ListingModerationScreen } from '../../admin/screens/ListingModerationScreen';
 import { ModerationScreen } from '../../admin/screens/ModerationScreen';
 import { PlatformOrdersScreen } from '../../admin/screens/PlatformOrdersScreen';
 import { ReferenceDataScreen } from '../../admin/screens/ReferenceDataScreen';
 import { ReportsScreen } from '../../admin/screens/ReportsScreen';
+import { RequiredDocumentsScreen } from '../../admin/screens/RequiredDocumentsScreen';
 import { UserManagementScreen } from '../../admin/screens/UserManagementScreen';
 import { ADMIN_HOME_ROUTES, ADMIN_TABS } from '../../common/constants/routes';
 import { NotificationListScreen } from '../../common/notifications/screens/NotificationListScreen';
@@ -28,7 +31,10 @@ export type AdminStackParamList = {
   [ADMIN_HOME_ROUTES.Dashboard]: undefined;
   [ADMIN_HOME_ROUTES.Analytics]: undefined;
   [ADMIN_HOME_ROUTES.Notifications]: undefined;
-  [ADMIN_HOME_ROUTES.ExpertVerification]: undefined;
+  [ADMIN_HOME_ROUTES.Approvals]: undefined;
+  [ADMIN_HOME_ROUTES.ApplicationDetail]: { role: 'dealer' | 'expert'; id: string };
+  [ADMIN_HOME_ROUTES.DocumentViewer]: { url: string; title: string };
+  [ADMIN_HOME_ROUTES.RequiredDocuments]: undefined;
   [ADMIN_HOME_ROUTES.ModerationHub]: undefined;
   [ADMIN_HOME_ROUTES.UserManagement]: undefined;
   [ADMIN_HOME_ROUTES.ListingModeration]: undefined;
@@ -61,11 +67,14 @@ function OverviewNavigator() {
   );
 }
 
-// Approvals: expert applications today; dealer applications join in A3.
+// Approvals (A3b; SRDS §12): dealer and expert applications, each read with its documents before the decision.
 function ApprovalsNavigator() {
   return (
     <Stack.Navigator screenOptions={stackScreenOptions}>
-      <Stack.Screen name={ADMIN_HOME_ROUTES.ExpertVerification} component={ExpertVerificationScreen} options={{ title: 'Approvals' }} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.Approvals} component={ApprovalsScreen} options={{ title: 'Approvals' }} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.ApplicationDetail} component={ApplicationDetailScreen} options={{ title: 'Application' }} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.DocumentViewer} component={DocumentViewerScreen} options={({ route }) => ({ title: route.params.title })} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.RequiredDocuments} component={RequiredDocumentsScreen} options={{ title: 'Required documents' }} />
     </Stack.Navigator>
   );
 }

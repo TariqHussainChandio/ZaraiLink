@@ -43,5 +43,12 @@ def test_get_single_expert(world, api_client):
 
 
 def test_admin_document_url_lookup(world, api_client):
-    response = api_client("GET", f"/api/v1/expert/admin/{world.expert.id}/document-url", world.admin.token)
+    expert = api_client("GET", f"/api/v1/expert/admin/{world.expert.id}", world.admin.token)
+    assert expert.status_code == 200, expert.text
+    documents = expert.json()["expert_documents"]
+    assert documents, "the approved world expert sent their required documents"
+    response = api_client(
+        "GET", f"/api/v1/expert/admin/{world.expert.id}/documents/{documents[0]['id']}/url", world.admin.token
+    )
     assert response.status_code == 200, response.text
+    assert response.json()["url"].startswith("http")

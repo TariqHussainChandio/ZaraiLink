@@ -65,22 +65,23 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
         </View>
       </View>
 
-      <Button
-        label="Change Password"
-        variant="secondary"
-        onPress={() => navigation.navigate(PROFILE_ROUTES.ChangePassword)}
-        style={styles.action}
-      />
-      {/* P4 (4A.4): only admin write endpoints actually require aal2 today, so this is the one
-          role where enrolling has an immediate, visible effect. */}
+      {/* An admin keeps email, password and the second factor (every admin write needs aal2) in Account Security
+          (A3b); everyone else changes the password here. */}
       {role === 'admin' ? (
         <Button
-          label="Two-Factor Authentication"
+          label="Account security"
           variant="secondary"
-          onPress={() => navigation.navigate(PROFILE_ROUTES.MfaEnrollment)}
+          onPress={() => navigation.navigate(PROFILE_ROUTES.AccountSecurity)}
           style={styles.action}
         />
-      ) : null}
+      ) : (
+        <Button
+          label="Change Password"
+          variant="secondary"
+          onPress={() => navigation.navigate(PROFILE_ROUTES.ChangePassword)}
+          style={styles.action}
+        />
+      )}
       <Button
         label="Delete Account"
         variant="secondary"

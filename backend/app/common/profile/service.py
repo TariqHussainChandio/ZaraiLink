@@ -43,6 +43,12 @@ async def delete_own_account(user: AuthenticatedUser, password: str) -> None:
     await repo.soft_delete_auth_user(user.id)
 
 
-async def resubmit_application(user: AuthenticatedUser) -> None:
-    await repo.resubmit_application(user.access_token)
+async def fetch_required_documents(user: AuthenticatedUser) -> list[dict]:
+    if user.role not in ("dealer", "expert"):
+        return []
+    return await repo.fetch_required_documents(user.access_token, user.role)
+
+
+async def submit_application(user: AuthenticatedUser) -> None:
+    await repo.submit_application(user.access_token)
     forget_profile(user.id)

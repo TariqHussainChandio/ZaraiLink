@@ -17,6 +17,7 @@ import uuid
 from pathlib import Path
 
 import httpx
+from conftest import DEALER_APPLICATION
 
 FIXTURES = Path(__file__).resolve().parents[4] / "frontend" / "services" / "api" / "__fixtures__" / "problems.json"
 # Failures this test cannot provoke cheaply or safely are asserted where they happen and recorded here by hand:
@@ -47,7 +48,7 @@ def _normalise(text: str) -> str:
     return re.sub(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "<uuid>", text)
 
 
-def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_actor, matrix_actors):
+def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_actor, make_applicant, matrix_actors):
     observed: dict[str, dict] = {}
 
     observed["unauthenticated"] = _observe(api_client("GET", "/api/v1/orders"))
@@ -103,13 +104,21 @@ def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_a
     observed["account_not_approved"] = _observe(
         api_client("GET", "/api/v1/dealer/inventory", matrix_actors["dealer_pending"])
     )
-    approved_id, _, stale_token = make_actor("dealer")
+    approved_id, _, stale_token = make_applicant("dealer")
     time.sleep(1.2)  # the token's sign-in time is whole seconds; see test_smoke_account_status.py
     approve = api_client(
         "PATCH", f"/api/v1/admin/users/{approved_id}/account-status", world.admin.token, json={"status": "approved"}
     )
     assert approve.status_code == 200, approve.text
     observed["sign_in_again"] = _observe(api_client("GET", "/api/v1/dealer/inventory", stale_token))
+
+    # A3b: an application sent before it is complete, and a change to one under review.
+    draft_token = make_actor("dealer")[2]
+    observed["application_incomplete"] = _observe(api_client("POST", "/api/v1/profile/application/submit", draft_token))
+    review_token = make_applicant("dealer")[2]
+    observed["application_locked"] = _observe(
+        api_client("PUT", "/api/v1/dealer/application", review_token, json=DEALER_APPLICATION)
+    )
 
     for name, result in observed.items():
         assert result["contentType"] == "application/problem+json", name

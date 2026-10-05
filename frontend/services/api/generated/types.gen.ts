@@ -6,8 +6,16 @@ export type ClientOptions = {
 
 /**
  * AccountDecision
+ *
+ * The outcome of an admin's decision on a dealer or expert application (common/account_status.py), returned by
+ * both routes that decide one. `email_delivered` says whether the applicant's decision email reached the mail server
+ * (SRDS §9); False when email is off in this environment or the send failed, so the admin can follow up.
  */
 export type AccountDecision = {
+    /**
+     * Email Delivered
+     */
+    email_delivered?: boolean;
     /**
      * New Status
      */
@@ -112,6 +120,37 @@ export type AdminAnalytics = {
     usersByRole: {
         [key: string]: number;
     };
+};
+
+/**
+ * ApplicationDocument
+ */
+export type ApplicationDocument = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * File Name
+     */
+    file_name: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Mime Type
+     */
+    mime_type?: string | null;
+    required_document?: RequiredDocumentRef | null;
+    /**
+     * Required Document Id
+     */
+    required_document_id?: string | null;
+    /**
+     * Size Bytes
+     */
+    size_bytes?: number | null;
 };
 
 /**
@@ -716,6 +755,127 @@ export type DealerAnalytics = {
 };
 
 /**
+ * DealerApplicationForAdmin
+ */
+export type DealerApplicationForAdmin = {
+    /**
+     * Account Status
+     */
+    account_status: 'pending' | 'approved' | 'rejected';
+    /**
+     * Account Status Reason
+     */
+    account_status_reason?: string | null;
+    /**
+     * Application Submitted At
+     */
+    application_submitted_at?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Dealer Documents
+     */
+    dealer_documents?: Array<ApplicationDocument>;
+    dealer_profile?: DealerProfile | null;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Phone
+     */
+    phone?: string | null;
+};
+
+/**
+ * DealerApplicationInput
+ *
+ * The business half of a dealer's application. The lengths match the table's checks.
+ */
+export type DealerApplicationInput = {
+    /**
+     * Business Address
+     */
+    business_address: string;
+    /**
+     * Business Name
+     */
+    business_name: string;
+    /**
+     * Business Type
+     */
+    business_type: 'agri_input_retailer' | 'wholesaler' | 'distributor' | 'manufacturer' | 'other';
+    /**
+     * City
+     */
+    city: string;
+    /**
+     * Country
+     */
+    country: string;
+    /**
+     * Province
+     */
+    province: string;
+    /**
+     * Registration Number
+     */
+    registration_number: string;
+};
+
+/**
+ * DealerProfile
+ */
+export type DealerProfile = {
+    /**
+     * Business Address
+     */
+    business_address: string;
+    /**
+     * Business Name
+     */
+    business_name: string;
+    /**
+     * Business Type
+     */
+    business_type: 'agri_input_retailer' | 'wholesaler' | 'distributor' | 'manufacturer' | 'other';
+    /**
+     * City
+     */
+    city: string;
+    /**
+     * Country
+     */
+    country: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Province
+     */
+    province: string;
+    /**
+     * Registration Number
+     */
+    registration_number: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
  * DealerStore
  */
 export type DealerStore = {
@@ -840,16 +1000,6 @@ export type DiseaseCaseWithPredictionResponse = {
 };
 
 /**
- * DocumentUrlResponse
- */
-export type DocumentUrlResponse = {
-    /**
-     * Url
-     */
-    url: string | null;
-};
-
-/**
  * Expert
  */
 export type Expert = {
@@ -877,6 +1027,10 @@ export type Expert = {
      * Id
      */
     id: string;
+    /**
+     * Institution Affiliation
+     */
+    institution_affiliation?: string | null;
     location?: Location | null;
     /**
      * Professional Description
@@ -895,6 +1049,10 @@ export type Expert = {
      * Verification Status
      */
     verification_status: 'pending' | 'approved' | 'rejected' | 'suspended';
+    /**
+     * Years Experience
+     */
+    years_experience?: number | null;
 };
 
 /**
@@ -924,9 +1082,45 @@ export type ExpertAnalytics = {
 };
 
 /**
+ * ExpertApplicantRef
+ *
+ * The account half of an expert's application, for the admin (SRDS §12).
+ */
+export type ExpertApplicantRef = {
+    /**
+     * Account Status
+     */
+    account_status?: 'pending' | 'approved' | 'rejected';
+    /**
+     * Account Status Reason
+     */
+    account_status_reason?: string | null;
+    /**
+     * Application Submitted At
+     */
+    application_submitted_at?: string | null;
+    /**
+     * Avatar Url
+     */
+    avatar_url?: string | null;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Phone
+     */
+    phone?: string | null;
+};
+
+/**
  * ExpertForAdmin
  *
- * The admin reads add the verification history.
+ * The admin reads add the account, the verification history (one record per submission) and the documents.
  */
 export type ExpertForAdmin = {
     /**
@@ -946,6 +1140,10 @@ export type ExpertForAdmin = {
      */
     experience?: string | null;
     /**
+     * Expert Documents
+     */
+    expert_documents?: Array<ApplicationDocument>;
+    /**
      * Expert Specializations
      */
     expert_specializations?: Array<ExpertSpecializationRef>;
@@ -957,12 +1155,16 @@ export type ExpertForAdmin = {
      * Id
      */
     id: string;
+    /**
+     * Institution Affiliation
+     */
+    institution_affiliation?: string | null;
     location?: Location | null;
     /**
      * Professional Description
      */
     professional_description?: string | null;
-    profile?: ExpertProfileRef | null;
+    profile?: ExpertApplicantRef | null;
     /**
      * Qualifications
      */
@@ -975,6 +1177,10 @@ export type ExpertForAdmin = {
      * Verification Status
      */
     verification_status: 'pending' | 'approved' | 'rejected' | 'suspended';
+    /**
+     * Years Experience
+     */
+    years_experience?: number | null;
 };
 
 /**
@@ -1002,6 +1208,10 @@ export type ExpertProfileInput = {
      */
     experience: string;
     /**
+     * Institution Affiliation
+     */
+    institution_affiliation?: string | null;
+    /**
      * Professional Description
      */
     professional_description: string;
@@ -1017,6 +1227,10 @@ export type ExpertProfileInput = {
      * Specializations
      */
     specializations: Array<'crop_management' | 'plant_diseases' | 'pest_management' | 'fertilizer_management' | 'irrigation' | 'soil_management' | 'crop_nutrition' | 'general_agriculture'>;
+    /**
+     * Years Experience
+     */
+    years_experience?: number | null;
 };
 
 /**
@@ -2391,7 +2605,7 @@ export type PredictResponse = {
  * RFC 9457 problem details. `code` is a stable machine-readable identifier; `title` is English text.
  */
 export type ProblemDetail = {
-    code: 'bad_request' | 'unauthenticated' | 'token_invalid' | 'auth_unavailable' | 'account_suspended' | 'account_not_approved' | 'sign_in_again' | 'insufficient_role' | 'mfa_required' | 'incorrect_password' | 'forbidden' | 'not_found' | 'conflict' | 'idempotency_in_progress' | 'idempotency_key_reused' | 'payload_too_large' | 'validation_failed' | 'insufficient_stock' | 'listing_unavailable' | 'invalid_transition' | 'rate_limited' | 'service_unavailable' | 'server_error';
+    code: 'bad_request' | 'unauthenticated' | 'token_invalid' | 'auth_unavailable' | 'account_suspended' | 'account_not_approved' | 'sign_in_again' | 'insufficient_role' | 'mfa_required' | 'incorrect_password' | 'forbidden' | 'not_found' | 'conflict' | 'idempotency_in_progress' | 'idempotency_key_reused' | 'payload_too_large' | 'validation_failed' | 'insufficient_stock' | 'listing_unavailable' | 'invalid_transition' | 'application_incomplete' | 'application_locked' | 'rate_limited' | 'service_unavailable' | 'server_error';
     detail?: string | null;
     errors?: Array<{
         loc?: Array<string | number>;
@@ -2524,6 +2738,27 @@ export type ProfileUpdateRequest = {
 };
 
 /**
+ * RegisterDocumentRequest
+ *
+ * A file the applicant has uploaded to their own folder of their role's bucket, to attach to the application.
+ * The size and type are read from Storage by the database (fill_application_document), never taken from here.
+ */
+export type RegisterDocumentRequest = {
+    /**
+     * File Name
+     */
+    file_name: string;
+    /**
+     * Required Document Id
+     */
+    required_document_id?: string | null;
+    /**
+     * Storage Path
+     */
+    storage_path: string;
+};
+
+/**
  * ReportWithReporter
  */
 export type ReportWithReporter = {
@@ -2582,6 +2817,124 @@ export type ReporterRef = {
      * Id
      */
     id: string;
+};
+
+/**
+ * RequiredDocument
+ *
+ * One document an applicant of a role is asked for (SRDS §7: the list is configurable, by an admin).
+ */
+export type RequiredDocument = {
+    /**
+     * Active
+     */
+    active: boolean;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Required
+     */
+    is_required: boolean;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Role
+     */
+    role: 'dealer' | 'expert';
+    /**
+     * Sort Order
+     */
+    sort_order: number;
+};
+
+/**
+ * RequiredDocumentInput
+ *
+ * A new document applicants of a role are asked for (SRDS §7: configurable). `code` is a stable machine name.
+ */
+export type RequiredDocumentInput = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Is Required
+     */
+    is_required?: boolean;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Role
+     */
+    role: 'dealer' | 'expert';
+    /**
+     * Sort Order
+     */
+    sort_order?: number;
+};
+
+/**
+ * RequiredDocumentRef
+ */
+export type RequiredDocumentRef = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
+ * RequiredDocumentUpdate
+ *
+ * A change to one entry. It is never deleted, only retired (`active: false`): sent documents point at it.
+ */
+export type RequiredDocumentUpdate = {
+    /**
+     * Active
+     */
+    active?: boolean | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Is Required
+     */
+    is_required?: boolean | null;
+    /**
+     * Label
+     */
+    label?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order?: number | null;
 };
 
 /**
@@ -2730,6 +3083,16 @@ export type SendMessageRequest = {
 };
 
 /**
+ * SignedUrl
+ */
+export type SignedUrl = {
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * StoreInput
  */
 export type StoreInput = {
@@ -2803,17 +3166,6 @@ export type StoreUpdateInput = {
      * Status
      */
     status?: 'active' | 'inactive' | null;
-};
-
-/**
- * SubmitApplicationRequest
- */
-export type SubmitApplicationRequest = {
-    /**
-     * Document Path
-     */
-    document_path?: string | null;
-    profile: ExpertProfileInput;
 };
 
 /**
@@ -3060,6 +3412,122 @@ export type AdminListAuditLogsResponses = {
 
 export type AdminListAuditLogsResponse = AdminListAuditLogsResponses[keyof AdminListAuditLogsResponses];
 
+export type AdminListDealerApplicationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'pending' | 'approved' | 'rejected';
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/admin/dealer-applications';
+};
+
+export type AdminListDealerApplicationsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminListDealerApplicationsError = AdminListDealerApplicationsErrors[keyof AdminListDealerApplicationsErrors];
+
+export type AdminListDealerApplicationsResponses = {
+    /**
+     * Response Admin List Dealer Applications
+     *
+     * Successful Response
+     */
+    200: Array<DealerApplicationForAdmin>;
+};
+
+export type AdminListDealerApplicationsResponse = AdminListDealerApplicationsResponses[keyof AdminListDealerApplicationsResponses];
+
+export type AdminGetDealerApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * Dealer Id
+         */
+        dealer_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/dealer-applications/{dealer_id}';
+};
+
+export type AdminGetDealerApplicationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminGetDealerApplicationError = AdminGetDealerApplicationErrors[keyof AdminGetDealerApplicationErrors];
+
+export type AdminGetDealerApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    200: DealerApplicationForAdmin;
+};
+
+export type AdminGetDealerApplicationResponse = AdminGetDealerApplicationResponses[keyof AdminGetDealerApplicationResponses];
+
+export type AdminGetDealerDocumentUrlData = {
+    body?: never;
+    path: {
+        /**
+         * Dealer Id
+         */
+        dealer_id: string;
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/dealer-applications/{dealer_id}/documents/{document_id}/url';
+};
+
+export type AdminGetDealerDocumentUrlErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminGetDealerDocumentUrlError = AdminGetDealerDocumentUrlErrors[keyof AdminGetDealerDocumentUrlErrors];
+
+export type AdminGetDealerDocumentUrlResponses = {
+    /**
+     * Successful Response
+     */
+    200: SignedUrl;
+};
+
+export type AdminGetDealerDocumentUrlResponse = AdminGetDealerDocumentUrlResponses[keyof AdminGetDealerDocumentUrlResponses];
+
 export type AdminListAllOrdersData = {
     body?: never;
     path?: never;
@@ -3211,6 +3679,100 @@ export type AdminResolveReportResponses = {
 };
 
 export type AdminResolveReportResponse = AdminResolveReportResponses[keyof AdminResolveReportResponses];
+
+export type AdminListRequiredDocumentsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/required-documents';
+};
+
+export type AdminListRequiredDocumentsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminListRequiredDocumentsError = AdminListRequiredDocumentsErrors[keyof AdminListRequiredDocumentsErrors];
+
+export type AdminListRequiredDocumentsResponses = {
+    /**
+     * Response Admin List Required Documents
+     *
+     * Successful Response
+     */
+    200: Array<RequiredDocument>;
+};
+
+export type AdminListRequiredDocumentsResponse = AdminListRequiredDocumentsResponses[keyof AdminListRequiredDocumentsResponses];
+
+export type AdminCreateRequiredDocumentData = {
+    body: RequiredDocumentInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/required-documents';
+};
+
+export type AdminCreateRequiredDocumentErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminCreateRequiredDocumentError = AdminCreateRequiredDocumentErrors[keyof AdminCreateRequiredDocumentErrors];
+
+export type AdminCreateRequiredDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    201: RequiredDocument;
+};
+
+export type AdminCreateRequiredDocumentResponse = AdminCreateRequiredDocumentResponses[keyof AdminCreateRequiredDocumentResponses];
+
+export type AdminUpdateRequiredDocumentData = {
+    body: RequiredDocumentUpdate;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/required-documents/{document_id}';
+};
+
+export type AdminUpdateRequiredDocumentErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminUpdateRequiredDocumentError = AdminUpdateRequiredDocumentErrors[keyof AdminUpdateRequiredDocumentErrors];
+
+export type AdminUpdateRequiredDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    200: RequiredDocument;
+};
+
+export type AdminUpdateRequiredDocumentResponse = AdminUpdateRequiredDocumentResponses[keyof AdminUpdateRequiredDocumentResponses];
 
 export type AdminGetPlatformStatsData = {
     body?: never;
@@ -3796,6 +4358,160 @@ export type ConsultationsUpdateStatusResponses = {
 };
 
 export type ConsultationsUpdateStatusResponse = ConsultationsUpdateStatusResponses[keyof ConsultationsUpdateStatusResponses];
+
+export type DealerGetMyApplicationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/dealer/application';
+};
+
+export type DealerGetMyApplicationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type DealerGetMyApplicationError = DealerGetMyApplicationErrors[keyof DealerGetMyApplicationErrors];
+
+export type DealerGetMyApplicationResponses = {
+    /**
+     * Response Dealer Get My Application
+     *
+     * Successful Response
+     */
+    200: DealerProfile | null;
+};
+
+export type DealerGetMyApplicationResponse = DealerGetMyApplicationResponses[keyof DealerGetMyApplicationResponses];
+
+export type DealerSaveMyApplicationData = {
+    body: DealerApplicationInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/dealer/application';
+};
+
+export type DealerSaveMyApplicationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type DealerSaveMyApplicationError = DealerSaveMyApplicationErrors[keyof DealerSaveMyApplicationErrors];
+
+export type DealerSaveMyApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    200: DealerProfile;
+};
+
+export type DealerSaveMyApplicationResponse = DealerSaveMyApplicationResponses[keyof DealerSaveMyApplicationResponses];
+
+export type DealerListMyDocumentsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/dealer/application/documents';
+};
+
+export type DealerListMyDocumentsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type DealerListMyDocumentsError = DealerListMyDocumentsErrors[keyof DealerListMyDocumentsErrors];
+
+export type DealerListMyDocumentsResponses = {
+    /**
+     * Response Dealer List My Documents
+     *
+     * Successful Response
+     */
+    200: Array<ApplicationDocument>;
+};
+
+export type DealerListMyDocumentsResponse = DealerListMyDocumentsResponses[keyof DealerListMyDocumentsResponses];
+
+export type DealerAddMyDocumentData = {
+    body: RegisterDocumentRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/dealer/application/documents';
+};
+
+export type DealerAddMyDocumentErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type DealerAddMyDocumentError = DealerAddMyDocumentErrors[keyof DealerAddMyDocumentErrors];
+
+export type DealerAddMyDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    201: ApplicationDocument;
+};
+
+export type DealerAddMyDocumentResponse = DealerAddMyDocumentResponses[keyof DealerAddMyDocumentResponses];
+
+export type DealerRemoveMyDocumentData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/dealer/application/documents/{document_id}';
+};
+
+export type DealerRemoveMyDocumentErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type DealerRemoveMyDocumentError = DealerRemoveMyDocumentErrors[keyof DealerRemoveMyDocumentErrors];
+
+export type DealerRemoveMyDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DealerRemoveMyDocumentResponse = DealerRemoveMyDocumentResponses[keyof DealerRemoveMyDocumentResponses];
 
 export type DealerListInventoryData = {
     body?: never;
@@ -4650,9 +5366,13 @@ export type ExpertGetDocumentUrlData = {
          * Expert Id
          */
         expert_id: string;
+        /**
+         * Document Id
+         */
+        document_id: string;
     };
     query?: never;
-    url: '/api/v1/expert/admin/{expert_id}/document-url';
+    url: '/api/v1/expert/admin/{expert_id}/documents/{document_id}/url';
 };
 
 export type ExpertGetDocumentUrlErrors = {
@@ -4672,7 +5392,7 @@ export type ExpertGetDocumentUrlResponses = {
     /**
      * Successful Response
      */
-    200: DocumentUrlResponse;
+    200: SignedUrl;
 };
 
 export type ExpertGetDocumentUrlResponse = ExpertGetDocumentUrlResponses[keyof ExpertGetDocumentUrlResponses];
@@ -4706,7 +5426,7 @@ export type ExpertReviewVerificationResponses = {
     /**
      * Successful Response
      */
-    204: void;
+    200: AccountDecision;
 };
 
 export type ExpertReviewVerificationResponse = ExpertReviewVerificationResponses[keyof ExpertReviewVerificationResponses];
@@ -4740,14 +5460,14 @@ export type ExpertUpdateProfileResponses = {
 
 export type ExpertUpdateProfileResponse = ExpertUpdateProfileResponses[keyof ExpertUpdateProfileResponses];
 
-export type ExpertSubmitApplicationData = {
-    body: SubmitApplicationRequest;
+export type ExpertCreateApplicationData = {
+    body: ExpertProfileInput;
     path?: never;
     query?: never;
     url: '/api/v1/expert/application';
 };
 
-export type ExpertSubmitApplicationErrors = {
+export type ExpertCreateApplicationErrors = {
     /**
      * Request validation failed
      */
@@ -4758,16 +5478,110 @@ export type ExpertSubmitApplicationErrors = {
     default: ProblemDetail;
 };
 
-export type ExpertSubmitApplicationError = ExpertSubmitApplicationErrors[keyof ExpertSubmitApplicationErrors];
+export type ExpertCreateApplicationError = ExpertCreateApplicationErrors[keyof ExpertCreateApplicationErrors];
 
-export type ExpertSubmitApplicationResponses = {
+export type ExpertCreateApplicationResponses = {
     /**
      * Successful Response
      */
     200: Expert;
 };
 
-export type ExpertSubmitApplicationResponse = ExpertSubmitApplicationResponses[keyof ExpertSubmitApplicationResponses];
+export type ExpertCreateApplicationResponse = ExpertCreateApplicationResponses[keyof ExpertCreateApplicationResponses];
+
+export type ExpertListMyDocumentsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/expert/application/documents';
+};
+
+export type ExpertListMyDocumentsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ExpertListMyDocumentsError = ExpertListMyDocumentsErrors[keyof ExpertListMyDocumentsErrors];
+
+export type ExpertListMyDocumentsResponses = {
+    /**
+     * Response Expert List My Documents
+     *
+     * Successful Response
+     */
+    200: Array<ApplicationDocument>;
+};
+
+export type ExpertListMyDocumentsResponse = ExpertListMyDocumentsResponses[keyof ExpertListMyDocumentsResponses];
+
+export type ExpertAddMyDocumentData = {
+    body: RegisterDocumentRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/expert/application/documents';
+};
+
+export type ExpertAddMyDocumentErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ExpertAddMyDocumentError = ExpertAddMyDocumentErrors[keyof ExpertAddMyDocumentErrors];
+
+export type ExpertAddMyDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    201: ApplicationDocument;
+};
+
+export type ExpertAddMyDocumentResponse = ExpertAddMyDocumentResponses[keyof ExpertAddMyDocumentResponses];
+
+export type ExpertRemoveMyDocumentData = {
+    body?: never;
+    path: {
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/v1/expert/application/documents/{document_id}';
+};
+
+export type ExpertRemoveMyDocumentErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ExpertRemoveMyDocumentError = ExpertRemoveMyDocumentErrors[keyof ExpertRemoveMyDocumentErrors];
+
+export type ExpertRemoveMyDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type ExpertRemoveMyDocumentResponse = ExpertRemoveMyDocumentResponses[keyof ExpertRemoveMyDocumentResponses];
 
 export type ExpertGetMyProfileData = {
     body?: never;
@@ -6594,14 +7408,14 @@ export type ProfileUpdateProfileResponses = {
 
 export type ProfileUpdateProfileResponse = ProfileUpdateProfileResponses[keyof ProfileUpdateProfileResponses];
 
-export type ProfileResubmitApplicationData = {
+export type ProfileListRequiredDocumentsData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/api/v1/profile/application/resubmit';
+    url: '/api/v1/profile/application/required-documents';
 };
 
-export type ProfileResubmitApplicationErrors = {
+export type ProfileListRequiredDocumentsErrors = {
     /**
      * Request validation failed
      */
@@ -6612,16 +7426,47 @@ export type ProfileResubmitApplicationErrors = {
     default: ProblemDetail;
 };
 
-export type ProfileResubmitApplicationError = ProfileResubmitApplicationErrors[keyof ProfileResubmitApplicationErrors];
+export type ProfileListRequiredDocumentsError = ProfileListRequiredDocumentsErrors[keyof ProfileListRequiredDocumentsErrors];
 
-export type ProfileResubmitApplicationResponses = {
+export type ProfileListRequiredDocumentsResponses = {
+    /**
+     * Response Profile List Required Documents
+     *
+     * Successful Response
+     */
+    200: Array<RequiredDocument>;
+};
+
+export type ProfileListRequiredDocumentsResponse = ProfileListRequiredDocumentsResponses[keyof ProfileListRequiredDocumentsResponses];
+
+export type ProfileSubmitApplicationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/profile/application/submit';
+};
+
+export type ProfileSubmitApplicationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ProfileSubmitApplicationError = ProfileSubmitApplicationErrors[keyof ProfileSubmitApplicationErrors];
+
+export type ProfileSubmitApplicationResponses = {
     /**
      * Successful Response
      */
     204: void;
 };
 
-export type ProfileResubmitApplicationResponse = ProfileResubmitApplicationResponses[keyof ProfileResubmitApplicationResponses];
+export type ProfileSubmitApplicationResponse = ProfileSubmitApplicationResponses[keyof ProfileSubmitApplicationResponses];
 
 export type ProfileDeleteOwnAccountData = {
     body: DeleteAccountRequest;

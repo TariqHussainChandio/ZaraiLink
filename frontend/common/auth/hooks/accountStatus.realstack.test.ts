@@ -51,12 +51,12 @@ describeReal('a dealer waiting for a decision, against the real backend (D10)', 
     await expect(client.apiFetch('/api/v1/dealer/inventory')).resolves.toEqual([]);
   }, 60_000);
 
-  it('has nothing to resubmit while pending', async () => {
+  it('cannot submit an application with nothing in it (A3b)', async () => {
     const token = await signUp('dealer', { pending: true });
     const { client } = await loadApp(token);
     const error = (await client
-      .apiFetch('/api/v1/profile/application/resubmit', { method: 'POST' })
+      .apiFetch('/api/v1/profile/application/submit', { method: 'POST' })
       .catch((e: unknown) => e)) as ApiErrorType;
-    expect(error).toMatchObject({ status: 409, code: 'invalid_transition' });
+    expect(error).toMatchObject({ status: 409, code: 'application_incomplete' });
   }, 60_000);
 });

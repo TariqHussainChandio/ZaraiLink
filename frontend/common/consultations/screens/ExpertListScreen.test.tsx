@@ -34,6 +34,8 @@ const expert: ExpertWithProfile = {
   professional_description: 'Crop specialist',
   location: null,
   contact: '0300-0000000',
+  years_experience: null,
+  institution_affiliation: null,
   verification_status: 'approved',
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',

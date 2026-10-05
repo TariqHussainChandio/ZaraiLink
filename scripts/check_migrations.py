@@ -34,11 +34,11 @@ CHECK_FROM = "20260926090000"  # migration versions at or after this are checked
 IDENT = r'"?(\w+)"?'
 TABLE_REF = rf'(?:"?public"?\.)?{IDENT}'
 # The zero-argument helpers a policy calls, each of which must run once per statement. A3a added the account-status
-# helpers (20261005080000_account_status.sql).
+# helpers (20261005080000_account_status.sql), A3b the application one (20261012080000_applications.sql).
 HELPERS = (
     r"(?:auth\.uid|auth\.jwt|auth\.role|(?:public\.)?is_admin_aal2|(?:public\.)?is_admin|(?:public\.)?is_suspended"
     r"|(?:public\.)?is_account_approved|(?:public\.)?is_approved_dealer|(?:public\.)?is_approved_expert"
-    r"|(?:public\.)?caller_role)"
+    r"|(?:public\.)?caller_role|(?:public\.)?is_application_editable)"
 )
 NOT_A_COLUMN = ("constraint", "foreign", "primary", "unique", "check")
 

@@ -31,18 +31,19 @@ select tests.make_user('Y', 'expert');
 insert into public.experts (id, verification_status) values (tests.fx('Y'), 'approved');
 select is((select verification_status::text from public.experts where id = tests.fx('Y')), 'approved', 'experts: a server-side insert is not limited');
 
--- Expert verification records: the author supplies the document, never the decision ---------------------------------
-select tests.expect(tests.fx('X'), 'insert into public.expert_verifications (expert_id, document_url) values (' || tests.l('X') || $$, 'x/cert.jpg')$$, 'n:1', 'expert_verifications: an expert files a record');
+-- Expert verification records: never the decision. Since 20261012080000 the expert files no record at all:
+-- submit_application() writes one per submission.
+select tests.expect(tests.fx('X'), 'insert into public.expert_verifications (expert_id, document_url) values (' || tests.l('X') || $$, 'x/cert.jpg')$$, 'err:42501', 'expert_verifications: an expert files no record directly (20261012080000)');
 select tests.expect(tests.fx('X'), $$insert into public.expert_verifications (expert_id, decision) values ($$ || tests.l('X') || $$, 'approved')$$, 'err:42501', 'expert_verifications: but cannot file a decision');
 select tests.expect(tests.fx('X'), 'insert into public.expert_verifications (expert_id, reviewed_by) values (' || tests.l('X') || ', ' || tests.l('A') || ')', 'err:42501', 'expert_verifications: nor name a reviewer');
 select tests.expect(tests.fx('X'), 'insert into public.expert_verifications (expert_id, decision_at) values (' || tests.l('X') || ', now())', 'err:42501', 'expert_verifications: nor date a decision');
 select tests.expect(tests.fx('X'), $$insert into public.expert_verifications (expert_id, notes) values ($$ || tests.l('X') || $$, 'approved')$$, 'err:42501', 'expert_verifications: nor write the reviewer notes');
--- The whole insert grant, pinned: exactly these two columns.
+-- The whole insert grant, pinned: none since 20261012080000.
 select is(
   (select array_agg(column_name::text order by column_name) from information_schema.column_privileges
     where table_schema = 'public' and table_name = 'expert_verifications' and grantee = 'authenticated' and privilege_type = 'INSERT'),
-  array['document_url', 'expert_id'],
-  'expert_verifications: authenticated may insert exactly expert_id and document_url'
+  null::text[],
+  'expert_verifications: authenticated may insert no column (20261012080000)'
 );
 
 -- Listings: the owner edits; an admin with a second factor moderates the status only ---------------------------------

@@ -8,15 +8,12 @@ showed the "pending review" banner. The shared `world.expert` is approved, so it
 from __future__ import annotations
 
 APPLICATION = {
-    "profile": {
-        "qualifications": "BSc Agriculture",
-        "degree": "BSc",
-        "experience": "5 years",
-        "professional_description": "Wheat and rice",
-        "contact": "expert@example.test",
-        "specializations": ["plant_diseases"],
-    },
-    "document_path": None,
+    "qualifications": "BSc Agriculture",
+    "degree": "BSc",
+    "experience": "5 years",
+    "professional_description": "Wheat and rice",
+    "contact": "expert@example.test",
+    "specializations": ["plant_diseases"],
 }
 
 

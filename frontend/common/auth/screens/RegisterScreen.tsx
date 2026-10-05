@@ -1,56 +1,74 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, type ChipOption, ChipRow, TextField } from '../../components';
+import { Banner, Button, isValidE164, LocationPicker, PhoneInput, TextField } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
-import { ROLE_LABELS, ROLES, type Role } from '../../constants/roles';
 import { useSignUp } from '../hooks/auth';
 import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
-const REGISTRABLE_ROLES = ROLES.filter(role => role !== 'admin') as Exclude<Role, 'admin'>[];
-const ROLE_OPTIONS: ChipOption<Exclude<Role, 'admin'>>[] = REGISTRABLE_ROLES.map(role => ({ value: role, label: ROLE_LABELS[role] }));
+import type { RegistrableRole } from '../../constants/roles';
+
+// SRDS §5–§7, §10: who is asked for what. A farmer and a buyer give their location here (a farmer their village too); a
+// dealer's business location and an expert's professional details come in their application, after the email code.
+const TITLES: Record<RegistrableRole, string> = {
+  farmer: 'Create a farmer account',
+  buyer: 'Create a buyer account',
+  dealer: 'Create a dealer account',
+  expert: 'Create an expert account',
+};
 // Supabase's own password rule (supabase/config.toml: minimum_password_length 8, password_requirements
 // letters_digits); checked here first only to answer sooner, Supabase still decides.
 const PASSWORD_RULE = 'Use at least 8 characters, with letters and numbers';
 const PASSWORD_HELP = '8 or more characters, with letters and numbers';
 
-function makeRegisterSchema() {
+function makeRegisterSchema(role: RegistrableRole) {
+  const located = role === 'farmer' || role === 'buyer';
+  const place = (message: string) => (located ? z.string().trim().min(2, message) : z.string().trim());
   return z.object({
     fullName: z.string().trim().min(2, 'Enter your full name'),
     email: z.string().trim().email('Enter a valid email'),
+    phone: z
+      .string()
+      .trim()
+      .refine(isValidE164, 'Enter your number with the country code, like +923001234567'),
     password: z
       .string()
       .min(8, PASSWORD_RULE)
       .regex(/[A-Za-z]/, PASSWORD_RULE)
       .regex(/\d/, PASSWORD_RULE),
-    role: z.enum(REGISTRABLE_ROLES as [Role, ...Role[]], {
-      message: 'Select a role',
-    }),
+    country: place('Enter your country'),
+    province: place('Enter your province'),
+    city: place('Enter your city'),
+    street: place('Enter your address'),
+    village: role === 'farmer' ? z.string().trim().min(2, 'Enter your village') : z.string().trim(),
   });
 }
 
 type RegisterFormValues = z.infer<ReturnType<typeof makeRegisterSchema>>;
 
-export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
+export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'>) {
+  const { role } = route.params;
+  const located = role === 'farmer' || role === 'buyer';
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { mutateAsync: signUp } = useSignUp();
-  const registerSchema = useMemo(() => makeRegisterSchema(), []);
+  const registerSchema = useMemo(() => makeRegisterSchema(role), [role]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: '', email: '', password: '', role: 'farmer' },
+    defaultValues: { fullName: '', email: '', phone: '', password: '', country: '', province: '', city: '', street: '', village: '' },
   });
 
-  const role = useWatch({ control, name: 'role' });
   const reviewed = role === 'dealer' || role === 'expert';
 
   const onSubmit = async (values: RegisterFormValues) => {
@@ -61,7 +79,10 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
         email,
         password: values.password,
         fullName: values.fullName.trim(),
-        role: values.role,
+        role,
+        phone: values.phone,
+        ...(located ? { country: values.country, province: values.province, city: values.city, street: values.street } : {}),
+        ...(role === 'farmer' ? { village: values.village } : {}),
       });
       // No session back means the OTP must be confirmed before sign-in; authStore's
       // onAuthStateChange picks up the session automatically once verifyOtp succeeds.
@@ -79,8 +100,16 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Join ZaraiLink as a farmer, buyer, dealer, or expert</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {TITLES[role]}
+        </Text>
+        <Button
+          label="Choose a different account type"
+          variant="quiet"
+          fullWidth={false}
+          onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)}
+          style={styles.change}
+        />
 
         <Controller
           control={control}
@@ -116,6 +145,14 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
 
         <Controller
           control={control}
+          name="phone"
+          render={({ field: { onChange, value } }) => (
+            <PhoneInput value={value || null} onChange={next => onChange(next ?? '')} error={errors.phone?.message} />
+          )}
+        />
+
+        <Controller
+          control={control}
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
             <TextField
@@ -130,18 +167,40 @@ export function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
           )}
         />
 
-        <Text style={styles.label}>I am a...</Text>
-        <Controller
-          control={control}
-          name="role"
-          render={({ field: { onChange, value } }) => (
-            <ChipRow options={ROLE_OPTIONS} value={value} onChange={onChange} />
-          )}
-        />
-        {errors.role?.message ? <Text style={styles.errorText}>{errors.role.message}</Text> : null}
+        {located ? (
+          <>
+            <LocationPicker
+              country={watch('country') || null}
+              province={watch('province') || null}
+              city={watch('city') || null}
+              onCountryChange={value => setValue('country', value ?? '')}
+              onProvinceChange={value => setValue('province', value ?? '')}
+              onCityChange={value => setValue('city', value ?? '')}
+            />
+            {errors.country || errors.province || errors.city ? (
+              <Text style={styles.errorText}>Enter your country, province and city</Text>
+            ) : null}
+            {role === 'farmer' ? (
+              <Controller
+                control={control}
+                name="village"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField label="Village" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.village?.message} />
+                )}
+              />
+            ) : null}
+            <Controller
+              control={control}
+              name="street"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextField label="Address" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.street?.message} />
+              )}
+            />
+          </>
+        ) : null}
         {reviewed ? (
           <Banner tone="info">
-            An administrator reviews every dealer and expert account. You can use it once it is approved.
+            {`After the email code you will send your ${role === 'dealer' ? 'business' : 'professional'} details and documents. An administrator reviews them before the account can be used.`}
           </Banner>
         ) : null}
 
@@ -183,16 +242,9 @@ function makeStyles({ colors, space, typography }: Theme) {
       ...typography.display,
       color: colors.ink,
     },
-    subtitle: {
-      ...typography.body,
-      color: colors.ink2,
-      marginTop: space[1],
-      marginBottom: space[6],
-    },
-    label: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginBottom: space[1],
+    change: {
+      alignSelf: 'flex-start',
+      marginBottom: space[4],
     },
     hint: {
       ...typography.caption,

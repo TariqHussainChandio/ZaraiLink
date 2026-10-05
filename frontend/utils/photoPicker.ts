@@ -72,7 +72,7 @@ export async function pickFromLibrary({ selectionLimit = 1 }: PickPhotosOptions 
   return result.canceled ? [] : Promise.all(result.assets.map(toPickedPhoto));
 }
 
-async function takePhoto(): Promise<PickedPhoto[]> {
+export async function takePhoto(): Promise<PickedPhoto[]> {
   // Ask first, so a refusal is a plain "not granted" result and never depends on an error code. The
   // native launch below asks again (and, on Android 9 and older, also asks for storage), which is
   // why the error handling stays.
