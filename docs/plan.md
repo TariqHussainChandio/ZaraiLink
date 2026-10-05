@@ -1,8 +1,8 @@
 # ZaraiLink Plan of Record
 
 > **Status (2026-10-05): A0, A1, A2 and A3 closed (A3a PR #25 `59d57fc`; A3b PR #28 `1c57d38`); A4 next. The A3b
-> migration and the reauthentication and email-change templates are not yet on the hosted project (they wait for the
-> maintainer's approval). The A3a migration
+> migration is on the hosted project too (pushed 2026-10-05, 59 migrations in step); the reauthentication and
+> email-change templates wait for `config push`, which needs the SMTP values in the git-ignored `supabase/.env`. The A3a migration
 > is on the hosted project (pushed 2026-10-04); the reauthentication template waits for `config push` with the SMTP
 > secrets set.**
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is

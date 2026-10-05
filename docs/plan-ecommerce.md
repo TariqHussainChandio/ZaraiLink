@@ -601,8 +601,10 @@ VERIFIED WITH FINDINGS (one Medium, six Low) and round 2 VERIFIED WITH FINDINGS 
   second factor again. An applicant who deletes their account while under review stays in the queue as "Deleted
   user" (deciding works; no email). Locally the database lets a document be registered in the instant its file is
   deleted; submitting then names it missing.
-- Not yet on the hosted project: the migration (`db push`) and the `email_change` template (`config push`), each after
-  the maintainer's approval; hosted email needs the backend `SMTP_*` secrets (G1).
+- Hosted project: the migration was pushed on 2026-10-05 with the maintainer's approval (dry run: exactly
+  `20261012080000_applications.sql`; afterwards local and remote list the same 59 migrations). Still to come: the
+  reauthentication and `email_change` templates (`config push`, once the SMTP values are in the git-ignored
+  `supabase/.env`), and the API's decision emails through Gmail (`EMAIL_ENABLED` and `SMTP_*`; G1).
 
 **Parked head start:** branch `wip/a3-account-status` (commit `0d7edd8`, not merged, its migration not pushed) holds an
 early build of this phase's status work: `profiles.account_status` with its guards and helpers, the FastAPI
