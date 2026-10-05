@@ -2,9 +2,8 @@
 
 > **Status (2026-10-05): A0, A1, A2 and A3 closed (A3a PR #25 `59d57fc`; A3b PR #28 `1c57d38`); A4 next. The A3b
 > migration is on the hosted project too (pushed 2026-10-05, 59 migrations in step); the reauthentication and
-> email-change templates wait for `config push`, which needs the SMTP values in the git-ignored `supabase/.env`. The A3a migration
-> is on the hosted project (pushed 2026-10-04); the reauthentication template waits for `config push` with the SMTP
-> secrets set.**
+> email-change templates are pushed (`config push`, 2026-10-05), and the API's decision email reached a real inbox
+> through Gmail. The A3a migration is on the hosted project (pushed 2026-10-04).**
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is
 >   configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
 >   Supabase's password rules, reauthentication for old sessions, phone sign-up off).

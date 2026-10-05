@@ -122,3 +122,8 @@ git or chat):
 
 Until they are set, decisions still work and the admin is told the email was not delivered. The admin email change
 also needs the `email_change` template pushed with `npx supabase config push`.
+
+**Done 2026-10-05.** The maintainer authorised the Gmail app password; the Supabase CLI reads the sender from the
+git-ignored `supabase/.env` and `config push` sent the reauthentication and email-change templates. The API's settings
+live in the git-ignored `backend/.env` with `EMAIL_ENABLED=false` for local work; a live check with it switched on
+delivered a real approval email. The hosted API gets the same values as host secrets when it is deployed (A9).
