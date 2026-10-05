@@ -161,6 +161,8 @@ export const PROFILE_ROUTES = {
   // A3b, admin only: email, password and two-step verification together, and the email change itself.
   AccountSecurity: 'AccountSecurity',
   ChangeEmail: 'ChangeEmail',
+  // A3: a dealer reads and updates their business details from their profile (the application's business step).
+  BusinessDetails: 'ProfileBusinessDetails',
   DeleteAccount: 'DeleteAccount',
   // Development builds only (A2): every shared component in the current theme.
   DesignCatalogue: 'DesignCatalogue',

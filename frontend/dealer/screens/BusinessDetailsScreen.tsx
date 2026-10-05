@@ -11,7 +11,7 @@ export function BusinessDetailsScreen() {
   const navigation = useNavigation();
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <DealerBusinessStep onDone={() => navigation.goBack()} />
+      <DealerBusinessStep submitLabel="Save" onDone={() => navigation.goBack()} />
     </ScrollView>
   );
 }
