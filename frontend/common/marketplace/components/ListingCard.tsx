@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { RoleBadge } from '../../components';
+import { RoleBadge, StatusBadge } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
 import type { ListingWithRelations } from '../types/marketplace';
 import { formatRs } from '../../../utils/money';
@@ -35,6 +35,11 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
           {formatRs(listing.price)} / {listing.unit}
         </Text>
         {listing.category ? <Text style={styles.category}>{listing.category.name}</Text> : null}
+        {listing.availability ? (
+          <View style={styles.stock}>
+            <StatusBadge kind="stock" status={listing.availability} size="sm" />
+          </View>
+        ) : null}
         {listing.brand || listing.condition ? (
           <View style={styles.chipRow}>
             {listing.brand ? (
@@ -101,6 +106,10 @@ function makeStyles({ colors, space, radius, typography, borders, fontWeight, si
       marginTop: space[1] / 2,
       ...typography.caption,
       color: colors.ink2,
+    },
+    stock: {
+      marginTop: space[1],
+      flexDirection: 'row',
     },
     // Quiet, muted pills — deliberately unstyled relative to `price` (no brand color, no bold)
     // so brand/condition read as secondary detail, never competing with it for attention.

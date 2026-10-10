@@ -36,9 +36,9 @@ describe('StatusBadge', () => {
   });
 
   it('shows a status this build does not know as a neutral badge with its own word, instead of crashing', async () => {
-    // An installed build meets new API values before it is updated (D5 adds `dispatched` in A4).
-    await render(<StatusBadge kind="order" status={'dispatched' as never} />);
-    expect(screen.getByText('Dispatched')).toBeTruthy();
+    // An installed build meets new API values before it is updated.
+    await render(<StatusBadge kind="order" status={'on_hold' as never} />);
+    expect(screen.getByText('On hold')).toBeTruthy();
     await render(<StatusBadge kind="payment" status={'partially_paid' as never} />);
     expect(screen.getByText('Partially paid')).toBeTruthy();
   });

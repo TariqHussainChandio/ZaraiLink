@@ -661,6 +661,39 @@ Mailpit; audit rows for every decision. Hosted email stays Blocked until G1.
 **Exit:** a buyer order moves to dispatched and writes exactly one event per line; cancelling before dispatch writes
 none; PostgREST and API agree on every move; buying matrix proven by two-user tests.
 
+**A4 status (2026-10-05): built with B0, waiting for verification and merge.** Decisions D5-D9 confirmed by the
+maintainer, plus two for the time before B3: dispatch cuts today's `inventory` (moved from confirm) in the same
+transaction as the event; a listing with no inventory row loses its own quantity at dispatch and is sold at 0.
+- **Database** (`20261019075900_order_status_dispatched.sql`, `20261019080000_order_dispatch.sql`): `dispatched` between
+  ready and completed (seller only; nothing dispatched is cancelled); confirm checks the stock (`check_stock_on_confirm`);
+  dispatch (`apply_order_dispatch`) locks what the order takes, refuses a shortage (P0001, D6), cuts it (one `sale`
+  ledger row, or the listing's quantity) and writes one `order_events` row per line (unique per line, server side only);
+  `orders.stock_cut_at_confirm` keeps orders confirmed before the migration from being cut twice; a sold listing
+  reopens when restocked; `listing_availability()` (anon may ask: a word per public listing, never figures);
+  `guard_orders_insert` admits farmers, buyers and dealers only (D9); the BR-10 structure test also refuses riders,
+  vehicles and warehouses.
+- **API**: transitions and seller-only targets match the guard; checkout `require_marketplace_buyer`; listing reads
+  carry `availability` (`unknown` if it cannot be had, D7); a seller's own list and listing page use their token, so a
+  sold or hidden listing stays reachable for restocking (`get_optional_user`); seller analytics count `readyToDispatch`.
+- **App**: the `dispatched` status and timeline step; Mark Dispatched behind a confirmation sheet, Mark Completed after
+  it; stock badges on listing cards and the listing page (no Add to Cart when out of stock; the page no longer shows
+  the listing quantity as stock); Ready to Dispatch and Total Orders tiles for sellers; the buyer's In Progress counts
+  only open orders.
+- **Evidence**: pgTAP 789 (81 new); backend unit 232 and real stack 548 (`test_smoke_dispatch.py`: 7 tests including a
+  two-session dispatch race); Jest 1,234 and real-stack Jest 19/19 (the purchase now runs through dispatch to
+  completion); policy mutation 0 survivors on inventory, stores, suppliers, orders, order items and listings; every
+  reality gate at its baseline. Device run (Pixel 8 emulator, debug build, real API, local Supabase): a dealer
+  confirmed an order (stock unchanged at 10), processed and readied it, dispatched it through the sheet (10 → 6, one
+  ledger row, one applied event; the timeline shows Dispatched with Completed to come); a second order short of stock
+  was refused with nothing changed; the Market tab showed In stock, Low stock and Out of stock.
+- **Verifier** (`zl-verifier`, 2026-10-10): VERIFIED WITH FINDINGS. High: a buyer inserting an order through
+  PostgREST could set `stock_cut_at_confirm`, and dispatch then took no stock; fixed (`guard_orders_insert` resets it;
+  pgTAP "legacy: ...but it is reset"). Low: `listing_availability` answered for hidden listings; fixed (only active
+  listings or the caller's own; the API asks with the caller's token on their own listings). pgTAP 793.
+- **Not in A4**: the listing form's link to an inventory product (`listings.inventory_product_id` needs B1's table; the
+  control comes with B3); the shortage alert uses the app's general wording for `insufficient_stock` ("That quantity is
+  not available."); the farmer's sold-at-0 path is proven on the real stack, not on the device.
+
 ### A5 — Messaging and notifications
 
 **Goal:** SRDS §30–§31 (D12).

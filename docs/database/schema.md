@@ -5,7 +5,7 @@
 
 What each table is for, and the business rules behind the design, are in [notes.md](notes.md).
 
-37 tables, 1 view(s), 14 enum types, 103 row-level-security policies on tables and 22 on storage objects.
+38 tables, 1 view(s), 14 enum types, 103 row-level-security policies on tables and 22 on storage objects.
 
 Realtime publishes changes of: `consultation_messages`, `messages`, `notifications`.
 
@@ -289,7 +289,7 @@ Indexes:
 | `dealer_stores_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
 | `dealer_stores_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
 | `dealer_stores_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
-| `dealer_stores_select_owner_or_admin` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
+| `dealer_stores_select_owner` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
 
 Triggers: `set_dealer_stores_updated_at`.
 
@@ -599,7 +599,7 @@ Indexes:
 | `inventory_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
 | `inventory_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND ((listing_id IS NULL) OR (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = inventory.listing_id) AND (l.owner_id = inventory.dealer_id)))))) |
 | `inventory_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND ((listing_id IS NULL) OR (EXISTS ( SELECT 1 FROM listings l WHERE ((l.id = inventory.listing_id) AND (l.owner_id = inventory.dealer_id)))))) |
-| `inventory_select_owner_or_admin` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
+| `inventory_select_owner` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
 
 Triggers: `notify_inventory_low_stock`, `set_inventory_updated_at`.
 
@@ -627,7 +627,7 @@ Indexes:
 | Policy | Command | Using | With check |
 |---|---|---|---|
 | `inventory_transactions_owner_insert` | INSERT | - | ((EXISTS ( SELECT 1 FROM inventory i WHERE ((i.id = inventory_transactions.inventory_id) AND (i.dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))))) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
-| `inventory_transactions_select_owner_or_admin` | SELECT | (EXISTS ( SELECT 1 FROM inventory i WHERE ((i.id = inventory_transactions.inventory_id) AND ((i.dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))))) | - |
+| `inventory_transactions_select_owner` | SELECT | (EXISTS ( SELECT 1 FROM inventory i WHERE ((i.id = inventory_transactions.inventory_id) AND (i.dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)))) | - |
 
 ### `listing_views`
 
@@ -692,7 +692,7 @@ Indexes:
 | `listings_owner_update` | UPDATE | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) | (((owner_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_seller_role(( SELECT auth.uid() AS uid)) AS is_seller_role)) OR ( SELECT is_admin_aal2() AS is_admin_aal2)) |
 | `listings_select_active_or_owner` | SELECT | ((status = 'active'::listing_status) OR (owner_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 
-Triggers: `guard_listings_admin_update`, `notify_listing_status_changed`, `set_listings_seller_role`, `set_listings_updated_at`.
+Triggers: `guard_listings_admin_update`, `notify_listing_status_changed`, `reopen_sold_listing`, `set_listings_seller_role`, `set_listings_updated_at`.
 
 ### `messages`
 
@@ -746,6 +746,31 @@ Indexes:
 |---|---|---|---|
 | `notifications_select_own` | SELECT | (user_id = ( SELECT auth.uid() AS uid)) | - |
 | `notifications_update_own` | UPDATE | ((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) | ((user_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
+
+### `order_events`
+
+Row-level security: **on**. Grants: service_role: select.
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | uuid | no | gen_random_uuid() |
+| `order_id` | uuid | no |  |
+| `order_item_id` | uuid | no |  |
+| `seller_id` | uuid | no |  |
+| `listing_id` | uuid | yes |  |
+| `quantity` | numeric | no |  |
+| `type` | text | no |  |
+| `inventory_applied_at` | timestamp with time zone | yes |  |
+| `created_at` | timestamp with time zone | no | now() |
+
+Constraints: `order_events_item_type_key`: UNIQUE (order_item_id, type); `order_events_listing_id_fkey`: FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE SET NULL; `order_events_order_id_fkey`: FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE; `order_events_order_item_id_fkey`: FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE; `order_events_pkey`: PRIMARY KEY (id); `order_events_quantity_check`: CHECK ((quantity > (0)::numeric)); `order_events_seller_id_fkey`: FOREIGN KEY (seller_id) REFERENCES profiles(id) ON DELETE CASCADE; `order_events_type_check`: CHECK ((type = 'dispatched'::text)).
+
+Indexes:
+- `CREATE INDEX order_events_listing_id_idx ON public.order_events USING btree (listing_id)`
+- `CREATE INDEX order_events_order_id_idx ON public.order_events USING btree (order_id)`
+- `CREATE INDEX order_events_seller_id_idx ON public.order_events USING btree (seller_id)`
+- `CREATE UNIQUE INDEX order_events_item_type_key ON public.order_events USING btree (order_item_id, type)`
+- `CREATE UNIQUE INDEX order_events_pkey ON public.order_events USING btree (id)`
 
 ### `order_items`
 
@@ -814,6 +839,7 @@ Row-level security: **on**. Grants: authenticated: insert, select, update.
 | `updated_at` | timestamp with time zone | no | now() |
 | `delivery_charge` | numeric(12,2) | no | 0 |
 | `total` | numeric(12,2) | yes | generated always as (product_subtotal + delivery_charge) stored |
+| `stock_cut_at_confirm` | boolean | no | false |
 
 Constraints: `orders_buyer_id_fkey`: FOREIGN KEY (buyer_id) REFERENCES profiles(id) ON DELETE CASCADE; `orders_delivery_charge_check`: CHECK ((delivery_charge >= (0)::numeric)); `orders_pkey`: PRIMARY KEY (id); `orders_seller_id_fkey`: FOREIGN KEY (seller_id) REFERENCES profiles(id) ON DELETE CASCADE; `orders_total_check`: CHECK ((product_subtotal >= (0)::numeric)).
 
@@ -828,7 +854,7 @@ Indexes:
 | `orders_select_participants` | SELECT | ((buyer_id = ( SELECT auth.uid() AS uid)) OR (seller_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
 | `orders_update_participants` | UPDATE | (((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR (( SELECT is_admin() AS is_admin) AND (status = 'disputed'::order_status))) | (((buyer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_account_approved() AS is_account_approved)) OR (( SELECT is_admin() AS is_admin) AND (status = ANY (ARRAY['refunded'::order_status, 'completed'::order_status])))) |
 
-Triggers: `a_guard_orders_insert`, `a_guard_orders_update`, `commit_stock_on_confirm`, `notify_new_order`, `notify_order_status_changed`, `record_order_history_insert`, `record_order_history_update`, `set_orders_updated_at`.
+Triggers: `a_guard_orders_insert`, `a_guard_orders_update`, `apply_order_dispatch`, `check_stock_on_confirm`, `notify_new_order`, `notify_order_status_changed`, `record_order_history_insert`, `record_order_history_update`, `set_orders_updated_at`.
 
 ### `payment_transactions`
 
@@ -1048,7 +1074,7 @@ Indexes:
 | `suppliers_owner_delete` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
 | `suppliers_owner_insert` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
 | `suppliers_owner_update` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) |
-| `suppliers_select_owner_or_admin` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin)) | - |
+| `suppliers_select_owner` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
 
 Triggers: `set_suppliers_updated_at`.
 
@@ -1090,7 +1116,7 @@ Indexes:
 - `expert_specialization`: crop_management · plant_diseases · pest_management · fertilizer_management · irrigation · soil_management · crop_nutrition · general_agriculture
 - `inventory_transaction_type`: addition · reduction · adjustment · sale · restock · correction
 - `listing_status`: active · inactive · sold
-- `order_status`: pending · confirmed · completed · cancelled · processing · ready · rejected · payment_failed · disputed · refunded · expired
+- `order_status`: pending · confirmed · completed · cancelled · processing · ready · dispatched · rejected · payment_failed · disputed · refunded · expired
 - `payment_status`: pending · processing · successful · failed · cancelled · refunded
 - `report_status`: open · investigating · resolved · dismissed
 - `report_target_type`: product · user · review · message · expert · listing
@@ -1102,11 +1128,12 @@ Indexes:
 | Function | Returns | Security | Config |
 |---|---|---|---|
 | `adjust_stock(uuid,text,numeric,uuid,text)` | inventory | invoker | search_path=public, pg_temp |
+| `apply_order_dispatch()` | trigger | definer | search_path=public, pg_temp |
 | `audit_admin_email_change()` | trigger | definer | search_path=public, pg_temp |
 | `audit_required_documents()` | trigger | definer | search_path=public, pg_temp |
 | `available_stock(uuid[])` | TABLE(listing_id uuid, available numeric) | definer | search_path=public, pg_temp |
 | `caller_role()` | user_role | definer | search_path=public, pg_temp |
-| `commit_stock_on_confirm()` | trigger | definer | search_path=public, pg_temp |
+| `check_stock_on_confirm()` | trigger | definer | search_path=public, pg_temp |
 | `create_notification(uuid,text,jsonb,boolean)` | void | definer | search_path=public, pg_temp |
 | `decide_account_status(uuid,account_status,text)` | TABLE(role user_role, previous_status account_status, new_status account_status) | definer | search_path=public, pg_temp |
 | `fill_application_document()` | trigger | invoker | search_path=public, pg_temp |
@@ -1133,6 +1160,7 @@ Indexes:
 | `is_approved_expert()` | boolean | definer | search_path=public, pg_temp |
 | `is_seller_role(uuid)` | boolean | definer | search_path=public, pg_temp |
 | `is_suspended()` | boolean | definer | search_path=public, pg_temp |
+| `listing_availability(uuid[])` | TABLE(listing_id uuid, availability text) | definer | search_path=public, pg_temp |
 | `lock_editable_application(uuid)` | boolean | invoker | search_path=public, pg_temp |
 | `notify_account_status_changed()` | trigger | definer | search_path=public, pg_temp |
 | `notify_account_suspension_changed()` | trigger | definer | search_path=public, pg_temp |
@@ -1146,7 +1174,7 @@ Indexes:
 | `notify_payment_status_changed()` | trigger | definer | search_path=public, pg_temp |
 | `record_order_history()` | trigger | definer | search_path=public, pg_temp |
 | `record_payment_event()` | trigger | definer | search_path=public, pg_temp |
-| `reduce_stock_for_order(uuid,uuid)` | void | invoker | search_path=public, pg_temp |
+| `reopen_sold_listing()` | trigger | invoker | search_path=public, pg_temp |
 | `reset_expert_on_role_change()` | trigger | definer | search_path=public, pg_temp |
 | `rls_auto_enable()` | event_trigger | definer | search_path=pg_catalog |
 | `set_listings_seller_role()` | trigger | invoker | search_path=public, pg_temp |

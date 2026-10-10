@@ -898,7 +898,11 @@ export const marketplaceListCrops = <ThrowOnError extends boolean = false>(optio
 /**
  * List Listings
  */
-export const marketplaceListListings = <ThrowOnError extends boolean = false>(options?: Options<MarketplaceListListingsData, ThrowOnError>): RequestResult<MarketplaceListListingsResponses, MarketplaceListListingsErrors, ThrowOnError> => (options?.client ?? client).get<MarketplaceListListingsResponses, MarketplaceListListingsErrors, ThrowOnError>({ url: '/api/v1/marketplace/listings', ...options });
+export const marketplaceListListings = <ThrowOnError extends boolean = false>(options?: Options<MarketplaceListListingsData, ThrowOnError>): RequestResult<MarketplaceListListingsResponses, MarketplaceListListingsErrors, ThrowOnError> => (options?.client ?? client).get<MarketplaceListListingsResponses, MarketplaceListListingsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/marketplace/listings',
+    ...options
+});
 
 /**
  * Create Listing
@@ -947,7 +951,11 @@ export const marketplaceDeleteListing = <ThrowOnError extends boolean = false>(o
 /**
  * Get Listing
  */
-export const marketplaceGetListing = <ThrowOnError extends boolean = false>(options: Options<MarketplaceGetListingData, ThrowOnError>): RequestResult<MarketplaceGetListingResponses, MarketplaceGetListingErrors, ThrowOnError> => (options.client ?? client).get<MarketplaceGetListingResponses, MarketplaceGetListingErrors, ThrowOnError>({ url: '/api/v1/marketplace/listings/{listing_id}', ...options });
+export const marketplaceGetListing = <ThrowOnError extends boolean = false>(options: Options<MarketplaceGetListingData, ThrowOnError>): RequestResult<MarketplaceGetListingResponses, MarketplaceGetListingErrors, ThrowOnError> => (options.client ?? client).get<MarketplaceGetListingResponses, MarketplaceGetListingErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/marketplace/listings/{listing_id}',
+    ...options
+});
 
 /**
  * Update Listing

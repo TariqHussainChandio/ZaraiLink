@@ -191,7 +191,7 @@ def test_deleting_a_review_is_audited(world, api_client):
     )
     assert checkout.status_code == 200, checkout.text
     order_id = checkout.json()[0]["id"]
-    for to_status in ("confirmed", "processing", "ready", "completed"):
+    for to_status in ("confirmed", "processing", "ready", "dispatched", "completed"):
         moved = api_client("PATCH", f"/api/v1/orders/{order_id}/status", world.farmer.token, json={"to": to_status})
         assert moved.status_code == 204, moved.text
     review = api_client(
@@ -217,6 +217,7 @@ def test_resolving_a_dispute_is_audited(world, api_client):
         (world.farmer, "confirmed"),
         (world.farmer, "processing"),
         (world.farmer, "ready"),
+        (world.farmer, "dispatched"),
         (world.farmer, "completed"),
         (world.buyer, "disputed"),
         (world.admin, "refunded"),

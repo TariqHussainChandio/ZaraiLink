@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Depends
 
-from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2, require_authenticated_user
+from app.auth.dependencies import (
+    AuthenticatedUser,
+    get_optional_user,
+    require_admin,
+    require_admin_aal2,
+    require_authenticated_user,
+)
 from app.common.marketplace import service
 from app.common.marketplace.schemas import (
     Category,
@@ -34,10 +40,11 @@ async def list_listings(
     page: int = 0,
     owner_id: str | None = None,
     pg: Page = Depends(paginate_feed),
+    user: AuthenticatedUser | None = Depends(get_optional_user),
 ) -> list[dict]:
     return pg.finish(
         await service.fetch_listings(
-            category_id, search, min_price, max_price, seller_role, city, crop_name, page, owner_id
+            category_id, search, min_price, max_price, seller_role, city, crop_name, page, owner_id, user
         )
     )
 
@@ -50,8 +57,8 @@ async def list_listings_for_moderation(
 
 
 @router.get("/listings/{listing_id}", response_model=ListingWithRelations)
-async def get_listing(listing_id: str) -> dict:
-    return await service.fetch_listing_by_id(listing_id)
+async def get_listing(listing_id: str, user: AuthenticatedUser | None = Depends(get_optional_user)) -> dict:
+    return await service.fetch_listing_by_id(listing_id, user)
 
 
 @router.post("/listings", response_model=Listing)

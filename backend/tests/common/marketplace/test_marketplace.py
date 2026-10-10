@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.auth.dependencies import AuthenticatedUser, get_current_user
@@ -21,7 +22,7 @@ def test_list_listings_passes_owner_id_filter_through_to_the_service():
     with patch("app.common.marketplace.router.service.fetch_listings", return_value=[]) as mock_fetch:
         response = client.get("/api/v1/marketplace/listings", params={"owner_id": "farmer-1"})
     assert response.status_code == 200
-    mock_fetch.assert_called_once_with(None, None, None, None, None, None, None, 0, "farmer-1")
+    mock_fetch.assert_called_once_with(None, None, None, None, None, None, None, 0, "farmer-1", None)
 
 
 def test_moderation_route_matched_before_generic_listing_id_route():
@@ -70,3 +71,36 @@ def test_create_listing_without_authorization_header_is_rejected():
         json={"title": "Wheat", "price": 100, "unit": "kg", "quantity": 50},
     )
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_browsing_adds_each_listings_stock_word():
+    from app.common.marketplace import service
+
+    rows = [{"id": "l-1"}, {"id": "l-2"}]
+    with (
+        patch("app.common.marketplace.service.repo.fetch_listings", return_value=rows),
+        patch("app.common.marketplace.service.repo.fetch_availability", return_value={"l-1": "low_stock"}) as words,
+    ):
+        listings = await service.fetch_listings()
+    words.assert_called_once_with(["l-1", "l-2"], None)
+    # A listing the database gave no word for reads `unknown`, never a guess.
+    assert [listing["availability"] for listing in listings] == ["low_stock", "unknown"]
+
+
+@pytest.mark.asyncio
+async def test_browsing_never_fails_because_availability_does():
+    # The availability contract (D7): stock problems never block the marketplace; every listing reads `unknown`.
+    from postgrest.exceptions import APIError
+
+    from app.common.marketplace import service
+
+    with (
+        patch("app.common.marketplace.service.repo.fetch_listing_by_id", return_value={"id": "l-1"}),
+        patch(
+            "app.common.marketplace.service.repo.fetch_availability",
+            side_effect=APIError({"message": "timeout", "code": "57014"}),
+        ),
+    ):
+        listing = await service.fetch_listing_by_id("l-1")
+    assert listing["availability"] == "unknown"

@@ -42,6 +42,8 @@ export function SellerDashboard() {
   if (sales.isLoading || stats.isLoading) return <Spinner fullscreen />;
   const activeListings = stats.data?.activeListings ?? 0;
   const pendingOrders = stats.data?.pendingOrders ?? 0;
+  const readyToDispatch = stats.data?.readyToDispatch ?? 0;
+  const totalOrders = stats.data?.totalOrders ?? 0;
   const farmerExtra = role === 'farmer' ? farmer.data : undefined;
   const dealerExtra = role === 'dealer' ? dealer.data : undefined;
 
@@ -50,6 +52,11 @@ export function SellerDashboard() {
       <View style={styles.statsRow}>
         <StatTile label="Active Listings" value={activeListings} accent={theme.colors.module.marketplace} />
         <StatTile label="Pending Orders" value={pendingOrders} accent={theme.colors.module.orders} />
+      </View>
+      <View style={styles.statsRow}>
+        {/* D5 (A4): a ready order waits for its seller to dispatch it from the order, under View Orders. */}
+        <StatTile label="Ready to Dispatch" value={readyToDispatch} accent={theme.colors.module.orders} />
+        <StatTile label="Total Orders" value={totalOrders} accent={theme.colors.module.orders} />
       </View>
 
       {role === 'farmer' && farmerExtra ? (

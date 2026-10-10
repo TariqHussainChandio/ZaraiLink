@@ -157,6 +157,29 @@ describe('ListingDetailScreen', () => {
     expect(screen.queryByText('Add to Cart')).toBeNull();
   });
 
+  it('shows the stock word, never the listing quantity as stock (A4, SRDS §15)', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing({ availability: 'low_stock' }));
+
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
+
+    expect(await screen.findByText('Low stock')).toBeTruthy();
+    expect(screen.getByText('Rs 100 / kg')).toBeTruthy();
+    expect(screen.queryByText(/50 kg available/)).toBeNull();
+    expect(screen.getByText('Add to Cart')).toBeTruthy();
+  });
+
+  it('offers no Add to Cart for an out-of-stock listing, but still lets the buyer message the seller', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing({ availability: 'out_of_stock' }));
+
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
+
+    expect(await screen.findByText('Out of stock')).toBeTruthy();
+    expect(screen.queryByText('Add to Cart')).toBeNull();
+    expect(screen.getByText('Message Seller')).toBeTruthy();
+  });
+
   it('adds the listing to the cart for a buyer', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());

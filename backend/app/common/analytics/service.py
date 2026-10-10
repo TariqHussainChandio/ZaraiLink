@@ -57,6 +57,11 @@ def _count_pending(orders: list[dict]) -> int:
     return sum(1 for order in orders if order["status"] == "pending")
 
 
+def _count_ready(orders: list[dict]) -> int:
+    """Orders packed and waiting for the seller to dispatch them (D5, A4), when the stock leaves."""
+    return sum(1 for order in orders if order["status"] == "ready")
+
+
 async def fetch_farmer_analytics(user: AuthenticatedUser) -> dict:
     # Each read below is independent of the others (none depends on another's result), so they
     # run concurrently rather than as four sequential round trips.
@@ -85,6 +90,7 @@ async def fetch_farmer_analytics(user: AuthenticatedUser) -> dict:
         "totalListingViews": total_listing_views,
         "activeListings": _count_active(listings),
         "pendingOrders": _count_pending(orders),
+        "readyToDispatch": _count_ready(orders),
         "totalOrders": len(orders),
         "totalSales": sum(o["total"] for o in completed_orders),
         "popularProducts": _top_products(product_stats),
@@ -122,6 +128,7 @@ async def fetch_dealer_analytics(user: AuthenticatedUser) -> dict:
         "totalOrders": len(orders),
         "activeListings": _count_active(listings),
         "pendingOrders": _count_pending(orders),
+        "readyToDispatch": _count_ready(orders),
         "inventoryMovement": inventory_movement,
         "lowStockCount": sum(1 for i in inventory if i["stock_quantity"] <= i["min_stock_threshold"]),
         "bestSellers": _top_products(product_stats),

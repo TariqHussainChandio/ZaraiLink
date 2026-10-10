@@ -29,6 +29,7 @@ const analytics: DealerAnalytics = {
   totalSales: 15000,
   activeListings: 3,
   pendingOrders: 1,
+  readyToDispatch: 0,
   totalOrders: 12,
   inventoryMovement: [{ month: '2026-01', value: 40 }],
   lowStockCount: 3,

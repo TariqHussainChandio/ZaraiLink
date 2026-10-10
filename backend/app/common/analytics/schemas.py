@@ -17,6 +17,7 @@ class FarmerAnalytics(BaseModel):
     totalListingViews: int
     activeListings: int
     pendingOrders: int
+    readyToDispatch: int
     totalOrders: int
     totalSales: float
     popularProducts: list[PopularProduct]
@@ -31,6 +32,7 @@ class DealerAnalytics(BaseModel):
     totalOrders: int
     activeListings: int
     pendingOrders: int
+    readyToDispatch: int
     inventoryMovement: list[MonthlyPoint]
     lowStockCount: int
     bestSellers: list[PopularProduct]

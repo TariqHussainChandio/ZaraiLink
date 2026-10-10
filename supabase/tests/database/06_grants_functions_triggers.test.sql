@@ -71,7 +71,8 @@ select is(
     'service_role audit_logs INSERT,SELECT',
     'service_role crops SELECT',
     'service_role disease_cases INSERT,SELECT',
-    'service_role disease_predictions INSERT,SELECT'
+    'service_role disease_predictions INSERT,SELECT',
+    'service_role order_events SELECT'
   ],
   'table grants to anon, authenticated and service_role match the reviewed allow-list');
 
@@ -87,10 +88,11 @@ select is(
     'anon is_admin()',
     'anon is_approved_expert_id(uuid)',
     'anon is_suspended()',
+    'anon listing_availability(uuid[])',
     'anon set_listings_seller_role()',
     'anon set_updated_at()'
   ],
-  'the functions anon can execute are exactly the policy helpers and the trigger functions that cannot be called directly');
+  'the functions anon can execute are exactly the policy helpers, the trigger functions that cannot be called directly, and listing availability (a word per public listing, 20261019080000)');
 
 select is(
   (select array_agg('authenticated ' || p.oid::regprocedure::text order by p.oid::regprocedure::text) from pg_proc p

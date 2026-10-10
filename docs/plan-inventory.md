@@ -60,9 +60,16 @@ sign-off with fresh context.
 |---|---|---|
 | `zl-db` | Remove the admin branch from every inventory, store, supplier and movement SELECT policy; add `is_approved_dealer()` to every inventory policy; pgTAP: dealer A vs dealer B, pending vs approved dealer, admin refused | A3 contract |
 | `zl-admin` | Remove any admin screen, query or analytics that reads inventory data | — |
-| `zl-backend-core` | `require_approved_dealer` on every inventory route | A3 contract |
+| `zl-backend-core` | `require_approved_dealer` on every inventory route (built as `require_dealer`, which admits only an approved dealer through `get_current_user` since A3a) | A3 contract |
 
 **Exit:** two-dealer, pending-dealer and admin proofs through API and PostgREST; policy mutation 0 survivors.
+
+**B0 status (2026-10-05): built with A4, waiting for verification and merge.**
+`20261019090000_inventory_boundary.sql` replaces the four read policies with owner-and-approved ones and no admin
+branch. pgTAP `20261019090000_inventory_boundary`: the owner reads; another dealer, a farmer, the admin (aal1 and
+aal2), a pending and a rejected dealer read nothing; a suspended dealer still reads their own (suspended users read,
+never write). `test_a_pending_dealer_and_the_admin_reach_no_inventory_data` proves both doors; policy mutation reports
+0 survivors. No admin route, screen or analytics read inventory, so `zl-admin` had nothing to remove.
 
 ### B1 — Inventory data model
 
@@ -70,7 +77,7 @@ sign-off with fresh context.
 
 | Lane | Tasks | Needs |
 |---|---|---|
-| `zl-db` | Migrations for §2; data migration (`inventory` → products + stock at a default location per dealer; `dealer_stores` → locations; `suppliers` → inventory suppliers; `inventory_transactions` → movements with a mapped source); stock functions; pgTAP for each function (quantity checks, locking, one ledger row per change, before/after correct), and for the uniqueness that makes dispatch idempotent | B0 |
+| `zl-db` | Migrations for §2, and `listings.inventory_product_id` (moved here from A4: it points at `inventory_products`); data migration (`inventory` → products + stock at a default location per dealer; `dealer_stores` → locations; `suppliers` → inventory suppliers; `inventory_transactions` → movements with a mapped source); stock functions; pgTAP for each function (quantity checks, locking, one ledger row per change, before/after correct), and for the uniqueness that makes dispatch idempotent | B0 |
 | `zl-inventory-api` | Pydantic schemas and repository skeleton against the new tables (no routes yet), so B2 lanes can start | `zl-db` table definitions agreed |
 
 **Exit:** `supabase db reset` rebuilds everything from migrations; reconciliation identity holds on a scripted

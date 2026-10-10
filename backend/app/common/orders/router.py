@@ -2,7 +2,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, Query
 
-from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
+from app.auth.dependencies import AuthenticatedUser, require_authenticated_user, require_marketplace_buyer
 from app.common import idempotency
 from app.common.orders import service
 from app.common.orders.schemas import (
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 @router.post("/checkout", response_model=list[Order])
 async def checkout(
     request: CheckoutRequest,
-    user: AuthenticatedUser = Depends(require_authenticated_user),
+    user: AuthenticatedUser = Depends(require_marketplace_buyer),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> list[dict]:
     claim = await idempotency.begin(user, idempotency_key, "orders.checkout", idempotency.fingerprint(request))

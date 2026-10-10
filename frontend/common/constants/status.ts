@@ -19,6 +19,7 @@ import {
   Search,
   Tag,
   TriangleAlert,
+  Truck,
   type LucideIcon,
 } from 'lucide-react-native';
 import type { ReportStatus } from '../../admin';
@@ -45,6 +46,9 @@ const order: Record<OrderStatus, StatusMeta> = {
   confirmed: meta('info', Check, 'Confirmed'),
   processing: meta('info', LoaderCircle, 'Processing'),
   ready: meta('info', PackageCheck, 'Ready for dispatch'),
+  // D5 (A4): the goods have left the seller, and so has the stock. The buyer collects or receives them by whatever
+  // arrangement the two made; ZaraiLink tracks no delivery (BR-10).
+  dispatched: meta('info', Truck, 'Dispatched'),
   completed: meta('success', CircleCheck, 'Completed'),
   cancelled: meta('neutral', CircleX, 'Cancelled'),
   rejected: meta('danger', Ban, 'Rejected'),
@@ -111,7 +115,7 @@ export type StatusKind = keyof typeof STATUS;
 export type StatusOf<K extends StatusKind> = keyof (typeof STATUS)[K];
 
 /** A status's tone, icon and word. Read statuses through this, never by indexing STATUS: an installed build meets API
- * values it does not know yet (D5 adds `dispatched` in A4), and an unknown one must read as a neutral word, not crash
+ * values it does not know yet (a status added after it was built), and an unknown one must read as a neutral word, not crash
  * the screen that shows it. */
 export function statusMeta<K extends StatusKind>(kind: K, status: StatusOf<K> | string): StatusMeta {
   const table: Partial<Record<string, StatusMeta>> = STATUS[kind];

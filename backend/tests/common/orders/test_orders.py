@@ -156,7 +156,8 @@ def _order_in_status(status: str):
         ("pending", "rejected"),
         ("confirmed", "processing"),
         ("processing", "ready"),
-        ("ready", "completed"),
+        ("ready", "dispatched"),
+        ("dispatched", "completed"),
         ("pending", "payment_failed"),
     ],
 )
@@ -286,9 +287,32 @@ async def test_update_status_rejects_expired_as_a_manual_target():
 
 
 @pytest.mark.asyncio
-async def test_confirming_an_order_is_one_update_and_the_stock_commit_happens_in_the_database():
-    # The atomic stock reduction is a database trigger on pending -> confirmed (proven against a real database in
-    # test_smoke_database_guards.py); the service only sends the status change, and never calls a stock function.
+@pytest.mark.parametrize(("status", "to"), [("ready", "completed"), ("dispatched", "cancelled")])
+async def test_dispatch_cannot_be_skipped_or_undone(status, to):
+    # D5 (A4): a ready order is dispatched before it is completed, and nothing dispatched can be cancelled.
+    order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": status}
+    with _order_in_status_for(order) as mock_update, pytest.raises(HTTPException) as exc_info:
+        await service.update_order_status(SELLER_USER, "o-1", to)
+    assert exc_info.value.status_code == 422
+    mock_update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_dispatching_is_one_update_and_the_stock_and_events_happen_in_the_database():
+    # The stock cut and the outbox events are a database trigger on ready -> dispatched (proven against a real database
+    # in test_smoke_dispatch.py); the service only sends the status change.
+    order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "ready"}
+
+    with _order_in_status_for(order) as mock_update:
+        await service.update_order_status(SELLER_USER, "o-1", "dispatched")
+
+    mock_update.assert_called_once_with(SELLER_USER.access_token, "o-1", "dispatched")
+
+
+@pytest.mark.asyncio
+async def test_confirming_an_order_is_one_update_and_the_stock_check_happens_in_the_database():
+    # The stock check is a database trigger on pending -> confirmed (since A4 it only checks; dispatch takes the stock),
+    # so the service only sends the status change, and never calls a stock function.
     order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "pending"}
 
     with _order_in_status_for(order) as mock_update:
@@ -354,3 +378,21 @@ def test_update_status_request_schema_has_no_from_field():
 
     assert "from" not in UpdateOrderStatusRequest.model_fields
     assert set(UpdateOrderStatusRequest.model_fields) == {"to"}
+
+
+@pytest.mark.parametrize("role", ["expert", "admin"])
+def test_experts_and_the_admin_cannot_check_out(role):
+    # D9 (A4): only farmers, buyers and dealers buy; the database refuses the rest again (guard_orders_insert).
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        id=f"{role}-1", email=f"{role}@x.com", role=role, access_token="tok"
+    )
+    try:
+        with patch("app.common.orders.router.service.checkout") as mock_checkout:
+            response = client.post(
+                "/api/v1/orders/checkout", json={"cart_items": [{"listing_id": "l-1", "quantity": 1}]}
+            )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+    assert response.status_code == 403
+    assert response.json()["code"] == "insufficient_role"
+    mock_checkout.assert_not_called()

@@ -767,12 +767,10 @@
   ]
  },
  "POST /api/v1/orders/checkout": {
-  "kind": "auth",
+  "kind": "roles",
   "roles": [
-   "admin",
    "buyer",
    "dealer",
-   "expert",
    "farmer"
   ]
  },

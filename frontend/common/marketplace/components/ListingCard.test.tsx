@@ -33,6 +33,21 @@ describe('ListingCard', () => {
     expect(screen.getByText('Fertilizers')).toBeTruthy();
   });
 
+  it.each([
+    ['in_stock', 'In stock'],
+    ['low_stock', 'Low stock'],
+    ['out_of_stock', 'Out of stock'],
+    ['unknown', 'Stock not known'],
+  ] as const)('shows the %s stock word (A4)', async (availability, word) => {
+    await render(<ListingCard listing={{ ...baseListing, availability }} onPress={() => {}} />);
+    expect(screen.getByText(word)).toBeTruthy();
+  });
+
+  it('shows no stock word when the API sent none (the moderation list)', async () => {
+    await render(<ListingCard listing={baseListing} onPress={() => {}} />);
+    expect(screen.queryByText(/stock/i)).toBeNull();
+  });
+
   it('calls onPress when tapped', async () => {
     const onPress = jest.fn();
     await render(<ListingCard listing={baseListing} onPress={onPress} />);
