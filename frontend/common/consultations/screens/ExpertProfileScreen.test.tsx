@@ -118,7 +118,7 @@ describe('ExpertProfileScreen', () => {
   it('navigates to RequestConsultation with the expert id and prefill', async () => {
     mockFetchExpertById.mockResolvedValue(expert);
     mockFetchReviewsForExpert.mockResolvedValue([]);
-    const prefill = { subject: 'Yellow leaves', problemDescription: '', cropId: null, imageUrl: null };
+    const prefill = { subject: 'Yellow leaves', cropId: null, imageUrl: null };
     const props = makeProps(prefill);
     await renderWithQuery(<ExpertProfileScreen {...props} />);
 

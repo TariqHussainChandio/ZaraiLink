@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 Role = Literal["admin", "expert", "dealer", "farmer", "buyer"]
 ReportStatus = Literal["open", "investigating", "resolved", "dismissed"]
@@ -73,10 +73,25 @@ class ActorRef(BaseModel):
     full_name: str
 
 
+# An SRDS §51 audit event name as stored in audit_event_names. A pattern, not a closed Literal: the table also holds the
+# names of rows an older client wrote before the vocabulary existed (20261023080000_admin_moderation.sql), and those
+# rows must stay filterable. GET /admin/audit-events lists the names the filter accepts.
+AuditEventName = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*$", max_length=80)]
+
+
+class AuditEventNameEntry(BaseModel):
+    """One audit event name and the label the audit screen shows for it (SRDS §51)."""
+
+    name: str
+    label: str
+
+
 class AuditLogEntryWithActor(BaseModel):
     id: str
     actor_id: str | None
     action: str
+    # The §51 label of `action`, from audit_event_names, so the app shows the database's own words (BR-15).
+    action_label: str
     target_entity: str
     target_id: str | None
     previous_state: dict | None
@@ -84,6 +99,17 @@ class AuditLogEntryWithActor(BaseModel):
     metadata: dict | None
     created_at: str
     actor: ActorRef | None = None
+
+
+class AdminQueues(BaseModel):
+    """What waits for the admin (SRDS §14), from admin_queue_counts(): submitted dealer and expert applications, open or
+    investigating reports, disputed orders, and consultations open for over a week without an outcome."""
+
+    pending_dealer_applications: int
+    pending_expert_applications: int
+    open_reports: int
+    disputed_orders: int
+    stale_consultations: int
 
 
 class DecideAccountRequest(BaseModel):
@@ -119,3 +145,73 @@ class RequiredDocumentUpdate(BaseModel):
     is_required: bool | None = None
     active: bool | None = None
     sort_order: int | None = None
+
+
+# --- AI activity and the disease knowledge base (A6; SRDS §37)
+
+
+class AiActivityDay(BaseModel):
+    """One UTC day of the activity window."""
+
+    date: str  # ISO date, YYYY-MM-DD
+    scans: int
+    failed: int
+    low_confidence: int
+    referrals: int
+
+
+class AiActivity(BaseModel):
+    """The AI module at a glance for the last `window_days` days (SRDS §37). Counts only; no image, no farmer."""
+
+    window_days: int
+    since: str
+    scans: int
+    failed: int
+    predicted: int
+    # A predicted scan whose confidence is under LOW_CONFIDENCE_THRESHOLD: the report tells the farmer to ask an expert.
+    low_confidence: int
+    # low_confidence / predicted, 0.0 when nothing was predicted.
+    low_confidence_share: float
+    # Consultations opened from a scan (consultations.disease_case_id set): AI results routed to an expert (BR-13).
+    referrals: int
+    days: list[AiActivityDay]
+
+
+class DiseaseKnowledgeEntry(BaseModel):
+    class_label: str
+    crop: str
+    disease: str
+    is_healthy: bool
+    symptoms: list[str]
+    treatment: list[str]
+    precautions: list[str]
+    advisory: str
+    review_status: Literal["pending_review", "reviewed"]
+    reviewed_by: str | None
+    reviewed_at: str | None
+    updated_at: str
+
+
+class DiseaseKnowledgeUpdate(BaseModel):
+    """An admin's edit of one entry. class_label is the model's own label and is_healthy follows from it, so neither
+    is editable; review fields change only through the review route."""
+
+    crop: str | None = Field(default=None, min_length=1, max_length=120)
+    disease: str | None = Field(default=None, min_length=1, max_length=200)
+    symptoms: list[str] | None = Field(default=None, max_length=30)
+    treatment: list[str] | None = Field(default=None, max_length=30)
+    precautions: list[str] | None = Field(default=None, max_length=30)
+    advisory: str | None = Field(default=None, min_length=1, max_length=4000)
+
+    @model_validator(mode="after")
+    def _no_blank_text(self) -> "DiseaseKnowledgeUpdate":
+        # The table's checks reject a blank crop, disease or advisory; saying so here gives a 422 instead of a 500.
+        for name in ("crop", "disease", "advisory"):
+            value = getattr(self, name)
+            if value is not None and not value.strip():
+                raise ValueError(f"{name} cannot be blank")
+        for name in ("symptoms", "treatment", "precautions"):
+            items = getattr(self, name)
+            if items is not None and any(not item.strip() or len(item) > 1000 for item in items):
+                raise ValueError(f"every {name} line needs text, up to 1000 characters")
+        return self

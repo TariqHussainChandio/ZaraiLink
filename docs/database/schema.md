@@ -5,7 +5,7 @@
 
 What each table is for, and the business rules behind the design, are in [notes.md](notes.md).
 
-46 tables, 1 view(s), 16 enum types, 123 row-level-security policies on tables and 23 on storage objects.
+46 tables, 1 view(s), 16 enum types, 121 row-level-security policies on tables and 22 on storage objects.
 
 Realtime publishes changes of: `consultation_messages`, `messages`, `notifications`.
 
@@ -341,7 +341,7 @@ Indexes:
 
 ### `disease_knowledge`
 
-Row-level security: **on**. Grants: authenticated: delete, insert, select, update; service_role: select.
+Row-level security: **on**. Grants: authenticated: select, update; service_role: select.
 
 | Column | Type | Null | Default |
 |---|---|---|---|
@@ -366,12 +366,10 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `disease_knowledge_admin_delete` | DELETE | ( SELECT is_admin_aal2() AS is_admin_aal2) | - |
-| `disease_knowledge_admin_insert` | INSERT | - | ( SELECT is_admin_aal2() AS is_admin_aal2) |
 | `disease_knowledge_admin_update` | UPDATE | ( SELECT is_admin_aal2() AS is_admin_aal2) | ( SELECT is_admin_aal2() AS is_admin_aal2) |
 | `disease_knowledge_select_authenticated` | SELECT | true | - |
 
-Triggers: `set_disease_knowledge_updated_at`.
+Triggers: `a_guard_disease_knowledge_review`, `audit_disease_knowledge`, `set_disease_knowledge_updated_at`.
 
 ### `disease_predictions`
 
@@ -1387,6 +1385,7 @@ Indexes:
 | `apply_dispatch_event(uuid)` | text | definer | search_path=public, pg_temp |
 | `apply_order_dispatch()` | trigger | definer | search_path=public, pg_temp |
 | `audit_admin_email_change()` | trigger | definer | search_path=public, pg_temp |
+| `audit_disease_knowledge()` | trigger | definer | search_path=public, pg_temp |
 | `audit_required_documents()` | trigger | definer | search_path=public, pg_temp |
 | `available_stock(uuid[])` | TABLE(listing_id uuid, available numeric) | definer | search_path=public, pg_temp |
 | `caller_role()` | user_role | definer | search_path=public, pg_temp |
@@ -1399,6 +1398,7 @@ Indexes:
 | `guard_application_document_delete()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_consultations_insert()` | trigger | invoker | search_path="" |
 | `guard_consultations_update()` | trigger | invoker | search_path="" |
+| `guard_disease_knowledge_review()` | trigger | invoker | search_path="" |
 | `guard_experts_admin_update()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_experts_verification_status()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_inventory_references()` | trigger | definer | search_path=public, pg_temp |
@@ -1480,10 +1480,9 @@ Indexes:
 | `dealer_documents_owner_delete` | DELETE | ((bucket_id = 'dealer-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND ( SELECT is_application_editable() AS is_application_editable) AND (NOT (EXISTS ( SELECT 1 FROM dealer_documents d WHERE (d.storage_path = objects.name))))) | - |
 | `dealer_documents_owner_or_admin_read` | SELECT | ((bucket_id = 'dealer-documents'::text) AND ((owner = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))) | - |
 | `dealer_documents_owner_write` | INSERT | - | ((bucket_id = 'dealer-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND (( SELECT caller_role() AS caller_role) = 'dealer'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) |
-| `disease_images_owner_delete` | DELETE | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) | - |
 | `disease_images_owner_or_admin_read` | SELECT | ((bucket_id = 'disease-images'::text) AND ((owner = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))) | - |
 | `disease_images_owner_update` | UPDATE | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) | - |
-| `disease_images_owner_write` | INSERT | - | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved)) |
+| `disease_images_owner_write` | INSERT | - | ((bucket_id = 'disease-images'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND ( SELECT is_account_approved() AS is_account_approved) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (( SELECT caller_role() AS caller_role) = 'farmer'::user_role)) |
 | `expert_documents_owner_delete` | DELETE | ((bucket_id = 'expert-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND ( SELECT is_application_editable() AS is_application_editable) AND (NOT (EXISTS ( SELECT 1 FROM expert_documents x WHERE (x.storage_path = objects.name))))) | - |
 | `expert_documents_owner_or_admin_read` | SELECT | ((bucket_id = 'expert-documents'::text) AND ((owner = ( SELECT auth.uid() AS uid)) OR ( SELECT is_admin() AS is_admin))) | - |
 | `expert_documents_owner_write` | INSERT | - | ((bucket_id = 'expert-documents'::text) AND (owner = ( SELECT auth.uid() AS uid)) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND (( SELECT caller_role() AS caller_role) = 'expert'::user_role) AND ( SELECT is_application_editable() AS is_application_editable)) |

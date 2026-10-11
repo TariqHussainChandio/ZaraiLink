@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ImagePlus, ScanSearch } from 'lucide-react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { Button, SelectField } from '../../common/components';
 import { useTheme, type Theme } from '../../theme';
 import { useCrops } from '../../common/marketplace';
@@ -35,8 +36,12 @@ export function DiseaseUploadScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Identify a Crop Disease</Text>
-      <Text style={styles.subtitle}>Upload a clear photo of the affected leaf or plant. This is an AI advisory only — not a replacement for professional consultation.</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Identify a Crop Disease
+      </Text>
+      <Text style={styles.subtitle}>
+        Take a clear photo of the sick leaf. The app gives a best guess, not a sure answer. Ask an expert before you spray.
+      </Text>
 
       <SelectField
         label="Crop (optional)"
@@ -47,16 +52,29 @@ export function DiseaseUploadScreen() {
 
       <Text style={styles.label}>Photo</Text>
       {image?.uri ? (
-        <TouchableOpacity onPress={pickImage}>
-          <Image source={{ uri: image.uri }} style={styles.preview} />
-        </TouchableOpacity>
+        <Pressable
+          onPress={pickImage}
+          accessibilityRole="button"
+          accessibilityLabel="Your leaf photo"
+          accessibilityHint="Opens your photos to choose a different one"
+          style={({ pressed }) => [styles.photoTarget, pressed && styles.pressed]}
+        >
+          <Image source={{ uri: image.uri }} style={styles.preview} accessibilityIgnoresInvertColors />
+        </Pressable>
       ) : (
-        <TouchableOpacity style={styles.addImage} onPress={pickImage}>
+        <Pressable
+          onPress={pickImage}
+          accessibilityRole="button"
+          accessibilityLabel="Add photo"
+          accessibilityHint="Opens your photos to choose a leaf photo"
+          style={({ pressed }) => [styles.addImage, pressed && styles.pressed]}
+        >
+          <ImagePlus color={theme.colors.ink2} size={theme.size.iconLg} />
           <Text style={styles.addImageLabel}>+ Add Photo</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
-      <Button label="Analyze" onPress={onAnalyze} disabled={!image?.uri} style={styles.submit} />
+      <Button label="Analyze" icon={ScanSearch} onPress={onAnalyze} disabled={!image?.uri} style={styles.submit} />
     </ScrollView>
   );
 }
@@ -85,6 +103,11 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme)
       color: colors.ink2,
       marginBottom: space[2],
     },
+    // The photo frame gets its background from the start so the pressed colour never drops its corners (Android).
+    photoTarget: {
+      borderRadius: radius.sm,
+      backgroundColor: colors.surface,
+    },
     preview: {
       width: '100%',
       height: size.photoHero,
@@ -94,17 +117,23 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme)
     },
     addImage: {
       height: size.cardImage,
+      minHeight: size.touchMin,
+      gap: space[2],
       borderRadius: radius.sm,
       borderWidth: borders.hairline,
       borderColor: colors.line,
       borderStyle: 'dashed',
+      backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: space[3],
     },
     addImageLabel: {
-      ...typography.caption,
+      ...typography.body,
       color: colors.ink2,
+    },
+    pressed: {
+      backgroundColor: colors.surfaceSunken,
     },
     submit: {
       marginTop: space[3],

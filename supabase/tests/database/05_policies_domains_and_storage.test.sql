@@ -108,8 +108,10 @@ select tests.expect(tests.fx('E'), 'update public.expert_verifications set revie
 select tests.expect(tests.fx('B'), 'select id from public.disease_cases where id = ' || tests.l('DC1'), 'rows:1', 'disease_cases: the owner reads their case');
 select tests.expect(tests.fx('B2'), 'select id from public.disease_cases where id = ' || tests.l('DC1'), 'rows:0', 'disease_cases: another user does not');
 select tests.expect(tests.fx('A'), 'select id from public.disease_cases where id = ' || tests.l('DC1'), 'rows:1', 'disease_cases: an admin does');
-select tests.expect(tests.fx('B'), 'insert into public.disease_cases (user_id, storage_path) values (' || tests.l('B') || ', ' || quote_literal(tests.fx('B')::text || '/new.jpg') || ')', 'n:1', 'disease_cases: a user creates a case');
-select tests.expect(tests.fx('B'), 'insert into public.disease_cases (user_id, storage_path) values (' || tests.l('B2') || $$, 'x.jpg')$$, 'err:42501', 'disease_cases: cannot create one for someone else');
+-- D11 (20261022080000): only a farmer creates a case, so the owner and suspension refusals use farmers too; the role
+-- refusals (buyer, dealer, expert, admin) and a suspended farmer are in 20261022080000_ai_advisory.test.sql.
+select tests.expect(tests.fx('F'), 'insert into public.disease_cases (user_id, storage_path) values (' || tests.l('F') || ', ' || quote_literal(tests.fx('F')::text || '/new.jpg') || ')', 'n:1', 'disease_cases: a farmer creates a case');
+select tests.expect(tests.fx('F'), 'insert into public.disease_cases (user_id, storage_path) values (' || tests.l('F2') || $$, 'x.jpg')$$, 'err:42501', 'disease_cases: cannot create one for someone else');
 select tests.expect(tests.fx('S'), 'insert into public.disease_cases (user_id, storage_path) values (' || tests.l('S') || $$, 'x.jpg')$$, 'err:42501', 'disease_cases: a suspended user cannot');
 select tests.expect(tests.fx('B'), $$update public.disease_cases set storage_path = 'moved' where id = $$ || tests.l('DC1'), 'err:42501', 'disease_cases: a case is immutable through the API');
 select tests.expect(tests.fx('B'), 'select id from public.disease_predictions where id = ' || tests.l('DP1'), 'rows:1', 'disease_predictions: the case owner reads the result');
@@ -130,7 +132,7 @@ select tests.expect(tests.fx('B'), $$update public.reports set status = 'dismiss
 insert into storage.objects (bucket_id, name, owner) values
   ('avatars', tests.fx('B')::text || '/a.png', tests.fx('B')),
   ('listing-images', tests.fx('F')::text || '/l.png', tests.fx('F')),
-  ('disease-images', tests.fx('B')::text || '/leaf.png', tests.fx('B')),
+  ('disease-images', tests.fx('F')::text || '/leaf.png', tests.fx('F')),
   ('expert-documents', tests.fx('E')::text || '/cv.pdf', tests.fx('E')),
   ('message-attachments', tests.fx('C1')::text || '/' || tests.fx('B')::text || '/m.png', tests.fx('B')),
   ('consultation-attachments', tests.fx('CONS1')::text || '/c.png', tests.fx('B'));
@@ -155,16 +157,17 @@ select tests.expect(tests.fx('F'), $$update storage.objects set metadata = '{}':
 select tests.expect(tests.fx('F2'), $$update storage.objects set metadata = '{}'::jsonb where bucket_id = 'listing-images' and owner = $$ || tests.l('F'), 'n:0', 'listing-images: another user cannot');
 select tests.expect(tests.fx('F2'), $$delete from storage.objects where bucket_id = 'listing-images' and owner = $$ || tests.l('F'), 'n:0', 'listing-images: another user cannot delete');
 select tests.expect(tests.fx('F'), $$delete from storage.objects where bucket_id = 'listing-images' and owner = $$ || tests.l('F'), 'n:2', 'listing-images: the owner deletes');
-select tests.expect(tests.fx('B'), $$select id from storage.objects where bucket_id = 'disease-images' and owner in ($$ || tests.l('B') || ',' || tests.l('F') || ',' || tests.l('E') || ')', 'rows:1', 'disease-images: the owner reads their photo');
+select tests.expect(tests.fx('F'), $$select id from storage.objects where bucket_id = 'disease-images' and owner in ($$ || tests.l('B') || ',' || tests.l('F') || ',' || tests.l('E') || ')', 'rows:1', 'disease-images: the owner reads their photo');
 select tests.expect(tests.fx('B2'), $$select id from storage.objects where bucket_id = 'disease-images' and owner in ($$ || tests.l('B') || ',' || tests.l('F') || ',' || tests.l('E') || ')', 'rows:0', 'disease-images: private to others');
 select tests.expect(null, $$select id from storage.objects where bucket_id = 'disease-images' and owner in ($$ || tests.l('B') || ',' || tests.l('F') || ',' || tests.l('E') || ')', 'err:42501', 'disease-images: closed to anon');
 select tests.expect(tests.fx('A'), $$select id from storage.objects where bucket_id = 'disease-images' and owner in ($$ || tests.l('B') || ',' || tests.l('F') || ',' || tests.l('E') || ')', 'rows:1', 'disease-images: an admin reads');
-select tests.expect(tests.fx('B'), $$insert into storage.objects (bucket_id, name, owner) values ('disease-images', $$ || quote_literal(tests.fx('B')::text || '/leaf2.png') || ', ' || tests.l('B') || ')', 'n:1', 'disease-images: an owner uploads into their own folder');
-select tests.expect(tests.fx('B'), $$insert into storage.objects (bucket_id, name, owner) values ('disease-images', $$ || quote_literal(tests.fx('F')::text || '/leaf.png') || ', ' || tests.l('B') || ')', 'err:42501', 'disease-images: not into another user''s folder');
-select tests.expect(tests.fx('B'), $$update storage.objects set metadata = '{}'::jsonb where bucket_id = 'disease-images' and owner = $$ || tests.l('B'), 'n:2', 'disease-images: the owner updates');
+select tests.expect(tests.fx('F'), $$insert into storage.objects (bucket_id, name, owner) values ('disease-images', $$ || quote_literal(tests.fx('F')::text || '/leaf2.png') || ', ' || tests.l('F') || ')', 'n:1', 'disease-images: a farmer uploads into their own folder');
+select tests.expect(tests.fx('B'), $$insert into storage.objects (bucket_id, name, owner) values ('disease-images', $$ || quote_literal(tests.fx('B')::text || '/leaf.png') || ', ' || tests.l('B') || ')', 'err:42501', 'disease-images: a buyer cannot upload, even into their own folder (D11, 20261022080000)');
+select tests.expect(tests.fx('F'), $$insert into storage.objects (bucket_id, name, owner) values ('disease-images', $$ || quote_literal(tests.fx('F2')::text || '/leaf.png') || ', ' || tests.l('F') || ')', 'err:42501', 'disease-images: not into another user''s folder');
+select tests.expect(tests.fx('F'), $$update storage.objects set metadata = '{}'::jsonb where bucket_id = 'disease-images' and owner = $$ || tests.l('F'), 'n:2', 'disease-images: the owner updates');
 select tests.expect(tests.fx('B2'), $$update storage.objects set metadata = '{}'::jsonb where bucket_id = 'disease-images'$$, 'n:0', 'disease-images: another user cannot');
 select tests.expect(tests.fx('B2'), $$delete from storage.objects where bucket_id = 'disease-images'$$, 'n:0', 'disease-images: another user cannot delete');
-select tests.expect(tests.fx('B'), $$delete from storage.objects where bucket_id = 'disease-images' and owner = $$ || tests.l('B'), 'n:2', 'disease-images: the owner deletes');
+select tests.expect(tests.fx('F'), $$delete from storage.objects where bucket_id = 'disease-images' and owner = $$ || tests.l('F'), 'n:0', 'disease-images: nor does the owner delete (a case keeps its photo; 20261022080000)');
 select tests.expect(tests.fx('E'), $$select id from storage.objects where bucket_id = 'expert-documents' and owner in ($$ || tests.l('B') || ',' || tests.l('F') || ',' || tests.l('E') || ')', 'rows:1', 'expert-documents: the owner reads their document');
 select tests.expect(tests.fx('B'), $$select id from storage.objects where bucket_id = 'expert-documents' and owner in ($$ || tests.l('B') || ',' || tests.l('F') || ',' || tests.l('E') || ')', 'rows:0', 'expert-documents: private to others');
 select tests.expect(tests.fx('A'), $$select id from storage.objects where bucket_id = 'expert-documents' and owner in ($$ || tests.l('B') || ',' || tests.l('F') || ',' || tests.l('E') || ')', 'rows:1', 'expert-documents: an admin reads (verification)');

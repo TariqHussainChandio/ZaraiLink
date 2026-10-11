@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components';
+import { EmptyState, ScreenState, SkeletonCard } from '../../components';
 import { ExpertCard } from '../components/ExpertCard';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
 import { useExperts } from '../../../expert';
@@ -13,8 +13,8 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { specialization, prefill } = route.params ?? {};
-  const { data: experts = [], isPending: loading, error, refetch } = useExperts(specialization);
-  const load = () => refetch();
+  const query = useExperts(specialization);
+  const { refetch } = query;
 
   useFocusEffect(
     useCallback(() => {
@@ -22,37 +22,36 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
     }, [refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
-  if (error && experts.length === 0) {
-    return (
-      <EmptyState
-        title="Couldn't load experts"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <FlashList
-        data={experts}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <ExpertCard
-            expert={item}
-            onPress={() => navigation.navigate(CONSULTATIONS_ROUTES.ExpertProfile, { expertId: item.id, prefill })}
+      <ScreenState
+        query={query}
+        errorTitle="Couldn't load experts"
+        skeleton={
+          <View style={styles.list}>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </View>
+        }
+      >
+        {experts => (
+          <FlashList
+            data={experts}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => (
+              <ExpertCard
+                expert={item}
+                onPress={() => navigation.navigate(CONSULTATIONS_ROUTES.ExpertProfile, { expertId: item.id, prefill })}
+              />
+            )}
+            ListEmptyComponent={
+              <EmptyState title="No verified experts yet" description="Check back soon for available experts." />
+            }
           />
         )}
-        ListEmptyComponent={
-          <EmptyState
-            title="No verified experts yet"
-            description="Check back soon for available experts."
-          />
-        }
-      />
+      </ScreenState>
     </View>
   );
 }

@@ -724,6 +724,8 @@ transaction as the event; a listing with no inventory row loses its own quantity
 **Exit:** scan → report → consult → expert sees the full case → expert assessment → farmer sees both, on the
 emulator against the real API.
 
+> **Status (2026-10-11): done, open items below.** Migration `20261022080000_ai_advisory.sql`; pgTAP (`20261022080000_ai_advisory`, policy mutation on every `disease` policy 0 survivors), backend unit and real-stack (`test_smoke_ai_advisory.py`, `test_smoke_consultation_assessments.py`), Jest AI, consultation and admin AI suites pass; emulator run of the exit path. Fresh-context verifier: VERIFIED WITH FINDINGS (Medium: unaudited knowledge insert/delete, a healthy result worded as a diagnosis; Low: review rule only in the API, a missing photo gave 500, a 24-hour photo link), all fixed. Open: the agronomist review of the 38 entries (outside dependency) and a licence-clear real leaf photo for the real-photo test.
+
 ### A7 — Admin moderation and audit
 
 **Goal:** SRDS §14, §51, §53.10.

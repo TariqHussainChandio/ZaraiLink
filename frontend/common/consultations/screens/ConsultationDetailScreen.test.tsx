@@ -4,6 +4,8 @@ import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ConsultationDetailScreen } from './ConsultationDetailScreen';
 import {
+  createConsultationAssessment,
+  fetchConsultationAssessments,
   fetchConsultationById,
   fetchConsultationMessages,
   resolveConsultationAttachmentUrls,
@@ -15,6 +17,7 @@ import { createConsultationReview, fetchReviewByConsultationId } from '../../rev
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../../state/authStore';
 import type { ConsultationMessageWithListing, ConsultationWithRelations } from '../../../expert/types/expert';
+import type { AiCaseSummary, ConsultationAssessment, ConsultationDetail } from '../types/consultations';
 
 const mockRouteParams = { consultationId: 'c1' };
 const mockGetParent = jest.fn();
@@ -36,6 +39,8 @@ jest.mock('@react-navigation/native', () => {
 });
 
 jest.mock('../services/consultationService', () => ({
+  createConsultationAssessment: jest.fn(),
+  fetchConsultationAssessments: jest.fn(),
   fetchConsultationById: jest.fn(),
   fetchConsultationMessages: jest.fn(),
   resolveConsultationAttachmentUrls: jest.fn(),
@@ -62,6 +67,41 @@ const mockUpdateConsultationStatus = updateConsultationStatus as jest.Mock;
 const mockFetchListings = fetchListings as jest.Mock;
 const mockCreateConsultationReview = createConsultationReview as jest.Mock;
 const mockFetchReviewByConsultationId = fetchReviewByConsultationId as jest.Mock;
+const mockFetchConsultationAssessments = fetchConsultationAssessments as jest.Mock;
+const mockCreateConsultationAssessment = createConsultationAssessment as jest.Mock;
+
+const aiReport: AiCaseSummary = {
+  case_id: 'case-1',
+  image_url: 'https://signed.example/leaf.jpg',
+  report: {
+    predicted_disease: 'Tomato — Early blight',
+    class_label: 'Tomato___Early_blight',
+    crop: 'Tomato',
+    disease: 'Early blight',
+    confidence_score: 0.91,
+    confidence_band: 'confident',
+    is_healthy: false,
+    symptoms: ['Brown rings on older leaves'],
+    treatment: [],
+    precautions: [],
+    advisory: 'Remove the affected leaves.',
+    review_status: 'pending_review',
+    disclaimer: 'This AI result is advisory only. An expert should confirm it.',
+    model_version: null,
+    created_at: '2026-10-11T09:00:00.000Z',
+  },
+};
+
+const assessment = (overrides: Partial<ConsultationAssessment> = {}): ConsultationAssessment => ({
+  id: 'a1',
+  consultation_id: 'c1',
+  expert_id: 'expert1',
+  verdict: 'agree',
+  diagnosis: null,
+  recommendations: 'Spray copper fungicide weekly.',
+  created_at: '2026-10-11T10:00:00.000Z',
+  ...overrides,
+});
 
 const consultation: ConsultationWithRelations = {
   id: 'c1',
@@ -81,8 +121,13 @@ const consultation: ConsultationWithRelations = {
   crop: { id: 'crop1', name: 'Wheat' },
 };
 
-function setup(overrides: Partial<ConsultationWithRelations> = {}, messages: ConsultationMessageWithListing[] = []) {
+function setup(
+  overrides: Partial<ConsultationDetail> = {},
+  messages: ConsultationMessageWithListing[] = [],
+  assessments: ConsultationAssessment[] = [],
+) {
   mockFetchConsultationById.mockResolvedValue({ ...consultation, ...overrides });
+  mockFetchConsultationAssessments.mockResolvedValue(assessments);
   mockFetchConsultationMessages.mockResolvedValue(messages);
   mockFetchReviewByConsultationId.mockResolvedValue(null);
   mockResolveAttachmentUrls.mockResolvedValue({});
@@ -99,6 +144,8 @@ describe('ConsultationDetailScreen', () => {
     mockFetchListings.mockReset();
     mockCreateConsultationReview.mockReset();
     mockFetchReviewByConsultationId.mockReset();
+    mockFetchConsultationAssessments.mockReset();
+    mockCreateConsultationAssessment.mockReset();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -128,14 +175,14 @@ describe('ConsultationDetailScreen', () => {
     expect(mockUpdateConsultationStatus).toHaveBeenCalledWith('c1', 'accepted');
   });
 
-  it('shows an alert when advancing the status fails', async () => {
+  it('shows a toast when advancing the status fails', async () => {
     setup();
     mockUpdateConsultationStatus.mockRejectedValue(new Error('Server unavailable'));
     useAuthStore.setState({ user: { id: 'expert1' } as never });
     await renderWithQuery(<ConsultationDetailScreen />);
 
     await fireEvent.press(await screen.findByText('Accept'));
-    expect(Alert.alert).toHaveBeenCalledWith('Could not update consultation', 'Server unavailable');
+    expect(await screen.findByText(/Server unavailable/)).toBeTruthy();
   });
 
   it('lets the requester cancel a pending request', async () => {
@@ -241,6 +288,133 @@ describe('ConsultationDetailScreen', () => {
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Marketplace, {
       screen: MARKETPLACE_ROUTES.ListingDetail,
       params: { listingId: 'l1' },
+    });
+  });
+
+  describe('AI assessment and Expert Assessment (A6)', () => {
+    it('shows the AI card with its disclaimer apart from the expert panel', async () => {
+      setup({ status: 'accepted', disease_case_id: 'case-1', ai_report: aiReport }, [], [assessment()]);
+      useAuthStore.setState({ user: { id: 'requester1' } as never });
+      await renderWithQuery(<ConsultationDetailScreen />);
+
+      expect(await screen.findByText('AI assessment')).toBeTruthy();
+      expect(screen.getByLabelText('AI finding: Early blight')).toBeTruthy();
+      expect(screen.getByText(/Confident \(91\s?%\)/)).toBeTruthy();
+      expect(screen.getByText('Pending agronomist review')).toBeTruthy();
+      expect(screen.getByText(aiReport.report.disclaimer)).toBeTruthy();
+      expect(screen.getByLabelText('Photo of the plant the AI assessed')).toBeTruthy();
+
+      expect(screen.getByText('Expert assessment')).toBeTruthy();
+      expect(screen.getByText('By Dr. Ahsan')).toBeTruthy();
+      expect(await screen.findByText('Agrees with AI')).toBeTruthy();
+      expect(screen.getByText('Spray copper fungicide weekly.')).toBeTruthy();
+      expect(mockFetchConsultationAssessments).toHaveBeenCalledWith('c1');
+      // The requester reads both but cannot assess.
+      expect(screen.queryByText('Add assessment')).toBeNull();
+    });
+
+    it('words a healthy AI result as the AI’s estimate and keeps the advisory label (BR-13)', async () => {
+      const healthyReport: AiCaseSummary = {
+        ...aiReport,
+        report: { ...aiReport.report, is_healthy: true, disease: 'Healthy' },
+      };
+      setup({ status: 'accepted', disease_case_id: 'case-1', ai_report: healthyReport });
+      useAuthStore.setState({ user: { id: 'requester1' } as never });
+      await renderWithQuery(<ConsultationDetailScreen />);
+
+      expect(await screen.findByText('AI assessment')).toBeTruthy();
+      expect(screen.getByLabelText('AI finding: AI found no sign of disease')).toBeTruthy();
+      expect(screen.queryByText('No disease found')).toBeNull();
+      expect(screen.getByText('AI advisory')).toBeTruthy();
+      expect(screen.getByText(aiReport.report.disclaimer)).toBeTruthy();
+      expect(screen.getByText('Expert assessment')).toBeTruthy();
+    });
+
+    it('shows no AI card without an attached case, and an empty expert panel', async () => {
+      setup({ status: 'accepted', ai_report: null });
+      useAuthStore.setState({ user: { id: 'requester1' } as never });
+      await renderWithQuery(<ConsultationDetailScreen />);
+
+      expect(await screen.findByText('The expert has not given an assessment yet.')).toBeTruthy();
+      expect(screen.queryByText('AI assessment')).toBeNull();
+    });
+
+    it('lists the newest assessment first, with the corrected diagnosis', async () => {
+      setup({ status: 'in_progress', ai_report: aiReport }, [], [
+        assessment({ id: 'a1', created_at: '2026-10-11T10:00:00.000Z' }),
+        assessment({
+          id: 'a2',
+          verdict: 'correct',
+          diagnosis: 'Septoria leaf spot',
+          recommendations: null,
+          created_at: '2026-10-11T12:00:00.000Z',
+        }),
+      ]);
+      useAuthStore.setState({ user: { id: 'requester1' } as never });
+      await renderWithQuery(<ConsultationDetailScreen />);
+
+      await screen.findByText('Corrected diagnosis');
+      expect(screen.getByText('Septoria leaf spot')).toBeTruthy();
+      const rendered = JSON.stringify(screen.toJSON());
+      expect(rendered.indexOf('Corrected diagnosis')).toBeLessThan(rendered.indexOf('Agrees with AI'));
+    });
+
+    it('does not offer Add assessment before the expert accepts', async () => {
+      setup({ status: 'requested' });
+      useAuthStore.setState({ user: { id: 'expert1' } as never });
+      await renderWithQuery(<ConsultationDetailScreen />);
+      await screen.findByText('Accept');
+      expect(screen.queryByText('Add assessment')).toBeNull();
+    });
+
+    it('offers Add assessment to the assigned expert once accepted', async () => {
+      setup({ status: 'accepted' });
+      useAuthStore.setState({ user: { id: 'expert1' } as never });
+      await renderWithQuery(<ConsultationDetailScreen />);
+      expect(await screen.findByText('Add assessment')).toBeTruthy();
+    });
+
+    it('lets the assigned expert add an assessment, asking for a diagnosis when correcting', async () => {
+      setup({ status: 'in_progress', ai_report: aiReport });
+      mockCreateConsultationAssessment.mockResolvedValue(
+        assessment({ id: 'a3', verdict: 'correct', diagnosis: 'Septoria leaf spot' }),
+      );
+      useAuthStore.setState({ user: { id: 'expert1' } as never });
+      await renderWithQuery(<ConsultationDetailScreen />);
+
+      await fireEvent.press(await screen.findByText('Add assessment'));
+      await fireEvent.press(screen.getByText('Save assessment'));
+      expect(await screen.findByText('Choose a verdict')).toBeTruthy();
+
+      await fireEvent.press(screen.getByText('Corrected diagnosis'));
+      await fireEvent.press(screen.getByText('Save assessment'));
+      expect(await screen.findByText('Enter your diagnosis')).toBeTruthy();
+      expect(mockCreateConsultationAssessment).not.toHaveBeenCalled();
+
+      await fireEvent.changeText(screen.getByLabelText('Diagnosis'), '  Septoria leaf spot ');
+      await fireEvent.press(screen.getByText('Save assessment'));
+
+      expect(mockCreateConsultationAssessment).toHaveBeenCalledWith('c1', {
+        verdict: 'correct',
+        diagnosis: 'Septoria leaf spot',
+        recommendations: null,
+      });
+      expect(await screen.findByText('Assessment saved')).toBeTruthy();
+    });
+
+    it('keeps the sheet open with the server refusal when saving fails', async () => {
+      const refusal = 'Only the assigned expert can assess an accepted or in-progress consultation';
+      setup({ status: 'accepted' });
+      mockCreateConsultationAssessment.mockRejectedValue(new Error(refusal));
+      useAuthStore.setState({ user: { id: 'expert1' } as never });
+      await renderWithQuery(<ConsultationDetailScreen />);
+
+      await fireEvent.press(await screen.findByText('Add assessment'));
+      await fireEvent.press(screen.getByText('Agrees with AI'));
+      await fireEvent.press(screen.getByText('Save assessment'));
+
+      expect(await screen.findByText('Could not save the assessment')).toBeTruthy();
+      expect(screen.getByText(refusal)).toBeTruthy();
     });
   });
 });

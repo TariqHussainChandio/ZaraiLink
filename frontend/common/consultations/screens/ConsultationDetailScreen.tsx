@@ -1,8 +1,8 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { Ban, Check, CircleCheck, ClipboardList, FileQuestion, Lock, Play, Send, ShoppingBag, Star, X } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -11,13 +11,28 @@ import {
   View,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, Card, SelectField, Sheet, Spinner, StatusBadge, TextField } from '../../components';
+import {
+  Button,
+  Card,
+  ScreenState,
+  SelectField,
+  Sheet,
+  SkeletonCard,
+  SkeletonList,
+  StatusBadge,
+  TextField,
+  useToast,
+} from '../../components';
+import { AddAssessmentSheet } from '../components/AddAssessmentSheet';
+import { AiAssessmentCard } from '../components/AiAssessmentCard';
 import { ConsultationMessageBubble } from '../components/ConsultationMessageBubble';
+import { ExpertAssessmentPanel } from '../components/ExpertAssessmentPanel';
 import { ChatInput } from '../../messaging';
 import { RatingStars } from '../../reviews';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
 import {
   useConsultation,
+  useConsultationAssessments,
   useConsultationAttachmentUrls,
   useConsultationMessages,
   useConsultationReview,
@@ -39,14 +54,16 @@ export function ConsultationDetailScreen() {
   const { consultationId } = useRoute().params as { consultationId: string };
   const navigation = useNavigation<any>();
   const userId = useAuthStore(state => state.user?.id);
+  const toast = useToast();
 
   const consultationQuery = useConsultation(consultationId);
   const messagesQuery = useConsultationMessages(consultationId);
   const reviewQuery = useConsultationReview(consultationId);
+  const assessmentsQuery = useConsultationAssessments(consultationId);
   const consultation = consultationQuery.data;
   const messages = useMemo(() => messagesQuery.data ?? [], [messagesQuery.data]);
   const review = reviewQuery.data ?? null;
-  const loading = consultationQuery.isPending || messagesQuery.isPending;
+  const assessments = assessmentsQuery.data ?? [];
   const attachmentPaths = useMemo(
     () => [...(consultation?.images ?? []), ...messages.flatMap(m => m.attachments)],
     [consultation, messages],
@@ -66,20 +83,48 @@ export function ConsultationDetailScreen() {
   const [reviewVisible, setReviewVisible] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const [assessmentVisible, setAssessmentVisible] = useState(false);
 
   // Coming back to the consultation shows a status change or messages that arrived meanwhile.
   const { refetch: refetchConsultation } = consultationQuery;
   const { refetch: refetchMessages } = messagesQuery;
   const { refetch: refetchReview } = reviewQuery;
+  const { refetch: refetchAssessments } = assessmentsQuery;
   useFocusEffect(
     useCallback(() => {
       refetchConsultation();
       refetchMessages();
       refetchReview();
-    }, [refetchConsultation, refetchMessages, refetchReview]),
+      refetchAssessments();
+    }, [refetchConsultation, refetchMessages, refetchReview, refetchAssessments]),
   );
 
-  if (loading || !consultation) return <Spinner fullscreen />;
+  const skeleton = (
+    <View style={styles.details}>
+      <SkeletonCard />
+      <SkeletonList count={3} />
+    </View>
+  );
+  // Each guard ends in content, a Retry banner or "not found": a failed load never leaves the screen spinning.
+  if (!consultation) {
+    return (
+      <View style={styles.flex}>
+        <ScreenState
+          query={consultationQuery}
+          errorTitle="Couldn't load this consultation"
+          empty={{ title: 'Consultation not found', description: 'It may have been removed.', icon: FileQuestion }}
+          skeleton={skeleton}
+        />
+      </View>
+    );
+  }
+  if (messagesQuery.data === undefined) {
+    return (
+      <View style={styles.flex}>
+        <ScreenState query={messagesQuery} errorTitle="Couldn't load the messages" skeleton={skeleton} />
+      </View>
+    );
+  }
 
   const isRequester = consultation.user_id === userId;
   const isExpert = consultation.expert_id === userId;
@@ -91,7 +136,7 @@ export function ConsultationDetailScreen() {
     try {
       await statusMutation.mutateAsync(to);
     } catch (error) {
-      Alert.alert('Could not update consultation', errorMessage(error));
+      toast.error(`Could not update the consultation. ${errorMessage(error)}`);
     }
   };
 
@@ -113,8 +158,9 @@ export function ConsultationDetailScreen() {
       });
       setRecommendVisible(false);
       setSelectedListingId(null);
+      toast.success('Recommendation sent');
     } catch (error) {
-      Alert.alert('Could not send the recommendation', errorMessage(error));
+      toast.error(`Could not send the recommendation. ${errorMessage(error)}`);
     }
   };
 
@@ -123,8 +169,9 @@ export function ConsultationDetailScreen() {
     try {
       await reviewMutation.mutateAsync({ rating: reviewRating, comment: reviewComment || null });
       setReviewVisible(false);
+      toast.success('Review submitted');
     } catch (error) {
-      Alert.alert('Could not submit review', errorMessage(error));
+      toast.error(`Could not submit the review. ${errorMessage(error)}`);
     }
   };
 
@@ -135,6 +182,9 @@ export function ConsultationDetailScreen() {
   const canCancel = isRequester && ['requested', 'accepted'].includes(consultation.status);
   const canClose = isRequester && consultation.status === 'resolved';
   const canReview = isRequester && consultation.status === 'resolved' && !review;
+  // The server allows only the assigned expert while the consultation is open (403 otherwise); this only hides the button.
+  const canAssess = isExpert && ['accepted', 'in_progress'].includes(consultation.status);
+  const expertName = consultation.expert?.full_name || 'the expert';
 
   return (
     <KeyboardAvoidingView
@@ -164,7 +214,9 @@ export function ConsultationDetailScreen() {
           ListHeaderComponent={
             <View style={styles.details}>
               <View style={styles.headerRow}>
-                <Text style={styles.subject}>{consultation.subject}</Text>
+                <Text style={styles.subject} accessibilityRole="header">
+                  {consultation.subject}
+                </Text>
                 <StatusBadge kind="consultation" status={consultation.status} />
               </View>
               <Text style={styles.meta}>
@@ -187,15 +239,42 @@ export function ConsultationDetailScreen() {
                 <View style={styles.imageRow}>
                   {consultation.images.map(path =>
                     attachmentUrls[path] ? (
-                      <Image key={path} source={{ uri: attachmentUrls[path] }} style={styles.image} />
+                      <Image
+                        key={path}
+                        source={{ uri: attachmentUrls[path] }}
+                        style={styles.image}
+                        accessible
+                        accessibilityRole="image"
+                        accessibilityLabel="Photo of the problem"
+                      />
                     ) : null,
                   )}
                 </View>
               ) : null}
 
+              {consultation.ai_report ? <AiAssessmentCard summary={consultation.ai_report} /> : null}
+
+              {/* SRDS §35: the expert's answer is its own panel, never merged into the AI card above. */}
+              <ExpertAssessmentPanel
+                assessments={assessments}
+                expertName={expertName}
+                action={
+                  canAssess ? (
+                    <Button
+                      label="Add assessment"
+                      icon={ClipboardList}
+                      variant="secondary"
+                      onPress={() => setAssessmentVisible(true)}
+                    />
+                  ) : undefined
+                }
+              />
+
               {review ? (
                 <Card style={styles.reviewCard}>
-                  <Text style={styles.reviewTitle}>Your Review</Text>
+                  <Text style={styles.reviewTitle} accessibilityRole="header">
+                    Your Review
+                  </Text>
                   <RatingStars value={review.rating} />
                   {review.comment ? <Text style={styles.description}>{review.comment}</Text> : null}
                 </Card>
@@ -205,6 +284,7 @@ export function ConsultationDetailScreen() {
                 {canAccept ? (
                   <Button
                     label="Accept"
+                    icon={Check}
                     loading={updating}
                     onPress={() => advance('accepted')}
                     style={styles.action}
@@ -213,6 +293,7 @@ export function ConsultationDetailScreen() {
                 {canReject ? (
                   <Button
                     label="Reject"
+                    icon={X}
                     variant="danger"
                     loading={updating}
                     onPress={() => advance('rejected')}
@@ -222,6 +303,7 @@ export function ConsultationDetailScreen() {
                 {canStart ? (
                   <Button
                     label="Start Working"
+                    icon={Play}
                     loading={updating}
                     onPress={() => advance('in_progress')}
                     style={styles.action}
@@ -230,6 +312,7 @@ export function ConsultationDetailScreen() {
                 {canResolve ? (
                   <Button
                     label="Mark Resolved"
+                    icon={CircleCheck}
                     loading={updating}
                     onPress={() => advance('resolved')}
                     style={styles.action}
@@ -238,6 +321,7 @@ export function ConsultationDetailScreen() {
                 {canCancel ? (
                   <Button
                     label="Cancel Request"
+                    icon={Ban}
                     variant="danger"
                     loading={updating}
                     onPress={() => advance('cancelled')}
@@ -247,6 +331,7 @@ export function ConsultationDetailScreen() {
                 {canClose ? (
                   <Button
                     label="Close Consultation"
+                    icon={Lock}
                     loading={updating}
                     onPress={() => advance('closed')}
                     style={styles.action}
@@ -255,6 +340,7 @@ export function ConsultationDetailScreen() {
                 {canReview ? (
                   <Button
                     label="Write a Review"
+                    icon={Star}
                     variant="secondary"
                     onPress={() => setReviewVisible(true)}
                     style={styles.action}
@@ -263,6 +349,7 @@ export function ConsultationDetailScreen() {
                 {isExpert ? (
                   <Button
                     label="Recommend a Product"
+                    icon={ShoppingBag}
                     variant="secondary"
                     onPress={openRecommend}
                     style={styles.action}
@@ -275,19 +362,23 @@ export function ConsultationDetailScreen() {
         <ChatInput onSend={onSend} sending={sending} />
       </View>
 
-      <Sheet visible={recommendVisible} onClose={() => setRecommendVisible(false)}>
-        <Text style={styles.sheetTitle}>Recommend a Product</Text>
+      <Sheet visible={recommendVisible} onClose={() => setRecommendVisible(false)} title="Recommend a Product">
         <SelectField
           label="Listing"
           value={selectedListingId}
           options={listingOptions.map(l => ({ id: l.id, label: l.title }))}
           onSelect={setSelectedListingId}
         />
-        <Button label="Send Recommendation" loading={sending} onPress={onSendRecommendation} />
+        <Button label="Send Recommendation" icon={Send} loading={sending} onPress={onSendRecommendation} />
       </Sheet>
 
-      <Sheet visible={reviewVisible} onClose={() => setReviewVisible(false)}>
-        <Text style={styles.sheetTitle}>Rate this Consultation</Text>
+      <AddAssessmentSheet
+        consultationId={consultationId}
+        visible={assessmentVisible}
+        onClose={() => setAssessmentVisible(false)}
+      />
+
+      <Sheet visible={reviewVisible} onClose={() => setReviewVisible(false)} title="Rate this Consultation">
         <View style={styles.starsRow}>
           <RatingStars value={reviewRating} size={theme.size.iconLg} onChange={setReviewRating} />
         </View>
@@ -298,7 +389,7 @@ export function ConsultationDetailScreen() {
           multiline
           numberOfLines={3}
         />
-        <Button label="Submit Review" loading={submittingReview} onPress={onSubmitReview} />
+        <Button label="Submit Review" icon={Star} loading={submittingReview} onPress={onSubmitReview} />
       </Sheet>
     </KeyboardAvoidingView>
   );
@@ -368,11 +459,6 @@ function makeStyles({ colors, space, radius, typography, fontWeight, size, borde
     },
     action: {
       marginTop: space[2],
-    },
-    sheetTitle: {
-      ...typography.title,
-      color: colors.ink,
-      marginBottom: space[3],
     },
     starsRow: {
       marginBottom: space[3],

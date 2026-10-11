@@ -343,12 +343,8 @@
   ]
  },
  "POST /api/v1/disease/cases": {
-  "kind": "auth",
+  "kind": "roles",
   "roles": [
-   "admin",
-   "buyer",
-   "dealer",
-   "expert",
    "farmer"
   ]
  },
@@ -362,13 +358,19 @@
    "farmer"
   ]
  },
- "POST /api/v1/disease/predict": {
+ "GET /api/v1/disease/knowledge": {
   "kind": "auth",
   "roles": [
    "admin",
    "buyer",
    "dealer",
    "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/disease/predict": {
+  "kind": "roles",
+  "roles": [
    "farmer"
   ]
  },

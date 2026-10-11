@@ -6,12 +6,12 @@ Disease cases and prediction. `engine.py` runs the model in `checkpoints/`, whic
 - **SRDS:** §32–§37, §40
 - **Routes:** `/api/v1/disease` (see `backend/openapi.json`)
 - **App side:** [`frontend/ai`](../../../frontend/ai/README.md)
-- **Uses:** tables `disease_cases`, `disease_predictions`; storage bucket `disease-images`
+- **Uses:** tables `disease_cases`, `disease_predictions`, `disease_knowledge`; storage bucket `disease-images`
 - **Tests:** `backend/tests/ai/`
 
 ## Public API
 
-Other modules call only `service.py` and use only the models in `schemas.py`; the reality gate's `module-boundary` rule fails any other import. Service functions today: `create_case`, `get_case_for_user`, `predict`.
+Other modules call only `service.py` and use only the models in `schemas.py`; the reality gate's `module-boundary` rule fails any other import. Service functions today: `create_case`, `get_case_for_user`, `predict`, `list_knowledge`, and `fetch_case_report(access_token, case_id)` for other modules (the consultations lane reads the case and its AI report as the caller, so RLS decides). The report text comes from the `disease_knowledge` table.
 
 ## Layers
 

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card, StatusBadge } from '../../components';
+import { statusMeta } from '../../constants/status';
 import { useTheme, type Theme } from '../../../theme';
 import type { ConsultationWithRelations } from '../../../expert';
 
@@ -13,9 +14,19 @@ export interface ConsultationCardProps {
 export function ConsultationCard({ consultation, counterpartyName, onPress }: ConsultationCardProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const createdOn = new Date(consultation.created_at).toLocaleDateString();
+  const cropName = consultation.crop ? `, ${consultation.crop.name}` : '';
+  // One label in reading order, so TalkBack says the whole card once instead of four separate fragments.
+  const label = `${consultation.subject}. ${statusMeta('consultation', consultation.status).label}. ${counterpartyName}${cropName}. ${createdOn}`;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Opens the consultation"
+    >
       <Card style={styles.card}>
         <View style={styles.row}>
           <Text style={styles.subject} numberOfLines={1}>
@@ -27,7 +38,7 @@ export function ConsultationCard({ consultation, counterpartyName, onPress }: Co
           {counterpartyName}
           {consultation.crop ? ` · ${consultation.crop.name}` : ''}
         </Text>
-        <Text style={styles.date}>{new Date(consultation.created_at).toLocaleDateString()}</Text>
+        <Text style={styles.date}>{createdOn}</Text>
       </Card>
     </TouchableOpacity>
   );

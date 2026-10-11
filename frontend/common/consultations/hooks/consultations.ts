@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
+  createConsultationAssessment,
   createConsultationRequest,
+  fetchConsultationAssessments,
   fetchConsultationById,
   fetchConsultationMessages,
   fetchConsultationsForExpert,
@@ -15,6 +17,7 @@ import {
 } from '../services/consultationService';
 import { createConsultationReview, fetchReviewByConsultationId } from '../../reviews';
 import type { ConsultationMessageWithListing, ConsultationStatus } from '../../../expert';
+import type { ConsultationAssessmentInput } from '../types/consultations';
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { useRealtimeConsultationMessages } from '../../../hooks/realtime/useRealtimeConsultationMessages';
 import { queryKeys } from '../../../hooks/keys';
@@ -30,6 +33,25 @@ export function useConsultations(asExpert: boolean, enabled: boolean) {
 
 export function useConsultation(id: string) {
   return useQuery({ queryKey: queryKeys.consultations.detail(id), queryFn: () => fetchConsultationById(id) });
+}
+
+// Kept under the consultation's detail key, so invalidating `consultations.all` refreshes it as well.
+const assessmentsKey = (consultationId: string) => [...queryKeys.consultations.detail(consultationId), 'assessments'] as const;
+
+/** The Expert Assessments on a consultation (SRDS §35), shown apart from the AI report. */
+export function useConsultationAssessments(consultationId: string) {
+  return useQuery({
+    queryKey: assessmentsKey(consultationId),
+    queryFn: () => fetchConsultationAssessments(consultationId),
+  });
+}
+
+export function useCreateConsultationAssessment(consultationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ConsultationAssessmentInput) => createConsultationAssessment(consultationId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: assessmentsKey(consultationId) }),
+  });
 }
 
 const withoutDuplicate = (messages: ConsultationMessageWithListing[], incoming: ConsultationMessageWithListing) =>

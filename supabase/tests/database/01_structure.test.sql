@@ -93,6 +93,8 @@ select is(
   'public.categories.categories_admin_insert',
   'public.categories.categories_admin_update',
   'public.categories.categories_select_all',
+  'public.consultation_assessments.consultation_assessments_insert_expert',
+  'public.consultation_assessments.consultation_assessments_select_participants',
   'public.consultation_messages.consultation_messages_insert_participant',
   'public.consultation_messages.consultation_messages_select_participants',
   'public.consultations.consultations_insert_requester',
@@ -120,6 +122,8 @@ select is(
   'public.dealer_stores.dealer_stores_select_owner',
   'public.disease_cases.disease_cases_insert_owner',
   'public.disease_cases.disease_cases_select_owner_or_admin',
+  'public.disease_knowledge.disease_knowledge_admin_update',
+  'public.disease_knowledge.disease_knowledge_select_authenticated',
   'public.disease_predictions.disease_predictions_select_owner_or_admin',
   'public.expert_documents.expert_documents_delete_own',
   'public.expert_documents.expert_documents_insert_own',
@@ -199,7 +203,6 @@ select is(
   'storage.objects.dealer_documents_owner_delete',
   'storage.objects.dealer_documents_owner_or_admin_read',
   'storage.objects.dealer_documents_owner_write',
-  'storage.objects.disease_images_owner_delete',
   'storage.objects.disease_images_owner_or_admin_read',
   'storage.objects.disease_images_owner_update',
   'storage.objects.disease_images_owner_write',
@@ -213,7 +216,7 @@ select is(
   'storage.objects.message_attachments_participant_insert',
   'storage.objects.message_attachments_select_participants'
   ],
-  'policy inventory: 126 policies, each with cases in 02_* to 05_* or its migration''s test file');
+  'policy inventory: 132 policies, each with cases in 02_* to 05_* or its migration''s test file');
 
 select * from finish();
 rollback;

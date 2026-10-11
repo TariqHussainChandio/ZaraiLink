@@ -3,10 +3,12 @@ import asyncio
 import httpx
 from fastapi import HTTPException
 from PIL import Image, UnidentifiedImageError
+from storage3.exceptions import StorageApiError
 from storage3.utils import StorageException
 
 from app.ai import repository as disease_repository
 from app.ai.engine import ModelUnavailableError, get_classifier
+from app.ai.schemas import LOW_CONFIDENCE_THRESHOLD
 from app.auth.dependencies import AuthenticatedUser
 from app.config.settings import settings
 
@@ -18,333 +20,117 @@ from app.config.settings import settings
 _IMAGE_FETCH_ERROR = "Could not process the case image."
 _MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB, matches the disease-images bucket's file_size_limit
 
-# Advisory copy for the 38-class PlantVillage taxonomy the real model (backend/app/ai/checkpoints/)
-# is trained on. Keyed by the RAW taxonomy string exactly as it appears in class_names.json/
-# model_metadata.json (e.g. "Tomato___Late_blight") — this dict is a curated table, not something
-# generated from metadata, so keys were copy-pasted from class_names.json rather than retyped, to
-# avoid a transcription mismatch with the model's actual output.
-#
-# Per BR-13 (AI results are advisory only, never a diagnosis): every entry uses "may indicate"
-# language, not "you have," and every non-healthy entry's last action item is to consult an expert
-# — this reinforces the advisory framing structurally, not just via the UI disclaimer.
-DESCRIPTIONS: dict[str, tuple[str, list[str]]] = {
-    "Apple___Apple_scab": (
-        "The leaf pattern may indicate apple scab, a fungal disease that causes dark, "
-        "scab-like lesions on leaves and fruit and spreads readily in cool, wet spring weather.",
-        [
-            "Rake up and destroy fallen leaves to reduce next season's spore load.",
-            "Improve air circulation by pruning to open up the canopy.",
-            "Avoid overhead irrigation that keeps foliage wet.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Apple___Black_rot": (
-        "The leaf pattern may indicate black rot, a fungal disease that produces purple-bordered "
-        "leaf spots and can also rot fruit and cankers on branches.",
-        [
-            "Prune out and destroy dead or cankered wood, a common source of reinfection.",
-            "Remove mummified fruit left on the tree or ground.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss treatment options.",
-        ],
-    ),
-    "Apple___Cedar_apple_rust": (
-        "The leaf pattern may indicate cedar apple rust, a fungal disease that needs a nearby "
-        "juniper/cedar host to complete its life cycle and shows as bright orange-yellow leaf spots.",
-        [
-            "If practical, identify and remove nearby juniper/cedar hosts within a few hundred meters.",
-            "Remove and destroy affected leaves to limit spread.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide timing.",
-        ],
-    ),
-    "Apple___healthy": (
-        "No signs of disease detected on this apple leaf.",
-        ["Continue routine monitoring.", "Maintain good spacing and airflow between trees."],
-    ),
-    "Blueberry___healthy": (
-        "No signs of disease detected on this blueberry leaf.",
-        ["Continue routine monitoring.", "Maintain consistent soil moisture and good drainage."],
-    ),
-    "Cherry_(including_sour)___Powdery_mildew": (
-        "The leaf pattern may indicate powdery mildew, a fungal disease that coats leaves in a "
-        "white, powdery growth and thrives in warm, humid conditions with poor air circulation.",
-        [
-            "Prune to improve air circulation around affected branches.",
-            "Avoid excess nitrogen fertilizer, which encourages susceptible new growth.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Cherry_(including_sour)___healthy": (
-        "No signs of disease detected on this cherry leaf.",
-        ["Continue routine monitoring.", "Maintain good spacing and airflow between trees."],
-    ),
-    "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": (
-        "The leaf pattern may indicate gray leaf spot, a fungal disease that produces narrow, "
-        "rectangular gray-to-tan lesions and spreads fastest in humid, poorly ventilated fields.",
-        [
-            "Rotate away from corn for a season if this field has a history of the disease.",
-            "Consider a more resistant hybrid for future plantings.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide timing.",
-        ],
-    ),
-    "Corn_(maize)___Common_rust_": (
-        "The leaf pattern may indicate common rust, a fungal disease that produces small, "
-        "reddish-brown pustules scattered across both leaf surfaces.",
-        [
-            "Monitor closely — most modern hybrids tolerate common rust well without treatment.",
-            "Consult an agricultural expert if pustules are dense or the crop is young and stressed.",
-        ],
-    ),
-    "Corn_(maize)___Northern_Leaf_Blight": (
-        "The leaf pattern may indicate northern leaf blight, a fungal disease that causes long, "
-        "cigar-shaped gray-green lesions and can spread quickly in humid weather.",
-        [
-            "Consider a more resistant hybrid for future plantings.",
-            "Rotate away from corn for a season if this field has a history of the disease.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Corn_(maize)___healthy": (
-        "No signs of disease detected on this corn leaf.",
-        ["Continue routine monitoring.", "Maintain balanced fertilization and field drainage."],
-    ),
-    "Grape___Black_rot": (
-        "The leaf pattern may indicate black rot, a fungal disease that produces reddish-brown "
-        "circular leaf spots and can cause fruit to shrivel into hard, black mummies.",
-        [
-            "Remove mummified fruit and infected leaf debris — the fungus overwinters in them.",
-            "Improve air circulation through canopy management.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide timing.",
-        ],
-    ),
-    "Grape___Esca_(Black_Measles)": (
-        "The leaf pattern may indicate esca (black measles), a fungal trunk disease that causes "
-        "characteristic 'tiger-stripe' interveinal discoloration and can affect vines for years.",
-        [
-            "Avoid large pruning wounds during wet weather, a common infection point.",
-            "Consult an agricultural expert — trunk diseases like this often need vine-by-vine assessment.",
-        ],
-    ),
-    "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": (
-        "The leaf pattern may indicate Isariopsis leaf blight, a fungal disease that produces "
-        "angular brown spots that can merge and cause early leaf drop.",
-        [
-            "Improve air circulation through canopy management.",
-            "Remove and destroy heavily affected leaves.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Grape___healthy": (
-        "No signs of disease detected on this grape leaf.",
-        ["Continue routine monitoring.", "Maintain good canopy airflow."],
-    ),
-    "Orange___Haunglongbing_(Citrus_greening)": (
-        "The leaf pattern may indicate citrus greening (Huanglongbing), a serious bacterial "
-        "disease spread by psyllid insects that causes blotchy yellowing and can be fatal to the tree.",
-        [
-            "Isolate and closely monitor this tree — this disease can spread to nearby citrus.",
-            "Consult an agricultural expert urgently — citrus greening has no cure and early "
-            "management (including possible tree removal) significantly affects nearby trees.",
-        ],
-    ),
-    "Peach___Bacterial_spot": (
-        "The leaf pattern may indicate bacterial spot, which produces small, dark, angular leaf "
-        "lesions that can drop out and leave a 'shot-hole' appearance, and also affects fruit.",
-        [
-            "Avoid overhead irrigation and working around wet trees, which spreads bacteria.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss treatment options.",
-        ],
-    ),
-    "Peach___healthy": (
-        "No signs of disease detected on this peach leaf.",
-        ["Continue routine monitoring.", "Maintain good spacing and airflow between trees."],
-    ),
-    "Pepper,_bell___Bacterial_spot": (
-        "The leaf pattern may indicate bacterial spot, which produces small, water-soaked leaf "
-        "spots that darken and can also blemish fruit; it spreads readily in warm, wet conditions.",
-        [
-            "Avoid overhead watering and handling plants while foliage is wet.",
-            "Remove and destroy heavily affected plants to limit spread.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss treatment options.",
-        ],
-    ),
-    "Pepper,_bell___healthy": (
-        "No signs of disease detected on this bell pepper leaf.",
-        ["Continue routine monitoring.", "Maintain consistent watering at the base of the plant."],
-    ),
-    "Potato___Early_blight": (
-        "The leaf pattern may indicate early blight, a fungal disease that produces dark, "
-        "target-like concentric rings on older leaves first, common in warm, humid conditions.",
-        [
-            "Remove and destroy affected lower leaves to slow spread upward.",
-            "Ensure adequate plant spacing for airflow.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Potato___Late_blight": (
-        "The leaf pattern may indicate late blight, an aggressive fungal-like disease that "
-        "spreads quickly in cool, wet conditions and can destroy a crop within days if untreated.",
-        [
-            "Remove and destroy visibly affected foliage immediately to slow spread.",
-            "Avoid overhead watering; water at the base of the plant.",
-            "Consult an agricultural expert urgently to confirm the diagnosis and discuss treatment options.",
-        ],
-    ),
-    "Potato___healthy": (
-        "No signs of disease detected on this potato leaf.",
-        ["Continue routine monitoring.", "Maintain consistent watering and good field drainage."],
-    ),
-    "Raspberry___healthy": (
-        "No signs of disease detected on this raspberry leaf.",
-        ["Continue routine monitoring.", "Maintain good airflow between canes."],
-    ),
-    "Soybean___healthy": (
-        "No signs of disease detected on this soybean leaf.",
-        ["Continue routine monitoring.", "Maintain balanced fertilization and field drainage."],
-    ),
-    "Squash___Powdery_mildew": (
-        "The leaf pattern may indicate powdery mildew, a fungal disease that coats leaves in a "
-        "white, powdery growth and thrives in warm, humid conditions with poor air circulation.",
-        [
-            "Improve air circulation by spacing plants and pruning dense growth.",
-            "Avoid overhead watering late in the day.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Strawberry___Leaf_scorch": (
-        "The leaf pattern may indicate leaf scorch, a fungal disease that produces small purple "
-        "spots that merge into larger scorched-looking blotches.",
-        [
-            "Remove and destroy old or heavily affected leaves after harvest.",
-            "Ensure adequate plant spacing for airflow.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss treatment options.",
-        ],
-    ),
-    "Strawberry___healthy": (
-        "No signs of disease detected on this strawberry leaf.",
-        ["Continue routine monitoring.", "Maintain good airflow and avoid overcrowding plants."],
-    ),
-    "Tomato___Bacterial_spot": (
-        "The leaf pattern may indicate bacterial spot, which produces small, water-soaked leaf "
-        "spots that darken and can also blemish fruit; it spreads readily in warm, wet conditions.",
-        [
-            "Avoid overhead watering and handling plants while foliage is wet.",
-            "Remove and destroy heavily affected plants to limit spread.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss treatment options.",
-        ],
-    ),
-    "Tomato___Early_blight": (
-        "The leaf pattern may indicate early blight, a fungal disease that produces dark, "
-        "target-like concentric rings on older leaves first, common in warm, humid conditions.",
-        [
-            "Remove and destroy affected lower leaves to slow spread upward.",
-            "Ensure adequate plant spacing for airflow.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Tomato___Late_blight": (
-        "The leaf pattern may indicate late blight, an aggressive fungal-like disease that "
-        "spreads quickly in cool, wet conditions and can destroy a tomato crop within days if untreated.",
-        [
-            "Remove and destroy visibly affected foliage immediately to slow spread.",
-            "Avoid overhead watering; water at the base of the plant.",
-            "Consult an agricultural expert urgently to confirm the diagnosis and discuss treatment options.",
-        ],
-    ),
-    "Tomato___Leaf_Mold": (
-        "The leaf pattern may indicate leaf mold, a fungal disease that produces pale spots on "
-        "upper leaf surfaces with an olive-green to gray velvety growth underneath, favored by "
-        "high humidity and poor ventilation.",
-        [
-            "Improve ventilation, especially in greenhouses or high tunnels.",
-            "Avoid overhead watering and reduce humidity around plants where possible.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Tomato___Septoria_leaf_spot": (
-        "The leaf pattern may indicate septoria leaf spot, a fungal disease that produces many "
-        "small, circular spots with dark borders and tan centers, usually starting on lower leaves.",
-        [
-            "Remove and destroy affected lower leaves to slow spread upward.",
-            "Avoid overhead watering; water at the base of the plant.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Tomato___Spider_mites Two-spotted_spider_mite": (
-        "The leaf pattern may indicate two-spotted spider mite damage — tiny pests that cause "
-        "fine stippling/speckling on leaves and fine webbing in heavy infestations, worse in hot, dry weather.",
-        [
-            "Check the undersides of leaves closely, and nearby plants, for mites and webbing.",
-            "Increasing humidity around plants can slow mite reproduction.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss treatment options.",
-        ],
-    ),
-    "Tomato___Target_Spot": (
-        "The leaf pattern may indicate target spot, a fungal disease that produces circular "
-        "lesions with concentric rings, similar in appearance to early blight.",
-        [
-            "Remove and destroy affected leaves to slow spread.",
-            "Ensure adequate plant spacing for airflow.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss fungicide options.",
-        ],
-    ),
-    "Tomato___Tomato_Yellow_Leaf_Curl_Virus": (
-        "The leaf pattern may indicate tomato yellow leaf curl virus, spread by whiteflies, which "
-        "causes upward-curling, yellowing leaves and stunted growth — there is no cure once infected.",
-        [
-            "Inspect for whiteflies on leaf undersides, the main way this virus spreads.",
-            "Isolate or remove severely affected plants to protect nearby healthy ones.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss whitefly management.",
-        ],
-    ),
-    "Tomato___Tomato_mosaic_virus": (
-        "The leaf pattern may indicate tomato mosaic virus, which causes mottled light and dark "
-        "green patches and can distort leaves — it spreads easily through touch/tools and has no cure.",
-        [
-            "Wash hands and disinfect tools between handling plants to avoid spreading the virus.",
-            "Remove and destroy severely affected plants.",
-            "Consult an agricultural expert to confirm the diagnosis and discuss management options.",
-        ],
-    ),
-    "Tomato___healthy": (
-        "No signs of disease detected on this tomato leaf.",
-        ["Continue routine monitoring.", "Maintain consistent watering at the base of the plant."],
-    ),
-}
+# How long a signed photo link stays valid. Access to a case is re-checked through row-level security on every case
+# fetch (an expert loses it the moment their consultation is rejected or closed), but a link already handed out keeps
+# working until it expires. A short life limits how long a link outlives a revoked access; the app refetches the case
+# when the result screen opens or regains focus, so a link that has expired is replaced (A6 verification).
+_SIGNED_URL_SECONDS = 600
 
-# Used whenever a prediction's raw class isn't (yet) in DESCRIPTIONS above — should never be
-# reached in normal operation once every model_classes entry has a matching key, but this is a
-# real, non-empty fallback rather than the previous (None, []), which would otherwise silently
-# hand back a bare label with no advisory copy at all.
-DEFAULT_DESCRIPTION: tuple[str, list[str]] = (
-    "Our AI has flagged a possible issue with this crop, but detailed guidance for this "
-    "specific condition isn't available yet.",
-    ["Consult an agricultural expert to confirm the diagnosis and get a treatment plan."],
+# BR-13: every AI result is advisory and routes to an expert, so every report carries this text, whatever the
+# confidence. The second sentence is added while the knowledge text is still a draft (plan A6: every row starts
+# `pending_review` until an agronomist reviews it and the admin marks it `reviewed`).
+_DISCLAIMER = (
+    "This is an AI suggestion, not a diagnosis. Confirm it with an agricultural expert before you treat your crop."
+)
+_UNREVIEWED_NOTE = " This advice has not yet been reviewed by an agricultural expert."
+
+# Shown only when the model emits a label with no `disease_knowledge` row (the migration seeds all 38 classes, so
+# this means the table and class_names.json have drifted). Still a real, advisory answer, never an empty one.
+_FALLBACK_ADVISORY = (
+    "Our AI has flagged a possible issue with this crop, but reviewed guidance for this condition is not available "
+    "yet. Consult an agricultural expert to confirm the diagnosis and get a treatment plan."
 )
 
+# The short reasons stored in disease_cases.failure_reason: shown to the owner, so never a path or a stack trace.
+_FAILURE_MODEL_UNAVAILABLE = "model_unavailable"
+_FAILURE_IMAGE = "image_unprocessable"
 
-def _humanize_class_name(raw: str) -> str:
-    """Turns a raw PlantVillage taxonomy label (e.g. "Tomato___Late_blight",
-    "Corn_(maize)___Common_rust_") into a farmer-facing display string
-    (e.g. "Tomato — Late blight", "Corn (maize) — Common rust"). A pure string transform with no
-    ML/config dependency, so it's trivially unit-testable against every known raw label.
-
-    This is applied only to the value stored/returned as `predicted_disease` — the DESCRIPTIONS
-    lookup above must happen against the RAW label first (see predict() below), since that dict's
-    keys are the raw taxonomy strings, not the humanized ones.
-    """
-    crop_part, _, disease_part = raw.partition("___")
-    crop_display = crop_part.replace("_", " ").strip()
-    disease_display = disease_part.replace("_", " ").strip()
-    if disease_display.lower() == "healthy":
-        return f"{crop_display} — Healthy"
-    disease_display = disease_display[:1].upper() + disease_display[1:]
-    return f"{crop_display} — {disease_display}"
+# Lane rule: an AI outage is a clear 503 confined to this module; nothing else in the marketplace depends on it.
+_MODEL_UNAVAILABLE_DETAIL = "The AI advisory is temporarily unavailable. Please try again later."
 
 
-def _assert_owner_or_admin(user: AuthenticatedUser, case: dict | None) -> dict:
+def _label(crop: str, disease: str) -> str:
+    """The farmer-facing name, "Crop — Disease", built from the knowledge row rather than parsed from the raw label."""
+    return f"{crop} — {disease}"
+
+
+def _match_key(text: str) -> str:
+    """Letters and digits only, lower case.
+
+    A stored prediction keeps only its display name (disease_predictions has no class_label column), and rows written
+    before A6 used a name derived mechanically from the raw label ("Corn (maize) — Cercospora leaf spot Gray leaf
+    spot"). Reducing that old name and the raw label, or the new "Crop — Disease" name and the knowledge row's crop
+    and disease, to this key finds the knowledge row either way."""
+    return "".join(ch for ch in text.lower() if ch.isalnum())
+
+
+def _index_knowledge(rows: list[dict]) -> dict[str, dict]:
+    index: dict[str, dict] = {}
+    for row in rows:
+        index[_match_key(row["class_label"])] = row
+        index[_match_key(row["crop"] + row["disease"])] = row
+    return index
+
+
+def _fallback_names(class_label: str) -> tuple[str, str]:
+    # The raw model label is "<Crop>___<Disease>" (class_names.json); used only when no knowledge row exists.
+    crop, _, disease = class_label.partition("___")
+    return crop.replace("_", " ").strip() or class_label, disease.replace("_", " ").strip() or class_label
+
+
+def build_report(prediction: dict, knowledge: dict | None, class_label: str | None = None) -> dict:
+    """The AI report (schemas.DiseaseReport) for one stored prediction and its knowledge row, if any.
+
+    Without a knowledge row the report keeps the stored description as its advisory, has empty lists, and is marked
+    unreviewed, so the farmer is never shown unreviewed text as if it had been reviewed."""
+    confidence = float(prediction["confidence_score"])
+    if knowledge is not None:
+        crop, disease = knowledge["crop"], knowledge["disease"]
+        label = knowledge["class_label"]
+        is_healthy = bool(knowledge["is_healthy"])
+        symptoms = list(knowledge.get("symptoms") or [])
+        treatment = list(knowledge.get("treatment") or [])
+        precautions = list(knowledge.get("precautions") or [])
+        advisory = knowledge["advisory"]
+        review_status = knowledge["review_status"]
+        predicted = _label(crop, disease)
+    else:
+        predicted = prediction["predicted_disease"]
+        label = class_label or predicted
+        if class_label:
+            crop, disease = _fallback_names(class_label)
+        else:
+            crop, _, disease = predicted.partition(" — ")
+            disease = disease or predicted
+        is_healthy = disease.strip().lower() == "healthy"
+        symptoms, treatment, precautions = [], [], []
+        advisory = prediction.get("description") or _FALLBACK_ADVISORY
+        review_status = "pending_review"
+    disclaimer = _DISCLAIMER if review_status == "reviewed" else _DISCLAIMER + _UNREVIEWED_NOTE
+    return {
+        "predicted_disease": predicted,
+        "class_label": label,
+        "crop": crop,
+        "disease": disease,
+        "confidence_score": confidence,
+        "confidence_band": "confident" if confidence >= LOW_CONFIDENCE_THRESHOLD else "low",
+        "is_healthy": is_healthy,
+        "symptoms": symptoms,
+        "treatment": treatment,
+        "precautions": precautions,
+        "advisory": advisory,
+        "review_status": review_status,
+        "disclaimer": disclaimer,
+        "model_version": prediction.get("model_version"),
+        "created_at": prediction["created_at"],
+    }
+
+
+def _assert_owner(user: AuthenticatedUser, case: dict | None) -> dict:
     # 404 (not 403) whether the case doesn't exist or just isn't the caller's — doesn't confirm
     # or deny that a guessed id belongs to someone else (rule: 404 = not found / intentionally hidden).
-    if case is None or (case["user_id"] != user.id and user.role != "admin"):
+    # Owner only: D11 makes prediction a farmer action, so an admin reads a case but never runs the model on it.
+    if case is None or case["user_id"] != user.id:
         raise HTTPException(status_code=404, detail="Disease case not found")
     return case
 
@@ -359,30 +145,80 @@ async def create_case(user: AuthenticatedUser, crop_id: str | None, storage_path
     return await _with_signed_url(case)
 
 
+def _is_missing_object(exc: StorageApiError) -> bool:
+    """True when storage says the object is not there.
+
+    Supabase Storage answers a missing object with `{"statusCode": "404", "error": "not_found"}` (older servers used
+    the S3 code `NoSuchKey`); any other storage error is a real fault and must still surface."""
+    return str(exc.status) == "404" or str(exc.code).lower() in {"not_found", "nosuchkey"}
+
+
 async def _with_signed_url(case: dict) -> dict:
     """Replaces the stored storage_path with a freshly minted signed URL before the response
     ever leaves the service layer — the disease-images bucket is private (security fix C2), so a
-    raw path is never returned to a client."""
+    raw path is never returned to a client.
+
+    A photo object that is gone from storage (removed by an operator, or a legacy row) gives
+    `image_signed_url: None` and the case still loads: the report and the expert route matter more
+    than the picture, and the app shows a placeholder instead (A6 verification)."""
     storage_path = case.pop("storage_path")
-    signed_url = await disease_repository.create_signed_url(storage_path, expires_in=86400)
+    try:
+        signed_url = await disease_repository.create_signed_url(storage_path, expires_in=_SIGNED_URL_SECONDS)
+    except StorageApiError as exc:
+        if not _is_missing_object(exc):
+            raise
+        case["image_signed_url"] = None
+        return case
     if signed_url is None:
-        # The object the case row points at is gone or the signing call itself failed — a
-        # server-side fault, not something the caller did, so this is a 500, not the generic
-        # client-facing 422 used above for bad input.
+        # Storage answered without a link, which it does not do for a missing object (that is the error above): a
+        # server-side fault, not something the caller did, so a 500, not the generic 422 used for bad input.
         raise HTTPException(status_code=500, detail="Could not prepare the case image for display.")
     case["image_signed_url"] = signed_url
     return case
 
 
-async def get_case_for_user(user: AuthenticatedUser, disease_case_id: str) -> dict:
-    case = _assert_owner_or_admin(user, await disease_repository.get_case_with_prediction(disease_case_id))
-    predictions = case.get("prediction") or []
-    case["prediction"] = predictions[0] if predictions else None
+async def fetch_case_report(access_token: str, case_id: str) -> dict | None:
+    """The case, a signed link to its photo, its latest prediction and the AI report, read as the caller.
+
+    Public for the consultations module (the assigned expert reads the case a consultation is about); the result has
+    the fields of schemas.DiseaseCaseWithPredictionResponse. Row-level security decides who sees the case: the owner,
+    an admin, or the expert assigned through a live consultation (is_case_expert, 20261022080000). None when the case
+    does not exist or the caller may not see it. The photo link is then signed with the service role, because the
+    bucket's own policies admit only the uploader; the path signed is the one RLS just returned to this caller, never
+    a client-supplied one."""
+    case = await disease_repository.get_case_with_prediction_as_user(access_token, case_id)
+    if case is None:
+        return None
+    predictions = sorted(case.get("prediction") or [], key=lambda p: p["created_at"], reverse=True)
+    prediction = predictions[0] if predictions else None
+    case["prediction"] = prediction
+    case["report"] = None
+    if prediction is not None:
+        index = _index_knowledge(await disease_repository.list_knowledge_as_user(access_token))
+        case["report"] = build_report(prediction, index.get(_match_key(prediction["predicted_disease"])))
     return await _with_signed_url(case)
 
 
+async def get_case_for_user(user: AuthenticatedUser, disease_case_id: str) -> dict:
+    case = await fetch_case_report(user.access_token, disease_case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Disease case not found")
+    return case
+
+
+async def list_knowledge(user: AuthenticatedUser) -> list[dict]:
+    return await disease_repository.list_knowledge_as_user(user.access_token)
+
+
+async def _fail(case_id: str, reason: str, status_code: int, detail: str) -> HTTPException:
+    """Records the failure on the case before the error goes back, so a case never stays `pending` after a run."""
+    await disease_repository.set_case_status(case_id, "failed", reason)
+    return HTTPException(status_code=status_code, detail=detail)
+
+
 async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
-    case = _assert_owner_or_admin(user, await disease_repository.get_disease_case(disease_case_id))
+    case = _assert_owner(user, await disease_repository.get_disease_case(disease_case_id))
+    case_id = case["id"]
 
     try:
         image_bytes = await disease_repository.download_case_image(case["storage_path"])
@@ -395,32 +231,39 @@ async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
         # them, so a response can't be used to tell "doesn't exist" from "exists but broken".
         # `from exc` keeps the real cause in server-side logs; the client only ever sees the
         # generic detail above.
-        raise HTTPException(status_code=422, detail=_IMAGE_FETCH_ERROR) from exc
+        raise await _fail(case_id, _FAILURE_IMAGE, 422, _IMAGE_FETCH_ERROR) from exc
 
     if len(image_bytes) > _MAX_IMAGE_BYTES:
-        raise HTTPException(status_code=422, detail=_IMAGE_FETCH_ERROR)
+        raise await _fail(case_id, _FAILURE_IMAGE, 422, _IMAGE_FETCH_ERROR)
 
     try:
         # A CPU-bound forward pass: run in a worker thread so it cannot stall every other request on the
         # event loop (P5 item 2, "inference moves to a threadpool"). torch releases the GIL while computing.
-        raw_predicted_disease, confidence = await asyncio.to_thread(get_classifier().predict, image_bytes)
+        class_label, confidence = await asyncio.to_thread(get_classifier().predict, image_bytes)
     except ModelUnavailableError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="AI model not trained yet — check back once model.pth has been trained.",
-        ) from exc
+        raise await _fail(case_id, _FAILURE_MODEL_UNAVAILABLE, 503, _MODEL_UNAVAILABLE_DETAIL) from exc
     except (UnidentifiedImageError, Image.DecompressionBombError) as exc:
-        raise HTTPException(status_code=422, detail=_IMAGE_FETCH_ERROR) from exc
+        raise await _fail(case_id, _FAILURE_IMAGE, 422, _IMAGE_FETCH_ERROR) from exc
 
-    # Look up advisory copy by the RAW label (DESCRIPTIONS' keys) before humanizing — the
-    # humanized string below is presentation-only and must not be used for this lookup.
-    description, recommended_actions = DESCRIPTIONS.get(raw_predicted_disease, DEFAULT_DESCRIPTION)
+    # The raw label is the knowledge table's key, so the lookup needs no mapping (SRDS §34-§35).
+    knowledge = await disease_repository.get_knowledge(class_label)
+    if knowledge is not None:
+        predicted_disease = _label(knowledge["crop"], knowledge["disease"])
+        description: str = knowledge["advisory"]
+        recommended_actions: list[str] = list(knowledge.get("treatment") or [])
+    else:
+        predicted_disease = _label(*_fallback_names(class_label))
+        description, recommended_actions = _FALLBACK_ADVISORY, []
 
-    return await disease_repository.insert_prediction(
-        disease_case_id=case["id"],
-        predicted_disease=_humanize_class_name(raw_predicted_disease),
+    # The prediction row keeps the text shown at the time, as history; a later report reads the live knowledge row.
+    prediction = await disease_repository.insert_prediction(
+        disease_case_id=case_id,
+        predicted_disease=predicted_disease,
         confidence_score=confidence,
         description=description,
         recommended_actions=recommended_actions,
         model_version=settings.model_version,
     )
+    await disease_repository.set_case_status(case_id, "predicted", None)
+    prediction["report"] = build_report(prediction, knowledge, class_label)
+    return prediction

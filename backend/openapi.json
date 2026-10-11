@@ -2595,8 +2595,15 @@
             "type": "string"
           },
           "image_signed_url": {
-            "title": "Image Signed Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Signed Url"
           },
           "user_id": {
             "title": "User Id",
@@ -2656,8 +2663,15 @@
             "type": "string"
           },
           "image_signed_url": {
-            "title": "Image Signed Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Signed Url"
           },
           "prediction": {
             "anyOf": [

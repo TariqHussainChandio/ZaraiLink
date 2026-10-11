@@ -1465,7 +1465,7 @@ export type DiseaseCaseResponse = {
     /**
      * Image Signed Url
      */
-    image_signed_url: string;
+    image_signed_url: string | null;
     /**
      * User Id
      */
@@ -1496,7 +1496,7 @@ export type DiseaseCaseWithPredictionResponse = {
     /**
      * Image Signed Url
      */
-    image_signed_url: string;
+    image_signed_url: string | null;
     prediction?: PredictionRecord | null;
     report?: DiseaseReport | null;
     /**

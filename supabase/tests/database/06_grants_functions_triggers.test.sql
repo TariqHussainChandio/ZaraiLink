@@ -43,8 +43,8 @@ select is(
     'authenticated dealer_documents DELETE,INSERT,SELECT',
     'authenticated dealer_profiles INSERT,SELECT,UPDATE',
     'authenticated disease_cases INSERT,SELECT',
-    -- Admin-curated disease advice; writes are admin-only by policy (20261022080000).
-    'authenticated disease_knowledge DELETE,INSERT,SELECT,UPDATE',
+    -- Admin-curated disease advice: an aal2 admin edits the 38 seeded classes, nobody adds or removes one (20261022080000).
+    'authenticated disease_knowledge SELECT,UPDATE',
     'authenticated disease_predictions SELECT',
     'authenticated expert_documents DELETE,INSERT,SELECT',
     'authenticated expert_specializations DELETE,INSERT,SELECT,UPDATE',

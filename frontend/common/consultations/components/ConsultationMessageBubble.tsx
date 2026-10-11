@@ -35,9 +35,17 @@ export function ConsultationMessageBubble({
                   testID={`attachment-image-${path}`}
                   source={{ uri: attachmentUrls[path] }}
                   style={styles.attachmentImage}
+                  accessible
+                  accessibilityRole="image"
+                  accessibilityLabel="Photo attached to the message"
                 />
               ) : (
-                <View key={path} style={[styles.attachmentImage, styles.attachmentPlaceholder]} />
+                <View
+                  key={path}
+                  style={[styles.attachmentImage, styles.attachmentPlaceholder]}
+                  accessible
+                  accessibilityLabel="Photo loading"
+                />
               ),
             )}
           </View>
@@ -48,6 +56,7 @@ export function ConsultationMessageBubble({
             style={styles.recommendation}
             onPress={() => onPressRecommendation?.(message.recommended_listing!.id)}
             disabled={!onPressRecommendation}
+            accessibilityState={{ disabled: !onPressRecommendation }}
             accessibilityRole="button"
             accessibilityLabel={`Recommended listing: ${message.recommended_listing.title}, ${formatRs(message.recommended_listing.price)} per ${message.recommended_listing.unit}`}
           >
@@ -116,6 +125,7 @@ function makeStyles({ colors, space, radius, typography, fontWeight, size }: The
     },
     recommendation: {
       flexDirection: 'row',
+      minHeight: size.touchMin,
       alignItems: 'center',
       backgroundColor: colors.surface,
       borderRadius: radius.sm,

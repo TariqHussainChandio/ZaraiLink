@@ -121,7 +121,11 @@ async def test_send_message_maps_an_rls_refusal_to_403():
 
 @pytest.mark.parametrize("context_type", ["listing", "order", "consultation"])
 def test_find_or_create_request_accepts_each_context(context_type):
-    request = FindOrCreateConversationRequest(other_user_id="00000000-0000-4000-8000-000000000002", context_type=context_type, context_id="00000000-0000-4000-8000-0000000000c1")
+    request = FindOrCreateConversationRequest(
+        other_user_id="00000000-0000-4000-8000-000000000002",
+        context_type=context_type,
+        context_id="00000000-0000-4000-8000-0000000000c1",
+    )
     assert request.context_type == context_type
 
 
@@ -131,10 +135,22 @@ def test_find_or_create_request_accepts_each_context(context_type):
         {"other_user_id": "00000000-0000-4000-8000-000000000002"},  # the pre-A5 shape: no context
         {"other_user_id": "00000000-0000-4000-8000-000000000002", "context_type": "listing"},
         {"other_user_id": "00000000-0000-4000-8000-000000000002", "context_id": "00000000-0000-4000-8000-0000000000c1"},
-        {"other_user_id": "00000000-0000-4000-8000-000000000002", "context_type": "store", "context_id": "00000000-0000-4000-8000-0000000000c1"},
+        {
+            "other_user_id": "00000000-0000-4000-8000-000000000002",
+            "context_type": "store",
+            "context_id": "00000000-0000-4000-8000-0000000000c1",
+        },
         {"context_type": "listing", "context_id": "00000000-0000-4000-8000-0000000000c1"},
-        {"other_user_id": "not-a-uuid", "context_type": "listing", "context_id": "00000000-0000-4000-8000-0000000000c1"},  # A5 verifier: ids are UUIDs
-        {"other_user_id": "00000000-0000-4000-8000-000000000002", "context_type": "listing", "context_id": "x),or(1.eq.1"},
+        {
+            "other_user_id": "not-a-uuid",
+            "context_type": "listing",
+            "context_id": "00000000-0000-4000-8000-0000000000c1",
+        },  # A5 verifier: ids are UUIDs
+        {
+            "other_user_id": "00000000-0000-4000-8000-000000000002",
+            "context_type": "listing",
+            "context_id": "x),or(1.eq.1",
+        },
     ],
 )
 def test_find_or_create_request_requires_a_known_context(body):
@@ -146,7 +162,9 @@ def test_find_or_create_route_rejects_a_body_without_context_before_touching_the
     app.dependency_overrides[require_authenticated_user] = lambda: USER
     try:
         with patch("app.common.messaging.service.repo.find_conversation") as mock_find:
-            response = client.post("/api/v1/messaging/conversations", json={"other_user_id": "00000000-0000-4000-8000-000000000002"})
+            response = client.post(
+                "/api/v1/messaging/conversations", json={"other_user_id": "00000000-0000-4000-8000-000000000002"}
+            )
     finally:
         app.dependency_overrides.pop(require_authenticated_user, None)
     assert response.status_code == 422
@@ -165,7 +183,11 @@ def test_find_or_create_route_returns_403_for_an_unrelated_pair():
         ):
             response = client.post(
                 "/api/v1/messaging/conversations",
-                json={"other_user_id": "00000000-0000-4000-8000-000000000002", "context_type": "listing", "context_id": "00000000-0000-4000-8000-0000000000a1"},
+                json={
+                    "other_user_id": "00000000-0000-4000-8000-000000000002",
+                    "context_type": "listing",
+                    "context_id": "00000000-0000-4000-8000-0000000000a1",
+                },
             )
     finally:
         app.dependency_overrides.pop(require_authenticated_user, None)

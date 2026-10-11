@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, TextField, SelectField } from '../../components';
+import { ImagePlus, ScanLine, Send } from 'lucide-react-native';
+import { Banner, Button, ListGroup, ListRow, ListRowIcon, TextField, SelectField, useToast } from '../../components';
 import { useRequestConsultation } from '../hooks/consultations';
 import { useAuthStore } from '../../../state/authStore';
 import { useFarms } from '../../../farmer';
@@ -42,13 +43,19 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   const userId = useAuthStore(state => state.user?.id);
   const { data: crops = [] } = useCrops();
   const { data: farms = [] } = useFarms(!!userId);
-  // A disease-advisory handoff seeds this with the case's already-uploaded remote image —
-  // `uploadConsultationAttachments` just does `fetch(image.uri)`, which works the same for a
-  // remote `https://` URL as for a local picker `file://` URI, so no service changes needed.
+  // With a recorded case the expert already sees its photo through the case summary (RLS-checked), and the handoff's
+  // link is a signed URL that expires after 10 minutes, so it is only previewed here, never fetched and re-uploaded.
+  // Without a case (the scan failed before one was recorded) the photo is a local file and goes up as an attachment.
+  const casePhotoUrl = prefill?.diseaseCaseId ? prefill.imageUrl : null;
   const [images, setImages] = useState<PickedPhoto[]>(
-    prefill?.imageUrl ? [{ uri: prefill.imageUrl, fileName: 'disease-photo.jpg', mimeType: 'image/jpeg' }] : [],
+    !prefill?.diseaseCaseId && prefill?.imageUrl
+      ? [{ uri: prefill.imageUrl, fileName: 'disease-photo.jpg', mimeType: 'image/jpeg' }]
+      : [],
   );
   const requestConsultation = useRequestConsultation(userId);
+  const toast = useToast();
+  // A request that did not send stays on screen until the next try: the person must see it before going on.
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const requestSchema = useMemo(() => buildRequestSchema(), []);
 
@@ -61,7 +68,9 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
     defaultValues: {
       subject: prefill?.subject ?? '',
       cropId: prefill?.cropId ?? null,
-      problemDescription: prefill?.problemDescription ?? '',
+      // Always the farmer's own words. A scan handoff's prefill may carry AI-written text; the AI report travels as
+      // the linked disease case and is shown in its own card, so it is never mixed into this field (BR-13, SRDS §34-§36).
+      problemDescription: '',
       farmId: null,
       priority: 'medium',
     },
@@ -75,6 +84,7 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
 
   const onSubmit = async (values: RequestFormValues) => {
     if (!userId) return;
+    setSubmitError(null);
     try {
       await requestConsultation.mutateAsync({
         input: {
@@ -85,17 +95,44 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
           farmId: values.farmId,
           images: [],
           priority: values.priority,
+          diseaseCaseId: prefill?.diseaseCaseId,
         },
         images,
       });
+      toast.success('Request sent to the expert');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Could not send request', errorMessage(error));
+      setSubmitError(errorMessage(error));
     }
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {prefill?.diseaseCaseId ? (
+        // The AI report goes with the request so the expert assesses the same case (SRDS §34); it stays advisory (BR-13).
+        <View style={styles.attached}>
+          <ListGroup>
+            <ListRow
+              title="AI report attached"
+              meta="The expert will see the AI result and give their own assessment."
+              leading={<ListRowIcon icon={ScanLine} />}
+            />
+          </ListGroup>
+          {casePhotoUrl ? (
+            <View style={styles.casePhotoRow}>
+              <Image
+                source={{ uri: casePhotoUrl }}
+                style={styles.thumb}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel="Photo from your scan"
+              />
+              <Text style={styles.casePhotoCaption}>Photo from your scan (attached with the AI report)</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       <Controller
         control={control}
         name="subject"
@@ -167,18 +204,43 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
         )}
       />
 
-      <Text style={styles.label}>Photos (optional)</Text>
+      <Text style={styles.label} accessibilityRole="header">
+        Photos (optional)
+      </Text>
       <View style={styles.imageRow}>
-        {images.map(image => (
-          <Image key={image.uri} source={{ uri: image.uri }} style={styles.thumb} />
+        {images.map((image, index) => (
+          <Image
+            key={image.uri}
+            source={{ uri: image.uri }}
+            style={styles.thumb}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={`Photo ${index + 1} of ${images.length}`}
+          />
         ))}
-        <TouchableOpacity style={styles.addImage} onPress={pickImages}>
-          <Text style={styles.addImageLabel}>+ Add</Text>
-        </TouchableOpacity>
+        <Pressable
+          style={({ pressed }) => [styles.addImage, pressed && styles.pressed]}
+          onPress={pickImages}
+          accessibilityRole="button"
+          accessibilityLabel={images.length > 0 ? 'Change photos' : 'Add photos'}
+          accessibilityHint="Opens your photo gallery, up to 4 photos"
+        >
+          <ImagePlus size={theme.size.iconMd} color={theme.colors.ink2} />
+          <Text style={styles.addImageLabel}>Add</Text>
+        </Pressable>
       </View>
+
+      {submitError ? (
+        <View style={styles.banner}>
+          <Banner tone="danger" title="Could not send request">
+            {submitError}
+          </Banner>
+        </View>
+      ) : null}
 
       <Button
         label="Send Request"
+        icon={Send}
         loading={requestConsultation.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
@@ -195,6 +257,20 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme)
     },
     content: {
       padding: space[4],
+    },
+    attached: {
+      marginBottom: space[3],
+    },
+    casePhotoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[3],
+      marginTop: space[2],
+    },
+    casePhotoCaption: {
+      ...typography.caption,
+      color: colors.ink2,
+      flex: 1,
     },
     label: {
       ...typography.caption,
@@ -214,8 +290,10 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme)
       backgroundColor: colors.line,
     },
     addImage: {
-      width: size.photoSm,
-      height: size.photoSm,
+      // At least the touch minimum, whatever the thumbnail size.
+      minWidth: Math.max(size.photoSm, size.touchMin),
+      minHeight: Math.max(size.photoSm, size.touchMin),
+      gap: space[1],
       borderRadius: radius.sm,
       borderWidth: borders.hairline,
       borderColor: colors.line,
@@ -227,6 +305,8 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme)
       ...typography.caption,
       color: colors.ink2,
     },
+    pressed: { opacity: 0.6 },
+    banner: { marginBottom: space[3] },
     submit: {
       marginTop: space[3],
       marginBottom: space[8],

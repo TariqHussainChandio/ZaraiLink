@@ -74,7 +74,7 @@ describe('ExpertListScreen', () => {
 
   it('navigates to the expert profile with the expert id and prefill', async () => {
     mockFetchExperts.mockResolvedValue([expert]);
-    const prefill = { subject: 'Yellow leaves', problemDescription: '', cropId: null, imageUrl: null };
+    const prefill = { subject: 'Yellow leaves', cropId: null, imageUrl: null };
     const props = makeProps({ prefill: prefill as never });
     await renderWithQuery(<ExpertListScreen {...props} />);
 

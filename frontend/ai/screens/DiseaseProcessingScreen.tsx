@@ -1,4 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { RotateCcw, Stethoscope } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, Spinner } from '../../common/components';
@@ -7,6 +8,7 @@ import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { navigateToConsultExpert } from './expertHandoff';
 import { errorMessage } from '../../utils/errorMessage';
+import { isApiError } from '../../services/api/errors';
 
 interface RouteParams {
   imageUri: string;
@@ -27,6 +29,11 @@ export function DiseaseProcessingScreen() {
   const analysis = useRunDiseaseAnalysis();
   const { mutate: analyze } = analysis;
   const error = analysis.error ? errorMessage(analysis.error) : null;
+  // 503 means the model itself is down (checkpoint missing or failing to load), not a problem with this photo, so it
+  // gets its own wording; every other failure keeps the server's message.
+  const modelUnavailable = isApiError(analysis.error) && analysis.error.status === 503;
+  // Without a signed-in user the analysis can never start; show the failure state instead of a spinner that never ends.
+  const signedOut = !userId;
 
   // The photo is uploaded to the private bucket and analysed; the "Talk to an Expert" fallback below uses the
   // original local `imageUri` route param instead, which stays valid whatever happens to the upload.
@@ -48,25 +55,51 @@ export function DiseaseProcessingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!error) {
+  if (!error && !signedOut) {
     return (
       <View style={styles.container}>
         <Spinner />
-        <Text style={styles.status}>Analyzing your photo...</Text>
+        {/* Announced, so a TalkBack user knows the app is working and has not frozen. */}
+        <Text style={styles.status} accessibilityLiveRegion="polite" accessibilityRole="progressbar">
+          Analyzing your photo...
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.errorTitle}>{"AI analysis isn't available right now"}</Text>
-      <Text style={styles.errorText}>{error}</Text>
+    <View style={styles.container} accessibilityLiveRegion="polite">
+      {signedOut ? (
+        <>
+          <Text style={styles.errorTitle} accessibilityRole="header">
+            Please sign in again
+          </Text>
+          <Text style={styles.errorText}>Your session ended. Sign in, then try the scan again, or send the photo to an expert.</Text>
+        </>
+      ) : modelUnavailable ? (
+        <>
+          <Text style={styles.errorTitle} accessibilityRole="header">
+            Disease scan is unavailable right now
+          </Text>
+          <Text style={styles.errorText}>Try again in a few minutes, or send the photo to an expert now.</Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.errorTitle} accessibilityRole="header">
+            {"AI analysis isn't available right now"}
+          </Text>
+          <Text style={styles.errorText}>{error}</Text>
+        </>
+      )}
 
-      <Button label="Retry" onPress={start} style={styles.action} />
+      {signedOut ? null : <Button label="Retry" icon={RotateCcw} onPress={start} style={styles.action} />}
       <Button
         label="Talk to an Expert"
+        icon={Stethoscope}
         variant="secondary"
-        onPress={() => navigateToConsultExpert(navigation, { cropId, imageUrl: imageUri })}
+        onPress={() =>
+          navigateToConsultExpert(navigation, { cropId, imageUrl: imageUri, diseaseCaseId: analysis.createdCaseId })
+        }
         style={styles.action}
       />
     </View>
