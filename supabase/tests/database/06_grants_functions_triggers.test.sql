@@ -29,8 +29,12 @@ select is(
     'anon profiles_public SELECT',
     'anon reviews SELECT',
     'anon units SELECT',
+    -- Read-only event-name catalogue for the audit log screen (20261023080000).
+    'authenticated audit_event_names SELECT',
     'authenticated audit_logs INSERT,SELECT',
     'authenticated categories DELETE,INSERT,SELECT,UPDATE',
+    -- The expert's assessment of an AI case (20261022080000, BR-13).
+    'authenticated consultation_assessments INSERT,SELECT',
     'authenticated consultation_messages INSERT,SELECT',
     'authenticated consultations INSERT,SELECT,UPDATE',
     'authenticated conversations INSERT,SELECT',
@@ -38,8 +42,9 @@ select is(
     'authenticated currencies DELETE,INSERT,SELECT,UPDATE',
     'authenticated dealer_documents DELETE,INSERT,SELECT',
     'authenticated dealer_profiles INSERT,SELECT,UPDATE',
-    'authenticated dealer_stores DELETE,INSERT,SELECT,UPDATE',
     'authenticated disease_cases INSERT,SELECT',
+    -- Admin-curated disease advice; writes are admin-only by policy (20261022080000).
+    'authenticated disease_knowledge DELETE,INSERT,SELECT,UPDATE',
     'authenticated disease_predictions SELECT',
     'authenticated expert_documents DELETE,INSERT,SELECT',
     'authenticated expert_specializations DELETE,INSERT,SELECT,UPDATE',
@@ -50,8 +55,18 @@ select is(
     'authenticated farmer_profiles INSERT,SELECT,UPDATE',
     'authenticated farms DELETE,INSERT,SELECT,UPDATE',
     'authenticated idempotency_keys DELETE,INSERT,SELECT,UPDATE',
-    'authenticated inventory DELETE,INSERT,SELECT,UPDATE',
-    'authenticated inventory_transactions INSERT,SELECT',
+    -- The dealer IMS (20261021080000, B1); the legacy dealer_stores, suppliers, inventory and inventory_transactions
+    -- were dropped by 20261022090000 (B3). Stock, the ledger and the sync log are read-only: only the definer functions
+    -- write them.
+    'authenticated inventory_alert_settings DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_locations DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_movements SELECT',
+    'authenticated inventory_products DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_purchase_items DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_purchases DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_stock SELECT',
+    'authenticated inventory_suppliers DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_sync_log SELECT',
     'authenticated listing_views INSERT,SELECT',
     'authenticated listings DELETE,INSERT,SELECT,UPDATE',
     'authenticated messages INSERT,SELECT',
@@ -65,13 +80,25 @@ select is(
     'authenticated profiles_public SELECT',
     'authenticated reports INSERT,SELECT,UPDATE',
     'authenticated required_documents INSERT,SELECT,UPDATE',
-    'authenticated reviews DELETE,INSERT,SELECT',
-    'authenticated suppliers DELETE,INSERT,SELECT,UPDATE',
+    -- No DELETE since 20261023080000: a review is hidden by moderation, never deleted by its author.
+    'authenticated reviews INSERT,SELECT',
     'authenticated units DELETE,INSERT,SELECT,UPDATE',
+    'service_role audit_event_names SELECT',
     'service_role audit_logs INSERT,SELECT',
+    'service_role consultation_assessments INSERT,SELECT',
     'service_role crops SELECT',
     'service_role disease_cases INSERT,SELECT',
+    'service_role disease_knowledge SELECT',
     'service_role disease_predictions INSERT,SELECT',
+    'service_role inventory_alert_settings SELECT',
+    'service_role inventory_locations SELECT',
+    'service_role inventory_movements SELECT',
+    'service_role inventory_products SELECT',
+    'service_role inventory_purchase_items SELECT',
+    'service_role inventory_purchases SELECT',
+    'service_role inventory_stock SELECT',
+    'service_role inventory_suppliers SELECT',
+    'service_role inventory_sync_log SELECT',
     'service_role order_events SELECT'
   ],
   'table grants to anon, authenticated and service_role match the reviewed allow-list');
@@ -99,19 +126,32 @@ select is(
     where p.pronamespace = 'public'::regnamespace and has_function_privilege('authenticated', p.oid, 'execute')
       and not has_function_privilege('anon', p.oid, 'execute')),
   array[
-    'authenticated adjust_stock(uuid,text,numeric,uuid,text)',
+    -- The admin dashboard's queue counts; refuses a non-admin inside (20261023080000).
+    'authenticated admin_queue_counts()',
     'authenticated available_stock(uuid[])',
     'authenticated caller_role()',
+    -- Policy helper for conversation contexts (20261020080000).
+    'authenticated conversation_context_allowed(conversation_context,uuid,uuid)',
     'authenticated decide_account_status(uuid,account_status,text)',
+    -- IMS client functions (20261021080000, B1; retry 20261022090000, B3). Each checks inventory_caller() inside. The
+    -- internal ones (inventory_apply_movement, inventory_caller, apply_dispatch_event, retry_dispatch_events_for,
+    -- guard_inventory_references) are revoked, and the legacy adjust_stock was dropped by B3.
+    'authenticated inventory_reconciliation()',
     'authenticated is_account_approved()',
     'authenticated is_application_editable()',
     'authenticated is_approved_dealer()',
     'authenticated is_approved_expert()',
+    -- Policy helper for AI case access (20261022080000).
+    'authenticated is_case_expert(uuid)',
     'authenticated is_seller_role(uuid)',
     'authenticated lock_editable_application(uuid)',
-    'authenticated submit_application()'
+    'authenticated receive_purchase(uuid)',
+    'authenticated record_movement(uuid,uuid,inventory_movement_direction,inventory_movement_source,numeric,text)',
+    'authenticated retry_dispatch_events()',
+    'authenticated submit_application()',
+    'authenticated transfer_stock(uuid,uuid,uuid,numeric,text)'
   ],
-  'the extra functions signed-in users can execute: the stock reads and adjust_stock, is_seller_role, and the account-status helpers and decisions (20261005080000), the application helper and submission (20261012080000)');
+  'the extra functions signed-in users can execute: the stock read, the IMS client functions (B1/B3), is_seller_role, and the account-status helpers and decisions (20261005080000), the application helper and submission (20261012080000)');
 
 -- profiles_public: exactly id, name, avatar ------------------------------------------------------------
 select is(

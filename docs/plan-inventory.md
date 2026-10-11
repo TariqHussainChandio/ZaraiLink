@@ -73,6 +73,8 @@ never write). `test_a_pending_dealer_and_the_admin_reach_no_inventory_data` prov
 
 ### B1 — Inventory data model
 
+> **Status (2026-10-11): done.** Migration `20261021080000_inventory_data_model.sql` (plus `20261025080000_numeric_nan_guards.sql` from the verifier's findings); pgTAP `20261021080000_inventory_data_model` (122 assertions) passes; reset rebuilds from migrations; the reconciliation identity holds on the scripted scenario; a fresh-context verifier found a High (NaN quantities) and four lesser issues, all fixed and tested. Decisions: the listing holds the product link (`listings.inventory_product_id`), dispatch draws from the default location, an opening-balance OTHER movement fills gaps in carried-over history.
+
 **Goal:** the tables and functions in §2, with the existing data carried over. Plan mode first (migrations).
 
 | Lane | Tasks | Needs |

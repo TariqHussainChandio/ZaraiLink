@@ -132,14 +132,21 @@ begin
     insert into tests.fixtures select 'FC1', id from x;
   insert into public.farmer_profiles (id) values (f);
 
-  with x as (insert into public.dealer_stores (dealer_id, name) values (d, 'Store') returning id)
+  -- Dealer D's inventory, in the B1 tables (B3 dropped the legacy ones). The fixture keys keep their old names:
+  -- DS1 the default location (was dealer_stores), SUP1 the supplier, INV1 the product (was inventory), IT1 its one
+  -- ledger row (was inventory_transactions: 1 unit restocked, written by the same function the app's calls use), and
+  -- LD1 D's listing linked to the product (D8).
+  with x as (insert into public.inventory_locations (dealer_id, name, is_default) values (d, 'Store', true) returning id)
     insert into tests.fixtures select 'DS1', id from x;
-  with x as (insert into public.suppliers (dealer_id, name) values (d, 'Supplier') returning id)
+  with x as (insert into public.inventory_suppliers (dealer_id, name) values (d, 'Supplier') returning id)
     insert into tests.fixtures select 'SUP1', id from x;
-  insert into public.inventory (dealer_id) values (d) returning id into inv1;
+  insert into public.inventory_products (dealer_id, sku, name) values (d, 'SKU-1', 'Product') returning id into inv1;
   insert into tests.fixtures values ('INV1', inv1);
-  with x as (insert into public.inventory_transactions (inventory_id, type, quantity) values (inv1, 'addition', 1) returning id)
-    insert into tests.fixtures select 'IT1', id from x;
+  insert into tests.fixtures
+    values ('IT1', public.inventory_apply_movement(d, inv1, tests.fx('DS1'), 'in', 'RESTOCK', 1, null, d));
+  with x as (insert into public.listings (owner_id, title, price, quantity, status, seller_role, inventory_product_id)
+    values (d, 'L dealer', 50, 1, 'active', 'dealer', inv1) returning id)
+    insert into tests.fixtures select 'LD1', id from x;
 
   insert into public.experts (id, verification_status) values (e, 'approved');
   insert into public.expert_specializations (expert_id, specialization) values (e, 'plant_diseases');
@@ -195,11 +202,12 @@ begin
   insert into public.farmer_profiles (id) values (sf);
   with x as (insert into public.listings (owner_id, title, price, seller_role) values (sf, 'Suspended listing', 5, 'farmer') returning id)
     insert into tests.fixtures select 'SL', id from x;
-  with x as (insert into public.dealer_stores (dealer_id, name) values (sd, 'Suspended store') returning id)
+  -- SDS location, SSUP supplier, SINV product: the B1 tables, keys as before.
+  with x as (insert into public.inventory_locations (dealer_id, name, is_default) values (sd, 'Suspended store', true) returning id)
     insert into tests.fixtures select 'SDS', id from x;
-  with x as (insert into public.suppliers (dealer_id, name) values (sd, 'Suspended supplier') returning id)
+  with x as (insert into public.inventory_suppliers (dealer_id, name) values (sd, 'Suspended supplier') returning id)
     insert into tests.fixtures select 'SSUP', id from x;
-  with x as (insert into public.inventory (dealer_id) values (sd) returning id)
+  with x as (insert into public.inventory_products (dealer_id, sku, name) values (sd, 'SKU-S', 'Suspended product') returning id)
     insert into tests.fixtures select 'SINV', id from x;
   insert into public.experts (id) values (se);
   with x as (insert into public.notifications (user_id, type) values (sf, 'pgtap') returning id)
