@@ -26,9 +26,11 @@ select tests.expect(tests.fx('F'), 'select id from public.conversations where id
 select tests.expect(tests.fx('B2'), 'select id from public.conversations where id = ' || tests.l('C1'), 'rows:0', 'conversations: a stranger does not');
 select tests.expect(tests.fx('A'), 'select id from public.conversations where id = ' || tests.l('C1'), 'rows:0', 'conversations: even an admin does not (messages are moderated, chats are private)');
 select tests.expect(null, 'select id from public.conversations where id = ' || tests.l('C1'), 'err:42501', 'conversations: anon has no access at all (no grant)');
-select tests.expect(tests.fx('B'), 'insert into public.conversations (participant_one, participant_two) values (' || tests.l('B') || ',' || tests.l('D') || ')', 'n:1', 'conversations: a user starts one they are part of');
-select tests.expect(tests.fx('B'), 'insert into public.conversations (participant_one, participant_two) values (' || tests.l('F2') || ',' || tests.l('D2') || ')', 'err:42501', 'conversations: cannot start one between two others');
-select tests.expect(tests.fx('S'), 'insert into public.conversations (participant_one, participant_two) values (' || tests.l('S') || ',' || tests.l('D') || ')', 'err:42501', 'conversations: a suspended user cannot');
+-- Since A5 a new conversation carries its context (20261020080000_conversation_context.sql); here the inquiry about
+-- dealer D's listing LD1, so each line still differs from the allowed one only in who starts it.
+select tests.expect(tests.fx('B'), 'insert into public.conversations (participant_one, participant_two, context_type, context_id) values (' || tests.l('B') || ',' || tests.l('D') || $$, 'listing', $$ || tests.l('LD1') || ')', 'n:1', 'conversations: a user starts one they are part of');
+select tests.expect(tests.fx('B'), 'insert into public.conversations (participant_one, participant_two, context_type, context_id) values (' || tests.l('F2') || ',' || tests.l('D') || $$, 'listing', $$ || tests.l('LD1') || ')', 'err:42501', 'conversations: cannot start one between two others');
+select tests.expect(tests.fx('S'), 'insert into public.conversations (participant_one, participant_two, context_type, context_id) values (' || tests.l('S') || ',' || tests.l('D') || $$, 'listing', $$ || tests.l('LD1') || ')', 'err:42501', 'conversations: a suspended user cannot');
 
 -- messages ---------------------------------------------------------------------------------------------
 select tests.expect(tests.fx('B'), 'select id from public.messages where id = ' || tests.l('M1'), 'rows:1', 'messages: the sender reads it');

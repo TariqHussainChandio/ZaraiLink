@@ -60,12 +60,14 @@ beforeEach(() => {
 });
 
 describe('ConversationListScreen', () => {
-  it('shows a spinner while loading, then the conversation list', async () => {
+  it('shows a skeleton while loading (no empty inbox yet), then the conversation list', async () => {
     let resolveFetch: (value: ConversationWithPreview[]) => void = () => {};
     mockFetchConversations.mockReturnValue(new Promise(resolve => { resolveFetch = resolve; }));
 
     await renderWithQuery(<ConversationListScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(screen.getByTestId('spinner')).toBeTruthy();
+    // ScreenState draws a skeleton while pending: neither the rows nor the empty state yet.
+    expect(screen.queryByText('Green Farms')).toBeNull();
+    expect(screen.queryByText('No messages yet')).toBeNull();
 
     resolveFetch([conversation()]);
     expect(await screen.findByText('Green Farms')).toBeTruthy();
@@ -75,7 +77,9 @@ describe('ConversationListScreen', () => {
   it('shows an empty state when there are no conversations', async () => {
     mockFetchConversations.mockResolvedValue([]);
     await renderWithQuery(<ConversationListScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(await screen.findByText('No conversations yet')).toBeTruthy();
+    expect(await screen.findByText('No messages yet')).toBeTruthy();
+    // Since A5 a chat starts from a listing or an order, and the empty inbox says so.
+    expect(screen.getByText('Open a listing or an order and tap Message to start a chat.')).toBeTruthy();
   });
 
   it('navigates to Chat with the conversation id and other participant name', async () => {

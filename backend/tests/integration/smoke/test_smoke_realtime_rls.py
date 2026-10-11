@@ -48,7 +48,10 @@ async def heard(sink: list, needle: str, seconds: float) -> bool:
 
 async def test_a_message_is_delivered_to_its_participants_only(world, api_client):
     conversation = api_client(
-        "POST", "/api/v1/messaging/conversations", world.buyer.token, json={"other_user_id": world.farmer.id}
+        "POST",
+        "/api/v1/messaging/conversations",
+        world.buyer.token,
+        json={"other_user_id": world.farmer.id, "context_type": "listing", "context_id": world.farmer_listing_id},
     )
     assert conversation.status_code == 200, conversation.text
     marker = f"realtime-{uuid.uuid4().hex}"

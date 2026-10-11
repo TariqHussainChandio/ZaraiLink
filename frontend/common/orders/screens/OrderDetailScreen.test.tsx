@@ -1,7 +1,6 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { OrderDetailScreen } from './OrderDetailScreen';
 import {
   fetchOrderById,
@@ -16,7 +15,7 @@ import {
 } from '../../payments/services/paymentsService';
 import { fetchReviewByOrderId } from '../../reviews/services/reviewsService';
 import { useAuthStore } from '../../../state/authStore';
-import { createTestQueryClient } from '../../../testUtils/renderWithProviders';
+import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
 import type { OrderWithItems } from '../types/orders';
 
@@ -82,12 +81,8 @@ const order = (overrides: Partial<OrderWithItems> = {}): OrderWithItems =>
   }) as OrderWithItems;
 
 function renderScreen() {
-  const queryClient = createTestQueryClient();
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <OrderDetailScreen />
-    </QueryClientProvider>,
-  );
+  // renderWithQuery mounts the ToastProvider the screen's error toasts need, as App.tsx does.
+  return renderWithQuery(<OrderDetailScreen />);
 }
 
 beforeEach(() => {
@@ -207,12 +202,9 @@ describe('OrderDetailScreen', () => {
     await fireEvent.press(screen.getByText('Mark Dispatched'));
     await fireEvent.press(screen.getByText('Dispatch now'));
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Could not update order',
-        'Not enough stock to dispatch this order — needs 3 but only 2 in stock.',
-      ),
-    );
+    expect(
+      await screen.findByText('Not enough stock to dispatch this order — needs 3 but only 2 in stock.'),
+    ).toBeTruthy();
   });
 
   it('lets the seller complete a dispatched order, and offers no cancel', async () => {
@@ -238,7 +230,7 @@ describe('OrderDetailScreen', () => {
     expect(screen.queryByText('Mark Dispatched')).toBeNull();
   });
 
-  it('shows an alert when a status update fails', async () => {
+  it('shows a toast when a status update fails', async () => {
     useAuthStore.setState({ user: { id: 'seller-1' } as never });
     mockFetchOrderById.mockResolvedValue(order());
     mockUpdateOrderStatus.mockRejectedValue(new Error('Order already updated'));
@@ -247,9 +239,7 @@ describe('OrderDetailScreen', () => {
 
     await fireEvent.press(screen.getByText('Confirm Order'));
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Could not update order', 'Order already updated'),
-    );
+    expect(await screen.findByText('Order already updated')).toBeTruthy();
   });
 
   it('lets the seller mark a pending payment as received', async () => {
@@ -276,7 +266,7 @@ describe('OrderDetailScreen', () => {
     await waitFor(() => expect(mockMarkPaymentReceived).toHaveBeenCalledWith('payment-1'));
   });
 
-  it('starts a conversation with the seller and navigates to Chat', async () => {
+  it('starts a conversation with the seller about this order and navigates to Chat', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchOrderById.mockResolvedValue(order());
     mockFindOrCreateConversation.mockResolvedValue({ id: 'conversation-1' });
@@ -285,12 +275,31 @@ describe('OrderDetailScreen', () => {
 
     await fireEvent.press(screen.getByText('Message Seller'));
 
-    expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1');
+    expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1', { type: 'order', id: 'order-1' });
     await waitFor(() =>
       expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
         screen: MESSAGING_ROUTES.Chat,
         initial: false,
         params: { conversationId: 'conversation-1', otherUserName: 'Green Farms' },
+      }),
+    );
+  });
+
+  it('lets the seller message the buyer about this order', async () => {
+    useAuthStore.setState({ user: { id: 'seller-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order());
+    mockFindOrCreateConversation.mockResolvedValue({ id: 'conversation-2' });
+    await renderScreen();
+    await screen.findAllByText('Rs 550');
+
+    await fireEvent.press(screen.getByText('Message Buyer'));
+
+    expect(mockFindOrCreateConversation).toHaveBeenCalledWith('buyer-1', { type: 'order', id: 'order-1' });
+    await waitFor(() =>
+      expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
+        screen: MESSAGING_ROUTES.Chat,
+        initial: false,
+        params: { conversationId: 'conversation-2', otherUserName: 'Ali Khan' },
       }),
     );
   });

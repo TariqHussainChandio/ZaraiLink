@@ -1,8 +1,9 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { MessageCircle } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components';
+import { ScreenState } from '../../components';
 import { ConversationListItem } from '../components/ConversationListItem';
 import { MESSAGING_ROUTES } from '../../constants/routes';
 import { useConversations } from '../hooks/messaging';
@@ -10,11 +11,20 @@ import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 import type { MessagingScreenProps } from '../../../navigation/stacks/MessagingNavigator';
 
+const EMPTY_INBOX = {
+  title: 'No messages yet',
+  description: 'Open a listing or an order and tap Message to start a chat.',
+  icon: MessageCircle,
+};
+
 export function ConversationListScreen({ navigation }: MessagingScreenProps<'ConversationList'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const { data: conversations = [], isPending, refetch } = useConversations(!!userId);
+  const conversations = useConversations(!!userId);
+  const { refetch } = conversations;
+  // With no signed-in user the query never runs; show the empty inbox instead of a skeleton that never ends.
+  const query = userId ? conversations : { ...conversations, data: conversations.data ?? [], isPending: false };
 
   // Coming back to the inbox shows messages that arrived while a chat was open.
   useFocusEffect(
@@ -23,31 +33,27 @@ export function ConversationListScreen({ navigation }: MessagingScreenProps<'Con
     }, [userId, refetch]),
   );
 
-  if (isPending && userId) return <Spinner fullscreen />;
-
   return (
     <View style={styles.container}>
-      <FlashList
-        data={conversations}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <ConversationListItem
-            conversation={item}
-            onPress={() =>
-              navigation.navigate(MESSAGING_ROUTES.Chat, {
-                conversationId: item.id,
-                otherUserName: item.otherParticipant?.full_name || '',
-              })
-            }
+      <ScreenState query={query} errorTitle="Couldn't load your messages" empty={EMPTY_INBOX}>
+        {data => (
+          <FlashList
+            data={data}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <ConversationListItem
+                conversation={item}
+                onPress={() =>
+                  navigation.navigate(MESSAGING_ROUTES.Chat, {
+                    conversationId: item.id,
+                    otherUserName: item.otherParticipant?.full_name || '',
+                  })
+                }
+              />
+            )}
           />
         )}
-        ListEmptyComponent={
-          <EmptyState
-            title="No conversations yet"
-            description="Message a seller from a listing or an order to start chatting."
-          />
-        }
-      />
+      </ScreenState>
     </View>
   );
 }

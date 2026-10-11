@@ -696,6 +696,8 @@ transaction as the event; a listing with no inventory row loses its own quantity
 
 ### A5 — Messaging and notifications
 
+> **Status (2026-10-11): done.** Migration `20261020080000_conversation_context.sql`; pgTAP (41), backend unit (19) and real-stack (`test_smoke_messaging.py`) pass, Jest messaging suites pass; device run of a listing inquiry; fresh-context verifier: VERIFIED WITH FINDINGS (Low only, fixed). Notifications for approval, dispatch and low stock already existed (A3, A4, the IMS trigger in B3).
+
 **Goal:** SRDS §30–§31 (D12).
 
 | Lane | Tasks | Needs |

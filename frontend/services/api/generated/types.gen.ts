@@ -63,6 +63,34 @@ export type AdjustStockRequest = {
 };
 
 /**
+ * AdjustmentInput
+ *
+ * A manual correction (SRDS §23): always with a reason, so the ledger explains every change.
+ */
+export type AdjustmentInput = {
+    /**
+     * Direction
+     */
+    direction: 'in' | 'out';
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Reason
+     */
+    reason: string;
+};
+
+/**
  * AdminAnalytics
  */
 export type AdminAnalytics = {
@@ -123,6 +151,213 @@ export type AdminAnalytics = {
 };
 
 /**
+ * AdminCancelOrderRequest
+ */
+export type AdminCancelOrderRequest = {
+    /**
+     * Reason
+     */
+    reason: string;
+};
+
+/**
+ * AdminQueues
+ *
+ * What waits for the admin (SRDS §14), from admin_queue_counts(): submitted dealer and expert applications, open or
+ * investigating reports, disputed orders, and consultations open for over a week without an outcome.
+ */
+export type AdminQueues = {
+    /**
+     * Disputed Orders
+     */
+    disputed_orders: number;
+    /**
+     * Open Reports
+     */
+    open_reports: number;
+    /**
+     * Pending Dealer Applications
+     */
+    pending_dealer_applications: number;
+    /**
+     * Pending Expert Applications
+     */
+    pending_expert_applications: number;
+    /**
+     * Stale Consultations
+     */
+    stale_consultations: number;
+};
+
+/**
+ * AiActivity
+ *
+ * The AI module at a glance for the last `window_days` days (SRDS §37). Counts only; no image, no farmer.
+ */
+export type AiActivity = {
+    /**
+     * Days
+     */
+    days: Array<AiActivityDay>;
+    /**
+     * Failed
+     */
+    failed: number;
+    /**
+     * Low Confidence
+     */
+    low_confidence: number;
+    /**
+     * Low Confidence Share
+     */
+    low_confidence_share: number;
+    /**
+     * Predicted
+     */
+    predicted: number;
+    /**
+     * Referrals
+     */
+    referrals: number;
+    /**
+     * Scans
+     */
+    scans: number;
+    /**
+     * Since
+     */
+    since: string;
+    /**
+     * Window Days
+     */
+    window_days: number;
+};
+
+/**
+ * AiActivityDay
+ *
+ * One UTC day of the activity window.
+ */
+export type AiActivityDay = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Failed
+     */
+    failed: number;
+    /**
+     * Low Confidence
+     */
+    low_confidence: number;
+    /**
+     * Referrals
+     */
+    referrals: number;
+    /**
+     * Scans
+     */
+    scans: number;
+};
+
+/**
+ * AiCaseSummary
+ *
+ * The AI result attached to a consultation (SRDS §34-§35). Advisory only (BR-13): the expert's own answer is a
+ * separate `ConsultationAssessment`, never written into this report.
+ */
+export type AiCaseSummary = {
+    /**
+     * Case Id
+     */
+    case_id: string;
+    /**
+     * Image Url
+     */
+    image_url?: string | null;
+    report: DiseaseReport;
+};
+
+/**
+ * AlertSettings
+ */
+export type AlertSettings = {
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Default Reorder Threshold
+     */
+    default_reorder_threshold: number;
+    /**
+     * Notify Low Stock
+     */
+    notify_low_stock: boolean;
+    /**
+     * Notify Sync Failure
+     */
+    notify_sync_failure: boolean;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * AlertSettingsInput
+ */
+export type AlertSettingsInput = {
+    /**
+     * Default Reorder Threshold
+     */
+    default_reorder_threshold?: number;
+    /**
+     * Notify Low Stock
+     */
+    notify_low_stock?: boolean;
+    /**
+     * Notify Sync Failure
+     */
+    notify_sync_failure?: boolean;
+};
+
+/**
+ * AnalyticsReport
+ */
+export type AnalyticsReport = {
+    /**
+     * Best Sellers
+     */
+    best_sellers: Array<BestSellerRow>;
+    /**
+     * Fast Movers
+     */
+    fast_movers: Array<MoverRow>;
+    /**
+     * From
+     */
+    from: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Slow Movers
+     */
+    slow_movers: Array<MoverRow>;
+    /**
+     * To
+     */
+    to: string;
+    /**
+     * Trend
+     */
+    trend: Array<TrendPoint>;
+};
+
+/**
  * ApplicationDocument
  */
 export type ApplicationDocument = {
@@ -154,6 +389,22 @@ export type ApplicationDocument = {
 };
 
 /**
+ * AuditEventNameEntry
+ *
+ * One audit event name and the label the audit screen shows for it (SRDS §51).
+ */
+export type AuditEventNameEntry = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
  * AuditLogEntryWithActor
  */
 export type AuditLogEntryWithActor = {
@@ -161,6 +412,10 @@ export type AuditLogEntryWithActor = {
      * Action
      */
     action: string;
+    /**
+     * Action Label
+     */
+    action_label: string;
     actor?: ActorRef | null;
     /**
      * Actor Id
@@ -200,6 +455,28 @@ export type AuditLogEntryWithActor = {
      * Target Id
      */
     target_id: string | null;
+};
+
+/**
+ * BestSellerRow
+ */
+export type BestSellerRow = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Sku
+     */
+    sku: string;
 };
 
 /**
@@ -343,6 +620,10 @@ export type Consultation = {
      */
     crop_id: string | null;
     /**
+     * Disease Case Id
+     */
+    disease_case_id?: string | null;
+    /**
      * Expert Id
      */
     expert_id: string | null;
@@ -358,6 +639,10 @@ export type Consultation = {
      * Images
      */
     images: Array<string>;
+    /**
+     * Moderation Reason
+     */
+    moderation_reason?: string | null;
     /**
      * Priority
      */
@@ -378,6 +663,127 @@ export type Consultation = {
      * Updated At
      */
     updated_at: string;
+    /**
+     * User Id
+     */
+    user_id: string;
+};
+
+/**
+ * ConsultationAssessment
+ *
+ * The Expert Assessment, stored apart from the AI report and always labelled as the expert's. Append-only: a later
+ * assessment supersedes an earlier one, nothing is edited.
+ */
+export type ConsultationAssessment = {
+    /**
+     * Consultation Id
+     */
+    consultation_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Diagnosis
+     */
+    diagnosis: string | null;
+    /**
+     * Expert Id
+     */
+    expert_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Recommendations
+     */
+    recommendations: string | null;
+    /**
+     * Verdict
+     */
+    verdict: 'agree' | 'correct' | 'additional_diagnosis' | 'request_information';
+};
+
+/**
+ * ConsultationAssessmentInput
+ */
+export type ConsultationAssessmentInput = {
+    /**
+     * Diagnosis
+     */
+    diagnosis?: string | null;
+    /**
+     * Recommendations
+     */
+    recommendations?: string | null;
+    /**
+     * Verdict
+     */
+    verdict: 'agree' | 'correct' | 'additional_diagnosis' | 'request_information';
+};
+
+/**
+ * ConsultationDetail
+ */
+export type ConsultationDetail = {
+    ai_report?: AiCaseSummary | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    crop?: CropRef | null;
+    /**
+     * Crop Id
+     */
+    crop_id: string | null;
+    /**
+     * Disease Case Id
+     */
+    disease_case_id?: string | null;
+    expert?: ConsultationProfileRef | null;
+    /**
+     * Expert Id
+     */
+    expert_id: string | null;
+    /**
+     * Farm Id
+     */
+    farm_id: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Images
+     */
+    images: Array<string>;
+    /**
+     * Moderation Reason
+     */
+    moderation_reason?: string | null;
+    /**
+     * Priority
+     */
+    priority: 'low' | 'medium' | 'high';
+    /**
+     * Problem Description
+     */
+    problem_description: string | null;
+    /**
+     * Status
+     */
+    status: 'requested' | 'accepted' | 'in_progress' | 'resolved' | 'closed' | 'rejected' | 'cancelled' | 'expired';
+    /**
+     * Subject
+     */
+    subject: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    user?: ConsultationProfileRef | null;
     /**
      * User Id
      */
@@ -472,6 +878,10 @@ export type ConsultationWithRelations = {
      * Crop Id
      */
     crop_id: string | null;
+    /**
+     * Disease Case Id
+     */
+    disease_case_id?: string | null;
     expert?: ConsultationProfileRef | null;
     /**
      * Expert Id
@@ -489,6 +899,10 @@ export type ConsultationWithRelations = {
      * Images
      */
     images: Array<string>;
+    /**
+     * Moderation Reason
+     */
+    moderation_reason?: string | null;
     /**
      * Priority
      */
@@ -521,6 +935,14 @@ export type ConsultationWithRelations = {
  */
 export type Conversation = {
     /**
+     * Context Id
+     */
+    context_id?: string | null;
+    /**
+     * Context Type
+     */
+    context_type?: 'listing' | 'order' | 'consultation' | null;
+    /**
      * Created At
      */
     created_at: string;
@@ -544,6 +966,14 @@ export type Conversation = {
  * ConversationWithPreview
  */
 export type ConversationWithPreview = {
+    /**
+     * Context Id
+     */
+    context_id?: string | null;
+    /**
+     * Context Type
+     */
+    context_type?: 'listing' | 'order' | 'consultation' | null;
     /**
      * Created At
      */
@@ -588,6 +1018,10 @@ export type CreateConsultationRequest = {
      * Crop Id
      */
     crop_id?: string | null;
+    /**
+     * Disease Case Id
+     */
+    disease_case_id?: string | null;
     /**
      * Expert Id
      */
@@ -710,6 +1144,69 @@ export type Currency = {
      * Symbol
      */
     symbol: string;
+};
+
+/**
+ * Dashboard
+ *
+ * SRDS §18: the figures, the recent activity, the alerts and the stock trend.
+ */
+export type Dashboard = {
+    /**
+     * Alerts
+     */
+    alerts: Array<StockAlert>;
+    /**
+     * Recent Adjustments
+     */
+    recent_adjustments: Array<Movement>;
+    /**
+     * Recent Movements
+     */
+    recent_movements: Array<Movement>;
+    /**
+     * Recent Purchases
+     */
+    recent_purchases: Array<Purchase>;
+    /**
+     * Recent Restocks
+     */
+    recent_restocks: Array<Movement>;
+    /**
+     * Sync Failures
+     */
+    sync_failures: number;
+    totals: DashboardTotals;
+    /**
+     * Trend
+     */
+    trend: Array<TrendPoint>;
+};
+
+/**
+ * DashboardTotals
+ */
+export type DashboardTotals = {
+    /**
+     * Inventory Value
+     */
+    inventory_value: number;
+    /**
+     * Low Stock
+     */
+    low_stock: number;
+    /**
+     * Out Of Stock
+     */
+    out_of_stock: number;
+    /**
+     * Products
+     */
+    products: number;
+    /**
+     * Stock Units
+     */
+    stock_units: number;
 };
 
 /**
@@ -903,7 +1400,7 @@ export type DealerStore = {
      * Id
      */
     id: string;
-    location?: Location | null;
+    location?: AppCommonSchemasLocation | null;
     /**
      * Name
      */
@@ -989,6 +1486,10 @@ export type DiseaseCaseWithPredictionResponse = {
      */
     crop_id: string | null;
     /**
+     * Failure Reason
+     */
+    failure_reason?: string | null;
+    /**
      * Id
      */
     id: string;
@@ -996,11 +1497,227 @@ export type DiseaseCaseWithPredictionResponse = {
      * Image Signed Url
      */
     image_signed_url: string;
-    prediction?: PredictResponse | null;
+    prediction?: PredictionRecord | null;
+    report?: DiseaseReport | null;
+    /**
+     * Status
+     */
+    status?: 'pending' | 'predicted' | 'failed';
     /**
      * User Id
      */
     user_id: string;
+};
+
+/**
+ * DiseaseKnowledge
+ *
+ * One row of `disease_knowledge`: the advisory text for one model class (SRDS §34-§35).
+ */
+export type DiseaseKnowledge = {
+    /**
+     * Advisory
+     */
+    advisory: string;
+    /**
+     * Class Label
+     */
+    class_label: string;
+    /**
+     * Crop
+     */
+    crop: string;
+    /**
+     * Disease
+     */
+    disease: string;
+    /**
+     * Is Healthy
+     */
+    is_healthy: boolean;
+    /**
+     * Precautions
+     */
+    precautions?: Array<string>;
+    /**
+     * Review Status
+     */
+    review_status: 'pending_review' | 'reviewed';
+    /**
+     * Reviewed At
+     */
+    reviewed_at?: string | null;
+    /**
+     * Symptoms
+     */
+    symptoms?: Array<string>;
+    /**
+     * Treatment
+     */
+    treatment?: Array<string>;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * DiseaseKnowledgeEntry
+ */
+export type DiseaseKnowledgeEntry = {
+    /**
+     * Advisory
+     */
+    advisory: string;
+    /**
+     * Class Label
+     */
+    class_label: string;
+    /**
+     * Crop
+     */
+    crop: string;
+    /**
+     * Disease
+     */
+    disease: string;
+    /**
+     * Is Healthy
+     */
+    is_healthy: boolean;
+    /**
+     * Precautions
+     */
+    precautions: Array<string>;
+    /**
+     * Review Status
+     */
+    review_status: 'pending_review' | 'reviewed';
+    /**
+     * Reviewed At
+     */
+    reviewed_at: string | null;
+    /**
+     * Reviewed By
+     */
+    reviewed_by: string | null;
+    /**
+     * Symptoms
+     */
+    symptoms: Array<string>;
+    /**
+     * Treatment
+     */
+    treatment: Array<string>;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * DiseaseKnowledgeUpdate
+ *
+ * An admin's edit of one entry. class_label is the model's own label and is_healthy follows from it, so neither
+ * is editable; review fields change only through the review route.
+ */
+export type DiseaseKnowledgeUpdate = {
+    /**
+     * Advisory
+     */
+    advisory?: string | null;
+    /**
+     * Crop
+     */
+    crop?: string | null;
+    /**
+     * Disease
+     */
+    disease?: string | null;
+    /**
+     * Precautions
+     */
+    precautions?: Array<string> | null;
+    /**
+     * Symptoms
+     */
+    symptoms?: Array<string> | null;
+    /**
+     * Treatment
+     */
+    treatment?: Array<string> | null;
+};
+
+/**
+ * DiseaseReport
+ *
+ * The AI report contract (plan A6): what the farmer and the assigned expert see for one prediction.
+ *
+ * The text comes from `disease_knowledge`, never from code, so an agronomist's review changes what is shown without a
+ * release. `review_status` says whether that text has been reviewed yet, and `disclaimer` is on every report
+ * because BR-13 makes every AI result advisory and routes it to an expert.
+ */
+export type DiseaseReport = {
+    /**
+     * Advisory
+     */
+    advisory: string;
+    /**
+     * Class Label
+     */
+    class_label: string;
+    /**
+     * Confidence Band
+     */
+    confidence_band: 'confident' | 'low';
+    /**
+     * Confidence Score
+     */
+    confidence_score: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Crop
+     */
+    crop: string;
+    /**
+     * Disclaimer
+     */
+    disclaimer: string;
+    /**
+     * Disease
+     */
+    disease: string;
+    /**
+     * Is Healthy
+     */
+    is_healthy: boolean;
+    /**
+     * Model Version
+     */
+    model_version?: string | null;
+    /**
+     * Precautions
+     */
+    precautions?: Array<string>;
+    /**
+     * Predicted Disease
+     */
+    predicted_disease: string;
+    /**
+     * Review Status
+     */
+    review_status: 'pending_review' | 'reviewed';
+    /**
+     * Symptoms
+     */
+    symptoms?: Array<string>;
+    /**
+     * Treatment
+     */
+    treatment?: Array<string>;
 };
 
 /**
@@ -1035,7 +1752,7 @@ export type Expert = {
      * Institution Affiliation
      */
     institution_affiliation?: string | null;
-    location?: Location | null;
+    location?: AppCommonSchemasLocation | null;
     /**
      * Professional Description
      */
@@ -1163,7 +1880,7 @@ export type ExpertForAdmin = {
      * Institution Affiliation
      */
     institution_affiliation?: string | null;
-    location?: Location | null;
+    location?: AppCommonSchemasLocation | null;
     /**
      * Professional Description
      */
@@ -1296,6 +2013,38 @@ export type ExpertVerification = {
 };
 
 /**
+ * ExportInput
+ */
+export type ExportInput = {
+    /**
+     * From
+     */
+    from?: string | null;
+    /**
+     * Report
+     */
+    report: 'stock-summary' | 'valuation' | 'movements-by-source' | 'low-out-of-stock' | 'supplier-purchases' | 'sales-split' | 'analytics' | 'reconciliation';
+    /**
+     * To
+     */
+    to?: string | null;
+};
+
+/**
+ * ExportResult
+ */
+export type ExportResult = {
+    /**
+     * Expires At
+     */
+    expires_at: string;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * Farm
  */
 export type Farm = {
@@ -1315,7 +2064,7 @@ export type Farm = {
      * Land Unit
      */
     land_unit?: string | null;
-    location?: Location | null;
+    location?: AppCommonSchemasLocation | null;
     /**
      * Name
      */
@@ -1630,9 +2379,27 @@ export type FarmerProfileInput = {
  */
 export type FindOrCreateConversationRequest = {
     /**
+     * Context Id
+     */
+    context_id: string;
+    /**
+     * Context Type
+     */
+    context_type: 'listing' | 'order' | 'consultation';
+    /**
      * Other User Id
      */
     other_user_id: string;
+};
+
+/**
+ * HideReviewRequest
+ */
+export type HideReviewRequest = {
+    /**
+     * Reason
+     */
+    reason: string;
 };
 
 /**
@@ -1870,7 +2637,11 @@ export type Listing = {
      * Images
      */
     images: Array<string>;
-    location?: Location | null;
+    /**
+     * Inventory Product Id
+     */
+    inventory_product_id?: string | null;
+    location?: AppCommonSchemasLocation | null;
     /**
      * Owner Id
      */
@@ -1942,6 +2713,10 @@ export type ListingInput = {
      */
     images?: Array<string>;
     /**
+     * Inventory Product Id
+     */
+    inventory_product_id?: string | null;
+    /**
      * Price
      */
     price: number;
@@ -1961,6 +2736,16 @@ export type ListingInput = {
      * Unit
      */
     unit: string;
+};
+
+/**
+ * ListingLinkInput
+ */
+export type ListingLinkInput = {
+    /**
+     * Listing Id
+     */
+    listing_id: string;
 };
 
 /**
@@ -2013,6 +2798,10 @@ export type ListingUpdateInput = {
      * Images
      */
     images?: Array<string> | null;
+    /**
+     * Inventory Product Id
+     */
+    inventory_product_id?: string | null;
     /**
      * Price
      */
@@ -2078,7 +2867,11 @@ export type ListingWithRelations = {
      * Images
      */
     images: Array<string>;
-    location?: Location | null;
+    /**
+     * Inventory Product Id
+     */
+    inventory_product_id?: string | null;
+    location?: AppCommonSchemasLocation | null;
     owner?: OwnerRef | null;
     /**
      * Owner Id
@@ -2115,23 +2908,135 @@ export type ListingWithRelations = {
 };
 
 /**
- * Location
- *
- * The structured place stored as jsonb on farms, stores, listings and experts.
+ * LocationInput
  */
-export type Location = {
+export type LocationInput = {
     /**
-     * City
+     * Address
      */
-    city?: string | null;
+    address?: string | null;
     /**
-     * Country
+     * Is Active
      */
-    country?: string | null;
+    is_active?: boolean;
     /**
-     * Province
+     * Is Default
      */
-    province?: string | null;
+    is_default?: boolean;
+    /**
+     * Kind
+     */
+    kind?: 'shop' | 'godown' | 'shelf' | 'other';
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * LocationUpdateInput
+ */
+export type LocationUpdateInput = {
+    /**
+     * Address
+     */
+    address?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Is Default
+     */
+    is_default?: boolean | null;
+    /**
+     * Kind
+     */
+    kind?: 'shop' | 'godown' | 'shelf' | 'other' | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
+ * LowOutOfStockReport
+ */
+export type LowOutOfStockReport = {
+    /**
+     * From
+     */
+    from: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Low Stock
+     */
+    low_stock: number;
+    /**
+     * Out Of Stock
+     */
+    out_of_stock: number;
+    /**
+     * Rows
+     */
+    rows: Array<LowStockRow>;
+    /**
+     * To
+     */
+    to: string;
+};
+
+/**
+ * LowStockRow
+ */
+export type LowStockRow = {
+    /**
+     * Daily Out
+     */
+    daily_out: number;
+    /**
+     * Days Of Cover
+     */
+    days_of_cover?: number | null;
+    /**
+     * Location Id
+     */
+    location_id?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Period Out
+     */
+    period_out: number;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Reorder Threshold
+     */
+    reorder_threshold: number;
+    /**
+     * Sku
+     */
+    sku: string;
+    /**
+     * Status
+     */
+    status: 'low_stock' | 'out_of_stock';
+    /**
+     * Unit
+     */
+    unit: string;
 };
 
 /**
@@ -2179,6 +3084,20 @@ export type Message = {
 };
 
 /**
+ * ModerateConsultationRequest
+ */
+export type ModerateConsultationRequest = {
+    /**
+     * Action
+     */
+    action: 'close' | 'cancel';
+    /**
+     * Reason
+     */
+    reason: string;
+};
+
+/**
  * MonthlyPoint
  */
 export type MonthlyPoint = {
@@ -2190,6 +3109,124 @@ export type MonthlyPoint = {
      * Value
      */
     value: number;
+};
+
+/**
+ * Movement
+ */
+export type Movement = {
+    /**
+     * Actor
+     */
+    actor?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Direction
+     */
+    direction: 'in' | 'out';
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Order Id
+     */
+    order_id?: string | null;
+    /**
+     * Order Item Id
+     */
+    order_item_id?: string | null;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Purchase Id
+     */
+    purchase_id?: string | null;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Quantity After
+     */
+    quantity_after: number;
+    /**
+     * Quantity Before
+     */
+    quantity_before: number;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
+     * Source
+     */
+    source: 'ZARAILINK_ORDER' | 'LOCAL_SALE' | 'PURCHASE' | 'RESTOCK' | 'MANUAL_ADJUSTMENT' | 'DAMAGE' | 'EXPIRY' | 'TRANSFER' | 'OTHER';
+    /**
+     * Transfer Id
+     */
+    transfer_id?: string | null;
+};
+
+/**
+ * MovementsBySourceReport
+ */
+export type MovementsBySourceReport = {
+    /**
+     * From
+     */
+    from: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Rows
+     */
+    rows: Array<SourceTotal>;
+    /**
+     * To
+     */
+    to: string;
+};
+
+/**
+ * MoverRow
+ */
+export type MoverRow = {
+    /**
+     * Daily Out
+     */
+    daily_out: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Out Quantity
+     */
+    out_quantity: number;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Sku
+     */
+    sku: string;
 };
 
 /**
@@ -2228,6 +3265,10 @@ export type Notification = {
  * Order
  */
 export type Order = {
+    /**
+     * Admin Action Reason
+     */
+    admin_action_reason?: string | null;
     /**
      * Buyer Id
      */
@@ -2359,6 +3400,10 @@ export type OrderStatusHistoryEntry = {
  * OrderWithItems
  */
 export type OrderWithItems = {
+    /**
+     * Admin Action Reason
+     */
+    admin_action_reason?: string | null;
     buyer?: OrderProfileRef | null;
     /**
      * Buyer Id
@@ -2609,6 +3654,47 @@ export type PredictResponse = {
      * Recommended Actions
      */
     recommended_actions?: Array<string>;
+    report: DiseaseReport;
+};
+
+/**
+ * PredictionRecord
+ *
+ * A stored `disease_predictions` row, kept as history.
+ */
+export type PredictionRecord = {
+    /**
+     * Confidence Score
+     */
+    confidence_score: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Disease Case Id
+     */
+    disease_case_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Model Version
+     */
+    model_version?: string | null;
+    /**
+     * Predicted Disease
+     */
+    predicted_disease: string;
+    /**
+     * Recommended Actions
+     */
+    recommended_actions?: Array<string>;
 };
 
 /**
@@ -2627,6 +3713,168 @@ export type ProblemDetail = {
     status: number;
     title: string;
     type: string;
+};
+
+/**
+ * ProductInput
+ */
+export type ProductInput = {
+    /**
+     * Category Id
+     */
+    category_id?: string | null;
+    /**
+     * Cost Price
+     */
+    cost_price?: number | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Reorder Threshold
+     */
+    reorder_threshold?: number;
+    /**
+     * Selling Price
+     */
+    selling_price?: number | null;
+    /**
+     * Sku
+     */
+    sku: string;
+    /**
+     * Unit
+     */
+    unit?: string;
+};
+
+/**
+ * ProductStock
+ */
+export type ProductStock = {
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+};
+
+/**
+ * ProductUpdateInput
+ */
+export type ProductUpdateInput = {
+    /**
+     * Category Id
+     */
+    category_id?: string | null;
+    /**
+     * Cost Price
+     */
+    cost_price?: number | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Reorder Threshold
+     */
+    reorder_threshold?: number | null;
+    /**
+     * Selling Price
+     */
+    selling_price?: number | null;
+    /**
+     * Sku
+     */
+    sku?: string | null;
+    /**
+     * Unit
+     */
+    unit?: string | null;
+};
+
+/**
+ * ProductView
+ *
+ * A product with where its stock is and the marketplace listings it feeds (D8).
+ */
+export type ProductView = {
+    /**
+     * Category Id
+     */
+    category_id?: string | null;
+    /**
+     * Cost Price
+     */
+    cost_price?: number | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Default Location Quantity
+     */
+    default_location_quantity: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Listings
+     */
+    listings?: Array<ListingSummary>;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Reorder Threshold
+     */
+    reorder_threshold: number;
+    /**
+     * Selling Price
+     */
+    selling_price?: number | null;
+    /**
+     * Sku
+     */
+    sku: string;
+    /**
+     * Stock
+     */
+    stock?: Array<ProductStock>;
+    /**
+     * Total Quantity
+     */
+    total_quantity: number;
+    /**
+     * Unit
+     */
+    unit: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
 };
 
 /**
@@ -2747,6 +3995,248 @@ export type ProfileUpdateRequest = {
      * Village
      */
     village?: string | null;
+};
+
+/**
+ * Purchase
+ */
+export type Purchase = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Items
+     */
+    items?: Array<PurchaseItem>;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Purchased On
+     */
+    purchased_on: string;
+    /**
+     * Received At
+     */
+    received_at?: string | null;
+    /**
+     * Reference
+     */
+    reference?: string | null;
+    /**
+     * Status
+     */
+    status: 'draft' | 'received' | 'cancelled';
+    /**
+     * Supplier Id
+     */
+    supplier_id?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * PurchaseInput
+ */
+export type PurchaseInput = {
+    /**
+     * Items
+     */
+    items?: Array<PurchaseItemInput>;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Purchased On
+     */
+    purchased_on?: string | null;
+    /**
+     * Reference
+     */
+    reference?: string | null;
+    /**
+     * Supplier Id
+     */
+    supplier_id?: string | null;
+};
+
+/**
+ * PurchaseItem
+ */
+export type PurchaseItem = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Purchase Id
+     */
+    purchase_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Unit Cost
+     */
+    unit_cost?: number | null;
+};
+
+/**
+ * PurchaseItemInput
+ */
+export type PurchaseItemInput = {
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Unit Cost
+     */
+    unit_cost?: number | null;
+};
+
+/**
+ * PurchaseUpdateInput
+ *
+ * Edits a draft purchase. `items`, when sent, replaces every line.
+ */
+export type PurchaseUpdateInput = {
+    /**
+     * Items
+     */
+    items?: Array<PurchaseItemInput> | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Purchased On
+     */
+    purchased_on?: string | null;
+    /**
+     * Reference
+     */
+    reference?: string | null;
+    /**
+     * Supplier Id
+     */
+    supplier_id?: string | null;
+};
+
+/**
+ * ReconciliationReport
+ *
+ * SRDS §25 over the whole ledger (it must add up to the stock on hand, so it has no period), unbalanced first.
+ */
+export type ReconciliationReport = {
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Rows
+     */
+    rows: Array<ReconciliationReportRow>;
+    /**
+     * Unbalanced
+     */
+    unbalanced: number;
+};
+
+/**
+ * ReconciliationReportRow
+ */
+export type ReconciliationReportRow = {
+    /**
+     * Adjustments
+     */
+    adjustments: number;
+    /**
+     * Balanced
+     */
+    balanced: boolean;
+    /**
+     * Current Stock
+     */
+    current_stock: number;
+    /**
+     * Ledger Total
+     */
+    ledger_total: number;
+    /**
+     * Local Sales
+     */
+    local_sales: number;
+    /**
+     * Losses
+     */
+    losses: number;
+    /**
+     * Marketplace Sales
+     */
+    marketplace_sales: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Other
+     */
+    other: number;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Restocks And Purchases
+     */
+    restocks_and_purchases: number;
+    /**
+     * Sku
+     */
+    sku: string;
+    /**
+     * Transfers
+     */
+    transfers: number;
 };
 
 /**
@@ -2960,6 +4450,16 @@ export type ResolveReportRequest = {
 };
 
 /**
+ * RetryResult
+ */
+export type RetryResult = {
+    /**
+     * Applied
+     */
+    applied: number;
+};
+
+/**
  * Review
  */
 export type Review = {
@@ -2979,6 +4479,14 @@ export type Review = {
      * Created At
      */
     created_at: string;
+    /**
+     * Hidden At
+     */
+    hidden_at?: string | null;
+    /**
+     * Hidden Reason
+     */
+    hidden_reason?: string | null;
     /**
      * Id
      */
@@ -3041,6 +4549,14 @@ export type ReviewWithBuyer = {
      */
     created_at: string;
     /**
+     * Hidden At
+     */
+    hidden_at?: string | null;
+    /**
+     * Hidden Reason
+     */
+    hidden_reason?: string | null;
+    /**
      * Id
      */
     id: string;
@@ -3060,6 +4576,90 @@ export type ReviewWithBuyer = {
      * Seller Id
      */
     seller_id: string;
+};
+
+/**
+ * SalesDay
+ */
+export type SalesDay = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Local
+     */
+    local: number;
+    /**
+     * Marketplace
+     */
+    marketplace: number;
+};
+
+/**
+ * SalesProduct
+ */
+export type SalesProduct = {
+    /**
+     * Local
+     */
+    local: number;
+    /**
+     * Marketplace
+     */
+    marketplace: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Sku
+     */
+    sku: string;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
+ * SalesSplitReport
+ *
+ * Marketplace orders (ZARAILINK_ORDER) against local sales (LOCAL_SALE), net of any returned units.
+ */
+export type SalesSplitReport = {
+    /**
+     * By Day
+     */
+    by_day: Array<SalesDay>;
+    /**
+     * By Product
+     */
+    by_product: Array<SalesProduct>;
+    /**
+     * From
+     */
+    from: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Local Total
+     */
+    local_total: number;
+    /**
+     * Marketplace Total
+     */
+    marketplace_total: number;
+    /**
+     * To
+     */
+    to: string;
 };
 
 /**
@@ -3102,6 +4702,217 @@ export type SignedUrl = {
      * Url
      */
     url: string;
+};
+
+/**
+ * SourceTotal
+ */
+export type SourceTotal = {
+    /**
+     * In
+     */
+    in: number;
+    /**
+     * Movements
+     */
+    movements: number;
+    /**
+     * Net
+     */
+    net: number;
+    /**
+     * Out
+     */
+    out: number;
+    /**
+     * Source
+     */
+    source: 'ZARAILINK_ORDER' | 'LOCAL_SALE' | 'PURCHASE' | 'RESTOCK' | 'MANUAL_ADJUSTMENT' | 'DAMAGE' | 'EXPIRY' | 'TRANSFER' | 'OTHER';
+};
+
+/**
+ * StockAlert
+ */
+export type StockAlert = {
+    /**
+     * Location Id
+     */
+    location_id?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Reorder Threshold
+     */
+    reorder_threshold: number;
+    /**
+     * Sku
+     */
+    sku: string;
+    /**
+     * Status
+     */
+    status: 'low_stock' | 'out_of_stock';
+    /**
+     * Unit
+     */
+    unit: string;
+};
+
+/**
+ * StockInInput
+ *
+ * Stock In (SRDS §22-§23): new stock arriving by hand. Purchases from a supplier go through /purchases.
+ */
+export type StockInInput = {
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+};
+
+/**
+ * StockLevel
+ */
+export type StockLevel = {
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * StockOutInput
+ *
+ * Stock Out (SRDS §22-§23): a local sale, a loss, or own use (OTHER). A loss or own use needs a reason, as
+ * record_movement enforces; checked here too so the dealer gets a field error, not a database one.
+ */
+export type StockOutInput = {
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
+     * Source
+     */
+    source: 'LOCAL_SALE' | 'DAMAGE' | 'EXPIRY' | 'OTHER';
+};
+
+/**
+ * StockSummaryReport
+ */
+export type StockSummaryReport = {
+    /**
+     * From
+     */
+    from: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Rows
+     */
+    rows: Array<StockSummaryRow>;
+    /**
+     * To
+     */
+    to: string;
+    /**
+     * Total Quantity
+     */
+    total_quantity: number;
+};
+
+/**
+ * StockSummaryRow
+ */
+export type StockSummaryRow = {
+    /**
+     * Location Id
+     */
+    location_id: string;
+    /**
+     * Location Name
+     */
+    location_name: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Period In
+     */
+    period_in: number;
+    /**
+     * Period Out
+     */
+    period_out: number;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Sku
+     */
+    sku: string;
+    /**
+     * Unit
+     */
+    unit: string;
 };
 
 /**
@@ -3181,97 +4992,67 @@ export type StoreUpdateInput = {
 };
 
 /**
- * Supplier
+ * SupplierPurchaseRow
  */
-export type Supplier = {
+export type SupplierPurchaseRow = {
     /**
-     * Contact
+     * Cost
      */
-    contact?: string | null;
+    cost: number;
     /**
-     * Created At
+     * Lines Without Cost
      */
-    created_at: string;
+    lines_without_cost: number;
     /**
-     * Dealer Id
+     * Purchases
      */
-    dealer_id: string;
+    purchases: number;
     /**
-     * Id
+     * Quantity
      */
-    id: string;
+    quantity: number;
     /**
-     * Name
+     * Supplier Id
      */
-    name: string;
+    supplier_id?: string | null;
     /**
-     * Notes
+     * Supplier Name
      */
-    notes?: string | null;
-    /**
-     * Products Supplied
-     */
-    products_supplied?: string | null;
-    /**
-     * Status
-     */
-    status: 'active' | 'inactive';
-    /**
-     * Updated At
-     */
-    updated_at: string;
+    supplier_name: string;
 };
 
 /**
- * SupplierInput
+ * SupplierPurchasesReport
  */
-export type SupplierInput = {
+export type SupplierPurchasesReport = {
     /**
-     * Contact
+     * From
      */
-    contact?: string | null;
+    from: string;
     /**
-     * Name
+     * Generated At
      */
-    name: string;
+    generated_at: string;
     /**
-     * Notes
+     * Rows
      */
-    notes?: string | null;
+    rows: Array<SupplierPurchaseRow>;
     /**
-     * Products Supplied
+     * To
      */
-    products_supplied?: string | null;
+    to: string;
     /**
-     * Status
+     * Total Cost
      */
-    status?: 'active' | 'inactive';
-};
-
-/**
- * SupplierUpdateInput
- */
-export type SupplierUpdateInput = {
+    total_cost: number;
     /**
-     * Contact
+     * Total Purchases
      */
-    contact?: string | null;
+    total_purchases: number;
     /**
-     * Name
+     * Total Quantity
      */
-    name?: string | null;
-    /**
-     * Notes
-     */
-    notes?: string | null;
-    /**
-     * Products Supplied
-     */
-    products_supplied?: string | null;
-    /**
-     * Status
-     */
-    status?: 'active' | 'inactive' | null;
+    total_quantity: number;
 };
 
 /**
@@ -3282,6 +5063,84 @@ export type SuspendUserRequest = {
      * Is Suspended
      */
     is_suspended: boolean;
+};
+
+/**
+ * SyncLogEntry
+ */
+export type SyncLogEntry = {
+    /**
+     * Attempts
+     */
+    attempts: number;
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Error
+     */
+    error?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Order Event Id
+     */
+    order_event_id: string;
+    /**
+     * Processed At
+     */
+    processed_at: string;
+    /**
+     * Status
+     */
+    status: 'applied' | 'skipped_duplicate' | 'failed';
+};
+
+/**
+ * TransferInput
+ */
+export type TransferInput = {
+    /**
+     * From Location Id
+     */
+    from_location_id: string;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
+     * To Location Id
+     */
+    to_location_id: string;
+};
+
+/**
+ * TrendPoint
+ */
+export type TrendPoint = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * In
+     */
+    in: number;
+    /**
+     * Out
+     */
+    out: number;
 };
 
 /**
@@ -3367,6 +5226,78 @@ export type UpdateUserRoleRequest = {
 };
 
 /**
+ * ValuationReport
+ */
+export type ValuationReport = {
+    /**
+     * From
+     */
+    from: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Products Without Cost
+     */
+    products_without_cost: number;
+    /**
+     * Rows
+     */
+    rows: Array<ValuationRow>;
+    /**
+     * To
+     */
+    to: string;
+    /**
+     * Total Value
+     */
+    total_value: number;
+};
+
+/**
+ * ValuationRow
+ */
+export type ValuationRow = {
+    /**
+     * Cost Price
+     */
+    cost_price?: number | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Period In
+     */
+    period_in: number;
+    /**
+     * Period Out
+     */
+    period_out: number;
+    /**
+     * Product Id
+     */
+    product_id: string;
+    /**
+     * Quantity
+     */
+    quantity: number;
+    /**
+     * Sku
+     */
+    sku: string;
+    /**
+     * Unit
+     */
+    unit: string;
+    /**
+     * Value
+     */
+    value?: number | null;
+};
+
+/**
  * ViewCountsRequest
  */
 export type ViewCountsRequest = {
@@ -3375,6 +5306,316 @@ export type ViewCountsRequest = {
      */
     listing_ids: Array<string>;
 };
+
+/**
+ * Location
+ *
+ * The structured place stored as jsonb on farms, stores, listings and experts.
+ */
+export type AppCommonSchemasLocation = {
+    /**
+     * City
+     */
+    city?: string | null;
+    /**
+     * Country
+     */
+    country?: string | null;
+    /**
+     * Province
+     */
+    province?: string | null;
+};
+
+/**
+ * Supplier
+ */
+export type AppDealerSchemasSupplier = {
+    /**
+     * Contact
+     */
+    contact?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Products Supplied
+     */
+    products_supplied?: string | null;
+    /**
+     * Status
+     */
+    status: 'active' | 'inactive';
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * SupplierInput
+ */
+export type AppDealerSchemasSupplierInput = {
+    /**
+     * Contact
+     */
+    contact?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Products Supplied
+     */
+    products_supplied?: string | null;
+    /**
+     * Status
+     */
+    status?: 'active' | 'inactive';
+};
+
+/**
+ * SupplierUpdateInput
+ */
+export type AppDealerSchemasSupplierUpdateInput = {
+    /**
+     * Contact
+     */
+    contact?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Products Supplied
+     */
+    products_supplied?: string | null;
+    /**
+     * Status
+     */
+    status?: 'active' | 'inactive' | null;
+};
+
+/**
+ * Location
+ */
+export type AppInventorySchemasLocation = {
+    /**
+     * Address
+     */
+    address?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Is Default
+     */
+    is_default: boolean;
+    /**
+     * Kind
+     */
+    kind: 'shop' | 'godown' | 'shelf' | 'other';
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * Supplier
+ */
+export type AppInventorySchemasSupplier = {
+    /**
+     * Contact
+     */
+    contact?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Dealer Id
+     */
+    dealer_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Products Supplied
+     */
+    products_supplied?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * SupplierInput
+ */
+export type AppInventorySchemasSupplierInput = {
+    /**
+     * Contact
+     */
+    contact?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Products Supplied
+     */
+    products_supplied?: string | null;
+};
+
+/**
+ * SupplierUpdateInput
+ */
+export type AppInventorySchemasSupplierUpdateInput = {
+    /**
+     * Contact
+     */
+    contact?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Products Supplied
+     */
+    products_supplied?: string | null;
+};
+
+export type AdminGetAiActivityData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/ai-activity';
+};
+
+export type AdminGetAiActivityErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminGetAiActivityError = AdminGetAiActivityErrors[keyof AdminGetAiActivityErrors];
+
+export type AdminGetAiActivityResponses = {
+    /**
+     * Successful Response
+     */
+    200: AiActivity;
+};
+
+export type AdminGetAiActivityResponse = AdminGetAiActivityResponses[keyof AdminGetAiActivityResponses];
+
+export type AdminListAuditEventsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/audit-events';
+};
+
+export type AdminListAuditEventsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminListAuditEventsError = AdminListAuditEventsErrors[keyof AdminListAuditEventsErrors];
+
+export type AdminListAuditEventsResponses = {
+    /**
+     * Response Admin List Audit Events
+     *
+     * Successful Response
+     */
+    200: Array<AuditEventNameEntry>;
+};
+
+export type AdminListAuditEventsResponse = AdminListAuditEventsResponses[keyof AdminListAuditEventsResponses];
 
 export type AdminListAuditLogsData = {
     body?: never;
@@ -3388,6 +5629,10 @@ export type AdminListAuditLogsData = {
          * Actor Id
          */
         actor_id?: string | null;
+        /**
+         * Action
+         */
+        action?: string | null;
         /**
          * Limit
          */
@@ -3423,6 +5668,122 @@ export type AdminListAuditLogsResponses = {
 };
 
 export type AdminListAuditLogsResponse = AdminListAuditLogsResponses[keyof AdminListAuditLogsResponses];
+
+export type AdminAdminListData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'requested' | 'accepted' | 'in_progress' | 'resolved' | 'closed' | 'rejected' | 'cancelled' | 'expired' | null;
+        /**
+         * Older Than Days
+         */
+        older_than_days?: number | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/admin/consultations';
+};
+
+export type AdminAdminListErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminAdminListError = AdminAdminListErrors[keyof AdminAdminListErrors];
+
+export type AdminAdminListResponses = {
+    /**
+     * Response Admin Admin List
+     *
+     * Successful Response
+     */
+    200: Array<ConsultationWithRelations>;
+};
+
+export type AdminAdminListResponse = AdminAdminListResponses[keyof AdminAdminListResponses];
+
+export type AdminAdminGetData = {
+    body?: never;
+    path: {
+        /**
+         * Consultation Id
+         */
+        consultation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/consultations/{consultation_id}';
+};
+
+export type AdminAdminGetErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminAdminGetError = AdminAdminGetErrors[keyof AdminAdminGetErrors];
+
+export type AdminAdminGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConsultationDetail;
+};
+
+export type AdminAdminGetResponse = AdminAdminGetResponses[keyof AdminAdminGetResponses];
+
+export type AdminAdminModerateData = {
+    body: ModerateConsultationRequest;
+    path: {
+        /**
+         * Consultation Id
+         */
+        consultation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/consultations/{consultation_id}/moderate';
+};
+
+export type AdminAdminModerateErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminAdminModerateError = AdminAdminModerateErrors[keyof AdminAdminModerateErrors];
+
+export type AdminAdminModerateResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConsultationDetail;
+};
+
+export type AdminAdminModerateResponse = AdminAdminModerateResponses[keyof AdminAdminModerateResponses];
 
 export type AdminListDealerApplicationsData = {
     body?: never;
@@ -3540,10 +5901,147 @@ export type AdminGetDealerDocumentUrlResponses = {
 
 export type AdminGetDealerDocumentUrlResponse = AdminGetDealerDocumentUrlResponses[keyof AdminGetDealerDocumentUrlResponses];
 
+export type AdminListDiseaseKnowledgeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/disease-knowledge';
+};
+
+export type AdminListDiseaseKnowledgeErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminListDiseaseKnowledgeError = AdminListDiseaseKnowledgeErrors[keyof AdminListDiseaseKnowledgeErrors];
+
+export type AdminListDiseaseKnowledgeResponses = {
+    /**
+     * Response Admin List Disease Knowledge
+     *
+     * Successful Response
+     */
+    200: Array<DiseaseKnowledgeEntry>;
+};
+
+export type AdminListDiseaseKnowledgeResponse = AdminListDiseaseKnowledgeResponses[keyof AdminListDiseaseKnowledgeResponses];
+
+export type AdminGetDiseaseKnowledgeData = {
+    body?: never;
+    path: {
+        /**
+         * Class Label
+         */
+        class_label: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/disease-knowledge/{class_label}';
+};
+
+export type AdminGetDiseaseKnowledgeErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminGetDiseaseKnowledgeError = AdminGetDiseaseKnowledgeErrors[keyof AdminGetDiseaseKnowledgeErrors];
+
+export type AdminGetDiseaseKnowledgeResponses = {
+    /**
+     * Successful Response
+     */
+    200: DiseaseKnowledgeEntry;
+};
+
+export type AdminGetDiseaseKnowledgeResponse = AdminGetDiseaseKnowledgeResponses[keyof AdminGetDiseaseKnowledgeResponses];
+
+export type AdminUpdateDiseaseKnowledgeData = {
+    body: DiseaseKnowledgeUpdate;
+    path: {
+        /**
+         * Class Label
+         */
+        class_label: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/disease-knowledge/{class_label}';
+};
+
+export type AdminUpdateDiseaseKnowledgeErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminUpdateDiseaseKnowledgeError = AdminUpdateDiseaseKnowledgeErrors[keyof AdminUpdateDiseaseKnowledgeErrors];
+
+export type AdminUpdateDiseaseKnowledgeResponses = {
+    /**
+     * Successful Response
+     */
+    200: DiseaseKnowledgeEntry;
+};
+
+export type AdminUpdateDiseaseKnowledgeResponse = AdminUpdateDiseaseKnowledgeResponses[keyof AdminUpdateDiseaseKnowledgeResponses];
+
+export type AdminReviewDiseaseKnowledgeData = {
+    body?: never;
+    path: {
+        /**
+         * Class Label
+         */
+        class_label: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/disease-knowledge/{class_label}/review';
+};
+
+export type AdminReviewDiseaseKnowledgeErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminReviewDiseaseKnowledgeError = AdminReviewDiseaseKnowledgeErrors[keyof AdminReviewDiseaseKnowledgeErrors];
+
+export type AdminReviewDiseaseKnowledgeResponses = {
+    /**
+     * Successful Response
+     */
+    200: DiseaseKnowledgeEntry;
+};
+
+export type AdminReviewDiseaseKnowledgeResponse = AdminReviewDiseaseKnowledgeResponses[keyof AdminReviewDiseaseKnowledgeResponses];
+
 export type AdminListAllOrdersData = {
     body?: never;
     path?: never;
     query?: {
+        /**
+         * Status
+         */
+        status?: 'pending' | 'confirmed' | 'processing' | 'ready' | 'dispatched' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired' | null;
         /**
          * Limit
          */
@@ -3579,6 +6077,69 @@ export type AdminListAllOrdersResponses = {
 };
 
 export type AdminListAllOrdersResponse = AdminListAllOrdersResponses[keyof AdminListAllOrdersResponses];
+
+export type OrdersCancelOrderAsAdminData = {
+    body: AdminCancelOrderRequest;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/orders/{order_id}/cancel';
+};
+
+export type OrdersCancelOrderAsAdminErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type OrdersCancelOrderAsAdminError = OrdersCancelOrderAsAdminErrors[keyof OrdersCancelOrderAsAdminErrors];
+
+export type OrdersCancelOrderAsAdminResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrderWithItems;
+};
+
+export type OrdersCancelOrderAsAdminResponse = OrdersCancelOrderAsAdminResponses[keyof OrdersCancelOrderAsAdminResponses];
+
+export type AdminGetAdminQueuesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/queues';
+};
+
+export type AdminGetAdminQueuesErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type AdminGetAdminQueuesError = AdminGetAdminQueuesErrors[keyof AdminGetAdminQueuesErrors];
+
+export type AdminGetAdminQueuesResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdminQueues;
+};
+
+export type AdminGetAdminQueuesResponse = AdminGetAdminQueuesResponses[keyof AdminGetAdminQueuesResponses];
 
 export type AdminListReportsData = {
     body?: never;
@@ -4219,10 +6780,80 @@ export type ConsultationsGetConsultationResponses = {
     /**
      * Successful Response
      */
-    200: ConsultationWithRelations;
+    200: ConsultationDetail;
 };
 
 export type ConsultationsGetConsultationResponse = ConsultationsGetConsultationResponses[keyof ConsultationsGetConsultationResponses];
+
+export type ConsultationsListAssessmentsData = {
+    body?: never;
+    path: {
+        /**
+         * Consultation Id
+         */
+        consultation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/consultations/{consultation_id}/assessments';
+};
+
+export type ConsultationsListAssessmentsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ConsultationsListAssessmentsError = ConsultationsListAssessmentsErrors[keyof ConsultationsListAssessmentsErrors];
+
+export type ConsultationsListAssessmentsResponses = {
+    /**
+     * Response Consultations List Assessments
+     *
+     * Successful Response
+     */
+    200: Array<ConsultationAssessment>;
+};
+
+export type ConsultationsListAssessmentsResponse = ConsultationsListAssessmentsResponses[keyof ConsultationsListAssessmentsResponses];
+
+export type ConsultationsCreateAssessmentData = {
+    body: ConsultationAssessmentInput;
+    path: {
+        /**
+         * Consultation Id
+         */
+        consultation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/consultations/{consultation_id}/assessments';
+};
+
+export type ConsultationsCreateAssessmentErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ConsultationsCreateAssessmentError = ConsultationsCreateAssessmentErrors[keyof ConsultationsCreateAssessmentErrors];
+
+export type ConsultationsCreateAssessmentResponses = {
+    /**
+     * Successful Response
+     */
+    201: ConsultationAssessment;
+};
+
+export type ConsultationsCreateAssessmentResponse = ConsultationsCreateAssessmentResponses[keyof ConsultationsCreateAssessmentResponses];
 
 export type ConsultationsUpdateImagesData = {
     body: UpdateImagesRequest;
@@ -5021,13 +7652,13 @@ export type DealerListSuppliersResponses = {
      *
      * Successful Response
      */
-    200: Array<Supplier>;
+    200: Array<AppDealerSchemasSupplier>;
 };
 
 export type DealerListSuppliersResponse = DealerListSuppliersResponses[keyof DealerListSuppliersResponses];
 
 export type DealerCreateSupplierData = {
-    body: SupplierInput;
+    body: AppDealerSchemasSupplierInput;
     path?: never;
     query?: never;
     url: '/api/v1/dealer/suppliers';
@@ -5050,7 +7681,7 @@ export type DealerCreateSupplierResponses = {
     /**
      * Successful Response
      */
-    200: Supplier;
+    200: AppDealerSchemasSupplier;
 };
 
 export type DealerCreateSupplierResponse = DealerCreateSupplierResponses[keyof DealerCreateSupplierResponses];
@@ -5118,13 +7749,13 @@ export type DealerGetSupplierResponses = {
     /**
      * Successful Response
      */
-    200: Supplier;
+    200: AppDealerSchemasSupplier;
 };
 
 export type DealerGetSupplierResponse = DealerGetSupplierResponses[keyof DealerGetSupplierResponses];
 
 export type DealerUpdateSupplierData = {
-    body: SupplierUpdateInput;
+    body: AppDealerSchemasSupplierUpdateInput;
     path: {
         /**
          * Supplier Id
@@ -5152,7 +7783,7 @@ export type DealerUpdateSupplierResponses = {
     /**
      * Successful Response
      */
-    200: Supplier;
+    200: AppDealerSchemasSupplier;
 };
 
 export type DealerUpdateSupplierResponse = DealerUpdateSupplierResponses[keyof DealerUpdateSupplierResponses];
@@ -5219,6 +7850,37 @@ export type DiseaseGetCaseResponses = {
 };
 
 export type DiseaseGetCaseResponse = DiseaseGetCaseResponses[keyof DiseaseGetCaseResponses];
+
+export type DiseaseListKnowledgeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/disease/knowledge';
+};
+
+export type DiseaseListKnowledgeErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type DiseaseListKnowledgeError = DiseaseListKnowledgeErrors[keyof DiseaseListKnowledgeErrors];
+
+export type DiseaseListKnowledgeResponses = {
+    /**
+     * Response Disease List Knowledge
+     *
+     * Successful Response
+     */
+    200: Array<DiseaseKnowledge>;
+};
+
+export type DiseaseListKnowledgeResponse = DiseaseListKnowledgeResponses[keyof DiseaseListKnowledgeResponses];
 
 export type DiseasePredictDiseaseData = {
     body: PredictRequest;
@@ -6071,6 +8733,1681 @@ export type FarmerUpsertFarmerProfileResponses = {
 };
 
 export type FarmerUpsertFarmerProfileResponse = FarmerUpsertFarmerProfileResponses[keyof FarmerUpsertFarmerProfileResponses];
+
+export type InventoryGetAlertsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/alerts';
+};
+
+export type InventoryGetAlertsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetAlertsError = InventoryGetAlertsErrors[keyof InventoryGetAlertsErrors];
+
+export type InventoryGetAlertsResponses = {
+    /**
+     * Response Inventory Get Alerts
+     *
+     * Successful Response
+     */
+    200: Array<StockAlert>;
+};
+
+export type InventoryGetAlertsResponse = InventoryGetAlertsResponses[keyof InventoryGetAlertsResponses];
+
+export type InventoryGetLowStockData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/alerts/low-stock';
+};
+
+export type InventoryGetLowStockErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetLowStockError = InventoryGetLowStockErrors[keyof InventoryGetLowStockErrors];
+
+export type InventoryGetLowStockResponses = {
+    /**
+     * Response Inventory Get Low Stock
+     *
+     * Successful Response
+     */
+    200: Array<StockAlert>;
+};
+
+export type InventoryGetLowStockResponse = InventoryGetLowStockResponses[keyof InventoryGetLowStockResponses];
+
+export type InventoryGetOutOfStockData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/alerts/out-of-stock';
+};
+
+export type InventoryGetOutOfStockErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetOutOfStockError = InventoryGetOutOfStockErrors[keyof InventoryGetOutOfStockErrors];
+
+export type InventoryGetOutOfStockResponses = {
+    /**
+     * Response Inventory Get Out Of Stock
+     *
+     * Successful Response
+     */
+    200: Array<StockAlert>;
+};
+
+export type InventoryGetOutOfStockResponse = InventoryGetOutOfStockResponses[keyof InventoryGetOutOfStockResponses];
+
+export type InventoryGetAlertSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/alerts/settings';
+};
+
+export type InventoryGetAlertSettingsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetAlertSettingsError = InventoryGetAlertSettingsErrors[keyof InventoryGetAlertSettingsErrors];
+
+export type InventoryGetAlertSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AlertSettings;
+};
+
+export type InventoryGetAlertSettingsResponse = InventoryGetAlertSettingsResponses[keyof InventoryGetAlertSettingsResponses];
+
+export type InventoryPutAlertSettingsData = {
+    body: AlertSettingsInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/alerts/settings';
+};
+
+export type InventoryPutAlertSettingsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPutAlertSettingsError = InventoryPutAlertSettingsErrors[keyof InventoryPutAlertSettingsErrors];
+
+export type InventoryPutAlertSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AlertSettings;
+};
+
+export type InventoryPutAlertSettingsResponse = InventoryPutAlertSettingsResponses[keyof InventoryPutAlertSettingsResponses];
+
+export type InventoryGetDashboardData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/dashboard';
+};
+
+export type InventoryGetDashboardErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetDashboardError = InventoryGetDashboardErrors[keyof InventoryGetDashboardErrors];
+
+export type InventoryGetDashboardResponses = {
+    /**
+     * Successful Response
+     */
+    200: Dashboard;
+};
+
+export type InventoryGetDashboardResponse = InventoryGetDashboardResponses[keyof InventoryGetDashboardResponses];
+
+export type InventoryPostExportData = {
+    body: ExportInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/exports';
+};
+
+export type InventoryPostExportErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostExportError = InventoryPostExportErrors[keyof InventoryPostExportErrors];
+
+export type InventoryPostExportResponses = {
+    /**
+     * Successful Response
+     */
+    201: ExportResult;
+};
+
+export type InventoryPostExportResponse = InventoryPostExportResponses[keyof InventoryPostExportResponses];
+
+export type InventoryGetLocationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Include Inactive
+         */
+        include_inactive?: boolean;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/inventory/locations';
+};
+
+export type InventoryGetLocationsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetLocationsError = InventoryGetLocationsErrors[keyof InventoryGetLocationsErrors];
+
+export type InventoryGetLocationsResponses = {
+    /**
+     * Response Inventory Get Locations
+     *
+     * Successful Response
+     */
+    200: Array<AppInventorySchemasLocation>;
+};
+
+export type InventoryGetLocationsResponse = InventoryGetLocationsResponses[keyof InventoryGetLocationsResponses];
+
+export type InventoryPostLocationData = {
+    body: LocationInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/locations';
+};
+
+export type InventoryPostLocationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostLocationError = InventoryPostLocationErrors[keyof InventoryPostLocationErrors];
+
+export type InventoryPostLocationResponses = {
+    /**
+     * Successful Response
+     */
+    201: AppInventorySchemasLocation;
+};
+
+export type InventoryPostLocationResponse = InventoryPostLocationResponses[keyof InventoryPostLocationResponses];
+
+export type InventoryRemoveLocationData = {
+    body?: never;
+    path: {
+        /**
+         * Location Id
+         */
+        location_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/locations/{location_id}';
+};
+
+export type InventoryRemoveLocationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryRemoveLocationError = InventoryRemoveLocationErrors[keyof InventoryRemoveLocationErrors];
+
+export type InventoryRemoveLocationResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type InventoryRemoveLocationResponse = InventoryRemoveLocationResponses[keyof InventoryRemoveLocationResponses];
+
+export type InventoryGetOneLocationData = {
+    body?: never;
+    path: {
+        /**
+         * Location Id
+         */
+        location_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/locations/{location_id}';
+};
+
+export type InventoryGetOneLocationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetOneLocationError = InventoryGetOneLocationErrors[keyof InventoryGetOneLocationErrors];
+
+export type InventoryGetOneLocationResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppInventorySchemasLocation;
+};
+
+export type InventoryGetOneLocationResponse = InventoryGetOneLocationResponses[keyof InventoryGetOneLocationResponses];
+
+export type InventoryPatchLocationData = {
+    body: LocationUpdateInput;
+    path: {
+        /**
+         * Location Id
+         */
+        location_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/locations/{location_id}';
+};
+
+export type InventoryPatchLocationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPatchLocationError = InventoryPatchLocationErrors[keyof InventoryPatchLocationErrors];
+
+export type InventoryPatchLocationResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppInventorySchemasLocation;
+};
+
+export type InventoryPatchLocationResponse = InventoryPatchLocationResponses[keyof InventoryPatchLocationResponses];
+
+export type InventoryGetMovementsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Source
+         */
+        source?: Array<'ZARAILINK_ORDER' | 'LOCAL_SALE' | 'PURCHASE' | 'RESTOCK' | 'MANUAL_ADJUSTMENT' | 'DAMAGE' | 'EXPIRY' | 'TRANSFER' | 'OTHER'> | null;
+        /**
+         * Product Id
+         */
+        product_id?: string | null;
+        /**
+         * Location Id
+         */
+        location_id?: string | null;
+        /**
+         * Direction
+         */
+        direction?: 'in' | 'out' | null;
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/inventory/movements';
+};
+
+export type InventoryGetMovementsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetMovementsError = InventoryGetMovementsErrors[keyof InventoryGetMovementsErrors];
+
+export type InventoryGetMovementsResponses = {
+    /**
+     * Response Inventory Get Movements
+     *
+     * Successful Response
+     */
+    200: Array<Movement>;
+};
+
+export type InventoryGetMovementsResponse = InventoryGetMovementsResponses[keyof InventoryGetMovementsResponses];
+
+export type InventoryPostAdjustmentData = {
+    body: AdjustmentInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/movements/adjustment';
+};
+
+export type InventoryPostAdjustmentErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostAdjustmentError = InventoryPostAdjustmentErrors[keyof InventoryPostAdjustmentErrors];
+
+export type InventoryPostAdjustmentResponses = {
+    /**
+     * Successful Response
+     */
+    201: Movement;
+};
+
+export type InventoryPostAdjustmentResponse = InventoryPostAdjustmentResponses[keyof InventoryPostAdjustmentResponses];
+
+export type InventoryPostStockInData = {
+    body: StockInInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/movements/stock-in';
+};
+
+export type InventoryPostStockInErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostStockInError = InventoryPostStockInErrors[keyof InventoryPostStockInErrors];
+
+export type InventoryPostStockInResponses = {
+    /**
+     * Successful Response
+     */
+    201: Movement;
+};
+
+export type InventoryPostStockInResponse = InventoryPostStockInResponses[keyof InventoryPostStockInResponses];
+
+export type InventoryPostStockOutData = {
+    body: StockOutInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/movements/stock-out';
+};
+
+export type InventoryPostStockOutErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostStockOutError = InventoryPostStockOutErrors[keyof InventoryPostStockOutErrors];
+
+export type InventoryPostStockOutResponses = {
+    /**
+     * Successful Response
+     */
+    201: Movement;
+};
+
+export type InventoryPostStockOutResponse = InventoryPostStockOutResponses[keyof InventoryPostStockOutResponses];
+
+export type InventoryGetOneMovementData = {
+    body?: never;
+    path: {
+        /**
+         * Movement Id
+         */
+        movement_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/movements/{movement_id}';
+};
+
+export type InventoryGetOneMovementErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetOneMovementError = InventoryGetOneMovementErrors[keyof InventoryGetOneMovementErrors];
+
+export type InventoryGetOneMovementResponses = {
+    /**
+     * Successful Response
+     */
+    200: Movement;
+};
+
+export type InventoryGetOneMovementResponse = InventoryGetOneMovementResponses[keyof InventoryGetOneMovementResponses];
+
+export type InventoryGetProductsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Include Inactive
+         */
+        include_inactive?: boolean;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/inventory/products';
+};
+
+export type InventoryGetProductsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetProductsError = InventoryGetProductsErrors[keyof InventoryGetProductsErrors];
+
+export type InventoryGetProductsResponses = {
+    /**
+     * Response Inventory Get Products
+     *
+     * Successful Response
+     */
+    200: Array<ProductView>;
+};
+
+export type InventoryGetProductsResponse = InventoryGetProductsResponses[keyof InventoryGetProductsResponses];
+
+export type InventoryPostProductData = {
+    body: ProductInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/products';
+};
+
+export type InventoryPostProductErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostProductError = InventoryPostProductErrors[keyof InventoryPostProductErrors];
+
+export type InventoryPostProductResponses = {
+    /**
+     * Successful Response
+     */
+    201: ProductView;
+};
+
+export type InventoryPostProductResponse = InventoryPostProductResponses[keyof InventoryPostProductResponses];
+
+export type InventoryRemoveProductData = {
+    body?: never;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/products/{product_id}';
+};
+
+export type InventoryRemoveProductErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryRemoveProductError = InventoryRemoveProductErrors[keyof InventoryRemoveProductErrors];
+
+export type InventoryRemoveProductResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type InventoryRemoveProductResponse = InventoryRemoveProductResponses[keyof InventoryRemoveProductResponses];
+
+export type InventoryGetOneProductData = {
+    body?: never;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/products/{product_id}';
+};
+
+export type InventoryGetOneProductErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetOneProductError = InventoryGetOneProductErrors[keyof InventoryGetOneProductErrors];
+
+export type InventoryGetOneProductResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProductView;
+};
+
+export type InventoryGetOneProductResponse = InventoryGetOneProductResponses[keyof InventoryGetOneProductResponses];
+
+export type InventoryPatchProductData = {
+    body: ProductUpdateInput;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/products/{product_id}';
+};
+
+export type InventoryPatchProductErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPatchProductError = InventoryPatchProductErrors[keyof InventoryPatchProductErrors];
+
+export type InventoryPatchProductResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProductView;
+};
+
+export type InventoryPatchProductResponse = InventoryPatchProductResponses[keyof InventoryPatchProductResponses];
+
+export type InventoryPostProductListingData = {
+    body: ListingLinkInput;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/products/{product_id}/listings';
+};
+
+export type InventoryPostProductListingErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostProductListingError = InventoryPostProductListingErrors[keyof InventoryPostProductListingErrors];
+
+export type InventoryPostProductListingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProductView;
+};
+
+export type InventoryPostProductListingResponse = InventoryPostProductListingResponses[keyof InventoryPostProductListingResponses];
+
+export type InventoryRemoveProductListingData = {
+    body?: never;
+    path: {
+        /**
+         * Product Id
+         */
+        product_id: string;
+        /**
+         * Listing Id
+         */
+        listing_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/products/{product_id}/listings/{listing_id}';
+};
+
+export type InventoryRemoveProductListingErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryRemoveProductListingError = InventoryRemoveProductListingErrors[keyof InventoryRemoveProductListingErrors];
+
+export type InventoryRemoveProductListingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProductView;
+};
+
+export type InventoryRemoveProductListingResponse = InventoryRemoveProductListingResponses[keyof InventoryRemoveProductListingResponses];
+
+export type InventoryGetPurchasesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'draft' | 'received' | 'cancelled' | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/inventory/purchases';
+};
+
+export type InventoryGetPurchasesErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetPurchasesError = InventoryGetPurchasesErrors[keyof InventoryGetPurchasesErrors];
+
+export type InventoryGetPurchasesResponses = {
+    /**
+     * Response Inventory Get Purchases
+     *
+     * Successful Response
+     */
+    200: Array<Purchase>;
+};
+
+export type InventoryGetPurchasesResponse = InventoryGetPurchasesResponses[keyof InventoryGetPurchasesResponses];
+
+export type InventoryPostPurchaseData = {
+    body: PurchaseInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/purchases';
+};
+
+export type InventoryPostPurchaseErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostPurchaseError = InventoryPostPurchaseErrors[keyof InventoryPostPurchaseErrors];
+
+export type InventoryPostPurchaseResponses = {
+    /**
+     * Successful Response
+     */
+    201: Purchase;
+};
+
+export type InventoryPostPurchaseResponse = InventoryPostPurchaseResponses[keyof InventoryPostPurchaseResponses];
+
+export type InventoryGetOnePurchaseData = {
+    body?: never;
+    path: {
+        /**
+         * Purchase Id
+         */
+        purchase_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/purchases/{purchase_id}';
+};
+
+export type InventoryGetOnePurchaseErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetOnePurchaseError = InventoryGetOnePurchaseErrors[keyof InventoryGetOnePurchaseErrors];
+
+export type InventoryGetOnePurchaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: Purchase;
+};
+
+export type InventoryGetOnePurchaseResponse = InventoryGetOnePurchaseResponses[keyof InventoryGetOnePurchaseResponses];
+
+export type InventoryPatchPurchaseData = {
+    body: PurchaseUpdateInput;
+    path: {
+        /**
+         * Purchase Id
+         */
+        purchase_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/purchases/{purchase_id}';
+};
+
+export type InventoryPatchPurchaseErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPatchPurchaseError = InventoryPatchPurchaseErrors[keyof InventoryPatchPurchaseErrors];
+
+export type InventoryPatchPurchaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: Purchase;
+};
+
+export type InventoryPatchPurchaseResponse = InventoryPatchPurchaseResponses[keyof InventoryPatchPurchaseResponses];
+
+export type InventoryPostCancelPurchaseData = {
+    body?: never;
+    path: {
+        /**
+         * Purchase Id
+         */
+        purchase_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/purchases/{purchase_id}/cancel';
+};
+
+export type InventoryPostCancelPurchaseErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostCancelPurchaseError = InventoryPostCancelPurchaseErrors[keyof InventoryPostCancelPurchaseErrors];
+
+export type InventoryPostCancelPurchaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: Purchase;
+};
+
+export type InventoryPostCancelPurchaseResponse = InventoryPostCancelPurchaseResponses[keyof InventoryPostCancelPurchaseResponses];
+
+export type InventoryPostReceivePurchaseData = {
+    body?: never;
+    path: {
+        /**
+         * Purchase Id
+         */
+        purchase_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/purchases/{purchase_id}/receive';
+};
+
+export type InventoryPostReceivePurchaseErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostReceivePurchaseError = InventoryPostReceivePurchaseErrors[keyof InventoryPostReceivePurchaseErrors];
+
+export type InventoryPostReceivePurchaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: Purchase;
+};
+
+export type InventoryPostReceivePurchaseResponse = InventoryPostReceivePurchaseResponses[keyof InventoryPostReceivePurchaseResponses];
+
+export type InventoryGetAnalyticsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         *
+         * First UTC day, inclusive (default: `to` - 29)
+         */
+        from?: string | null;
+        /**
+         * To
+         *
+         * Last UTC day, inclusive (default: today)
+         */
+        to?: string | null;
+    };
+    url: '/api/v1/inventory/reports/analytics';
+};
+
+export type InventoryGetAnalyticsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetAnalyticsError = InventoryGetAnalyticsErrors[keyof InventoryGetAnalyticsErrors];
+
+export type InventoryGetAnalyticsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AnalyticsReport;
+};
+
+export type InventoryGetAnalyticsResponse = InventoryGetAnalyticsResponses[keyof InventoryGetAnalyticsResponses];
+
+export type InventoryGetLowOutOfStockData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         *
+         * First UTC day, inclusive (default: `to` - 29)
+         */
+        from?: string | null;
+        /**
+         * To
+         *
+         * Last UTC day, inclusive (default: today)
+         */
+        to?: string | null;
+    };
+    url: '/api/v1/inventory/reports/low-out-of-stock';
+};
+
+export type InventoryGetLowOutOfStockErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetLowOutOfStockError = InventoryGetLowOutOfStockErrors[keyof InventoryGetLowOutOfStockErrors];
+
+export type InventoryGetLowOutOfStockResponses = {
+    /**
+     * Successful Response
+     */
+    200: LowOutOfStockReport;
+};
+
+export type InventoryGetLowOutOfStockResponse = InventoryGetLowOutOfStockResponses[keyof InventoryGetLowOutOfStockResponses];
+
+export type InventoryGetMovementsBySourceData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         *
+         * First UTC day, inclusive (default: `to` - 29)
+         */
+        from?: string | null;
+        /**
+         * To
+         *
+         * Last UTC day, inclusive (default: today)
+         */
+        to?: string | null;
+    };
+    url: '/api/v1/inventory/reports/movements-by-source';
+};
+
+export type InventoryGetMovementsBySourceErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetMovementsBySourceError = InventoryGetMovementsBySourceErrors[keyof InventoryGetMovementsBySourceErrors];
+
+export type InventoryGetMovementsBySourceResponses = {
+    /**
+     * Successful Response
+     */
+    200: MovementsBySourceReport;
+};
+
+export type InventoryGetMovementsBySourceResponse = InventoryGetMovementsBySourceResponses[keyof InventoryGetMovementsBySourceResponses];
+
+export type InventoryGetReconciliationReportData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/reports/reconciliation';
+};
+
+export type InventoryGetReconciliationReportErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetReconciliationReportError = InventoryGetReconciliationReportErrors[keyof InventoryGetReconciliationReportErrors];
+
+export type InventoryGetReconciliationReportResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReconciliationReport;
+};
+
+export type InventoryGetReconciliationReportResponse = InventoryGetReconciliationReportResponses[keyof InventoryGetReconciliationReportResponses];
+
+export type InventoryGetSalesSplitData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         *
+         * First UTC day, inclusive (default: `to` - 29)
+         */
+        from?: string | null;
+        /**
+         * To
+         *
+         * Last UTC day, inclusive (default: today)
+         */
+        to?: string | null;
+    };
+    url: '/api/v1/inventory/reports/sales-split';
+};
+
+export type InventoryGetSalesSplitErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetSalesSplitError = InventoryGetSalesSplitErrors[keyof InventoryGetSalesSplitErrors];
+
+export type InventoryGetSalesSplitResponses = {
+    /**
+     * Successful Response
+     */
+    200: SalesSplitReport;
+};
+
+export type InventoryGetSalesSplitResponse = InventoryGetSalesSplitResponses[keyof InventoryGetSalesSplitResponses];
+
+export type InventoryGetStockSummaryData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         *
+         * First UTC day, inclusive (default: `to` - 29)
+         */
+        from?: string | null;
+        /**
+         * To
+         *
+         * Last UTC day, inclusive (default: today)
+         */
+        to?: string | null;
+    };
+    url: '/api/v1/inventory/reports/stock-summary';
+};
+
+export type InventoryGetStockSummaryErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetStockSummaryError = InventoryGetStockSummaryErrors[keyof InventoryGetStockSummaryErrors];
+
+export type InventoryGetStockSummaryResponses = {
+    /**
+     * Successful Response
+     */
+    200: StockSummaryReport;
+};
+
+export type InventoryGetStockSummaryResponse = InventoryGetStockSummaryResponses[keyof InventoryGetStockSummaryResponses];
+
+export type InventoryGetSupplierPurchasesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         *
+         * First UTC day, inclusive (default: `to` - 29)
+         */
+        from?: string | null;
+        /**
+         * To
+         *
+         * Last UTC day, inclusive (default: today)
+         */
+        to?: string | null;
+    };
+    url: '/api/v1/inventory/reports/supplier-purchases';
+};
+
+export type InventoryGetSupplierPurchasesErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetSupplierPurchasesError = InventoryGetSupplierPurchasesErrors[keyof InventoryGetSupplierPurchasesErrors];
+
+export type InventoryGetSupplierPurchasesResponses = {
+    /**
+     * Successful Response
+     */
+    200: SupplierPurchasesReport;
+};
+
+export type InventoryGetSupplierPurchasesResponse = InventoryGetSupplierPurchasesResponses[keyof InventoryGetSupplierPurchasesResponses];
+
+export type InventoryGetValuationData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         *
+         * First UTC day, inclusive (default: `to` - 29)
+         */
+        from?: string | null;
+        /**
+         * To
+         *
+         * Last UTC day, inclusive (default: today)
+         */
+        to?: string | null;
+    };
+    url: '/api/v1/inventory/reports/valuation';
+};
+
+export type InventoryGetValuationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetValuationError = InventoryGetValuationErrors[keyof InventoryGetValuationErrors];
+
+export type InventoryGetValuationResponses = {
+    /**
+     * Successful Response
+     */
+    200: ValuationReport;
+};
+
+export type InventoryGetValuationResponse = InventoryGetValuationResponses[keyof InventoryGetValuationResponses];
+
+export type InventoryGetStockData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Product Id
+         */
+        product_id?: string | null;
+        /**
+         * Location Id
+         */
+        location_id?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/inventory/stock';
+};
+
+export type InventoryGetStockErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetStockError = InventoryGetStockErrors[keyof InventoryGetStockErrors];
+
+export type InventoryGetStockResponses = {
+    /**
+     * Response Inventory Get Stock
+     *
+     * Successful Response
+     */
+    200: Array<StockLevel>;
+};
+
+export type InventoryGetStockResponse = InventoryGetStockResponses[keyof InventoryGetStockResponses];
+
+export type InventoryPostTransferData = {
+    body: TransferInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/stock/transfer';
+};
+
+export type InventoryPostTransferErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostTransferError = InventoryPostTransferErrors[keyof InventoryPostTransferErrors];
+
+export type InventoryPostTransferResponses = {
+    /**
+     * Response Inventory Post Transfer
+     *
+     * Successful Response
+     */
+    201: Array<Movement>;
+};
+
+export type InventoryPostTransferResponse = InventoryPostTransferResponses[keyof InventoryPostTransferResponses];
+
+export type InventoryGetSuppliersData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Include Inactive
+         */
+        include_inactive?: boolean;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/inventory/suppliers';
+};
+
+export type InventoryGetSuppliersErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetSuppliersError = InventoryGetSuppliersErrors[keyof InventoryGetSuppliersErrors];
+
+export type InventoryGetSuppliersResponses = {
+    /**
+     * Response Inventory Get Suppliers
+     *
+     * Successful Response
+     */
+    200: Array<AppInventorySchemasSupplier>;
+};
+
+export type InventoryGetSuppliersResponse = InventoryGetSuppliersResponses[keyof InventoryGetSuppliersResponses];
+
+export type InventoryPostSupplierData = {
+    body: AppInventorySchemasSupplierInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/suppliers';
+};
+
+export type InventoryPostSupplierErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostSupplierError = InventoryPostSupplierErrors[keyof InventoryPostSupplierErrors];
+
+export type InventoryPostSupplierResponses = {
+    /**
+     * Successful Response
+     */
+    201: AppInventorySchemasSupplier;
+};
+
+export type InventoryPostSupplierResponse = InventoryPostSupplierResponses[keyof InventoryPostSupplierResponses];
+
+export type InventoryRemoveSupplierData = {
+    body?: never;
+    path: {
+        /**
+         * Supplier Id
+         */
+        supplier_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/suppliers/{supplier_id}';
+};
+
+export type InventoryRemoveSupplierErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryRemoveSupplierError = InventoryRemoveSupplierErrors[keyof InventoryRemoveSupplierErrors];
+
+export type InventoryRemoveSupplierResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type InventoryRemoveSupplierResponse = InventoryRemoveSupplierResponses[keyof InventoryRemoveSupplierResponses];
+
+export type InventoryGetOneSupplierData = {
+    body?: never;
+    path: {
+        /**
+         * Supplier Id
+         */
+        supplier_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/suppliers/{supplier_id}';
+};
+
+export type InventoryGetOneSupplierErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetOneSupplierError = InventoryGetOneSupplierErrors[keyof InventoryGetOneSupplierErrors];
+
+export type InventoryGetOneSupplierResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppInventorySchemasSupplier;
+};
+
+export type InventoryGetOneSupplierResponse = InventoryGetOneSupplierResponses[keyof InventoryGetOneSupplierResponses];
+
+export type InventoryPatchSupplierData = {
+    body: AppInventorySchemasSupplierUpdateInput;
+    path: {
+        /**
+         * Supplier Id
+         */
+        supplier_id: string;
+    };
+    query?: never;
+    url: '/api/v1/inventory/suppliers/{supplier_id}';
+};
+
+export type InventoryPatchSupplierErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPatchSupplierError = InventoryPatchSupplierErrors[keyof InventoryPatchSupplierErrors];
+
+export type InventoryPatchSupplierResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppInventorySchemasSupplier;
+};
+
+export type InventoryPatchSupplierResponse = InventoryPatchSupplierResponses[keyof InventoryPatchSupplierResponses];
+
+export type InventoryGetSyncLogData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'applied' | 'skipped_duplicate' | 'failed' | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/inventory/sync/log';
+};
+
+export type InventoryGetSyncLogErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryGetSyncLogError = InventoryGetSyncLogErrors[keyof InventoryGetSyncLogErrors];
+
+export type InventoryGetSyncLogResponses = {
+    /**
+     * Response Inventory Get Sync Log
+     *
+     * Successful Response
+     */
+    200: Array<SyncLogEntry>;
+};
+
+export type InventoryGetSyncLogResponse = InventoryGetSyncLogResponses[keyof InventoryGetSyncLogResponses];
+
+export type InventoryPostSyncRetryData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/inventory/sync/retry';
+};
+
+export type InventoryPostSyncRetryErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type InventoryPostSyncRetryError = InventoryPostSyncRetryErrors[keyof InventoryPostSyncRetryErrors];
+
+export type InventoryPostSyncRetryResponses = {
+    /**
+     * Successful Response
+     */
+    200: RetryResult;
+};
+
+export type InventoryPostSyncRetryResponse = InventoryPostSyncRetryResponses[keyof InventoryPostSyncRetryResponses];
 
 export type MarketplaceListCategoriesData = {
     body?: never;
@@ -7785,6 +12122,50 @@ export type ReviewsCreateReviewResponses = {
 
 export type ReviewsCreateReviewResponse = ReviewsCreateReviewResponses[keyof ReviewsCreateReviewResponses];
 
+export type ReviewsListReviewsForModerationData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Include Hidden
+         */
+        include_hidden?: boolean;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/reviews/admin';
+};
+
+export type ReviewsListReviewsForModerationErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ReviewsListReviewsForModerationError = ReviewsListReviewsForModerationErrors[keyof ReviewsListReviewsForModerationErrors];
+
+export type ReviewsListReviewsForModerationResponses = {
+    /**
+     * Response Reviews List Reviews For Moderation
+     *
+     * Successful Response
+     */
+    200: Array<ReviewWithBuyer>;
+};
+
+export type ReviewsListReviewsForModerationResponse = ReviewsListReviewsForModerationResponses[keyof ReviewsListReviewsForModerationResponses];
+
 export type ReviewsGetReviewByConsultationData = {
     body?: never;
     path: {
@@ -8021,40 +12402,6 @@ export type ReviewsCreateConsultationReviewResponses = {
 
 export type ReviewsCreateConsultationReviewResponse = ReviewsCreateConsultationReviewResponses[keyof ReviewsCreateConsultationReviewResponses];
 
-export type ReviewsDeleteReviewData = {
-    body?: never;
-    path: {
-        /**
-         * Review Id
-         */
-        review_id: string;
-    };
-    query?: never;
-    url: '/api/v1/reviews/{review_id}';
-};
-
-export type ReviewsDeleteReviewErrors = {
-    /**
-     * Request validation failed
-     */
-    422: ProblemDetail;
-    /**
-     * Error (application/problem+json)
-     */
-    default: ProblemDetail;
-};
-
-export type ReviewsDeleteReviewError = ReviewsDeleteReviewErrors[keyof ReviewsDeleteReviewErrors];
-
-export type ReviewsDeleteReviewResponses = {
-    /**
-     * Successful Response
-     */
-    204: void;
-};
-
-export type ReviewsDeleteReviewResponse = ReviewsDeleteReviewResponses[keyof ReviewsDeleteReviewResponses];
-
 export type ReviewsGetReviewData = {
     body?: never;
     path: {
@@ -8088,6 +12435,74 @@ export type ReviewsGetReviewResponses = {
 };
 
 export type ReviewsGetReviewResponse = ReviewsGetReviewResponses[keyof ReviewsGetReviewResponses];
+
+export type ReviewsHideReviewData = {
+    body: HideReviewRequest;
+    path: {
+        /**
+         * Review Id
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/reviews/{review_id}/hide';
+};
+
+export type ReviewsHideReviewErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ReviewsHideReviewError = ReviewsHideReviewErrors[keyof ReviewsHideReviewErrors];
+
+export type ReviewsHideReviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: Review;
+};
+
+export type ReviewsHideReviewResponse = ReviewsHideReviewResponses[keyof ReviewsHideReviewResponses];
+
+export type ReviewsRestoreReviewData = {
+    body?: never;
+    path: {
+        /**
+         * Review Id
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/reviews/{review_id}/restore';
+};
+
+export type ReviewsRestoreReviewErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type ReviewsRestoreReviewError = ReviewsRestoreReviewErrors[keyof ReviewsRestoreReviewErrors];
+
+export type ReviewsRestoreReviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: Review;
+};
+
+export type ReviewsRestoreReviewResponse = ReviewsRestoreReviewResponses[keyof ReviewsRestoreReviewResponses];
 
 export type RootHealthData = {
     body?: never;

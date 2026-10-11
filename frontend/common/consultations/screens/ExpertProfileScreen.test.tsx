@@ -5,7 +5,7 @@ import { ExpertProfileScreen } from './ExpertProfileScreen';
 import { fetchExpertById } from '../../../expert/services/expertService';
 import { findOrCreateConversation } from '../../messaging/services/messagingService';
 import { fetchReviewsForExpert } from '../../reviews/services/reviewsService';
-import { APP_TABS, CONSULTATIONS_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
+import { CONSULTATIONS_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../../state/authStore';
 import type { ExpertWithProfile } from '../../../expert/types/expert';
 import type { ReviewWithBuyer } from '../../reviews/types/reviews';
@@ -129,18 +129,16 @@ describe('ExpertProfileScreen', () => {
     });
   });
 
-  it('starts or finds a conversation and opens it when "Message Expert" is pressed', async () => {
+  // A5 (SRDS §30): a farmer talks to an expert inside a consultation, so the profile offers no direct message.
+  it('offers no direct "Message Expert" and never opens a conversation', async () => {
     mockFetchExpertById.mockResolvedValue(expert);
     mockFetchReviewsForExpert.mockResolvedValue([]);
-    mockFindOrCreateConversation.mockResolvedValue({ id: 'conv1' });
     await renderWithQuery(<ExpertProfileScreen {...makeProps()} />);
 
-    await fireEvent.press(await screen.findByText('Message Expert'));
-    expect(mockFindOrCreateConversation).toHaveBeenCalledWith('e1');
-    expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
-      screen: MESSAGING_ROUTES.Chat,
-      initial: false,
-      params: { conversationId: 'conv1', otherUserName: 'Dr. Ahsan' },
-    });
+    expect(await screen.findByText('Request Consultation')).toBeTruthy();
+    expect(screen.queryByText('Message Expert')).toBeNull();
+    expect(screen.queryByText(/^Message/)).toBeNull();
+    expect(mockFindOrCreateConversation).not.toHaveBeenCalled();
+    expect(mockTabNavigate).not.toHaveBeenCalled();
   });
 });

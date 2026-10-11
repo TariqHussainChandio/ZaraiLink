@@ -26,7 +26,9 @@ async def find_or_create_conversation(
     request: FindOrCreateConversationRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> dict:
-    return await service.find_or_create_conversation(user, request.other_user_id)
+    return await service.find_or_create_conversation(
+        user, str(request.other_user_id), request.context_type, str(request.context_id)
+    )
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=list[Message])

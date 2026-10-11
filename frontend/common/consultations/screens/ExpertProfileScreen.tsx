@@ -1,14 +1,11 @@
+import { MessageSquarePlus, UserX } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, EmptyState, Spinner } from '../../components';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Avatar, Button, ScreenState, Skeleton } from '../../components';
 import { RatingSummary, ReviewCard } from '../../reviews';
-import { APP_TABS, CONSULTATIONS_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
+import { CONSULTATIONS_ROUTES } from '../../constants/routes';
 import { useExpertProfile } from '../../../expert';
-import { useOpenConversation } from '../../messaging';
-import { useAuthStore } from '../../../state/authStore';
-import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../../theme';
-import { errorMessage } from '../../../utils/errorMessage';
 import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
 import { SPECIALIZATION_LABELS } from '../../constants/labels';
 
@@ -16,23 +13,27 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { expertId, prefill } = route.params;
-  const userId = useAuthStore(state => state.user?.id);
-  const tabNavigation = useAppTabNavigation();
-  const { data, isPending: loading, error, refetch } = useExpertProfile(expertId);
-  const openConversation = useOpenConversation();
-  const expert = data?.expert;
-  const reviews = data?.reviews ?? [];
-  const load = () => refetch();
+  const query = useExpertProfile(expertId);
+  const expert = query.data?.expert;
+  const reviews = query.data?.reviews ?? [];
 
-  if (loading) return <Spinner fullscreen />;
-  if (error || !expert) {
+  if (!expert) {
     return (
-      <EmptyState
-        title="Couldn't load this expert"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
+      <View style={styles.container}>
+        <ScreenState
+          query={query}
+          errorTitle="Couldn't load this expert"
+          isEmpty={profile => !profile.expert}
+          empty={{ title: 'Expert not found', description: 'This expert may no longer be available.', icon: UserX }}
+          skeleton={
+            <View style={[styles.content, styles.header]}>
+              <Skeleton style={styles.skeletonAvatar} />
+              <Skeleton style={styles.skeletonLine} />
+              <Skeleton style={styles.skeletonBlock} />
+            </View>
+          }
+        />
+      </View>
     );
   }
 
@@ -49,64 +50,52 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
 
       {specializations.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Specializations</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Specializations
+          </Text>
           <Text style={styles.sectionText}>{specializations.join(', ')}</Text>
         </View>
       ) : null}
 
       {expert.qualifications ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Qualifications</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Qualifications
+          </Text>
           <Text style={styles.sectionText}>{expert.qualifications}</Text>
         </View>
       ) : null}
 
       {expert.experience ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Experience</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Experience
+          </Text>
           <Text style={styles.sectionText}>{expert.experience}</Text>
         </View>
       ) : null}
 
       {expert.professional_description ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            About
+          </Text>
           <Text style={styles.sectionText}>{expert.professional_description}</Text>
         </View>
       ) : null}
 
+      {/* No direct "Message" here: a farmer talks to an expert inside a consultation (SRDS §30, A5). */}
       <Button
         label="Request Consultation"
+        icon={MessageSquarePlus}
         onPress={() => navigation.navigate(CONSULTATIONS_ROUTES.RequestConsultation, { expertId, prefill })}
         style={styles.action}
       />
-      <Button
-        label="Message Expert"
-        variant="secondary"
-        loading={openConversation.isPending}
-        onPress={async () => {
-          if (!userId) return;
-          try {
-            const conversation = await openConversation.mutateAsync(expertId);
-            // On top of the conversation list (initial: false), so Back and the Messages tab reach it, not a stack whose root is this chat.
-            tabNavigation?.navigate(APP_TABS.Messages, {
-              screen: MESSAGING_ROUTES.Chat,
-              initial: false,
-              params: {
-                conversationId: conversation.id,
-                otherUserName: expert.profile?.full_name || 'Expert',
-              },
-            });
-          } catch (err) {
-            Alert.alert('Could not open the conversation', errorMessage(err));
-          }
-        }}
-        style={styles.action}
-      />
-
       {reviews.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Reviews
+          </Text>
           {reviews.map(review => (
             <ReviewCard key={review.id} review={review} />
           ))}
@@ -116,7 +105,7 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight, size, radius }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -155,5 +144,8 @@ function makeStyles({ colors, space, typography, fontWeight }: Theme) {
     action: {
       marginBottom: space[3],
     },
+    skeletonAvatar: { width: size.avatarLg, height: size.avatarLg, borderRadius: radius.pill },
+    skeletonLine: { width: '60%', height: space[5], marginTop: space[3] },
+    skeletonBlock: { width: '100%', height: size.photoLg, marginTop: space[4] },
   });
 }

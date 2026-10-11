@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ListingDetailScreen } from './ListingDetailScreen';
@@ -57,6 +56,7 @@ const listing = (overrides: Partial<ListingWithRelations> = {}): ListingWithRela
   condition: null,
   location: null,
   seller_role: 'farmer',
+  inventory_product_id: null,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
   category: { id: 'cat-1', name: 'Seeds', slug: 'seeds' },
@@ -91,7 +91,6 @@ beforeEach(() => {
   mockFetchReviewsForListing.mockReset().mockResolvedValue([]);
   mockTabNavigate.mockReset();
   useCartStore.setState({ items: [] });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -136,7 +135,7 @@ describe('ListingDetailScreen', () => {
     mockFetchListingById.mockRejectedValue(new Error('Network error'));
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
-    expect(await screen.findByText('Listing not found')).toBeTruthy();
+    expect(await screen.findByText("Couldn't load this listing")).toBeTruthy();
 
     mockFetchListingById.mockResolvedValue(listing());
     await fireEvent.press(screen.getByText('Retry'));
@@ -155,6 +154,8 @@ describe('ListingDetailScreen', () => {
       listingId: 'listing-1',
     });
     expect(screen.queryByText('Add to Cart')).toBeNull();
+    // An owner cannot cold-message people from their own listing (A5); they answer in the asker's thread.
+    expect(screen.queryByText('Message Seller')).toBeNull();
   });
 
   it('shows the stock word, never the listing quantity as stock (A4, SRDS §15)', async () => {
@@ -190,10 +191,22 @@ describe('ListingDetailScreen', () => {
     expect(useCartStore.getState().items).toEqual([
       expect.objectContaining({ listingId: 'listing-1', sellerId: 'seller-1', quantity: 1 }),
     ]);
-    expect(Alert.alert).toHaveBeenCalledWith('Added to cart', expect.stringContaining('Wheat seeds'));
+    expect(await screen.findByText('Added to cart')).toBeTruthy();
   });
 
-  it('starts a conversation with the seller and navigates to Chat', async () => {
+  it('shows the refusal and stays put when the conversation cannot be opened', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing());
+    mockFindOrCreateConversation.mockRejectedValue(new Error('Your account cannot send messages right now.'));
+
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
+    await fireEvent.press(await screen.findByText('Message Seller'));
+
+    expect(await screen.findByText('Your account cannot send messages right now.')).toBeTruthy();
+    expect(mockTabNavigate).not.toHaveBeenCalled();
+  });
+
+  it('starts a conversation with the seller about this listing and navigates to Chat', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());
     mockFindOrCreateConversation.mockResolvedValue({ id: 'conversation-1' });
@@ -201,7 +214,7 @@ describe('ListingDetailScreen', () => {
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
     await fireEvent.press(await screen.findByText('Message Seller'));
 
-    expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1');
+    expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1', { type: 'listing', id: 'listing-1' });
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
       screen: MESSAGING_ROUTES.Chat,
       initial: false,

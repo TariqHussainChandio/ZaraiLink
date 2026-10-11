@@ -67,8 +67,13 @@ select tests.expect(tests.fx('D'), 'insert into public.listings (owner_id, title
 select tests.expect(tests.fx('E'), 'insert into public.listings (owner_id, title, price, seller_role) values (' || tests.l('E') || $$, 'Advice', 50, 'farmer')$$, 'err:42501', 'listings: an expert is not a seller (no role check until now)');
 select tests.expect(tests.fx('PD'), $$insert into storage.objects (bucket_id, name, owner) values ('listing-images', $$ || quote_literal(tests.fx('PD') || '/a.jpg') || ', ' || tests.l('PD') || ')', 'err:42501', 'listing-images: a pending dealer cannot upload');
 select tests.expect(tests.fx('D'), $$insert into storage.objects (bucket_id, name, owner) values ('listing-images', $$ || quote_literal(tests.fx('D') || '/a.jpg') || ', ' || tests.l('D') || ')', 'n:1', 'listing-images: an approved dealer can');
-select tests.expect(tests.fx('PD'), 'insert into public.conversations (participant_one, participant_two) values (' || tests.l('PD') || ', ' || tests.l('F2') || ')', 'err:42501', 'conversations: a pending dealer cannot start a chat');
-select tests.expect(tests.fx('D'), 'insert into public.conversations (participant_one, participant_two) values (' || tests.l('D') || ', ' || tests.l('F2') || ')', 'n:1', 'conversations: an approved dealer can');
+-- Since A5 a conversation needs a context (20261020080000_conversation_context.sql): both ask about F2's listing LF2,
+-- so the two lines differ only in the caller's account status.
+with x as (insert into public.listings (owner_id, title, price, quantity, status, seller_role)
+  values (tests.fx('F2'), 'Wheat', 40, 10, 'active', 'farmer') returning id)
+  insert into tests.fixtures select 'LF2', id from x;
+select tests.expect(tests.fx('PD'), 'insert into public.conversations (participant_one, participant_two, context_type, context_id) values (' || tests.l('PD') || ', ' || tests.l('F2') || $$, 'listing', $$ || tests.l('LF2') || ')', 'err:42501', 'conversations: a pending dealer cannot start a chat');
+select tests.expect(tests.fx('D'), 'insert into public.conversations (participant_one, participant_two, context_type, context_id) values (' || tests.l('D') || ', ' || tests.l('F2') || $$, 'listing', $$ || tests.l('LF2') || ')', 'n:1', 'conversations: an approved dealer can');
 select tests.expect(tests.fx('PD'), 'insert into public.orders (buyer_id, seller_id, delivery_charge) values (' || tests.l('PD') || ', ' || tests.l('F') || ', 0)', 'err:42501', 'orders: a pending dealer cannot buy');
 select tests.expect(tests.fx('B2'), 'insert into public.orders (buyer_id, seller_id, delivery_charge) values (' || tests.l('B2') || ', ' || tests.l('PD') || ', 0)', 'err:23514', 'orders: nobody can buy from a pending dealer (is_seller_role)');
 select tests.expect(tests.fx('B2'), 'insert into public.orders (buyer_id, seller_id, delivery_charge) values (' || tests.l('B2') || ', ' || tests.l('D') || ', 0)', 'n:1', 'orders: but from an approved dealer, yes');

@@ -8,6 +8,8 @@ const baseConversation: ConversationWithPreview = {
   participant_one: 'u1',
   participant_two: 'u2',
   created_at: '2026-01-01T00:00:00.000Z',
+  context_type: null,
+  context_id: null,
   participant_one_profile: { id: 'u1', full_name: 'Farmer A', avatar_url: null },
   participant_two_profile: { id: 'u2', full_name: 'Dealer B', avatar_url: null },
   otherParticipant: { id: 'u2', full_name: 'Dealer B', avatar_url: null },
@@ -51,6 +53,30 @@ describe('ConversationListItem', () => {
     await render(<ConversationListItem conversation={conversation} onPress={() => {}} />);
     expect(screen.getByText('Is this still available?')).toBeTruthy();
     expect(screen.queryByText('Say hello 👋')).toBeNull();
+  });
+
+  // A5 (SRDS §30): the row says what the conversation is about.
+  it.each([
+    ['listing', 'Listing inquiry'],
+    ['order', 'Order'],
+    ['consultation', 'Consultation'],
+  ] as const)('labels a %s conversation "%s", visibly and to a screen reader', async (type, label) => {
+    await render(
+      <ConversationListItem
+        conversation={{ ...baseConversation, context_type: type, context_id: 'ctx-1' }}
+        onPress={() => {}}
+      />,
+    );
+    expect(screen.getByText(label)).toBeTruthy();
+    expect(screen.getByLabelText(`Chat with Dealer B, ${label}, No messages yet`)).toBeTruthy();
+  });
+
+  it('shows no context label for a conversation from before A5', async () => {
+    await render(<ConversationListItem conversation={baseConversation} onPress={() => {}} />);
+    for (const label of ['Listing inquiry', 'Order', 'Consultation']) {
+      expect(screen.queryByText(label)).toBeNull();
+    }
+    expect(screen.getByLabelText('Chat with Dealer B, No messages yet')).toBeTruthy();
   });
 
   it('calls onPress when tapped', async () => {

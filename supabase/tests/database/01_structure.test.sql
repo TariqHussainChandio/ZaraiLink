@@ -98,7 +98,7 @@ select is(
   'public.consultations.consultations_insert_requester',
   'public.consultations.consultations_select_participants',
   'public.consultations.consultations_update_participants',
-  'public.conversations.conversations_insert_participant',
+  'public.conversations.conversations_insert_related',
   'public.conversations.conversations_select_participants',
   'public.crops.crops_admin_delete',
   'public.crops.crops_admin_insert',

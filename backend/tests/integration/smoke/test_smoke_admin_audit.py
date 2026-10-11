@@ -130,20 +130,24 @@ def test_a_dealer_application_decision_is_audited(world, api_client, make_applic
 
 
 def test_redacting_a_message_is_audited(world, api_client, make_actor):
-    other_id = make_actor("buyer")[0]
+    # Since A5 a conversation needs a context (SRDS §30): a fresh buyer asks the farmer about their listing.
+    asker_token = make_actor("buyer")[2]
     conversation = api_client(
-        "POST", "/api/v1/messaging/conversations", world.buyer.token, json={"other_user_id": other_id}
+        "POST",
+        "/api/v1/messaging/conversations",
+        asker_token,
+        json={"other_user_id": world.farmer.id, "context_type": "listing", "context_id": world.farmer_listing_id},
     )
     assert conversation.status_code == 200, conversation.text
     sent = api_client(
         "POST",
         f"/api/v1/messaging/conversations/{conversation.json()['id']}/messages",
-        world.buyer.token,
+        asker_token,
         json={"body": "audit me"},
     )
     message_id = sent.json()["id"]
     assert _patch(api_client, world, f"/api/v1/messaging/messages/{message_id}/redact").status_code == 204
-    _assert_audited(world, "redact_message", message_id)
+    _assert_audited(world, "message_redacted", message_id)
 
 
 def test_reference_data_writes_are_audited(world, api_client):
