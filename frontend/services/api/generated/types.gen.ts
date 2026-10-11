@@ -737,6 +737,10 @@ export type DealerAnalytics = {
      */
     pendingOrders: number;
     /**
+     * Readytodispatch
+     */
+    readyToDispatch: number;
+    /**
      * Storecount
      */
     storeCount: number;
@@ -1564,6 +1568,10 @@ export type FarmerAnalytics = {
      */
     popularProducts: Array<PopularProduct>;
     /**
+     * Readytodispatch
+     */
+    readyToDispatch: number;
+    /**
      * Resolvedconsultations
      */
     resolvedConsultations: number;
@@ -2034,6 +2042,10 @@ export type ListingUpdateInput = {
  */
 export type ListingWithRelations = {
     /**
+     * Availability
+     */
+    availability?: 'in_stock' | 'low_stock' | 'out_of_stock' | 'unknown' | null;
+    /**
      * Brand
      */
     brand?: string | null;
@@ -2243,7 +2255,7 @@ export type Order = {
     /**
      * Status
      */
-    status: 'pending' | 'confirmed' | 'processing' | 'ready' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
+    status: 'pending' | 'confirmed' | 'processing' | 'ready' | 'dispatched' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
     /**
      * Total
      */
@@ -2328,7 +2340,7 @@ export type OrderStatusHistoryEntry = {
     /**
      * From Status
      */
-    from_status: 'pending' | 'confirmed' | 'processing' | 'ready' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired' | null;
+    from_status: 'pending' | 'confirmed' | 'processing' | 'ready' | 'dispatched' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired' | null;
     /**
      * Id
      */
@@ -2340,7 +2352,7 @@ export type OrderStatusHistoryEntry = {
     /**
      * To Status
      */
-    to_status: 'pending' | 'confirmed' | 'processing' | 'ready' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
+    to_status: 'pending' | 'confirmed' | 'processing' | 'ready' | 'dispatched' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
 };
 
 /**
@@ -2380,7 +2392,7 @@ export type OrderWithItems = {
     /**
      * Status
      */
-    status: 'pending' | 'confirmed' | 'processing' | 'ready' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
+    status: 'pending' | 'confirmed' | 'processing' | 'ready' | 'dispatched' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
     /**
      * Total
      */
@@ -3331,7 +3343,7 @@ export type UpdateOrderStatusRequest = {
     /**
      * To
      */
-    to: 'pending' | 'confirmed' | 'processing' | 'ready' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
+    to: 'pending' | 'confirmed' | 'processing' | 'ready' | 'dispatched' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
 };
 
 /**

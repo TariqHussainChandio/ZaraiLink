@@ -22,6 +22,8 @@ export interface FarmerAnalytics {
   totalListingViews: number;
   activeListings: number;
   pendingOrders: number;
+  /** Orders at `ready`, waiting for the seller to dispatch them (A4). */
+  readyToDispatch: number;
   totalOrders: number;
   totalSales: number;
   popularProducts: PopularProduct[];
@@ -36,6 +38,8 @@ export interface DealerAnalytics {
   totalOrders: number;
   activeListings: number;
   pendingOrders: number;
+  /** Orders at `ready`, waiting for the seller to dispatch them (A4). */
+  readyToDispatch: number;
   inventoryMovement: MonthlyPoint[];
   lowStockCount: number;
   bestSellers: PopularProduct[];

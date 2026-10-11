@@ -24,8 +24,12 @@ async def fetch_listings(
     crop_name: str | None,
     page: int,
     owner_id: str | None = None,
+    access_token: str | None = None,
 ) -> list[dict]:
-    query = get_public_client().table("listings").select(LISTING_SELECT).order("created_at", desc=True)
+    # With the caller's token the policies add their own listings in every status (listings_select_active_or_owner);
+    # without it, anon sees active listings only.
+    client = await get_user_scoped_client(access_token) if access_token else get_public_client()
+    query = client.table("listings").select(LISTING_SELECT).order("created_at", desc=True)
 
     if category_id:
         query = query.eq("category_id", category_id)
@@ -52,10 +56,19 @@ async def fetch_listings(
     return as_rows(response)
 
 
-async def fetch_listing_by_id(listing_id: str) -> dict | None:
-    response = (
-        await get_public_client().table("listings").select(LISTING_SELECT).eq("id", listing_id).limit(1).execute()
-    )
+async def fetch_availability(listing_ids: list[str], access_token: str | None = None) -> dict[str, str]:
+    """One `listing_availability` call for a page of listings (20261019080000_order_dispatch.sql). With the caller's
+    token it also answers for their own hidden or sold listings, as the listing read does."""
+    if not listing_ids:
+        return {}
+    client = await get_user_scoped_client(access_token) if access_token else get_public_client()
+    response = await client.rpc("listing_availability", {"listing_ids": listing_ids}).execute()
+    return {row["listing_id"]: row["availability"] for row in as_rows(response)}
+
+
+async def fetch_listing_by_id(listing_id: str, access_token: str | None = None) -> dict | None:
+    client = await get_user_scoped_client(access_token) if access_token else get_public_client()
+    response = await client.table("listings").select(LISTING_SELECT).eq("id", listing_id).limit(1).execute()
     rows = as_rows(response)
     return rows[0] if rows else None
 

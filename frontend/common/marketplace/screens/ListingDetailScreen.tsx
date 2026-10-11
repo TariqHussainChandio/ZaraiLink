@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, EmptyState, Spinner } from '../../components';
+import { Avatar, Button, EmptyState, Spinner, StatusBadge } from '../../components';
 import { RatingSummary, ReviewCard, useListingReviews } from '../../reviews';
 import { APP_TABS, MARKETPLACE_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
 import { useListing, useRecordListingView } from '../hooks/marketplace';
@@ -55,9 +55,14 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
       )}
 
       <Text style={styles.title}>{listing.title}</Text>
-      <Text style={styles.price}>
-        {`${formatRs(listing.price)} / ${listing.unit} · ${listing.quantity} ${listing.unit} available`}
-      </Text>
+      <Text style={styles.price}>{`${formatRs(listing.price)} / ${listing.unit}`}</Text>
+      {/* The stock word (A4), not the listing's quantity field: a dealer's stock is their inventory, which a buyer
+          never sees in figures (SRDS §15). An out-of-stock listing offers no Add to Cart. */}
+      {listing.availability ? (
+        <View style={styles.stock}>
+          <StatusBadge kind="stock" status={listing.availability} />
+        </View>
+      ) : null}
       {listing.category ? <Text style={styles.category}>{listing.category.name}</Text> : null}
       {listing.description ? <Text style={styles.description}>{listing.description}</Text> : null}
 
@@ -78,25 +83,27 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
         />
       ) : (
         <>
-          <Button
-            label="Add to Cart"
-            onPress={() => {
-              addItem({
-                listingId: listing.id,
-                sellerId: listing.owner_id,
-                title: listing.title,
-                price: listing.price,
-                unit: listing.unit,
-                image: listing.images[0] ?? null,
-              });
-              hapticTap();
-              Alert.alert(
-                'Added to cart',
-                `${listing.title} was added to your cart.`,
-              );
-            }}
-            style={styles.action}
-          />
+          {listing.availability === 'out_of_stock' ? null : (
+            <Button
+              label="Add to Cart"
+              onPress={() => {
+                addItem({
+                  listingId: listing.id,
+                  sellerId: listing.owner_id,
+                  title: listing.title,
+                  price: listing.price,
+                  unit: listing.unit,
+                  image: listing.images[0] ?? null,
+                });
+                hapticTap();
+                Alert.alert(
+                  'Added to cart',
+                  `${listing.title} was added to your cart.`,
+                );
+              }}
+              style={styles.action}
+            />
+          )}
           <Button
             label="Message Seller"
             variant="secondary"
@@ -160,6 +167,10 @@ function makeStyles({ colors, space, radius, typography, size }: Theme) {
       marginTop: space[1],
       ...typography.caption,
       color: colors.ink2,
+    },
+    stock: {
+      marginTop: space[2],
+      flexDirection: 'row',
     },
     description: {
       marginTop: space[3],

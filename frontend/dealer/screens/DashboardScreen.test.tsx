@@ -23,6 +23,7 @@ beforeEach(() => {
   (fetchDealerAnalytics as jest.Mock).mockResolvedValue({
     activeListings: 6,
     pendingOrders: 1,
+    readyToDispatch: 0,
     lowStockCount: 1,
     storeCount: 1,
     supplierCount: 1,

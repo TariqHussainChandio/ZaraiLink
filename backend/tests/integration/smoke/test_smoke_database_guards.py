@@ -24,12 +24,13 @@ ORDER_TARGETS = (
     "payment_failed",
     "processing",
     "ready",
+    "dispatched",
     "completed",
     "disputed",
     "refunded",
 )
 # The API never lets a participant request `expired` (only the lazy sweep sets it), so it is left out of the comparison.
-WALK = ("confirmed", "processing", "ready", "completed")
+WALK = ("confirmed", "processing", "ready", "dispatched", "completed")
 
 
 def rest(method: str, table: str, token: str, query: str, body: dict | None = None) -> httpx.Response:
@@ -110,7 +111,7 @@ def test_the_seller_and_buyer_keep_the_moves_that_are_theirs_through_the_data_ap
     assert changed(rest("PATCH", "orders", world.buyer.token, f"id=eq.{cancelled}", {"status": "cancelled"}))
 
 
-@pytest.mark.parametrize("state", ["pending", "confirmed", "processing", "ready", "completed"])
+@pytest.mark.parametrize("state", ["pending", "confirmed", "processing", "ready", "dispatched", "completed"])
 @pytest.mark.parametrize("actor", ["buyer", "farmer"])
 def test_the_api_and_the_database_agree_on_every_order_move(world, api_client, state, actor):
     """For each start state and participant, the set of targets each path accepts must be identical."""
@@ -277,7 +278,10 @@ def test_a_payment_cannot_be_forged_re_opened_or_rewritten(world, api_client):
     assert not changed(rest("POST", "payment_transactions", world.farmer.token, "select=id", forged_event))
 
 
-def test_confirming_directly_still_commits_the_stock_once_and_leaves_history(world, api_client):
+def test_dispatching_directly_cuts_the_stock_once_and_leaves_history(world, api_client):
+    """A4 (D5-D7): the seller skipping the API and moving the order through the data API gets the same result: confirm
+    cuts nothing, dispatch cuts the stock once in the same statement, and nothing can cut it again."""
+
     def stock() -> float:
         items = api_client("GET", "/api/v1/dealer/inventory", world.dealer.token).json()
         return float(next(i for i in items if i["id"] == world.dealer_inventory_id)["stock_quantity"])
@@ -292,22 +296,36 @@ def test_confirming_directly_still_commits_the_stock_once_and_leaves_history(wor
     order_id = checkout.json()[0]["id"]
     before = stock()
 
-    # the seller skips the API and confirms through the data API: the stock is committed by the same statement
+    # confirming through the data API checks the stock and takes none
     assert changed(rest("PATCH", "orders", world.dealer.token, f"id=eq.{order_id}", {"status": "confirmed"}))
+    assert stock() == before
+    for step in ("processing", "ready"):
+        assert changed(rest("PATCH", "orders", world.dealer.token, f"id=eq.{order_id}", {"status": step}))
+    assert stock() == before
+
+    # dispatching takes it, in the same statement
+    assert changed(rest("PATCH", "orders", world.dealer.token, f"id=eq.{order_id}", {"status": "dispatched"}))
     assert stock() == before - 2
 
     history = api_client("GET", f"/api/v1/orders/{order_id}/status-history", world.dealer.token).json()
-    assert {(h["from_status"], h["to_status"]) for h in history} == {(None, "pending"), ("pending", "confirmed")}
+    assert {(h["from_status"], h["to_status"]) for h in history} == {
+        (None, "pending"),
+        ("pending", "confirmed"),
+        ("confirmed", "processing"),
+        ("processing", "ready"),
+        ("ready", "dispatched"),
+    }
 
-    # the stock function is not an API: it cannot be called to reduce the stock again
+    # setting dispatched again is a no-op, and the dispatch function is not an API: nothing cuts the stock twice
+    rest("PATCH", "orders", world.dealer.token, f"id=eq.{order_id}", {"status": "dispatched"})
     rpc = httpx.post(
-        f"{REST}/rpc/reduce_stock_for_order",
+        f"{REST}/rpc/apply_order_dispatch",
         headers={
             "apikey": ANON_KEY,
             "Authorization": f"Bearer {world.dealer.token}",
             "Content-Type": "application/json",
         },
-        json={"p_order_id": order_id, "p_actor": world.dealer.id},
+        json={},
         timeout=30,
     )
     assert rpc.status_code >= 400, rpc.text

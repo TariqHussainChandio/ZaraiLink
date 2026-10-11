@@ -12,6 +12,14 @@ describe('OrderTimeline', () => {
     expect(screen.getByLabelText('Being prepared, current step')).toBeTruthy();
     // The steps still to come are shown, so the buyer knows what happens next.
     expect(screen.getByLabelText('Ready for dispatch, to come')).toBeTruthy();
+    expect(screen.getByLabelText('Dispatched by seller, to come')).toBeTruthy();
+    expect(screen.getByLabelText('Completed, to come')).toBeTruthy();
+  });
+
+  it('shows a dispatched order with dispatch as the current step and completion still to come (D5)', async () => {
+    await render(<OrderTimeline status="dispatched" reachedAt={{ ready: '27 Sept, 9:15 am', dispatched: '27 Sept, 4:40 pm' }} />);
+    expect(screen.getByLabelText('Ready for dispatch, 27 Sept, 9:15 am, done')).toBeTruthy();
+    expect(screen.getByLabelText('Dispatched by seller, 27 Sept, 4:40 pm, current step')).toBeTruthy();
     expect(screen.getByLabelText('Completed, to come')).toBeTruthy();
   });
 
@@ -25,7 +33,7 @@ describe('OrderTimeline', () => {
 
   it('shows a completed order with every step done and none current', async () => {
     await render(<OrderTimeline status="completed" />);
-    for (const label of ['Order placed', 'Confirmed by seller', 'Being prepared', 'Ready for dispatch', 'Completed']) {
+    for (const label of ['Order placed', 'Confirmed by seller', 'Being prepared', 'Ready for dispatch', 'Dispatched by seller', 'Completed']) {
       expect(screen.getByLabelText(`${label}, done`)).toBeTruthy();
     }
     expect(screen.queryByLabelText(/current step|to come/)).toBeNull();
@@ -61,11 +69,11 @@ describe('OrderTimeline', () => {
   });
 
   it('shows a status this build does not know as the current step after the steps reached, never as not started', async () => {
-    // D5 adds `dispatched` in A4; an installed A2 build must still read sensibly when the API sends it.
-    await render(<OrderTimeline status={'dispatched' as never} reachedAt={{ pending: '26 Sept, 10:05 am', ready: '27 Sept, 9:15 am' }} />);
+    // An installed build meets a status added after it was built; it must still read sensibly when the API sends it.
+    await render(<OrderTimeline status={'on_hold' as never} reachedAt={{ pending: '26 Sept, 10:05 am', ready: '27 Sept, 9:15 am' }} />);
     expect(screen.getByLabelText('Order placed, 26 Sept, 10:05 am, done')).toBeTruthy();
     expect(screen.getByLabelText('Ready for dispatch, 27 Sept, 9:15 am, done')).toBeTruthy();
-    expect(screen.getByLabelText('Dispatched, current step')).toBeTruthy();
+    expect(screen.getByLabelText('On hold, current step')).toBeTruthy();
     expect(screen.queryByLabelText(/to come/)).toBeNull();
     expect(screen.queryByText('Completed')).toBeNull();
     expect(screen.queryByText('Confirmed by seller')).toBeNull();

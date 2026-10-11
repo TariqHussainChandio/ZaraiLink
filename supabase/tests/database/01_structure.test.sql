@@ -42,9 +42,11 @@ select is(
 select is(
   (select count(*) from information_schema.tables t
     where t.table_schema = 'public' and t.table_type = 'BASE TABLE'
+      -- server-only tables, which no client may reach: the dispatch outbox (20261019080000_order_dispatch.sql)
+      and t.table_name not in ('order_events')
       and not exists (select 1 from information_schema.role_table_grants g
         where g.table_schema = 'public' and g.table_name = t.table_name and g.grantee = 'authenticated')),
-  0::bigint, 'every public table has an explicit grant to authenticated (Data API needs it from 30 Oct 2026)');
+  0::bigint, 'every public table but the server-only ones has an explicit grant to authenticated (Data API needs it from 30 Oct 2026)');
 
 select is(
   (select count(*) from information_schema.role_table_grants
@@ -64,8 +66,8 @@ select is(
 
 select is(
   (select count(*) from information_schema.tables
-    where table_schema = 'public' and table_name ~* '(shipment|courier|delivery_|logistic|carrier|tracking)'),
-  0::bigint, 'BR-10: no logistics tables');
+    where table_schema = 'public' and table_name ~* '(shipment|courier|delivery_|logistic|carrier|tracking|rider|vehicle|warehouse)'),
+  0::bigint, 'BR-10: no logistics tables (no shipments, couriers, riders, vehicles or warehouses; A4 widened the names)');
 
 select ok(has_function_privilege('anon', 'public.is_admin()', 'execute')
       and has_function_privilege('anon', 'public.is_suspended()', 'execute')
@@ -115,7 +117,7 @@ select is(
   'public.dealer_stores.dealer_stores_owner_delete',
   'public.dealer_stores.dealer_stores_owner_insert',
   'public.dealer_stores.dealer_stores_owner_update',
-  'public.dealer_stores.dealer_stores_select_owner_or_admin',
+  'public.dealer_stores.dealer_stores_select_owner',
   'public.disease_cases.disease_cases_insert_owner',
   'public.disease_cases.disease_cases_select_owner_or_admin',
   'public.disease_predictions.disease_predictions_select_owner_or_admin',
@@ -145,9 +147,9 @@ select is(
   'public.inventory.inventory_owner_delete',
   'public.inventory.inventory_owner_insert',
   'public.inventory.inventory_owner_update',
-  'public.inventory.inventory_select_owner_or_admin',
+  'public.inventory.inventory_select_owner',
   'public.inventory_transactions.inventory_transactions_owner_insert',
-  'public.inventory_transactions.inventory_transactions_select_owner_or_admin',
+  'public.inventory_transactions.inventory_transactions_select_owner',
   'public.listing_views.listing_views_insert_authenticated',
   'public.listing_views.listing_views_select_owner_or_admin',
   'public.listings.listings_owner_delete',
@@ -183,7 +185,7 @@ select is(
   'public.suppliers.suppliers_owner_delete',
   'public.suppliers.suppliers_owner_insert',
   'public.suppliers.suppliers_owner_update',
-  'public.suppliers.suppliers_select_owner_or_admin',
+  'public.suppliers.suppliers_select_owner',
   'public.units.units_admin_delete',
   'public.units.units_admin_insert',
   'public.units.units_admin_update',

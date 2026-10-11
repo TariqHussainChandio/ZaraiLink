@@ -34,7 +34,7 @@ select tests.expect(tests.fx('F2'), 'delete from public.farmer_profiles where id
 -- dealer stores, suppliers, inventory ------------------------------------------------------------------
 select tests.expect(tests.fx('D'), 'select id from public.dealer_stores where id = ' || tests.l('DS1'), 'rows:1', 'dealer_stores: the dealer reads their store');
 select tests.expect(tests.fx('D2'), 'select id from public.dealer_stores where id = ' || tests.l('DS1'), 'rows:0', 'dealer_stores: another dealer does not');
-select tests.expect(tests.fx('A'), 'select id from public.dealer_stores where id = ' || tests.l('DS1'), 'rows:1', 'dealer_stores: an admin reads (oversight)');
+select tests.expect(tests.fx('A'), 'select id from public.dealer_stores where id = ' || tests.l('DS1'), 'rows:0', 'dealer_stores: an admin reads nothing (B0, SRDS §15)');
 select tests.expect(tests.fx('A'), 'insert into public.dealer_stores (dealer_id, name) values (' || tests.l('D') || $$, 'Admin store')$$, 'err:42501', 'dealer_stores: an admin cannot write into a dealer store (BR-03/04: dealer-only)');
 select tests.expect(tests.fx('D'), 'insert into public.dealer_stores (dealer_id, name) values (' || tests.l('D') || $$, 'Second store')$$, 'n:1', 'dealer_stores: the dealer adds one');
 select tests.expect(tests.fx('D2'), 'insert into public.dealer_stores (dealer_id, name) values (' || tests.l('D') || $$, 'Forged')$$, 'err:42501', 'dealer_stores: cannot add one for another dealer');
@@ -45,7 +45,7 @@ select tests.expect(tests.fx('D2'), 'delete from public.dealer_stores where id =
 select tests.expect(tests.fx('D'), 'delete from public.dealer_stores where id = ' || tests.l('DS1'), 'n:1', 'dealer_stores: the dealer deletes');
 select tests.expect(tests.fx('D'), 'select id from public.suppliers where id = ' || tests.l('SUP1'), 'rows:1', 'suppliers: the dealer reads them');
 select tests.expect(tests.fx('D2'), 'select id from public.suppliers where id = ' || tests.l('SUP1'), 'rows:0', 'suppliers: another dealer does not');
-select tests.expect(tests.fx('A'), 'select id from public.suppliers where id = ' || tests.l('SUP1'), 'rows:1', 'suppliers: an admin reads');
+select tests.expect(tests.fx('A'), 'select id from public.suppliers where id = ' || tests.l('SUP1'), 'rows:0', 'suppliers: an admin reads nothing (B0)');
 select tests.expect(tests.fx('D'), 'insert into public.suppliers (dealer_id, name) values (' || tests.l('D') || $$, 'Second supplier')$$, 'n:1', 'suppliers: the dealer adds one');
 select tests.expect(tests.fx('D2'), 'insert into public.suppliers (dealer_id, name) values (' || tests.l('D') || $$, 'Forged')$$, 'err:42501', 'suppliers: another dealer cannot');
 select tests.expect(tests.fx('D'), $$update public.suppliers set name = 'Renamed' where id = $$ || tests.l('SUP1'), 'n:1', 'suppliers: the dealer updates');
@@ -55,7 +55,7 @@ select tests.expect(tests.fx('D'), 'delete from public.suppliers where id = ' ||
 select tests.expect(tests.fx('D'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:1', 'inventory: the dealer reads theirs');
 select tests.expect(tests.fx('D2'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:0', 'inventory: another dealer does not');
 select tests.expect(tests.fx('F'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:0', 'inventory: a farmer does not (BR-03/04)');
-select tests.expect(tests.fx('A'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:1', 'inventory: an admin reads (oversight)');
+select tests.expect(tests.fx('A'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:0', 'inventory: an admin reads nothing (B0, SRDS §15)');
 select tests.expect(tests.fx('D'), 'insert into public.inventory (dealer_id) values (' || tests.l('D') || ')', 'n:1', 'inventory: the dealer adds a row');
 select tests.expect(tests.fx('D2'), 'insert into public.inventory (dealer_id) values (' || tests.l('D') || ')', 'err:42501', 'inventory: another dealer cannot');
 select tests.expect(tests.fx('A'), 'insert into public.inventory (dealer_id) values (' || tests.l('D') || ')', 'err:42501', 'inventory: an admin cannot write');
@@ -64,7 +64,7 @@ select tests.expect(tests.fx('D2'), 'update public.inventory set updated_at = no
 select tests.expect(tests.fx('D2'), 'delete from public.inventory where id = ' || tests.l('INV1'), 'n:0', 'inventory: another dealer cannot delete');
 select tests.expect(tests.fx('D'), 'select id from public.inventory_transactions where id = ' || tests.l('IT1'), 'rows:1', 'inventory_transactions: the dealer reads them');
 select tests.expect(tests.fx('D2'), 'select id from public.inventory_transactions where id = ' || tests.l('IT1'), 'rows:0', 'inventory_transactions: another dealer does not');
-select tests.expect(tests.fx('A'), 'select id from public.inventory_transactions where id = ' || tests.l('IT1'), 'rows:1', 'inventory_transactions: an admin reads');
+select tests.expect(tests.fx('A'), 'select id from public.inventory_transactions where id = ' || tests.l('IT1'), 'rows:0', 'inventory_transactions: an admin reads nothing (B0)');
 select tests.expect(tests.fx('D'), 'insert into public.inventory_transactions (inventory_id, type, quantity) values (' || tests.l('INV1') || $$, 'addition', 1)$$, 'n:1', 'inventory_transactions: the dealer records one');
 select tests.expect(tests.fx('D2'), 'insert into public.inventory_transactions (inventory_id, type, quantity) values (' || tests.l('INV1') || $$, 'addition', 1)$$, 'err:42501', 'inventory_transactions: another dealer cannot');
 select tests.expect(tests.fx('A'), 'insert into public.inventory_transactions (inventory_id, type, quantity) values (' || tests.l('INV1') || $$, 'addition', 1)$$, 'err:42501', 'inventory_transactions: an admin cannot');

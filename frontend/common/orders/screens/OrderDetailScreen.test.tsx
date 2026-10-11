@@ -122,27 +122,27 @@ describe('OrderDetailScreen', () => {
   });
 
   it('still shows an order whose status this build does not know yet, in its history and timeline', async () => {
-    // An installed build meets API values before it is updated (D5 adds `dispatched` in A4); the screen must not crash.
+    // An installed build meets API values before it is updated; the screen must not crash.
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
-    mockFetchOrderById.mockResolvedValue(order({ status: 'dispatched' as never }));
+    mockFetchOrderById.mockResolvedValue(order({ status: 'on_hold' as never }));
     mockFetchOrderStatusHistory.mockResolvedValue([
-      { id: 'h1', order_id: 'order-1', from_status: 'ready', to_status: 'dispatched', changed_by: 'seller-1', created_at: '2026-01-02T00:00:00.000Z' },
+      { id: 'h1', order_id: 'order-1', from_status: 'ready', to_status: 'on_hold' as never, changed_by: 'seller-1', created_at: '2026-01-02T00:00:00.000Z' },
     ]);
     await renderScreen();
 
-    expect(await screen.findByText('Ready for dispatch → Dispatched')).toBeTruthy();
-    expect(screen.getAllByText('Dispatched').length).toBeGreaterThan(0);
+    expect(await screen.findByText('Ready for dispatch → On hold')).toBeTruthy();
+    expect(screen.getAllByText('On hold').length).toBeGreaterThan(0);
   });
 
   it('shows a history entry that leaves a status this build does not know', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchOrderById.mockResolvedValue(order({ status: 'completed' }));
     mockFetchOrderStatusHistory.mockResolvedValue([
-      { id: 'h2', order_id: 'order-1', from_status: 'dispatched', to_status: 'completed', changed_by: 'seller-1', created_at: '2026-01-03T00:00:00.000Z' },
+      { id: 'h2', order_id: 'order-1', from_status: 'on_hold' as never, to_status: 'completed', changed_by: 'seller-1', created_at: '2026-01-03T00:00:00.000Z' },
     ]);
     await renderScreen();
 
-    expect(await screen.findByText('Dispatched → Completed')).toBeTruthy();
+    expect(await screen.findByText('On hold → Completed')).toBeTruthy();
   });
 
   it('lets the buyer pay when no payment exists yet', async () => {
@@ -166,6 +166,76 @@ describe('OrderDetailScreen', () => {
 
     await waitFor(() => expect(mockUpdateOrderStatus).toHaveBeenCalledWith('order-1', 'confirmed'));
     expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  it('asks the seller to confirm a dispatch, then dispatches the ready order (D5)', async () => {
+    useAuthStore.setState({ user: { id: 'seller-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order({ status: 'ready' }));
+    mockUpdateOrderStatus.mockResolvedValue(undefined);
+    await renderScreen();
+    await screen.findAllByText('Rs 550');
+    // Ready is dispatched, never completed straight away.
+    expect(screen.queryByText('Mark Completed')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Mark Dispatched'));
+    expect(screen.getByText(/The stock leaves your inventory now/)).toBeTruthy();
+    expect(mockUpdateOrderStatus).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('Dispatch now'));
+    await waitFor(() => expect(mockUpdateOrderStatus).toHaveBeenCalledWith('order-1', 'dispatched'));
+  });
+
+  it('dispatches nothing when the seller says not yet', async () => {
+    useAuthStore.setState({ user: { id: 'seller-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order({ status: 'ready' }));
+    await renderScreen();
+    await screen.findAllByText('Rs 550');
+
+    await fireEvent.press(screen.getByText('Mark Dispatched'));
+    await fireEvent.press(screen.getByText('Not yet'));
+
+    expect(mockUpdateOrderStatus).not.toHaveBeenCalled();
+  });
+
+  it('shows the shortage message when a dispatch is refused (D6)', async () => {
+    useAuthStore.setState({ user: { id: 'seller-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order({ status: 'ready' }));
+    mockUpdateOrderStatus.mockRejectedValue(new Error('Not enough stock to dispatch this order — needs 3 but only 2 in stock.'));
+    await renderScreen();
+    await screen.findAllByText('Rs 550');
+
+    await fireEvent.press(screen.getByText('Mark Dispatched'));
+    await fireEvent.press(screen.getByText('Dispatch now'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Could not update order',
+        'Not enough stock to dispatch this order — needs 3 but only 2 in stock.',
+      ),
+    );
+  });
+
+  it('lets the seller complete a dispatched order, and offers no cancel', async () => {
+    useAuthStore.setState({ user: { id: 'seller-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order({ status: 'dispatched' }));
+    mockUpdateOrderStatus.mockResolvedValue(undefined);
+    await renderScreen();
+    await screen.findAllByText('Rs 550');
+    expect(screen.queryByText('Cancel Order')).toBeNull();
+    expect(screen.queryByText('Mark Dispatched')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Mark Completed'));
+
+    await waitFor(() => expect(mockUpdateOrderStatus).toHaveBeenCalledWith('order-1', 'completed'));
+  });
+
+  it('offers the buyer no dispatch', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order({ status: 'ready' }));
+    await renderScreen();
+    await screen.findAllByText('Rs 550');
+
+    expect(screen.queryByText('Mark Dispatched')).toBeNull();
   });
 
   it('shows an alert when a status update fails', async () => {

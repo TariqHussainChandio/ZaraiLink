@@ -72,23 +72,31 @@ select tests.expect(tests.fx('B'), 'insert into public.order_items (order_id, li
 select tests.expect(tests.fx('B2'), 'insert into public.order_items (order_id, listing_id, quantity, unit_price) values (' || tests.l('OP3') || ',' || tests.l('L1') || ', 1, 1)', 'err:42501', 'order items: a stranger cannot add to someone else''s order');
 select tests.expect(tests.fx('B'), 'insert into public.order_items (order_id, listing_id, quantity, unit_price) values (' || tests.l('OCOMP') || ',' || tests.l('L1') || ', 1, 1)', 'err:23514', 'order items: nothing is added to an order that is no longer pending');
 
--- confirming commits the stock in the same statement ---------------------------------------------------------
+-- stock leaves at dispatch, not at confirm (20261019080000_order_dispatch.sql, D5-D6) ------------------------------
 do $$
-declare o1 uuid; o2 uuid;
+declare o1 uuid; o2 uuid; o3 uuid;
 begin
   insert into public.orders (buyer_id, seller_id, delivery_charge) values (tests.fx('B'), tests.fx('D'), 0) returning id into o1;
   insert into public.orders (buyer_id, seller_id, delivery_charge) values (tests.fx('B'), tests.fx('D'), 0) returning id into o2;
+  insert into public.orders (buyer_id, seller_id, delivery_charge) values (tests.fx('B'), tests.fx('D'), 0) returning id into o3;
   insert into public.order_items (order_id, listing_id, quantity, unit_price) values (o1, tests.fx('LD'), 3, 50);
   insert into public.order_items (order_id, listing_id, quantity, unit_price) values (o2, tests.fx('LD'), 3, 50);
-  insert into tests.fixtures values ('ODS1', o1), ('ODS2', o2);
+  insert into public.order_items (order_id, listing_id, quantity, unit_price) values (o3, tests.fx('LD'), 6, 50);
+  insert into tests.fixtures values ('ODS1', o1), ('ODS2', o2), ('ODS3', o3);
 end $$;
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('ODS1'), 'n:1', 'stock: the dealer confirms an order for 3 of 5');
-select tests.expect(tests.fx('D'), 'select id from public.inventory where id = ' || tests.l('INVD') || ' and stock_quantity = 2', 'rows:1', 'stock: it was committed by that same statement (5 - 3)');
+select tests.expect(tests.fx('D'), 'select id from public.inventory where id = ' || tests.l('INVD') || ' and stock_quantity = 5', 'rows:1', 'stock: confirming cut nothing (D5: a confirmed order can still be cancelled)');
+select tests.expect(tests.fx('D'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('ODS2'), 'n:1', 'stock: a second order for 3 of the same 5 confirms too');
+select tests.expect(tests.fx('D'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('ODS3'), 'err:P0001', 'stock: an order for 6 of 5 is refused at confirm');
+select tests.expect(tests.fx('D'), $$update public.orders set status = 'processing' where id in ($$ || tests.l('ODS1') || ',' || tests.l('ODS2') || ')', 'n:2', 'stock: both go to processing');
+select tests.expect(tests.fx('D'), $$update public.orders set status = 'ready' where id in ($$ || tests.l('ODS1') || ',' || tests.l('ODS2') || ')', 'n:2', 'stock: and to ready');
+select tests.expect(tests.fx('D'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('ODS1'), 'n:1', 'stock: the dealer dispatches the first');
+select tests.expect(tests.fx('D'), 'select id from public.inventory where id = ' || tests.l('INVD') || ' and stock_quantity = 2', 'rows:1', 'stock: dispatch cut it in the same statement (5 - 3)');
 select tests.expect(tests.fx('D'), 'select id from public.inventory_transactions where inventory_id = ' || tests.l('INVD') || $$ and type = 'sale' and quantity = -3$$, 'rows:1', 'stock: and left one ledger row');
-select tests.expect(tests.fx('D'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('ODS2'), 'err:P0001', 'stock: a second order for 3 of the 2 left is refused as a whole');
-select tests.expect(tests.fx('D'), 'select id from public.orders where id = ' || tests.l('ODS2') || $$ and status = 'pending'$$, 'rows:1', 'stock: and stays pending');
-select tests.expect(tests.fx('D'), 'select public.reduce_stock_for_order(' || tests.l('ODS1') || ',' || tests.l('D') || ')', 'err:42501', 'stock: the function is not callable by users, so it cannot run twice');
-
+select tests.expect(tests.fx('D'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('ODS2'), 'err:P0001', 'stock: the second, for 3 of the 2 left, cannot be dispatched (D6)');
+select tests.expect(tests.fx('D'), 'select id from public.orders where id = ' || tests.l('ODS2') || $$ and status = 'ready'$$, 'rows:1', 'stock: and stays ready');
+select tests.expect(tests.fx('D'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('ODS1'), 'n:1', 'stock: setting dispatched again is a no-op update...');
+select tests.expect(tests.fx('D'), 'select id from public.inventory_transactions where inventory_id = ' || tests.l('INVD') || $$ and type = 'sale'$$, 'rows:1', 'stock: ...that cuts nothing more (SRDS §21)');
 
 -- order guard (guard_orders_update): who may move which status, and that nothing else changes -------------------
 do $$
@@ -101,7 +109,8 @@ begin
     select * from (values
       ('OG_P1', 'pending'), ('OG_P2', 'pending'), ('OG_P3', 'pending'), ('OG_P4', 'pending'), ('OG_P5', 'pending'),
       ('OG_P6', 'pending'), ('OG_C1', 'confirmed'), ('OG_C2', 'confirmed'), ('OG_PR1', 'processing'),
-      ('OG_PR2', 'processing'), ('OG_R1', 'ready'), ('OG_R2', 'ready'), ('OG_CO1', 'completed'),
+      ('OG_PR2', 'processing'), ('OG_R1', 'ready'), ('OG_R2', 'ready'), ('OG_R3', 'ready'), ('OG_DI1', 'dispatched'),
+      ('OG_DI2', 'dispatched'), ('OG_DI3', 'dispatched'), ('OG_CO1', 'completed'),
       ('OG_CO2', 'completed'), ('OG_D1', 'disputed'), ('OG_D2', 'disputed'), ('OG_D3', 'disputed')
     ) v
   loop
@@ -130,8 +139,12 @@ select tests.expect(tests.fx('F'), $$update public.orders set status = 'processi
 select tests.expect(tests.fx('B'), $$update public.orders set status = 'processing' where id = $$ || tests.l('OG_C2'), 'err:42501', 'order guard: a buyer cannot');
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'ready' where id = $$ || tests.l('OG_PR1'), 'n:1', 'order guard: the seller marks it ready');
 select tests.expect(tests.fx('B'), $$update public.orders set status = 'ready' where id = $$ || tests.l('OG_PR2'), 'err:42501', 'order guard: a buyer cannot');
-select tests.expect(tests.fx('F'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OG_R1'), 'n:1', 'order guard: the seller completes it');
-select tests.expect(tests.fx('B'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OG_R2'), 'err:42501', 'order guard: a buyer cannot complete their own order');
+select tests.expect(tests.fx('F'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('OG_R1'), 'n:1', 'order guard: the seller dispatches it (D5)');
+select tests.expect(tests.fx('B'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('OG_R2'), 'err:42501', 'order guard: a buyer cannot dispatch');
+select tests.expect(tests.fx('F'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OG_R3'), 'err:23514', 'order guard: a ready order cannot skip dispatch to completed');
+select tests.expect(tests.fx('F'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OG_DI1'), 'n:1', 'order guard: the seller completes a dispatched order');
+select tests.expect(tests.fx('B'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OG_DI2'), 'err:42501', 'order guard: a buyer cannot complete their own order');
+select tests.expect(tests.fx('B'), $$update public.orders set status = 'cancelled' where id = $$ || tests.l('OG_DI3'), 'err:23514', 'order guard: nothing dispatched can be cancelled (D5)');
 select tests.expect(tests.fx('B'), $$update public.orders set status = 'disputed' where id = $$ || tests.l('OG_CO1'), 'n:1', 'order guard: the buyer disputes a completed order');
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'disputed' where id = $$ || tests.l('OG_CO2'), 'err:42501', 'order guard: the seller cannot dispute their own sale');
 select tests.expect(tests.fx('B'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OG_D1'), 'err:42501', 'order guard: a buyer cannot settle their own dispute');

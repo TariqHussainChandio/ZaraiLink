@@ -38,8 +38,14 @@ export interface Listing {
   updated_at: string;
 }
 
+/** A listing's stock as a buyer may know it (A4, the "Listing availability" contract): a word, never the seller's
+ * figures. `unknown` when the answer could not be had. */
+type Availability = 'in_stock' | 'low_stock' | 'out_of_stock' | 'unknown';
+
 /** Listing joined with its category and owner profile, as returned by `fetchListings`/`fetchListingById`. */
 export interface ListingWithRelations extends Listing {
+  /** Browse and detail carry it; the admin's moderation list does not. */
+  availability?: Availability | null;
   category: Pick<Category, 'id' | 'name' | 'slug'> | null;
   owner: {
     id: string;

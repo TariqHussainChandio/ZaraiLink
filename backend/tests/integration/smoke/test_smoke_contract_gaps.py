@@ -20,7 +20,7 @@ def _completed_order(world, api_client) -> str:
     )
     assert checkout.status_code == 200, checkout.text
     order_id = checkout.json()[0]["id"]
-    for to_status in ("confirmed", "processing", "ready", "completed"):
+    for to_status in ("confirmed", "processing", "ready", "dispatched", "completed"):
         moved = api_client("PATCH", f"/api/v1/orders/{order_id}/status", world.farmer.token, json={"to": to_status})
         assert moved.status_code == 204, moved.text
     return order_id

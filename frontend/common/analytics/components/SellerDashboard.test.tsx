@@ -20,12 +20,14 @@ const mockFetchDealerAnalytics = fetchDealerAnalytics as jest.Mock;
 const farmerStats = {
   activeListings: 4,
   pendingOrders: 2,
+  readyToDispatch: 12,
+  totalOrders: 14,
   farmCount: 3,
   cropCount: 7,
   openConsultations: 6,
   resolvedConsultations: 8,
 };
-const dealerStats = { activeListings: 9, pendingOrders: 11, lowStockCount: 1, storeCount: 3, supplierCount: 5 };
+const dealerStats = { activeListings: 9, pendingOrders: 11, readyToDispatch: 13, totalOrders: 15, lowStockCount: 1, storeCount: 3, supplierCount: 5 };
 
 describe('SellerDashboard', () => {
   beforeEach(() => {
@@ -40,6 +42,9 @@ describe('SellerDashboard', () => {
     await renderWithProviders(<SellerDashboard />);
     expect(await screen.findByText('Farms')).toBeTruthy();
     for (const value of ['4', '2', '3', '7', '6', '8']) expect(screen.getByText(value)).toBeTruthy();
+    // A4: orders waiting for the seller to dispatch them, beside the order total.
+    expect(screen.getByLabelText('Ready to Dispatch: 12')).toBeTruthy();
+    expect(screen.getByLabelText('Total Orders: 14')).toBeTruthy();
     expect(mockFetchFarmerAnalytics).toHaveBeenCalledTimes(1);
     expect(mockFetchDealerAnalytics).not.toHaveBeenCalled();
     expect(screen.queryByText('Low Stock')).toBeNull();
@@ -50,6 +55,8 @@ describe('SellerDashboard', () => {
     await renderWithProviders(<SellerDashboard />);
     expect(await screen.findByText('Low Stock')).toBeTruthy();
     for (const value of ['9', '11', '1', '3', '5']) expect(screen.getByText(value)).toBeTruthy();
+    expect(screen.getByLabelText('Ready to Dispatch: 13')).toBeTruthy();
+    expect(screen.getByLabelText('Total Orders: 15')).toBeTruthy();
     expect(mockFetchDealerAnalytics).toHaveBeenCalledTimes(1);
     expect(mockFetchFarmerAnalytics).not.toHaveBeenCalled();
     expect(screen.queryByText('Farms')).toBeNull();

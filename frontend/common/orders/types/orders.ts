@@ -6,6 +6,7 @@ export type OrderStatus =
   | 'confirmed'
   | 'processing'
   | 'ready'
+  | 'dispatched'
   | 'completed'
   | 'cancelled'
   | 'rejected'

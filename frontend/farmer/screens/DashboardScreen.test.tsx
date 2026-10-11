@@ -17,6 +17,7 @@ beforeEach(() => {
   (fetchFarmerAnalytics as jest.Mock).mockResolvedValue({
     activeListings: 3,
     pendingOrders: 1,
+    readyToDispatch: 0,
     farmCount: 2,
     cropCount: 5,
     openConsultations: 4,

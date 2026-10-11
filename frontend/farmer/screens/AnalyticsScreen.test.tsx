@@ -28,6 +28,7 @@ const mockFetchFarmerAnalytics = fetchFarmerAnalytics as jest.Mock;
 const analytics: FarmerAnalytics = {
   activeListings: 3,
   pendingOrders: 1,
+  readyToDispatch: 0,
   totalListingViews: 42,
   totalOrders: 6,
   totalSales: 1500,

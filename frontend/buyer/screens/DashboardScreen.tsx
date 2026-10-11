@@ -11,12 +11,14 @@ import {
   MARKETPLACE_ROUTES,
   ORDERS_ROUTES,
 } from '../../common/constants/routes';
-import { useOrders } from '../../common/orders';
+import { useOrders, type OrderStatus } from '../../common/orders';
 import { useAuthStore } from '../../state/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../theme';
 import { formatRs } from '../../utils/money';
 import { statusMeta } from '../../common/constants/status';
+
+const IN_PROGRESS: OrderStatus[] = ['pending', 'confirmed', 'processing', 'ready', 'dispatched'];
 
 // Disease Advisory is farmer-only (like Inventory is dealer-only) — buyers get marketplace,
 // orders, and expert consultation only, no entry point into `HOME_ROUTES.DiseaseAdvisory` here.
@@ -64,7 +66,8 @@ export function BuyerDashboardScreen() {
     );
   }
 
-  const pendingCount = orders.filter(order => order.status !== 'completed' && order.status !== 'cancelled').length;
+  // Orders still moving towards the buyer; a rejected, expired or refunded order is over, not in progress.
+  const pendingCount = orders.filter(order => IN_PROGRESS.includes(order.status)).length;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

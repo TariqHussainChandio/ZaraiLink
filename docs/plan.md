@@ -1,6 +1,7 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-10-05): A0, A1, A2 and A3 closed (A3a PR #25 `59d57fc`; A3b PR #28 `1c57d38`); A4 next. The A3b
+> **Status (2026-10-05): A0 to A3 closed (A3a PR #25 `59d57fc`; A3b PR #28 `1c57d38`); wave 4 under way: A4 (dispatch)
+> and B0 (inventory boundary) built together, B1 next. The A3b
 > migration is on the hosted project too (pushed 2026-10-05, 59 migrations in step); the reauthentication and
 > email-change templates are pushed (`config push`, 2026-10-05), and the API's decision email reached a real inbox
 > through Gmail. The A3a migration is on the hosted project (pushed 2026-10-04).**
@@ -152,8 +153,8 @@ Agreed before the phase that needs them. Each has a contract test, so a lane can
 | Applications | `zl-db`, `zl-backend-core` → `zl-accounts`, `zl-admin`, `zl-dealer`, `zl-expert` | `profiles.application_submitted_at` (pending without it is a draft, with it under review and frozen); `required_documents` (admin, aal2, audited); dealer `dealer_profiles` + `dealer_documents` in the private `dealer-documents` bucket, expert `experts` + `expert_documents` in `expert-documents`; a document names the caller's own upload, its type and size from Storage; `submit_application()` checks completeness, files included; every change to an application takes the owner's profile row (`lock_editable_application()`). API: `/dealer/application`, `/expert/application` (+ `/documents`), `/profile/application/{required-documents,submit}`, admin `/admin/dealer-applications`, `/admin/required-documents`; decisions return `email_delivered`; errors `application_incomplete`, `application_locked` | A3 (A3b, PR #28) |
 | Module public API | each module → the others | frontend `index.ts` exports; backend `service.py` functions; no deep imports | A1 |
 | OpenAPI document | API lanes → app lanes | `backend/openapi.json` and the generated client, regenerated at each checkpoint | all |
-| Order dispatched event | `zl-commerce` → `zl-inventory-api` | an `order_events` row (`id`, `order_id`, `order_item_id`, `seller_id`, `listing_id`, `quantity`, `type = 'dispatched'`, `created_at`) written in the dispatch transaction, unique per order line | A4 → B3 |
-| Listing availability | `zl-inventory-api` → `zl-commerce` | `listing_availability(listing_ids)` returns `in_stock`, `low_stock`, `out_of_stock` or `unknown` per listing; a timeout means `unknown`, never an error | B3 → A4 |
+| Order dispatched event | `zl-commerce` → `zl-inventory-api` | an `order_events` row (`id`, `order_id`, `order_item_id`, `seller_id`, `listing_id`, `quantity`, `type = 'dispatched'`, `inventory_applied_at`, `created_at`) written in the dispatch transaction, unique per order line; server side only (no client grant). While today's `inventory` is the stock the cut runs in the same transaction and `inventory_applied_at` is set; B3 moves the cut to the IMS and applies the rows where it is null | A4 (done) → B3 |
+| Listing availability | `zl-inventory-api` → `zl-commerce` | `listing_availability(listing_ids)` returns `in_stock`, `low_stock`, `out_of_stock` or `unknown` per listing; a timeout means `unknown`, never an error. A4 serves it from today's stock (listing quantity, or the owner's inventory row and threshold) and the API adds it to listing reads; B3 replaces the body behind the same signature | B3 → A4 (A4 consumer done) |
 | Inventory entry | `zl-dealer` → `zl-inventory-app` | the dashboard tile opens the `Inventory` root navigator; shown only to approved dealers | B4 |
 | AI report | `zl-ai` → `zl-expert` | one `AiReport`: disease, confidence, symptoms, treatment, precautions, advisory, image | A6 |
 
@@ -165,11 +166,11 @@ Agreed before the phase that needs them. Each has a contract test, so a lane can
 | D2 | `src/` becomes `frontend/`; Expo project files (`package.json`, `app.config.ts`, `index.js`) stay at the root | **Decided** 2026-09-27 (maintainer) |
 | D3 | One backend package, `backend/app/`, containing the SRDS module folders | **Decided** 2026-09-27 (maintainer) |
 | D4 | Tests beside the code (frontend), mirrored per module (backend), pgTAP in `supabase/tests` | **Decided** 2026-09-27 (maintainer) |
-| D5 | Order lifecycle `pending → confirmed → processing → ready → dispatched → completed`; stock leaves the IMS at dispatch | Recommended |
-| D6 | A known stock shortage blocks dispatch | Recommended |
-| D7 | Dispatch writes an outbox event; the IMS applies it idempotently; an IMS outage never blocks the marketplace | Recommended |
-| D8 | Dealer listings show availability from their linked IMS product | Recommended |
-| D9 | Farmer→farmer and dealer→dealer buying allowed; nobody buys from themselves; experts and the admin do not buy | Recommended |
+| D5 | Order lifecycle `pending → confirmed → processing → ready → dispatched → completed`; stock leaves the IMS at dispatch | **Decided** 2026-10-05 (maintainer); built in A4 |
+| D6 | A known stock shortage blocks dispatch | **Decided** 2026-10-05 (maintainer); built in A4 |
+| D7 | Dispatch writes an outbox event; the IMS applies it idempotently; an IMS outage never blocks the marketplace | **Decided** 2026-10-05 (maintainer); outbox in A4, the IMS side in B3 |
+| D8 | Dealer listings show availability from their linked IMS product | **Decided** 2026-10-05 (maintainer); the word from today's inventory in A4, from the IMS in B3 |
+| D9 | Farmer→farmer and dealer→dealer buying allowed; nobody buys from themselves; experts and the admin do not buy | **Decided** 2026-10-05 (maintainer); built in A4 |
 | D10 | Pending or rejected dealers and experts see only an Application Status screen; a rejected one can resubmit | **Decided** 2026-10-04 (maintainer) |
 | D11 | AI report text comes from a curated, expert-reviewed disease knowledge base (no LLM) | Recommended |
 | D12 | Conversations start only from a listing, an order or a consultation | Recommended |

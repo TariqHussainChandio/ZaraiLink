@@ -21,7 +21,9 @@ ALLOWED_TRANSITIONS: dict[str, list[str]] = {
     "pending": ["confirmed", "rejected", "cancelled", "payment_failed"],
     "confirmed": ["processing", "cancelled", "payment_failed"],
     "processing": ["ready"],
-    "ready": ["completed"],
+    # D5 (A4): the seller dispatches before completing; stock leaves at dispatch, and nothing dispatched is cancelled.
+    "ready": ["dispatched"],
+    "dispatched": ["completed"],
     "completed": ["disputed"],
     "cancelled": [],
     "rejected": [],
@@ -34,7 +36,9 @@ ALLOWED_TRANSITIONS: dict[str, list[str]] = {
 # Who may request each target status. The state machine above says which moves exist; this says whose move it is,
 # so the rule holds for any client and not only for an app that hides the buttons. `cancelled` is the one move both
 # sides may make. A `disputed` order is resolved by an admin only (see `update_order_status`).
-SELLER_ONLY_TARGETS = frozenset({"confirmed", "rejected", "processing", "ready", "completed", "payment_failed"})
+SELLER_ONLY_TARGETS = frozenset(
+    {"confirmed", "rejected", "processing", "ready", "dispatched", "completed", "payment_failed"}
+)
 BUYER_ONLY_TARGETS = frozenset({"disputed"})
 
 # How long a seller has to act on a new order before it silently expires. No scheduler exists
@@ -180,14 +184,9 @@ async def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -
     seller may act on it freely, matching `orders_update_participants` RLS. A non-participant
     admin is allowed ONLY when the order is currently `disputed` — i.e. admin dispute resolution
     (`disputed -> refunded` / `disputed -> completed`, see ALLOWED_TRANSITIONS below) — never on
-    any other transition, and in particular never on `pending -> confirmed`. That transition runs
-    `_reduce_dealer_inventory_for_order` using the ACTING USER's own access token (never a
-    service-role key, see `get_user_scoped_client` docs), so a flat "any admin may act on any
-    order" check would let an admin silently write another dealer's stock via RLS — closing that
-    gap is the entire point of this narrower check; see the matching RLS narrowing of
-    `orders_update_participants` in
-    supabase/migrations/20260901090000_admin_write_scope_hardening.sql, which enforces this same
-    rule again at the database layer as defense in depth.
+    any other transition, and in particular never on `ready -> dispatched`, which takes the seller's stock (the
+    `apply_order_dispatch` trigger, 20261019080000_order_dispatch.sql). The database enforces the same rule again
+    (`orders_update_participants` and `guard_orders_update`) as defense in depth.
     """
     await _expire_stale_pending_orders(user)
     order = await repo.fetch_order_by_id(user.access_token, order_id)
@@ -213,12 +212,13 @@ async def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -
         raise HTTPException(status_code=403, detail="Only the buyer can make this change to an order")
 
     try:
-        # Confirming commits the seller's stock in the same statement (a database trigger), so a shortage fails this
-        # update as a whole; the history row is written by a trigger too.
+        # Database triggers do the rest in the same statement: confirming checks the stock is there, dispatching takes
+        # it and writes the outbox events (D5-D7), and each move writes its history row. A shortage (P0001) fails the
+        # update as a whole, so nothing is half done.
         await repo.update_order_status(user.access_token, order_id, to)
     except APIError as exc:
         if exc.code == "P0001":
-            raise AppHTTPException(422, exc.message or "Not enough stock to confirm this order.", "insufficient_stock")
+            raise AppHTTPException(422, exc.message or "Not enough stock for this order.", "insufficient_stock")
         raise
 
     if is_admin_resolving_dispute:

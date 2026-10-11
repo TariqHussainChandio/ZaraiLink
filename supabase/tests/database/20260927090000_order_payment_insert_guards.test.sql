@@ -10,10 +10,10 @@ select is(
   (select count(*) from pg_trigger
    where not tgisinternal
      and tgname in ('a_guard_orders_insert', 'a_guard_order_items_insert', 'sync_order_subtotal', 'a_guard_orders_update',
-                    'record_order_history_insert', 'record_order_history_update', 'commit_stock_on_confirm',
+                    'record_order_history_insert', 'record_order_history_update', 'check_stock_on_confirm',
                     'a_guard_payments_insert', 'a_guard_payments_update', 'record_payment_event',
                     'a_guard_consultations_update')),
-  11::bigint, 'all the guard and derived-data triggers exist');
+  11::bigint, 'all the guard and derived-data triggers exist (the stock trigger is a check since 20261019080000)');
 
 select is(
   (select count(*) from pg_trigger where tgname = 'guard_payments_columns' and not tgisinternal),
@@ -22,19 +22,19 @@ select is(
 select is(
   (select array_agg(p.proname::text order by p.proname) from pg_proc p
    where p.pronamespace = 'public'::regnamespace
-     and p.proname in ('is_seller_role', 'sync_order_subtotal', 'record_order_history', 'commit_stock_on_confirm', 'record_payment_event')
+     and p.proname in ('is_seller_role', 'sync_order_subtotal', 'record_order_history', 'check_stock_on_confirm', 'record_payment_event')
      and p.prosecdef
      and exists (select 1 from unnest(p.proconfig) c where c like 'search_path=public, pg_temp')),
-  array['commit_stock_on_confirm', 'is_seller_role', 'record_order_history', 'record_payment_event', 'sync_order_subtotal'],
+  array['check_stock_on_confirm', 'is_seller_role', 'record_order_history', 'record_payment_event', 'sync_order_subtotal'],
   'every definer function pins search_path with pg_temp last');
 
 select is(
   (select count(*) from information_schema.routine_privileges
    where routine_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC')
      and routine_name in ('guard_orders_insert', 'guard_order_items_insert', 'sync_order_subtotal', 'record_order_history',
-                          'commit_stock_on_confirm', 'guard_payments_insert', 'guard_payments_update', 'record_payment_event',
-                          'reduce_stock_for_order')),
-  0::bigint, 'clients cannot call any trigger function, or the stock function, directly');
+                          'check_stock_on_confirm', 'guard_payments_insert', 'guard_payments_update', 'record_payment_event',
+                          'apply_order_dispatch')),
+  0::bigint, 'clients cannot call any trigger function, the stock check or the dispatch cut, directly');
 
 select is(
   (select count(*) from information_schema.role_table_grants

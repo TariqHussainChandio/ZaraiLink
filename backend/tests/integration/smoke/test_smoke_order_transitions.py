@@ -33,14 +33,14 @@ def test_the_buyer_cannot_make_the_sellers_moves_but_the_seller_can(world, api_c
     assert _move(api_client, order_id, world.farmer.token, "confirmed").status_code == 204
 
     # at every later step the buyer is refused the move that is next in line, and the seller is not
-    for to in ("processing", "ready", "completed"):
+    for to in ("processing", "ready", "dispatched", "completed"):
         assert _move(api_client, order_id, world.buyer.token, to).status_code == 403, to
         assert _move(api_client, order_id, world.farmer.token, to).status_code == 204, to
 
 
 def test_only_the_buyer_disputes_and_only_an_admin_resolves(world, api_client):
     order_id = _place_order(world, api_client)
-    for to in ("confirmed", "processing", "ready", "completed"):
+    for to in ("confirmed", "processing", "ready", "dispatched", "completed"):
         assert _move(api_client, order_id, world.farmer.token, to).status_code == 204, to
 
     assert _move(api_client, order_id, world.farmer.token, "disputed").status_code == 403  # not the seller

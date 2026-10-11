@@ -157,6 +157,20 @@ async def get_current_user(token: str = Depends(get_bearer_token)) -> Authentica
     return user
 
 
+async def get_optional_user(authorization: str | None = Header(default=None)) -> AuthenticatedUser | None:
+    """The caller on a public route: None when anonymous. A token that is sent must be valid (401 otherwise); an account
+    that may not act (suspended, or approved and not yet signed in again) reads as anonymous, as it could before."""
+    if not authorization:
+        return None
+    token = await get_bearer_token(authorization)
+    try:
+        return await _authenticate(token)
+    except AppHTTPException as exc:
+        if exc.status_code == 403:
+            return None
+        raise
+
+
 async def get_current_user_any_status(token: str = Depends(get_bearer_token)) -> AuthenticatedUser:
     """The signed-in caller whatever their approval status. Only for what a pending or rejected dealer or expert still
     needs: their own profile, deleting their account, the expert application and resubmitting it."""
@@ -204,6 +218,8 @@ require_expert = require_role("expert")
 require_dealer = require_role("dealer")
 require_farmer = require_role("farmer")
 require_buyer = require_role("buyer")
+# D9 (A4): farmers, buyers and dealers buy on the marketplace; experts and the admin do not (SRDS §26-§29).
+require_marketplace_buyer = require_role("farmer", "buyer", "dealer")
 require_expert_any_status = require_role_any_status("expert")
 # A3b: a pending or rejected dealer fills in and sends their application.
 require_dealer_any_status = require_role_any_status("dealer")

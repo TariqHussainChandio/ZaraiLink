@@ -62,3 +62,13 @@ version = "1.4.0"
 ignore = true
 effectiveUntil = 2026-12-15T00:00:00Z
 reason = "GHSA-86w9-cpqp-85rv, no fixed release. Reached only through @expo/cli's code-signing certificates, a developer and build-time tool; it never ships in the app bundle. Lift when node-forge or @expo/cli publishes a fix."
+
+# ---- JavaScript, recorded 2026-10-11 (A4): advisory published with no fixed release yet ----
+
+[[PackageOverrides]]
+name = "sprintf-js"
+ecosystem = "npm"
+version = "1.0.3"
+ignore = true
+effectiveUntil = 2026-12-15T00:00:00Z
+reason = "GHSA-hp3w-g68c-fv3c, no fixed release. Reached only through jest's coverage tooling (babel-plugin-istanbul -> js-yaml -> argparse), a test-time tool formatting its own messages; it never ships in the app bundle and never sees user input. Accepted by the maintainer on 2026-10-11. Lift when sprintf-js publishes a fix."

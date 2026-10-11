@@ -5,13 +5,13 @@ import { statusMeta } from '../constants/status';
 import type { OrderStatus } from '../orders';
 import { type Theme, useTheme } from '../../theme';
 
-// The order's path as the app has it today. D5 adds "dispatched" before completed in A4, with the status itself; a
-// step no order can reach yet would mislead, so it is not drawn before then.
+// The order's path (D5): dispatch, when the goods and the stock leave the seller, comes before completion.
 const STEPS: [OrderStatus, string][] = [
   ['pending', 'Order placed'],
   ['confirmed', 'Confirmed by seller'],
   ['processing', 'Being prepared'],
   ['ready', 'Ready for dispatch'],
+  ['dispatched', 'Dispatched by seller'],
   ['completed', 'Completed'],
 ];
 
@@ -65,8 +65,8 @@ export function OrderTimeline({ status, reachedAt = {} }: OrderTimelineProps) {
       rows.push({ state, label, time: reachedAt[s], icon: state === 'done' ? Check : undefined });
     });
   } else {
-    // A status this build does not know yet (D5 adds `dispatched` in A4): the steps it reached, then the status, in its
-    // own word, as the current step; never "nothing started".
+    // A status this build does not know yet: the steps it reached, then the status, in its own word, as the current
+    // step; never "nothing started".
     STEPS.filter(([s]) => reachedAt[s]).forEach(step => rows.push(reached(step)));
     rows.push({ state: 'now', label: statusMeta('order', status).label, time: reachedAt[status] });
   }

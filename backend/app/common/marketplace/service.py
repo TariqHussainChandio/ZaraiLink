@@ -1,8 +1,27 @@
+import logging
+
+import httpx
 from fastapi import HTTPException
+from postgrest.exceptions import APIError
 
 from app.auth.dependencies import AuthenticatedUser
 from app.common.audit_log import log_admin_action
 from app.common.marketplace import repository as repo
+
+logger = logging.getLogger(__name__)
+
+
+async def _with_availability(listings: list[dict], access_token: str | None = None) -> list[dict]:
+    """Adds each listing's stock word. Browsing never fails because of it: if the answer cannot be had, every listing
+    says `unknown` (the availability contract, D7: stock problems never block the marketplace)."""
+    try:
+        words = await repo.fetch_availability([listing["id"] for listing in listings], access_token)
+    except (APIError, httpx.HTTPError):
+        logger.warning("listing availability unavailable; showing unknown", exc_info=True)
+        words = {}
+    for listing in listings:
+        listing["availability"] = words.get(listing["id"], "unknown")
+    return listings
 
 
 def _location(country: str | None, province: str | None, city: str | None) -> dict | None:
@@ -21,17 +40,34 @@ async def fetch_listings(
     crop_name: str | None = None,
     page: int = 0,
     owner_id: str | None = None,
+    user: AuthenticatedUser | None = None,
 ) -> list[dict]:
-    return await repo.fetch_listings(
-        category_id, search, min_price, max_price, seller_role, city, crop_name, page, owner_id
+    # A seller's own list (My Listings) includes what is hidden or sold, so they can restock or reopen it; everyone
+    # else, the seller browsing included, sees what is for sale.
+    own = user is not None and owner_id == user.id
+    return await _with_availability(
+        await repo.fetch_listings(
+            category_id,
+            search,
+            min_price,
+            max_price,
+            seller_role,
+            city,
+            crop_name,
+            page,
+            owner_id,
+            access_token=user.access_token if own and user else None,
+        ),
+        user.access_token if own and user else None,
     )
 
 
-async def fetch_listing_by_id(listing_id: str) -> dict:
-    listing = await repo.fetch_listing_by_id(listing_id)
+async def fetch_listing_by_id(listing_id: str, user: AuthenticatedUser | None = None) -> dict:
+    # Signed in, the owner also reaches their own hidden or sold listing; others still see only listings for sale.
+    listing = await repo.fetch_listing_by_id(listing_id, user.access_token if user else None)
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
-    return listing
+    return (await _with_availability([listing], user.access_token if user else None))[0]
 
 
 async def fetch_categories() -> list[dict]:

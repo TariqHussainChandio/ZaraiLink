@@ -66,12 +66,20 @@ def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_a
     observed["validation_failed"] = _observe(
         api_client("POST", "/api/v1/orders/checkout", world.buyer.token, json={"cart_items": "nope"})
     )
+    # Its own listing with a fixed quantity: since A4 dispatch draws down the shared listings, so the "Only N left" in
+    # the message would change with the order the tests run in.
+    short_listing = api_client(
+        "POST",
+        "/api/v1/marketplace/listings",
+        world.farmer.token,
+        json={"title": "Contract stock", "price": 1.0, "unit": "kg", "quantity": 5, "category_id": world.category_id},
+    ).json()["id"]
     observed["insufficient_stock"] = _observe(
         api_client(
             "POST",
             "/api/v1/orders/checkout",
             world.buyer.token,
-            json={"cart_items": [{"listing_id": world.farmer_listing_id, "quantity": 100000}]},
+            json={"cart_items": [{"listing_id": short_listing, "quantity": 100000}]},
         )
     )
     key = {"Idempotency-Key": f"contract-{uuid.uuid4().hex}"}

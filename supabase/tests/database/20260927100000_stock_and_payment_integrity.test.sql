@@ -31,11 +31,14 @@ select is(
   (select available from public.available_stock(array[tests.fx('L1')])),
   5::numeric, 'available stock is the listing owner''s row, not a planted one');
 
--- ── confirming commits the seller's rows only, once per row ───────────────
+-- ── the stock cut takes the seller's rows only, once per row (at dispatch since 20261019080000) ──
 
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('OSTK'), 'n:1', 'confirm: the seller confirms an order the planted row does not block');
-select is((select stock_quantity from public.inventory where dealer_id = tests.fx('F') and listing_id = tests.fx('L1')), 2::numeric, 'confirm: the seller''s stock is reduced by the order quantity');
-select is((select stock_quantity from public.inventory where dealer_id = tests.fx('D') and listing_id = tests.fx('L1')), 0::numeric, 'confirm: someone else''s row is left alone');
+select tests.expect(tests.fx('F'), $$update public.orders set status = 'processing' where id = $$ || tests.l('OSTK'), 'n:1', 'dispatch: the seller processes it...');
+select tests.expect(tests.fx('F'), $$update public.orders set status = 'ready' where id = $$ || tests.l('OSTK'), 'n:1', 'dispatch: ...marks it ready...');
+select tests.expect(tests.fx('F'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('OSTK'), 'n:1', 'dispatch: ...and dispatches it');
+select is((select stock_quantity from public.inventory where dealer_id = tests.fx('F') and listing_id = tests.fx('L1')), 2::numeric, 'dispatch: the seller''s stock is reduced by the order quantity');
+select is((select stock_quantity from public.inventory where dealer_id = tests.fx('D') and listing_id = tests.fx('L1')), 0::numeric, 'dispatch: someone else''s row is left alone');
 
 -- the same listing twice in one order is refused, so the reduction can never run from a stale line
 with x as (

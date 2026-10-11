@@ -1317,6 +1317,10 @@
             "title": "Pendingorders",
             "type": "integer"
           },
+          "readyToDispatch": {
+            "title": "Readytodispatch",
+            "type": "integer"
+          },
           "storeCount": {
             "title": "Storecount",
             "type": "integer"
@@ -1339,6 +1343,7 @@
           "totalOrders",
           "activeListings",
           "pendingOrders",
+          "readyToDispatch",
           "inventoryMovement",
           "lowStockCount",
           "bestSellers",
@@ -3005,6 +3010,10 @@
             "title": "Popularproducts",
             "type": "array"
           },
+          "readyToDispatch": {
+            "title": "Readytodispatch",
+            "type": "integer"
+          },
           "resolvedConsultations": {
             "title": "Resolvedconsultations",
             "type": "integer"
@@ -3026,6 +3035,7 @@
           "totalListingViews",
           "activeListings",
           "pendingOrders",
+          "readyToDispatch",
           "totalOrders",
           "totalSales",
           "popularProducts",
@@ -3920,6 +3930,23 @@
       "ListingWithRelations": {
         "description": "Browse, detail and moderation reads embed the category and the owner; create and update do not.",
         "properties": {
+          "availability": {
+            "anyOf": [
+              {
+                "enum": [
+                  "in_stock",
+                  "low_stock",
+                  "out_of_stock",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability"
+          },
           "brand": {
             "anyOf": [
               {
@@ -4275,6 +4302,7 @@
               "confirmed",
               "processing",
               "ready",
+              "dispatched",
               "completed",
               "cancelled",
               "rejected",
@@ -4425,6 +4453,7 @@
                   "confirmed",
                   "processing",
                   "ready",
+                  "dispatched",
                   "completed",
                   "cancelled",
                   "rejected",
@@ -4455,6 +4484,7 @@
               "confirmed",
               "processing",
               "ready",
+              "dispatched",
               "completed",
               "cancelled",
               "rejected",
@@ -4538,6 +4568,7 @@
               "confirmed",
               "processing",
               "ready",
+              "dispatched",
               "completed",
               "cancelled",
               "rejected",
@@ -6375,6 +6406,7 @@
               "confirmed",
               "processing",
               "ready",
+              "dispatched",
               "completed",
               "cancelled",
               "rejected",
@@ -12657,6 +12689,11 @@
             "description": "Error (application/problem+json)"
           }
         },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "List Listings",
         "tags": [
           "marketplace"
@@ -12994,6 +13031,11 @@
             "description": "Error (application/problem+json)"
           }
         },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "Get Listing",
         "tags": [
           "marketplace"

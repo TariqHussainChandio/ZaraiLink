@@ -71,7 +71,7 @@ describeReal('order, payment, messaging and notification hooks against the real 
 
   afterEach(() => queryClient.clear());
 
-  it('runs a purchase end to end: checkout, seller confirms, payment, and every other user is refused', async () => {
+  it('runs a purchase end to end: checkout, seller confirms, payment, dispatch, completion, and every other user is refused', async () => {
     // --- the seller lists something
     signInAs(sellerToken);
     const seller = await renderHook(() => market.useCreateListing(), { wrapper });
@@ -165,7 +165,42 @@ describeReal('order, payment, messaging and notification hooks against the real 
       await sellerResolve.result.current.resolve.mutateAsync({ paymentId: payment.id, action: 'received' });
     });
     await waitFor(() => expect(sellerResolve.result.current.one.data?.status).toBe('successful'));
-  }, 90_000);
+
+    // --- the seller prepares and dispatches it (D5): the listing's own quantity is the stock, and dispatch takes it
+    signInAs(sellerToken);
+    const fulfil = await renderHook(
+      () => ({ update: orders.useUpdateOrderStatus(orderId), detail: orders.useOrderDetail(orderId), listing: market.useListing(listing.id) }),
+      { wrapper },
+    );
+    for (const step of ['processing', 'ready'] as const) {
+      await act(async () => {
+        await fulfil.result.current.update.mutateAsync(step);
+      });
+    }
+    await waitFor(() => expect(fulfil.result.current.listing.data?.quantity).toBe(10)); // nothing taken before dispatch
+    await act(async () => {
+      await fulfil.result.current.update.mutateAsync('dispatched');
+    });
+    await waitFor(() => expect(fulfil.result.current.detail.data?.order.status).toBe('dispatched'));
+    await act(async () => {
+      await fulfil.result.current.listing.refetch();
+    });
+    await waitFor(() => expect(fulfil.result.current.listing.data?.quantity).toBe(8));
+    expect(fulfil.result.current.listing.data?.availability).toBe('in_stock');
+
+    // --- the buyer cannot cancel what has been dispatched; the seller completes it
+    signInAs(buyerToken);
+    const late = await renderHook(() => orders.useUpdateOrderStatus(orderId), { wrapper });
+    const lateCancel = await act(async () => late.result.current.mutateAsync('cancelled').catch((e: unknown) => e));
+    expect(lateCancel).toMatchObject({ status: 422 });
+
+    signInAs(sellerToken);
+    const close = await renderHook(() => ({ update: orders.useUpdateOrderStatus(orderId), detail: orders.useOrderDetail(orderId) }), { wrapper });
+    await act(async () => {
+      await close.result.current.update.mutateAsync('completed');
+    });
+    await waitFor(() => expect(close.result.current.detail.data?.order.status).toBe('completed'));
+  }, 120_000);
 
   it('lets two users talk and keeps a stranger out of the conversation', async () => {
     signInAs(buyerToken);

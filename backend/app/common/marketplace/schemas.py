@@ -5,6 +5,9 @@ from pydantic import BaseModel
 from app.common.schemas import Location
 
 ListingStatus = Literal["active", "inactive", "sold"]
+# The "Listing availability" contract (docs/plan.md §5): a word per listing, never the seller's stock figures.
+# `unknown` when the answer could not be had (from B3, an IMS timeout), never an error.
+Availability = Literal["in_stock", "low_stock", "out_of_stock", "unknown"]
 
 
 class CategoryInput(BaseModel):
@@ -114,3 +117,5 @@ class ListingWithRelations(Listing):
 
     category: CategoryRef | None = None
     owner: OwnerRef | None = None
+    # Browse and detail fill it (A4); the moderation list leaves it out.
+    availability: Availability | None = None

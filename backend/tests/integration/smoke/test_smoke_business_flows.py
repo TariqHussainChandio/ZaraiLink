@@ -57,7 +57,7 @@ def test_checkout_with_delivery_charge_and_br09_total_split(world, api_client):
 
 def test_order_lifecycle_pending_to_completed(world, api_client):
     order_id = world.extra["order_id"]
-    for to_status in ("confirmed", "processing", "ready", "completed"):
+    for to_status in ("confirmed", "processing", "ready", "dispatched", "completed"):
         response = api_client("PATCH", f"/api/v1/orders/{order_id}/status", world.farmer.token, json={"to": to_status})
         assert response.status_code == 204, f"{to_status}: {response.text}"
 
@@ -102,7 +102,15 @@ def test_buyer_reviews_completed_order(world, api_client):
 
 
 def test_dealer_oversell_rejected_and_stock_stays_atomic(world, api_client):
-    # Two buyers race the same 20-unit inventory row, each wanting 15 — only one can win.
+    # Two buyers race the same inventory row, each wanting 15 of the 20 it starts with: both orders may be confirmed
+    # (D5: confirming takes nothing), but only one can be dispatched (D6).
+    def stock() -> float:
+        row = api_client("GET", f"/api/v1/dealer/inventory/{world.dealer_inventory_id}", world.dealer.token)
+        assert row.status_code == 200, row.text
+        return float(row.json()["stock_quantity"])
+
+    before = stock()
+    assert before >= 15, before
     first = api_client(
         "POST",
         "/api/v1/orders/checkout",
@@ -127,13 +135,27 @@ def test_dealer_oversell_rejected_and_stock_stays_atomic(world, api_client):
         "PATCH", f"/api/v1/orders/{second_order}/status", world.dealer.token, json={"to": "confirmed"}
     )
     assert confirm_first.status_code == 204, confirm_first.text
-    # BR-03/04: the second confirm oversells (20 in stock, 15 already taken) — must be rejected,
-    # not silently allowed to go negative.
-    assert confirm_second.status_code >= 400, confirm_second.text
+    assert confirm_second.status_code == 204, confirm_second.text
+    assert stock() == before  # confirming took nothing
 
-    inventory = api_client("GET", f"/api/v1/dealer/inventory/{world.dealer_inventory_id}", world.dealer.token)
-    assert inventory.status_code == 200
-    assert inventory.json()["stock_quantity"] == 5  # 20 - 15, the second confirm never touched it
+    for order_id in (first_order, second_order):
+        for to in ("processing", "ready"):
+            moved = api_client("PATCH", f"/api/v1/orders/{order_id}/status", world.dealer.token, json={"to": to})
+            assert moved.status_code == 204, moved.text
+
+    dispatch_first = api_client(
+        "PATCH", f"/api/v1/orders/{first_order}/status", world.dealer.token, json={"to": "dispatched"}
+    )
+    dispatch_second = api_client(
+        "PATCH", f"/api/v1/orders/{second_order}/status", world.dealer.token, json={"to": "dispatched"}
+    )
+    assert dispatch_first.status_code == 204, dispatch_first.text
+    # BR-03/04, D6: the second dispatch would oversell (15 already gone) and is refused, never allowed to go negative.
+    assert dispatch_second.status_code == 422, dispatch_second.text
+    assert dispatch_second.json()["code"] == "insufficient_stock"
+    assert stock() == before - 15  # the refused dispatch never touched it
+    still_ready = api_client("GET", f"/api/v1/orders/{second_order}", world.dealer.token)
+    assert still_ready.json()["status"] == "ready"
 
 
 def test_disease_pipeline_end_to_end_on_a_database_built_only_from_migrations(world, api_client):

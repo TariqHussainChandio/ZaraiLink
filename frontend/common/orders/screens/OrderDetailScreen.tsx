@@ -1,7 +1,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, OrderTimeline, PriceBreakdown, Spinner, StatusBadge } from '../../components';
+import { Button, Card, OrderTimeline, PriceBreakdown, Sheet, Spinner, StatusBadge } from '../../components';
 import { useResolvePayment } from '../../payments';
 import { ReviewCard } from '../../reviews';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
@@ -45,11 +45,16 @@ export function OrderDetailScreen() {
   const { order, history = [], payment, review } = data ?? {};
 
   const statusMutation = useUpdateOrderStatus(orderId);
-  const advance = (to: OrderStatus) => {
+  const [confirmingDispatch, setConfirmingDispatch] = useState(false);
+  const advance = (to: OrderStatus, onDone?: () => void) => {
     // The seller accepting an order is the one transition worth a stronger "something
     // completed" pulse — cancelling/rejecting isn't a moment to celebrate.
     statusMutation.mutate(to, {
-      onSuccess: to === 'confirmed' ? hapticSuccess : undefined,
+      onSuccess: () => {
+        if (to === 'confirmed') hapticSuccess();
+        onDone?.();
+      },
+      // A shortage at dispatch (D6) arrives here with the API's message, and the order stays ready.
       onError: error => Alert.alert('Could not update order', errorMessage(error)),
     });
   };
@@ -76,7 +81,9 @@ export function OrderDetailScreen() {
   const canReject = isSeller && order.status === 'pending';
   const canProcess = isSeller && order.status === 'confirmed';
   const canMarkReady = isSeller && order.status === 'processing';
-  const canComplete = isSeller && order.status === 'ready';
+  // D5: the seller dispatches a ready order, then completes it; dispatch is when the stock leaves them.
+  const canDispatch = isSeller && order.status === 'ready';
+  const canComplete = isSeller && order.status === 'dispatched';
   const canDispute = isBuyer && order.status === 'completed';
   const canPay = isBuyer && !payment && ['pending', 'confirmed'].includes(order.status);
   const paymentPending = payment && ['pending', 'processing'].includes(payment.status);
@@ -204,6 +211,14 @@ export function OrderDetailScreen() {
           style={styles.action}
         />
       ) : null}
+      {canDispatch ? (
+        <Button
+          label="Mark Dispatched"
+          loading={updating}
+          onPress={() => setConfirmingDispatch(true)}
+          style={styles.action}
+        />
+      ) : null}
       {canComplete ? (
         <Button
           label="Mark Completed"
@@ -271,6 +286,19 @@ export function OrderDetailScreen() {
           ))}
         </Card>
       ) : null}
+
+      <Sheet visible={confirmingDispatch} onClose={() => setConfirmingDispatch(false)} title="Dispatch this order?">
+        <Text style={styles.sheetText}>
+          {"The stock leaves your inventory now, and the buyer sees the order as dispatched. This can't be undone."}
+        </Text>
+        <Button
+          label="Dispatch now"
+          loading={updating}
+          onPress={() => advance('dispatched', () => setConfirmingDispatch(false))}
+          style={styles.action}
+        />
+        <Button label="Not yet" variant="secondary" onPress={() => setConfirmingDispatch(false)} style={styles.action} />
+      </Sheet>
     </ScrollView>
   );
 }
@@ -370,6 +398,10 @@ function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
     },
     action: {
       marginTop: space[2],
+    },
+    sheetText: {
+      ...typography.body,
+      color: colors.ink2,
     },
   });
 }

@@ -7,6 +7,7 @@ OrderStatus = Literal[
     "confirmed",
     "processing",
     "ready",
+    "dispatched",
     "completed",
     "cancelled",
     "rejected",

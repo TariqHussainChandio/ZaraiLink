@@ -89,6 +89,10 @@ def backend_url():
         "SMTP_HOST": "127.0.0.1",
         "SMTP_PORT": "54325",
         "SMTP_STARTTLS": "false",
+        # Mailpit takes no login. A developer's backend/.env may hold a real sender's account (G1); it must not be
+        # offered to the mail catcher, or every send fails.
+        "SMTP_USERNAME": "",
+        "SMTP_PASSWORD": "",
     }
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".log", encoding="utf-8") as log_file:
         # ZARAILINK_COVERAGE=1 runs the backend under coverage (serve_measured.py), so the combined-coverage gate
@@ -437,7 +441,9 @@ def world(backend_url: str) -> World:
             "title": f"Smoke wheat {RUN}",
             "price": 100.0,
             "unit": "kg",
-            "quantity": 50,
+            # Since A4 every dispatch takes from it (the listing has no inventory row), and the session dispatches
+            # many orders, so it holds plenty.
+            "quantity": 1000,
             "category_id": category_id,
             "description": "smoke matrix listing",
         },
