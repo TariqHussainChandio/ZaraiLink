@@ -8,7 +8,7 @@
 -- Builds its own fixtures instead of tests.world(), which still writes the legacy inventory tables B3 dropped.
 begin;
 \ir ../helpers/rls_helpers.inc
-select plan(122);
+select plan(132);
 
 -- ---------------------------------------------------------------------------------------------------------------------
 -- Fixtures, as the owner: approved dealers IA and IB, a pending dealer IPD, a farmer IF, a buyer IBU and an admin IADM.
@@ -121,8 +121,9 @@ select table_privs_are('public', 'inventory_movements', 'authenticated', array['
 select table_privs_are('public', 'inventory_sync_log', 'authenticated', array['SELECT'], 'authenticated may only read inventory_sync_log');
 select table_privs_are('public', 'inventory_products', 'authenticated', array['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   'authenticated has select, insert, update, delete on inventory_products');
-select table_privs_are('public', 'inventory_purchase_items', 'authenticated', array['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-  'authenticated has select, insert, update, delete on inventory_purchase_items');
+-- Since 20261025090000 (B2 verifier F1/F2) purchase lines are written only by create_purchase / replace_purchase_items.
+select table_privs_are('public', 'inventory_purchase_items', 'authenticated', array['SELECT'],
+  'authenticated may only read inventory_purchase_items (20261025090000)');
 select is(
   (select count(*) from information_schema.role_table_grants
     where table_schema = 'public' and table_name like 'inventory\_%' and grantee = 'anon'),
@@ -312,10 +313,12 @@ select tests.expect(tests.fx('IA'), format('select public.receive_purchase(%s)',
 select is(
   (select count(*) from public.inventory_movements where purchase_id = tests.fx('PURA')), 1::bigint,
   'and writes no second PURCHASE row');
-select tests.expect(tests.fx('IA'),
+-- Clients no longer write lines directly (20261025090000, tested in its own file), so the guard and the line CHECKs are
+-- proven here as the table owner: they still hold for the definer functions that do write lines.
+select throws_ok(
   format('insert into public.inventory_purchase_items (purchase_id, dealer_id, product_id, location_id, quantity) values (%s, %s, %s, %s, 1)',
     tests.l('PURA'), tests.l('IA'), tests.l('PA'), tests.l('LA1')),
-  'err:42501', 'a line cannot be added to a received purchase');
+  '42501', null, 'a line cannot be added to a received purchase, even by the table owner');
 
 -- A new draft: a line with B's product or B's location is refused by guard_inventory_references.
 do $$
@@ -323,26 +326,26 @@ begin
   with x as (insert into public.inventory_purchases (dealer_id, reference) values (tests.fx('IA'), 'INV-002') returning id)
     insert into tests.fixtures select 'PURA2', id from x;
 end $$;
-select tests.expect(tests.fx('IA'),
+select throws_ok(
   format('insert into public.inventory_purchase_items (purchase_id, dealer_id, product_id, location_id, quantity) values (%s, %s, %s, %s, 1)',
     tests.l('PURA2'), tests.l('IA'), tests.l('PB'), tests.l('LA1')),
-  'err:42501', 'a purchase line with B''s product is refused');
+  '42501', null, 'the guard refuses a purchase line with B''s product, even for the table owner');
 select throws_ok(
   format('insert into public.inventory_purchase_items (purchase_id, dealer_id, product_id, location_id, quantity) values (%s, %s, %s, %s, 1)',
     tests.l('PURA2'), tests.l('IA'), tests.l('PA'), tests.l('LB1')),
   '42501', null, 'the guard refuses a line with B''s location even for the table owner');
-select tests.expect(tests.fx('IA'),
+select throws_ok(
   format($q$insert into public.inventory_purchase_items (purchase_id, dealer_id, product_id, location_id, quantity) values (%s, %s, %s, %s, 'NaN')$q$,
     tests.l('PURA2'), tests.l('IA'), tests.l('PA'), tests.l('LA1')),
-  'err:23514', 'a purchase line of NaN units is refused');
-select tests.expect(tests.fx('IA'),
+  '23514', null, 'a purchase line of NaN units is refused by the column check');
+select throws_ok(
   format('insert into public.inventory_purchase_items (purchase_id, dealer_id, product_id, location_id, quantity) values (%s, %s, %s, %s, 1.005)',
     tests.l('PURA2'), tests.l('IA'), tests.l('PA'), tests.l('LA1')),
-  'err:23514', 'a purchase line with three decimals is refused, not rounded');
-select tests.expect(tests.fx('IA'),
+  '23514', null, 'a purchase line with three decimals is refused, not rounded');
+select throws_ok(
   format($q$insert into public.inventory_purchase_items (purchase_id, dealer_id, product_id, location_id, quantity, unit_cost) values (%s, %s, %s, %s, 1, 'NaN')$q$,
     tests.l('PURA2'), tests.l('IA'), tests.l('PA'), tests.l('LA1')),
-  'err:23514', 'a purchase line with a NaN unit cost is refused');
+  '23514', null, 'a purchase line with a NaN unit cost is refused');
 select tests.expect(tests.fx('IA'), format('select public.receive_purchase(%s)', tests.l('PURA2')),
   'err:22023', 'an empty purchase cannot be received');
 select throws_ok(
@@ -434,6 +437,57 @@ select is(
     where m.dealer_id = tests.fx('IA')
       and m.quantity_after <> m.quantity_before + case m.direction when 'in' then m.quantity else -m.quantity end),
   0::bigint, 'every ledger row of A''s balances before and after');
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- The write policies of the editable tables, each both ways (added with 20261025090000, when the policy mutation check
+-- showed these could be replaced by `true` or dropped unnoticed): a suspended owner still reads but writes nothing, the
+-- approved owner writes.
+-- ---------------------------------------------------------------------------------------------------------------------
+update public.profiles set is_suspended = true where id = tests.fx('IA');
+select is(
+  tests.probe(tests.fx('IA'), format('insert into public.inventory_suppliers (dealer_id, name) values (%s, ''Suspended'')', tests.l('IA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('update public.inventory_suppliers set notes = ''x'' where id = %s', tests.l('SA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_suppliers where id = %s', tests.l('SA'))),
+  'err:42501 n:0 n:0', 'a suspended dealer cannot add, edit or delete a supplier');
+select is(
+  tests.probe(tests.fx('IA'), format('update public.inventory_products set name = ''x'' where id = %s', tests.l('PA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_products where dealer_id = %s and sku = ''DAP-50''', tests.l('IA'))),
+  'n:0 n:0', 'a suspended dealer cannot edit or delete a product');
+select is(
+  tests.probe(tests.fx('IA'), format('update public.inventory_locations set name = ''x'' where id = %s', tests.l('LA2'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_locations where id = %s', tests.l('LA2'))),
+  'n:0 n:0', 'a suspended dealer cannot edit or delete a location');
+select is(
+  tests.probe(tests.fx('IA'), format('update public.inventory_purchases set notes = ''x'' where id = %s', tests.l('PURA2'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_purchases where id = %s', tests.l('PURA2'))),
+  'n:0 n:0', 'a suspended dealer cannot edit or delete a draft purchase');
+select is(
+  tests.probe(tests.fx('IA'), format('update public.inventory_alert_settings set notify_low_stock = false where dealer_id = %s', tests.l('IA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_alert_settings where dealer_id = %s', tests.l('IA'))),
+  'n:0 n:0', 'a suspended dealer cannot edit or delete their alert settings');
+update public.profiles set is_suspended = false where id = tests.fx('IA');
+
+select is(
+  tests.probe(tests.fx('IA'), format('insert into public.inventory_suppliers (dealer_id, name) values (%s, ''Second supplier'')', tests.l('IA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('update public.inventory_suppliers set notes = ''checked'' where id = %s', tests.l('SA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_suppliers where dealer_id = %s and name = ''Second supplier''', tests.l('IA'))),
+  'n:1 n:1 n:1', 'A adds, edits and deletes a supplier');
+select tests.expect(tests.fx('IA'), format('delete from public.inventory_products where dealer_id = %s and sku = ''DAP-50''', tests.l('IA')),
+  'n:1', 'A deletes a product with no history');
+select is(
+  tests.probe(tests.fx('IA'), format('update public.inventory_purchases set notes = ''checked'' where id = %s', tests.l('PURA2'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('update public.inventory_purchases set notes = ''late'' where id = %s', tests.l('PURA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('update public.inventory_purchases set status = ''received'' where id = %s', tests.l('PURA2'))),
+  'n:1 n:0 err:42501', 'A edits a draft''s header, not a received purchase''s, and cannot mark a draft received directly');
+select is(
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_purchases where id = %s', tests.l('PURA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_purchases where id = %s', tests.l('PURA2'))),
+  'n:0 n:1', 'A cannot delete a received purchase, and deletes a draft');
+select is(
+  tests.probe(tests.fx('IPD'), format('insert into public.inventory_alert_settings (dealer_id) values (%s)', tests.l('IPD'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('delete from public.inventory_alert_settings where dealer_id = %s', tests.l('IA'))) || ' ' ||
+  tests.probe(tests.fx('IA'), format('insert into public.inventory_alert_settings (dealer_id, notify_low_stock) values (%s, false)', tests.l('IA'))),
+  'err:42501 n:1 n:1', 'a pending dealer cannot save alert settings; A deletes and saves theirs again');
 
 select * from finish();
 rollback;

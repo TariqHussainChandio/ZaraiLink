@@ -10,7 +10,7 @@ from typing import Any
 from postgrest.exceptions import APIError
 from postgrest.types import CountMethod
 
-from app.common.pagination import page_range
+from app.common.pagination import MAX_LIMIT, page_range
 from app.common.rows import as_rows, first_row
 from app.database.supabase_client import get_service_role_client, get_user_scoped_client
 
@@ -25,25 +25,39 @@ def _editable(table: str) -> None:
 
 
 def _two_decimals(quantity: float) -> float:
-    # The database refuses more than two decimals (B1: no silent rounding). A quantity the API computes (an adjustment
-    # to an exact target, a float parsed from JSON) can carry float noise such as 3.2000000000000006, so it is rounded
-    # here, where the value leaves Python, not left to fail in Postgres.
+    # The database refuses more than two decimals (B1: no silent rounding), and so do the request schemas
+    # (schemas.Quantity), so a figure the dealer typed never reaches here with a third decimal. A quantity the API
+    # computes (the legacy adjustment to an exact target, 9.1 - 5.9) can carry float noise such as 3.2000000000000006;
+    # that noise is cleared here, where the value leaves Python, rather than left to fail in Postgres.
     return round(quantity, 2)
 
 
+_LINE_COLUMNS = ("product_id", "location_id", "quantity", "unit_cost")
+
+
 def _purchase_line(item: dict[str, Any]) -> dict[str, Any]:
-    # Purchase lines are inserted directly (their table refuses more than two decimals too), so they get the same
-    # rounding as the stock functions' quantities.
-    line = {**item, "quantity": _two_decimals(item["quantity"])}
-    if line.get("unit_cost") is not None:
+    # A purchase line exactly as create_purchase and replace_purchase_items take it: these four keys and no other (the
+    # functions refuse any other key), figures cleared of float noise like the stock functions' quantities.
+    line = {key: item.get(key) for key in _LINE_COLUMNS}
+    line["quantity"] = _two_decimals(item["quantity"])
+    if line["unit_cost"] is not None:
         line["unit_cost"] = _two_decimals(line["unit_cost"])
     return line
 
 
 async def list_rows(access_token: str, table: str, order: str = "created_at") -> list[dict]:
+    """The request's page of rows, or every row when the request has no page. A page is at most MAX_LIMIT rows, so a
+    wider range is pagination's unpaged default (PostgREST's whole cap): the dealer analytics count the stores and
+    suppliers this way, and a count from one capped read would stop at 1000."""
     client = await get_user_scoped_client(access_token)
-    response = await client.table(table).select("*").order(order).range(*page_range()).execute()
-    return as_rows(response)
+
+    def build() -> Any:
+        return client.table(table).select("*").order(order).order("id")
+
+    start, end = page_range()
+    if end - start + 1 > MAX_LIMIT:
+        return await _every_page(build)
+    return as_rows(await build().range(start, end).execute())
 
 
 async def list_active_or_all(access_token: str, table: str, include_inactive: bool, order: str = "name") -> list[dict]:
@@ -113,7 +127,6 @@ async def fetch_movements(
     direction: str | None = None,
     since: str | None = None,
     before: str | None = None,
-    exclude_sources: list[str] | None = None,
     columns: str = "*",
     limit: int | None = None,
 ) -> list[dict]:
@@ -127,8 +140,6 @@ async def fetch_movements(
         query = query.eq("location_id", location_id)
     if sources:
         query = query.in_("source", sources)
-    if exclude_sources:
-        query = query.not_.in_("source", exclude_sources)
     if direction:
         query = query.eq("direction", direction)
     if since:
@@ -197,14 +208,19 @@ PRODUCT_SELECT = "*, stock:inventory_stock(location_id,quantity), listings(id,ti
 
 
 async def fetch_products(access_token: str, include_inactive: bool = False, paged: bool = True) -> list[dict]:
+    """The request's page of products, or with `paged=False` every one of them, read page by page (the alerts, the
+    dashboard and the dealer analytics weigh every product; a single read would stop at PostgREST's 1000 rows)."""
     client = await get_user_scoped_client(access_token)
-    query = client.table("inventory_products").select(PRODUCT_SELECT)
-    if not include_inactive:
-        query = query.eq("is_active", True)
-    query = query.order("name").order("id")
-    if paged:
-        query = query.range(*page_range())
-    return as_rows(await query.execute())
+
+    def build() -> Any:
+        query = client.table("inventory_products").select(PRODUCT_SELECT)
+        if not include_inactive:
+            query = query.eq("is_active", True)
+        return query.order("name").order("id")
+
+    if not paged:
+        return await _every_page(build)
+    return as_rows(await build().range(*page_range()).execute())
 
 
 async def fetch_product(access_token: str, product_id: str) -> dict | None:
@@ -245,15 +261,37 @@ async def set_listing_product(access_token: str, owner_id: str, listing_id: str,
     return first_row(response)
 
 
-async def unlink_product_listings(access_token: str, owner_id: str, product_id: str) -> None:
+async def link_unlinked_listing(access_token: str, owner_id: str, listing_id: str, product_id: str) -> bool:
+    """Links one of the dealer's own listings to a product only while the listing has none (B2 re-verification N1).
+    Two concurrent creates both read the listing unlinked; this update takes the row lock, and the second one re-reads
+    the row after the first commits, finds the link set and matches nothing. Returns whether the listing was taken."""
     client = await get_user_scoped_client(access_token)
-    await (
+    response = await (
+        client.table("listings")
+        .update({"inventory_product_id": product_id})
+        .eq("id", listing_id)
+        .eq("owner_id", owner_id)
+        .is_("inventory_product_id", "null")
+        .execute()
+    )
+    return bool(as_rows(response))
+
+
+async def unlink_product_listings(
+    access_token: str, owner_id: str, product_id: str, except_listing_id: str | None = None
+) -> None:
+    """Lets go of the product's listings (they fall back to their own quantity), sparing `except_listing_id`: an edit
+    that moved the product to a new listing clears only the old links, after the new one holds."""
+    client = await get_user_scoped_client(access_token)
+    query = (
         client.table("listings")
         .update({"inventory_product_id": None})
         .eq("owner_id", owner_id)
         .eq("inventory_product_id", product_id)
-        .execute()
     )
+    if except_listing_id is not None:
+        query = query.neq("id", except_listing_id)
+    await query.execute()
 
 
 # --- locations --------------------------------------------------------------------------------------------------------
@@ -266,28 +304,30 @@ async def fetch_default_location(access_token: str) -> dict | None:
 
 
 async def fetch_oldest_location(access_token: str) -> dict | None:
+    """The dealer's oldest active location (an inactive one cannot become the default, stock.INACTIVE_DEFAULT)."""
     client = await get_user_scoped_client(access_token)
     rows = as_rows(
-        await client.table("inventory_locations").select("*").order("created_at").order("id").limit(1).execute()
+        await client.table("inventory_locations")
+        .select("*")
+        .eq("is_active", True)
+        .order("created_at")
+        .order("id")
+        .limit(1)
+        .execute()
     )
     return rows[0] if rows else None
 
 
-async def clear_default_location(access_token: str, except_id: str) -> list[dict]:
-    """Unsets the current default (returns the rows it changed), so another location can become it without breaking
-    the one-default-per-dealer index (inventory_locations_one_default_idx)."""
+async def set_default_location(access_token: str, location_id: str) -> None:
+    """Moves the dealer's default to one of their active locations in one transaction (set_default_location, B2
+    verification F7). Clearing the old default and setting the new one as two calls is refused at commit by
+    check_inventory_default_location: a dealer with locations always has a default."""
     client = await get_user_scoped_client(access_token)
-    response = await (
-        client.table("inventory_locations")
-        .update({"is_default": False})
-        .eq("is_default", True)
-        .neq("id", except_id)
-        .execute()
-    )
-    return as_rows(response)
+    await client.rpc("set_default_location", {"p_location_id": location_id}).execute()
 
 
 # --- purchases --------------------------------------------------------------------------------------------------------
+
 
 PURCHASE_SELECT = "*, items:inventory_purchase_items(*)"
 
@@ -310,31 +350,44 @@ async def fetch_purchase(access_token: str, purchase_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
-async def create_purchase(access_token: str, dealer_id: str, fields: dict[str, Any], items: list[dict]) -> dict:
+async def create_purchase(access_token: str, fields: dict[str, Any], items: list[dict]) -> str:
+    """A draft and its lines in one transaction (create_purchase, B2 verification F1/F2); returns its id. The function
+    checks every supplier, product and location is the dealer's and every location active, and a refusal writes
+    nothing: there is no half-written purchase to clean up. A missing date is today."""
     client = await get_user_scoped_client(access_token)
-    purchase = first_row(await client.table("inventory_purchases").insert({**fields, "dealer_id": dealer_id}).execute())
-    if items:
-        rows = [{**_purchase_line(item), "purchase_id": purchase["id"], "dealer_id": dealer_id} for item in items]
-        purchase["items"] = as_rows(await client.table("inventory_purchase_items").insert(rows).execute())
-    else:
-        purchase["items"] = []
-    return purchase
+    response = await client.rpc(
+        "create_purchase",
+        {
+            "p_supplier_id": fields.get("supplier_id"),
+            "p_purchased_on": fields.get("purchased_on"),
+            "p_reference": fields.get("reference"),
+            "p_notes": fields.get("notes"),
+            "p_items": [_purchase_line(item) for item in items],
+        },
+    ).execute()
+    return str(response.data)
 
 
 async def update_purchase(access_token: str, purchase_id: str, fields: dict[str, Any]) -> dict:
-    # The update policy matches only a draft, so a received or cancelled purchase updates nothing (404 from first_row).
+    # A header-only edit, and cancel. The update policy matches only a draft, so a received or cancelled purchase
+    # updates nothing (404 from first_row). One statement, so it queues on the row lock replace_purchase_items and
+    # receive_purchase take.
     client = await get_user_scoped_client(access_token)
     return first_row(await client.table("inventory_purchases").update(fields).eq("id", purchase_id).execute())
 
 
-async def replace_purchase_items(access_token: str, dealer_id: str, purchase_id: str, items: list[dict]) -> None:
-    """Replaces a draft's lines. Two statements, not one transaction: if the insert is refused the draft is left with
-    fewer lines (receive_purchase refuses one with none), and no stock moves until the dealer receives it."""
+async def replace_purchase_items(
+    access_token: str, purchase_id: str, items: list[dict], header: dict[str, Any] | None
+) -> None:
+    """Replaces every line of a draft, and applies `header` (supplier_id, purchased_on, reference, notes) when given,
+    in one transaction under the purchase's row lock (replace_purchase_items, B2 verification F1/F2). Concurrent edits
+    run one after the other, so the last one's lines win and none are doubled; an edit and a receive never interleave.
+    `items` is the complete list: [] empties the draft."""
     client = await get_user_scoped_client(access_token)
-    await client.table("inventory_purchase_items").delete().eq("purchase_id", purchase_id).execute()
-    if items:
-        rows = [{**_purchase_line(item), "purchase_id": purchase_id, "dealer_id": dealer_id} for item in items]
-        await client.table("inventory_purchase_items").insert(rows).execute()
+    await client.rpc(
+        "replace_purchase_items",
+        {"p_purchase_id": purchase_id, "p_items": [_purchase_line(item) for item in items], "p_header": header},
+    ).execute()
 
 
 async def receive_purchase(access_token: str, purchase_id: str) -> None:
@@ -414,19 +467,28 @@ async def _every_page(build: Callable[[], Any]) -> list[dict]:
         offset += REPORT_PAGE
 
 
-async def fetch_all_movements(access_token: str, since: str, before: str, columns: str) -> list[dict]:
-    """The ledger between two ISO timestamps (`since` inclusive, `before` exclusive), oldest first."""
+async def fetch_all_movements(
+    access_token: str,
+    since: str | None = None,
+    before: str | None = None,
+    columns: str = "*",
+    sources: list[str] | None = None,
+) -> list[dict]:
+    """The ledger between two ISO timestamps (`since` inclusive, `before` exclusive; either may be left open), oldest
+    first, optionally of some sources only."""
     client = await get_user_scoped_client(access_token)
-    return await _every_page(
-        lambda: (
-            client.table("inventory_movements")
-            .select(columns)
-            .gte("created_at", since)
-            .lt("created_at", before)
-            .order("created_at")
-            .order("id")
-        )
-    )
+
+    def build() -> Any:
+        query = client.table("inventory_movements").select(columns)
+        if sources:
+            query = query.in_("source", sources)
+        if since:
+            query = query.gte("created_at", since)
+        if before:
+            query = query.lt("created_at", before)
+        return query.order("created_at").order("id")
+
+    return await _every_page(build)
 
 
 # A product with its stock rows; the reports need no listings.

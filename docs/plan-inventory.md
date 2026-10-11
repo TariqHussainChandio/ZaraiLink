@@ -87,6 +87,8 @@ scenario (restock + local sale + adjustment + damage = current stock).
 
 ### B2 — Inventory API
 
+> **Status (2026-10-11): done.** Every B2 endpoint tested: unit (`backend/tests/inventory/`, 341) and real stack with two dealers (`test_smoke_inventory_api.py`, `test_smoke_inventory_isolation.py`, `test_smoke_inventory_races.py`); the authorization matrix covers every route. The tests found five defects (empty unit, an inactive default location, silent rounding of movements and purchase lines, a refused purchase leaving a draft), all fixed. The fresh-context verifier first returned NOT VERIFIED: concurrent purchase edits duplicated lines and receiving then multiplied stock. Fixed in the database with locked definer functions (`20261025090000_purchase_atomic_writes.sql`), plus guards for the default location, the 1000-row cap, idempotency keys on movements and purchase create, and length and date caps. Re-verification: VERIFIED WITH FINDINGS, its Lows fixed. Returns have no SRDS source, so a customer return is a Stock In with a reason.
+
 **Goal:** `backend/app/inventory/` covers every SRDS §17 capability, approved dealers only, own data only.
 
 The inventory API splits into sub-lanes by feature; each sub-lane owns its own router and service files inside

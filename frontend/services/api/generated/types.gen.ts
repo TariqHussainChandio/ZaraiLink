@@ -46,6 +46,9 @@ export type ActorRef = {
 
 /**
  * AdjustStockRequest
+ *
+ * `quantity` is the size of the change for addition, restock, sale and reduction, so it must be positive (a
+ * restock of -1 used to be recorded as +1); for adjustment and correction it is the new stock, so zero is allowed.
  */
 export type AdjustStockRequest = {
     /**
@@ -9184,6 +9187,12 @@ export type InventoryGetMovementsResponse = InventoryGetMovementsResponses[keyof
 
 export type InventoryPostAdjustmentData = {
     body: AdjustmentInput;
+    headers?: {
+        /**
+         * Idempotency-Key
+         */
+        'Idempotency-Key'?: string | null;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/inventory/movements/adjustment';
@@ -9213,6 +9222,12 @@ export type InventoryPostAdjustmentResponse = InventoryPostAdjustmentResponses[k
 
 export type InventoryPostStockInData = {
     body: StockInInput;
+    headers?: {
+        /**
+         * Idempotency-Key
+         */
+        'Idempotency-Key'?: string | null;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/inventory/movements/stock-in';
@@ -9242,6 +9257,12 @@ export type InventoryPostStockInResponse = InventoryPostStockInResponses[keyof I
 
 export type InventoryPostStockOutData = {
     body: StockOutInput;
+    headers?: {
+        /**
+         * Idempotency-Key
+         */
+        'Idempotency-Key'?: string | null;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/inventory/movements/stock-out';
@@ -9596,6 +9617,12 @@ export type InventoryGetPurchasesResponse = InventoryGetPurchasesResponses[keyof
 
 export type InventoryPostPurchaseData = {
     body: PurchaseInput;
+    headers?: {
+        /**
+         * Idempotency-Key
+         */
+        'Idempotency-Key'?: string | null;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/inventory/purchases';
@@ -10132,6 +10159,12 @@ export type InventoryGetStockResponse = InventoryGetStockResponses[keyof Invento
 
 export type InventoryPostTransferData = {
     body: TransferInput;
+    headers?: {
+        /**
+         * Idempotency-Key
+         */
+        'Idempotency-Key'?: string | null;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/inventory/stock/transfer';

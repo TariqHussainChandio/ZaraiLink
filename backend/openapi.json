@@ -66,10 +66,12 @@
         "type": "object"
       },
       "AdjustStockRequest": {
+        "description": "`quantity` is the size of the change for addition, restock, sale and reduction, so it must be positive (a\nrestock of -1 used to be recorded as +1); for adjustment and correction it is the new stock, so zero is allowed.",
         "properties": {
           "notes": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -79,6 +81,8 @@
             "title": "Notes"
           },
           "quantity": {
+            "exclusiveMaximum": 10000000000.0,
+            "minimum": 0.0,
             "title": "Quantity",
             "type": "integer"
           },
@@ -122,12 +126,15 @@
             "type": "string"
           },
           "quantity": {
+            "exclusiveMaximum": 10000000000.0,
             "exclusiveMinimum": 0.0,
             "title": "Quantity",
             "type": "number"
           },
           "reason": {
+            "maxLength": 1000,
             "minLength": 1,
+            "pattern": "\\S",
             "title": "Reason",
             "type": "string"
           }
@@ -437,6 +444,7 @@
         "properties": {
           "default_reorder_threshold": {
             "default": 0,
+            "exclusiveMaximum": 10000000000.0,
             "minimum": 0.0,
             "title": "Default Reorder Threshold",
             "type": "number"
@@ -4550,12 +4558,16 @@
             "title": "Listing Id"
           },
           "min_stock_threshold": {
+            "exclusiveMaximum": 10000000000.0,
+            "minimum": 0.0,
             "title": "Min Stock Threshold",
             "type": "integer"
           },
           "purchase_cost": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -4567,6 +4579,8 @@
           "selling_price": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -4576,10 +4590,14 @@
             "title": "Selling Price"
           },
           "stock_quantity": {
+            "exclusiveMaximum": 10000000000.0,
+            "minimum": 0.0,
             "title": "Stock Quantity",
             "type": "integer"
           },
           "unit": {
+            "maxLength": 40,
+            "minLength": 1,
             "title": "Unit",
             "type": "string"
           }
@@ -4835,6 +4853,8 @@
           "min_stock_threshold": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
+                "minimum": 0.0,
                 "type": "integer"
               },
               {
@@ -4846,6 +4866,8 @@
           "purchase_cost": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -4857,6 +4879,8 @@
           "selling_price": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -4868,6 +4892,8 @@
           "unit": {
             "anyOf": [
               {
+                "maxLength": 40,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -5552,6 +5578,7 @@
           "address": {
             "anyOf": [
               {
+                "maxLength": 300,
                 "type": "string"
               },
               {
@@ -5582,6 +5609,7 @@
             "type": "string"
           },
           "name": {
+            "maxLength": 120,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -5598,6 +5626,7 @@
           "address": {
             "anyOf": [
               {
+                "maxLength": 300,
                 "type": "string"
               },
               {
@@ -5648,6 +5677,7 @@
           "name": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "minLength": 1,
                 "type": "string"
               },
@@ -6974,6 +7004,7 @@
           "cost_price": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
                 "minimum": 0.0,
                 "type": "number"
               },
@@ -6989,12 +7020,14 @@
             "type": "boolean"
           },
           "name": {
+            "maxLength": 120,
             "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "reorder_threshold": {
             "default": 0,
+            "exclusiveMaximum": 10000000000.0,
             "minimum": 0.0,
             "title": "Reorder Threshold",
             "type": "number"
@@ -7002,6 +7035,7 @@
           "selling_price": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
                 "minimum": 0.0,
                 "type": "number"
               },
@@ -7012,12 +7046,15 @@
             "title": "Selling Price"
           },
           "sku": {
+            "maxLength": 120,
             "minLength": 1,
             "title": "Sku",
             "type": "string"
           },
           "unit": {
             "default": "unit",
+            "maxLength": 40,
+            "minLength": 1,
             "title": "Unit",
             "type": "string"
           }
@@ -7063,6 +7100,7 @@
           "cost_price": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
                 "minimum": 0.0,
                 "type": "number"
               },
@@ -7086,6 +7124,7 @@
           "name": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "minLength": 1,
                 "type": "string"
               },
@@ -7098,6 +7137,7 @@
           "reorder_threshold": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
                 "minimum": 0.0,
                 "type": "number"
               },
@@ -7110,6 +7150,7 @@
           "selling_price": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
                 "minimum": 0.0,
                 "type": "number"
               },
@@ -7122,6 +7163,7 @@
           "sku": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "minLength": 1,
                 "type": "string"
               },
@@ -7134,6 +7176,7 @@
           "unit": {
             "anyOf": [
               {
+                "maxLength": 40,
                 "minLength": 1,
                 "type": "string"
               },
@@ -7651,12 +7694,14 @@
             "items": {
               "$ref": "#/components/schemas/PurchaseItemInput"
             },
+            "maxItems": 200,
             "title": "Items",
             "type": "array"
           },
           "notes": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -7668,6 +7713,7 @@
           "purchased_on": {
             "anyOf": [
               {
+                "format": "date",
                 "type": "string"
               },
               {
@@ -7679,6 +7725,7 @@
           "reference": {
             "anyOf": [
               {
+                "maxLength": 80,
                 "type": "string"
               },
               {
@@ -7767,6 +7814,7 @@
             "type": "string"
           },
           "quantity": {
+            "exclusiveMaximum": 10000000000.0,
             "exclusiveMinimum": 0.0,
             "title": "Quantity",
             "type": "number"
@@ -7774,6 +7822,7 @@
           "unit_cost": {
             "anyOf": [
               {
+                "exclusiveMaximum": 10000000000.0,
                 "minimum": 0.0,
                 "type": "number"
               },
@@ -7801,6 +7850,7 @@
                 "items": {
                   "$ref": "#/components/schemas/PurchaseItemInput"
                 },
+                "maxItems": 200,
                 "type": "array"
               },
               {
@@ -7812,6 +7862,7 @@
           "notes": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -7823,6 +7874,7 @@
           "purchased_on": {
             "anyOf": [
               {
+                "format": "date",
                 "type": "string"
               },
               {
@@ -7834,6 +7886,7 @@
           "reference": {
             "anyOf": [
               {
+                "maxLength": 80,
                 "type": "string"
               },
               {
@@ -8873,6 +8926,7 @@
             "type": "string"
           },
           "quantity": {
+            "exclusiveMaximum": 10000000000.0,
             "exclusiveMinimum": 0.0,
             "title": "Quantity",
             "type": "number"
@@ -8880,6 +8934,7 @@
           "reason": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -8942,6 +8997,7 @@
             "type": "string"
           },
           "quantity": {
+            "exclusiveMaximum": 10000000000.0,
             "exclusiveMinimum": 0.0,
             "title": "Quantity",
             "type": "number"
@@ -8949,6 +9005,7 @@
           "reason": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -9073,6 +9130,7 @@
           "address": {
             "anyOf": [
               {
+                "maxLength": 300,
                 "type": "string"
               },
               {
@@ -9084,6 +9142,7 @@
           "city": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -9095,6 +9154,7 @@
           "contact": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "type": "string"
               },
               {
@@ -9106,6 +9166,7 @@
           "country": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -9115,12 +9176,15 @@
             "title": "Country"
           },
           "name": {
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "opening_info": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -9132,6 +9196,7 @@
           "province": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -9161,6 +9226,7 @@
           "address": {
             "anyOf": [
               {
+                "maxLength": 300,
                 "type": "string"
               },
               {
@@ -9172,6 +9238,7 @@
           "city": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -9183,6 +9250,7 @@
           "contact": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "type": "string"
               },
               {
@@ -9194,6 +9262,7 @@
           "country": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -9205,6 +9274,8 @@
           "name": {
             "anyOf": [
               {
+                "maxLength": 120,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -9216,6 +9287,7 @@
           "opening_info": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -9227,6 +9299,7 @@
           "province": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -9424,6 +9497,7 @@
             "type": "string"
           },
           "quantity": {
+            "exclusiveMaximum": 10000000000.0,
             "exclusiveMinimum": 0.0,
             "title": "Quantity",
             "type": "number"
@@ -9431,6 +9505,7 @@
           "reason": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -9871,6 +9946,7 @@
           "contact": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "type": "string"
               },
               {
@@ -9880,12 +9956,15 @@
             "title": "Contact"
           },
           "name": {
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "notes": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -9897,6 +9976,7 @@
           "products_supplied": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -9926,6 +10006,7 @@
           "contact": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "type": "string"
               },
               {
@@ -9937,6 +10018,8 @@
           "name": {
             "anyOf": [
               {
+                "maxLength": 120,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -9948,6 +10031,7 @@
           "notes": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -9959,6 +10043,7 @@
           "products_supplied": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -10127,6 +10212,7 @@
           "contact": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "type": "string"
               },
               {
@@ -10141,6 +10227,7 @@
             "type": "boolean"
           },
           "name": {
+            "maxLength": 120,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -10148,6 +10235,7 @@
           "notes": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -10159,6 +10247,7 @@
           "products_supplied": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -10179,6 +10268,7 @@
           "contact": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "type": "string"
               },
               {
@@ -10201,6 +10291,7 @@
           "name": {
             "anyOf": [
               {
+                "maxLength": 120,
                 "minLength": 1,
                 "type": "string"
               },
@@ -10213,6 +10304,7 @@
           "notes": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -10224,6 +10316,7 @@
           "products_supplied": {
             "anyOf": [
               {
+                "maxLength": 1000,
                 "type": "string"
               },
               {
@@ -17878,7 +17971,24 @@
     "/api/v1/inventory/movements/adjustment": {
       "post": {
         "operationId": "inventory_post_adjustment",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -17943,7 +18053,24 @@
     "/api/v1/inventory/movements/stock-in": {
       "post": {
         "operationId": "inventory_post_stock_in",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -18008,7 +18135,24 @@
     "/api/v1/inventory/movements/stock-out": {
       "post": {
         "operationId": "inventory_post_stock_out",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -18751,7 +18895,24 @@
       },
       "post": {
         "operationId": "inventory_post_purchase",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -19918,7 +20079,24 @@
     "/api/v1/inventory/stock/transfer": {
       "post": {
         "operationId": "inventory_post_transfer",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {

@@ -1,10 +1,10 @@
 from fastapi import HTTPException
-from postgrest.exceptions import APIError
 
 from app.auth.dependencies import AuthenticatedUser
 from app.common import application_documents as documents
 from app.common.errors import AppHTTPException
 from app.dealer import repository as repo
+from app.inventory import service as inventory_service
 
 
 def _location(country: str | None, province: str | None, city: str | None) -> dict | None:
@@ -21,127 +21,102 @@ def _store_fields(input, location_touched: bool) -> dict:
     return fields
 
 
-# --- inventory ------------------------------------------------------------------------------
+# --- inventory, stores, suppliers: the legacy routes over the IMS (B2/B3) -------------------------------------------
+#
+# The old tables (inventory, inventory_transactions, dealer_stores, suppliers) were dropped by
+# 20261022090000_inventory_sync.sql. The maintainer kept these routes, their paths and their response shapes so the
+# current dealer screens keep working, but they are now served from the IMS tables. The dealer module reaches them only
+# through the inventory module's public service (module boundary; BR-03/04: dealer inventory is dealer-only, and the
+# IMS owns those rules and their errors). A None result means the row is not the caller's or does not exist: 404.
+
+
+def _found(row: dict | None, what: str) -> dict:
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"{what} not found")
+    return row
 
 
 async def fetch_inventory(user: AuthenticatedUser) -> list[dict]:
-    return await repo.fetch_inventory(user.access_token, user.id)
+    return await inventory_service.legacy_list_inventory(user)
 
 
 async def fetch_inventory_by_id(user: AuthenticatedUser, inventory_id: str) -> dict:
-    item = await repo.fetch_inventory_by_id(user.access_token, inventory_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Inventory item not found")
-    return item
+    return _found(await inventory_service.legacy_get_inventory(user, inventory_id), "Inventory item")
 
 
 async def fetch_dealer_listings(user: AuthenticatedUser) -> list[dict]:
+    # The listing picker reads the dealer's own listings, which are marketplace rows, not inventory.
     return await repo.fetch_dealer_listings(user.access_token, user.id)
 
 
 async def create_inventory_item(user: AuthenticatedUser, fields: dict) -> dict:
-    return await repo.create_inventory_item(user.access_token, user.id, fields)
+    return await inventory_service.legacy_create_inventory(user, fields)
 
 
 async def update_inventory_item(user: AuthenticatedUser, inventory_id: str, fields: dict) -> dict:
-    return await repo.update_inventory_item(user.access_token, inventory_id, fields)
+    return _found(await inventory_service.legacy_update_inventory(user, inventory_id, fields), "Inventory item")
 
 
 async def delete_inventory_item(user: AuthenticatedUser, inventory_id: str) -> None:
-    await repo.delete_inventory_item(user.access_token, inventory_id)
+    await inventory_service.legacy_delete_inventory(user, inventory_id)
 
 
 async def fetch_inventory_transactions(user: AuthenticatedUser, inventory_id: str) -> list[dict]:
-    return await repo.fetch_inventory_transactions(user.access_token, inventory_id)
-
-
-async def adjust_stock(
-    access_token: str, inventory_id: str, type_: str, quantity: int, actor_id: str, notes: str | None
-) -> dict:
-    """
-    Records a stock movement and updates `inventory.stock_quantity` to match. `addition`/
-    `restock` increase stock by `quantity`, `reduction`/`sale` decrease it, `adjustment`/
-    `correction` set stock to `quantity` directly (a known-correct count). The read-check-write
-    itself happens atomically inside `public.adjust_stock`
-    (supabase/migrations/20260901130000_atomic_stock_adjustment.sql), row-locked for the
-    duration of that one RPC call — not here in Python across two separate requests, which is
-    what let two concurrent adjustments to the same row race each other and both "succeed."
-
-    Takes `access_token`/`actor_id` directly (not an `AuthenticatedUser`) rather than being
-    dealer-role-gated, so a caller acting on behalf of a specific dealer (this endpoint's own
-    handler) can pass that dealer's own token; that token's inventory-table RLS access (or lack
-    of it) is what actually governs whether this can do anything, not a role check at this layer.
-    """
-    try:
-        return await repo.adjust_stock(access_token, inventory_id, type_, quantity, actor_id, notes)
-    except APIError as exc:
-        if exc.code == "P0002":
-            raise HTTPException(status_code=404, detail="Inventory item not found")
-        if exc.code == "P0001":
-            raise AppHTTPException(422, exc.message or "Stock quantity cannot go below zero", "insufficient_stock")
-        raise
+    return await inventory_service.legacy_list_transactions(user, inventory_id)
 
 
 async def adjust_stock_as_user(
     user: AuthenticatedUser, inventory_id: str, type_: str, quantity: int, notes: str | None
 ) -> dict:
-    return await adjust_stock(user.access_token, inventory_id, type_, quantity, user.id, notes)
-
-
-# --- stores -----------------------------------------------------------------------------------
+    # The IMS records the movement in its ledger and refuses stock below zero itself (one definer function, row-locked),
+    # so there is no read-check-write here.
+    return _found(
+        await inventory_service.legacy_adjust_stock(user, inventory_id, type_, quantity, notes), "Inventory item"
+    )
 
 
 async def fetch_stores(user: AuthenticatedUser) -> list[dict]:
-    return await repo.fetch_stores(user.access_token, user.id)
+    return await inventory_service.legacy_list_stores(user)
 
 
 async def fetch_store_by_id(user: AuthenticatedUser, store_id: str) -> dict:
-    store = await repo.fetch_store_by_id(user.access_token, store_id)
-    if store is None:
-        raise HTTPException(status_code=404, detail="Store not found")
-    return store
+    return _found(await inventory_service.legacy_get_store(user, store_id), "Store")
 
 
 async def create_store(user: AuthenticatedUser, input) -> dict:
-    fields = _store_fields(input, location_touched=True)
-    return await repo.create_store(user.access_token, user.id, fields)
+    # The fields keep the legacy store shape (country/province/city folded into `location`); the IMS maps them.
+    return await inventory_service.legacy_create_store(user, _store_fields(input, location_touched=True))
 
 
 async def update_store(user: AuthenticatedUser, store_id: str, input) -> dict:
     provided = input.model_dump(exclude_unset=True)
     location_touched = any(k in provided for k in ("country", "province", "city"))
     fields = _store_fields(input, location_touched)
-    return await repo.update_store(user.access_token, store_id, fields)
+    return _found(await inventory_service.legacy_update_store(user, store_id, fields), "Store")
 
 
 async def delete_store(user: AuthenticatedUser, store_id: str) -> None:
-    await repo.delete_store(user.access_token, store_id)
-
-
-# --- suppliers --------------------------------------------------------------------------------
+    await inventory_service.legacy_delete_store(user, store_id)
 
 
 async def fetch_suppliers(user: AuthenticatedUser) -> list[dict]:
-    return await repo.fetch_suppliers(user.access_token, user.id)
+    return await inventory_service.legacy_list_suppliers(user)
 
 
 async def fetch_supplier_by_id(user: AuthenticatedUser, supplier_id: str) -> dict:
-    supplier = await repo.fetch_supplier_by_id(user.access_token, supplier_id)
-    if supplier is None:
-        raise HTTPException(status_code=404, detail="Supplier not found")
-    return supplier
+    return _found(await inventory_service.legacy_get_supplier(user, supplier_id), "Supplier")
 
 
 async def create_supplier(user: AuthenticatedUser, fields: dict) -> dict:
-    return await repo.create_supplier(user.access_token, user.id, fields)
+    return await inventory_service.legacy_create_supplier(user, fields)
 
 
 async def update_supplier(user: AuthenticatedUser, supplier_id: str, fields: dict) -> dict:
-    return await repo.update_supplier(user.access_token, supplier_id, fields)
+    return _found(await inventory_service.legacy_update_supplier(user, supplier_id, fields), "Supplier")
 
 
 async def delete_supplier(user: AuthenticatedUser, supplier_id: str) -> None:
-    await repo.delete_supplier(user.access_token, supplier_id)
+    await inventory_service.legacy_delete_supplier(user, supplier_id)
 
 
 # --- the dealer application (A3b; SRDS §7, §8, §12) -----------------------------------------------------------------

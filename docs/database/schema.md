@@ -5,7 +5,7 @@
 
 What each table is for, and the business rules behind the design, are in [notes.md](notes.md).
 
-46 tables, 1 view(s), 16 enum types, 121 row-level-security policies on tables and 22 on storage objects.
+46 tables, 1 view(s), 16 enum types, 117 row-level-security policies on tables and 22 on storage objects.
 
 Realtime publishes changes of: `consultation_messages`, `messages`, `notifications`.
 
@@ -665,7 +665,7 @@ Row-level security: **on**. Grants: authenticated: delete, insert, select, updat
 | `created_at` | timestamp with time zone | no | now() |
 | `updated_at` | timestamp with time zone | no | now() |
 
-Constraints: `inventory_locations_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_locations_kind_check`: CHECK ((kind = ANY (ARRAY['shop'::text, 'godown'::text, 'shelf'::text, 'other'::text]))); `inventory_locations_name_check`: CHECK ((length(TRIM(BOTH FROM name)) > 0)); `inventory_locations_pkey`: PRIMARY KEY (id).
+Constraints: `check_inventory_default_location`: TRIGGER DEFERRABLE INITIALLY DEFERRED; `inventory_locations_address_length`: CHECK ((char_length(address) <= 300)); `inventory_locations_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_locations_kind_check`: CHECK ((kind = ANY (ARRAY['shop'::text, 'godown'::text, 'shelf'::text, 'other'::text]))); `inventory_locations_name_check`: CHECK ((length(TRIM(BOTH FROM name)) > 0)); `inventory_locations_name_length`: CHECK ((char_length(name) <= 120)); `inventory_locations_pkey`: PRIMARY KEY (id).
 
 Indexes:
 - `CREATE INDEX inventory_locations_dealer_id_idx ON public.inventory_locations USING btree (dealer_id)`
@@ -679,7 +679,7 @@ Indexes:
 | `inventory_locations_select_owner` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
 | `inventory_locations_update_owner` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended))) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
 
-Triggers: `set_inventory_locations_updated_at`.
+Triggers: `check_inventory_default_location`, `guard_inventory_default_location`, `set_inventory_locations_updated_at`.
 
 ### `inventory_movements`
 
@@ -704,7 +704,7 @@ Row-level security: **on**. Grants: authenticated: select; service_role: select.
 | `transfer_id` | uuid | yes |  |
 | `created_at` | timestamp with time zone | no | now() |
 
-Constraints: `inventory_movements_actor_fkey`: FOREIGN KEY (actor) REFERENCES profiles(id) ON DELETE SET NULL; `inventory_movements_balance`: CHECK (((quantity <> 'NaN'::numeric) AND (quantity_before <> 'NaN'::numeric) AND (quantity_after <> 'NaN'::numeric) AND (quantity_after = (quantity_before + CASE direction WHEN 'in'::inventory_movement_direction THEN quantity ELSE (- quantity) END)))); `inventory_movements_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_movements_location_id_fkey`: FOREIGN KEY (location_id) REFERENCES inventory_locations(id) ON DELETE RESTRICT; `inventory_movements_order_id_fkey`: FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL; `inventory_movements_order_item_id_fkey`: FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE SET NULL; `inventory_movements_order_source`: CHECK (((order_item_id IS NULL) OR (source = 'ZARAILINK_ORDER'::inventory_movement_source))); `inventory_movements_pkey`: PRIMARY KEY (id); `inventory_movements_product_id_fkey`: FOREIGN KEY (product_id) REFERENCES inventory_products(id) ON DELETE RESTRICT; `inventory_movements_purchase_id_fkey`: FOREIGN KEY (purchase_id) REFERENCES inventory_purchases(id) ON DELETE SET NULL; `inventory_movements_quantity_after_check`: CHECK ((quantity_after <> 'NaN'::numeric)); `inventory_movements_quantity_before_check`: CHECK ((quantity_before <> 'NaN'::numeric)); `inventory_movements_quantity_check`: CHECK (((quantity > (0)::numeric) AND (quantity <> 'NaN'::numeric))).
+Constraints: `inventory_movements_actor_fkey`: FOREIGN KEY (actor) REFERENCES profiles(id) ON DELETE SET NULL; `inventory_movements_balance`: CHECK (((quantity <> 'NaN'::numeric) AND (quantity_before <> 'NaN'::numeric) AND (quantity_after <> 'NaN'::numeric) AND (quantity_after = (quantity_before + CASE direction WHEN 'in'::inventory_movement_direction THEN quantity ELSE (- quantity) END)))); `inventory_movements_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_movements_location_id_fkey`: FOREIGN KEY (location_id) REFERENCES inventory_locations(id) ON DELETE RESTRICT; `inventory_movements_order_id_fkey`: FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL; `inventory_movements_order_item_id_fkey`: FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE SET NULL; `inventory_movements_order_source`: CHECK (((order_item_id IS NULL) OR (source = 'ZARAILINK_ORDER'::inventory_movement_source))); `inventory_movements_pkey`: PRIMARY KEY (id); `inventory_movements_product_id_fkey`: FOREIGN KEY (product_id) REFERENCES inventory_products(id) ON DELETE RESTRICT; `inventory_movements_purchase_id_fkey`: FOREIGN KEY (purchase_id) REFERENCES inventory_purchases(id) ON DELETE SET NULL; `inventory_movements_quantity_after_check`: CHECK ((quantity_after <> 'NaN'::numeric)); `inventory_movements_quantity_before_check`: CHECK ((quantity_before <> 'NaN'::numeric)); `inventory_movements_quantity_check`: CHECK (((quantity > (0)::numeric) AND (quantity <> 'NaN'::numeric))); `inventory_movements_reason_length`: CHECK ((char_length(reason) <= 1000)).
 
 Indexes:
 - `CREATE INDEX inventory_movements_actor_idx ON public.inventory_movements USING btree (actor)`
@@ -739,7 +739,7 @@ Row-level security: **on**. Grants: authenticated: delete, insert, select, updat
 | `created_at` | timestamp with time zone | no | now() |
 | `updated_at` | timestamp with time zone | no | now() |
 
-Constraints: `inventory_products_category_id_fkey`: FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL; `inventory_products_cost_price_check`: CHECK (((cost_price >= (0)::numeric) AND (cost_price <> 'NaN'::numeric) AND (cost_price = round(cost_price, 2)) AND (cost_price < ('10000000000'::bigint)::numeric))); `inventory_products_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_products_dealer_sku_key`: UNIQUE (dealer_id, sku); `inventory_products_name_check`: CHECK ((length(TRIM(BOTH FROM name)) > 0)); `inventory_products_pkey`: PRIMARY KEY (id); `inventory_products_reorder_threshold_check`: CHECK (((reorder_threshold >= (0)::numeric) AND (reorder_threshold <> 'NaN'::numeric) AND (reorder_threshold = round(reorder_threshold, 2)) AND (reorder_threshold < ('10000000000'::bigint)::numeric))); `inventory_products_selling_price_check`: CHECK (((selling_price >= (0)::numeric) AND (selling_price <> 'NaN'::numeric) AND (selling_price = round(selling_price, 2)) AND (selling_price < ('10000000000'::bigint)::numeric))); `inventory_products_sku_check`: CHECK ((length(TRIM(BOTH FROM sku)) > 0)).
+Constraints: `inventory_products_category_id_fkey`: FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL; `inventory_products_cost_price_check`: CHECK (((cost_price >= (0)::numeric) AND (cost_price <> 'NaN'::numeric) AND (cost_price = round(cost_price, 2)) AND (cost_price < ('10000000000'::bigint)::numeric))); `inventory_products_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_products_dealer_sku_key`: UNIQUE (dealer_id, sku); `inventory_products_name_check`: CHECK ((length(TRIM(BOTH FROM name)) > 0)); `inventory_products_name_length`: CHECK ((char_length(name) <= 120)); `inventory_products_pkey`: PRIMARY KEY (id); `inventory_products_reorder_threshold_check`: CHECK (((reorder_threshold >= (0)::numeric) AND (reorder_threshold <> 'NaN'::numeric) AND (reorder_threshold = round(reorder_threshold, 2)) AND (reorder_threshold < ('10000000000'::bigint)::numeric))); `inventory_products_selling_price_check`: CHECK (((selling_price >= (0)::numeric) AND (selling_price <> 'NaN'::numeric) AND (selling_price = round(selling_price, 2)) AND (selling_price < ('10000000000'::bigint)::numeric))); `inventory_products_sku_check`: CHECK ((length(TRIM(BOTH FROM sku)) > 0)); `inventory_products_sku_length`: CHECK ((char_length(sku) <= 120)); `inventory_products_unit_length`: CHECK ((char_length(unit) <= 40)).
 
 Indexes:
 - `CREATE INDEX inventory_products_category_id_idx ON public.inventory_products USING btree (category_id)`
@@ -757,7 +757,7 @@ Triggers: `set_inventory_products_updated_at`.
 
 ### `inventory_purchase_items`
 
-Row-level security: **on**. Grants: authenticated: delete, insert, select, update; service_role: select.
+Row-level security: **on**. Grants: authenticated: select; service_role: select.
 
 | Column | Type | Null | Default |
 |---|---|---|---|
@@ -781,16 +781,13 @@ Indexes:
 
 | Policy | Command | Using | With check |
 |---|---|---|---|
-| `inventory_purchase_items_delete_owner` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (EXISTS ( SELECT 1 FROM inventory_purchases p WHERE ((p.id = inventory_purchase_items.purchase_id) AND (p.status = 'draft'::text))))) | - |
-| `inventory_purchase_items_insert_owner` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
 | `inventory_purchase_items_select_owner` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
-| `inventory_purchase_items_update_owner` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (EXISTS ( SELECT 1 FROM inventory_purchases p WHERE ((p.id = inventory_purchase_items.purchase_id) AND (p.status = 'draft'::text))))) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended))) |
 
 Triggers: `guard_inventory_purchase_items_references`.
 
 ### `inventory_purchases`
 
-Row-level security: **on**. Grants: authenticated: delete, insert, select, update; service_role: select.
+Row-level security: **on**. Grants: authenticated: delete, select, update; service_role: select.
 
 | Column | Type | Null | Default |
 |---|---|---|---|
@@ -805,7 +802,7 @@ Row-level security: **on**. Grants: authenticated: delete, insert, select, updat
 | `created_at` | timestamp with time zone | no | now() |
 | `updated_at` | timestamp with time zone | no | now() |
 
-Constraints: `inventory_purchases_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_purchases_pkey`: PRIMARY KEY (id); `inventory_purchases_status_check`: CHECK ((status = ANY (ARRAY['draft'::text, 'received'::text, 'cancelled'::text]))); `inventory_purchases_supplier_id_fkey`: FOREIGN KEY (supplier_id) REFERENCES inventory_suppliers(id) ON DELETE SET NULL.
+Constraints: `inventory_purchases_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_purchases_notes_length`: CHECK ((char_length(notes) <= 1000)); `inventory_purchases_pkey`: PRIMARY KEY (id); `inventory_purchases_purchased_on_check`: CHECK ((isfinite(purchased_on) AND (purchased_on >= '2000-01-01'::date))); `inventory_purchases_reference_length`: CHECK ((char_length(reference) <= 80)); `inventory_purchases_status_check`: CHECK ((status = ANY (ARRAY['draft'::text, 'received'::text, 'cancelled'::text]))); `inventory_purchases_supplier_id_fkey`: FOREIGN KEY (supplier_id) REFERENCES inventory_suppliers(id) ON DELETE SET NULL.
 
 Indexes:
 - `CREATE INDEX inventory_purchases_dealer_id_idx ON public.inventory_purchases USING btree (dealer_id)`
@@ -815,11 +812,10 @@ Indexes:
 | Policy | Command | Using | With check |
 |---|---|---|---|
 | `inventory_purchases_delete_owner` | DELETE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (status = 'draft'::text)) | - |
-| `inventory_purchases_insert_owner` | INSERT | - | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (status = 'draft'::text)) |
 | `inventory_purchases_select_owner` | SELECT | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer)) | - |
 | `inventory_purchases_update_owner` | UPDATE | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (status = 'draft'::text)) | ((dealer_id = ( SELECT auth.uid() AS uid)) AND ( SELECT is_approved_dealer() AS is_approved_dealer) AND (NOT ( SELECT is_suspended() AS is_suspended)) AND (status = ANY (ARRAY['draft'::text, 'cancelled'::text]))) |
 
-Triggers: `guard_inventory_purchases_references`, `set_inventory_purchases_updated_at`.
+Triggers: `guard_inventory_purchase_day`, `guard_inventory_purchases_references`, `set_inventory_purchases_updated_at`.
 
 ### `inventory_stock`
 
@@ -862,7 +858,7 @@ Row-level security: **on**. Grants: authenticated: delete, insert, select, updat
 | `created_at` | timestamp with time zone | no | now() |
 | `updated_at` | timestamp with time zone | no | now() |
 
-Constraints: `inventory_suppliers_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_suppliers_name_check`: CHECK ((length(TRIM(BOTH FROM name)) > 0)); `inventory_suppliers_pkey`: PRIMARY KEY (id).
+Constraints: `inventory_suppliers_contact_length`: CHECK ((char_length(contact) <= 120)); `inventory_suppliers_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_suppliers_name_check`: CHECK ((length(TRIM(BOTH FROM name)) > 0)); `inventory_suppliers_name_length`: CHECK ((char_length(name) <= 120)); `inventory_suppliers_notes_length`: CHECK ((char_length(notes) <= 1000)); `inventory_suppliers_pkey`: PRIMARY KEY (id); `inventory_suppliers_products_supplied_length`: CHECK ((char_length(products_supplied) <= 1000)).
 
 Indexes:
 - `CREATE INDEX inventory_suppliers_dealer_id_idx ON public.inventory_suppliers USING btree (dealer_id)`
@@ -1389,9 +1385,11 @@ Indexes:
 | `audit_required_documents()` | trigger | definer | search_path=public, pg_temp |
 | `available_stock(uuid[])` | TABLE(listing_id uuid, available numeric) | definer | search_path=public, pg_temp |
 | `caller_role()` | user_role | definer | search_path=public, pg_temp |
+| `check_inventory_default_location()` | trigger | definer | search_path=pg_catalog, pg_temp |
 | `check_stock_on_confirm()` | trigger | definer | search_path=public, pg_temp |
 | `conversation_context_allowed(conversation_context,uuid,uuid)` | boolean | definer | search_path=public, pg_temp |
 | `create_notification(uuid,text,jsonb,boolean)` | void | definer | search_path=public, pg_temp |
+| `create_purchase(uuid,date,text,text,jsonb)` | uuid | definer | search_path=pg_catalog, pg_temp |
 | `decide_account_status(uuid,account_status,text)` | TABLE(role user_role, previous_status account_status, new_status account_status) | definer | search_path=public, pg_temp |
 | `fill_application_document()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_application_details()` | trigger | invoker | search_path=public, pg_temp |
@@ -1401,6 +1399,8 @@ Indexes:
 | `guard_disease_knowledge_review()` | trigger | invoker | search_path="" |
 | `guard_experts_admin_update()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_experts_verification_status()` | trigger | invoker | search_path=public, pg_temp |
+| `guard_inventory_default_location()` | trigger | invoker | search_path=pg_catalog, pg_temp |
+| `guard_inventory_purchase_day()` | trigger | invoker | search_path=pg_catalog, pg_temp |
 | `guard_inventory_references()` | trigger | definer | search_path=public, pg_temp |
 | `guard_listings_admin_update()` | trigger | invoker | search_path=public, pg_temp |
 | `guard_messages_updates()` | trigger | invoker | search_path=public, pg_temp |
@@ -1415,6 +1415,7 @@ Indexes:
 | `inventory_apply_movement(uuid,uuid,uuid,inventory_movement_direction,inventory_movement_source,numeric,text,uuid,uuid,uuid,uuid,uuid)` | uuid | definer | search_path=public, pg_temp |
 | `inventory_caller()` | uuid | definer | search_path=public, pg_temp |
 | `inventory_reconciliation()` | TABLE(product_id uuid, marketplace_sales numeric, local_sales numeric, adjustments numeric, restocks_and_purchases numeric, losses numeric, transfers numeric, other numeric, ledger_total numeric, current_stock numeric, balanced boolean) | invoker | search_path=public, pg_temp |
+| `inventory_write_purchase_lines(uuid,uuid,jsonb)` | void | definer | search_path=pg_catalog, pg_temp |
 | `is_account_approved()` | boolean | definer | search_path=public, pg_temp |
 | `is_admin_aal2()` | boolean | definer | search_path=public, pg_temp |
 | `is_admin()` | boolean | definer | search_path=public, pg_temp |
@@ -1443,10 +1444,12 @@ Indexes:
 | `record_order_history()` | trigger | definer | search_path=public, pg_temp |
 | `record_payment_event()` | trigger | definer | search_path=public, pg_temp |
 | `reopen_sold_listing()` | trigger | invoker | search_path=public, pg_temp |
+| `replace_purchase_items(uuid,jsonb,jsonb)` | void | definer | search_path=pg_catalog, pg_temp |
 | `reset_expert_on_role_change()` | trigger | definer | search_path=public, pg_temp |
 | `retry_dispatch_events_for(uuid)` | integer | definer | search_path=public, pg_temp |
 | `retry_dispatch_events()` | integer | definer | search_path=public, pg_temp |
 | `rls_auto_enable()` | event_trigger | definer | search_path=pg_catalog |
+| `set_default_location(uuid)` | void | definer | search_path=pg_catalog, pg_temp |
 | `set_listings_seller_role()` | trigger | invoker | search_path=public, pg_temp |
 | `set_updated_at()` | trigger | invoker | search_path=public, pg_temp |
 | `submit_application()` | account_status | definer | search_path=public, pg_temp |

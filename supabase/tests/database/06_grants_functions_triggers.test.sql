@@ -62,8 +62,10 @@ select is(
     'authenticated inventory_locations DELETE,INSERT,SELECT,UPDATE',
     'authenticated inventory_movements SELECT',
     'authenticated inventory_products DELETE,INSERT,SELECT,UPDATE',
-    'authenticated inventory_purchase_items DELETE,INSERT,SELECT,UPDATE',
-    'authenticated inventory_purchases DELETE,INSERT,SELECT,UPDATE',
+    -- Lines and new purchases only through create_purchase / replace_purchase_items (20261025090000, B2 verifier F1/F2);
+    -- the header keeps UPDATE (header-only edits, cancel) and DELETE (a draft).
+    'authenticated inventory_purchase_items SELECT',
+    'authenticated inventory_purchases DELETE,SELECT,UPDATE',
     'authenticated inventory_stock SELECT',
     'authenticated inventory_suppliers DELETE,INSERT,SELECT,UPDATE',
     'authenticated inventory_sync_log SELECT',
@@ -132,6 +134,10 @@ select is(
     'authenticated caller_role()',
     -- Policy helper for conversation contexts (20261020080000).
     'authenticated conversation_context_allowed(conversation_context,uuid,uuid)',
+    -- Atomic purchase writes and the default-location move (20261025090000, B2 verifier F1/F2/F7); each checks
+    -- inventory_caller() inside. Their internal helper inventory_write_purchase_lines and the two location triggers'
+    -- functions are revoked.
+    'authenticated create_purchase(uuid,date,text,text,jsonb)',
     'authenticated decide_account_status(uuid,account_status,text)',
     -- IMS client functions (20261021080000, B1; retry 20261022090000, B3). Each checks inventory_caller() inside. The
     -- internal ones (inventory_apply_movement, inventory_caller, apply_dispatch_event, retry_dispatch_events_for,
@@ -147,7 +153,9 @@ select is(
     'authenticated lock_editable_application(uuid)',
     'authenticated receive_purchase(uuid)',
     'authenticated record_movement(uuid,uuid,inventory_movement_direction,inventory_movement_source,numeric,text)',
+    'authenticated replace_purchase_items(uuid,jsonb,jsonb)',
     'authenticated retry_dispatch_events()',
+    'authenticated set_default_location(uuid)',
     'authenticated submit_application()',
     'authenticated transfer_stock(uuid,uuid,uuid,numeric,text)'
   ],

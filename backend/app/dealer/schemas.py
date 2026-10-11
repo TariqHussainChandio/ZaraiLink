@@ -1,71 +1,105 @@
-from typing import Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.common.schemas import ApplicationDocument, Location
+from app.inventory.schemas import (
+    ADDRESS_MAX,
+    CONTACT_MAX,
+    NAME_MAX,
+    NUMERIC_LIMIT,
+    TEXT_MAX,
+    UNIT_MAX,
+    Amount,
+)
 
 DealerEntityStatus = Literal["active", "inactive"]
 InventoryTransactionType = Literal["addition", "reduction", "adjustment", "sale", "restock", "correction"]
 
+# The legacy inventory routes are served by the IMS since B3 (inventory/service.py), so their bodies follow its rules:
+# prices are the IMS Amount (finite, two decimals, below what numeric(12, 2) holds: NaN or Infinity used to reach the
+# database and answer 500), and the whole-number stock figures the old form sends keep their type but get the same
+# bounds, so an out-of-range figure is refused before anything is written (B2 verification F4, F5).
+WholeStock = Annotated[int, Field(ge=0, lt=NUMERIC_LIMIT)]
+_Name = Annotated[str, Field(min_length=1, max_length=NAME_MAX)]
+_Unit = Annotated[str, Field(min_length=1, max_length=UNIT_MAX)]
+_Address = Annotated[str, Field(max_length=ADDRESS_MAX)]
+_Contact = Annotated[str, Field(max_length=CONTACT_MAX)]
+_Text = Annotated[str, Field(max_length=TEXT_MAX)]
+_Place = Annotated[str, Field(max_length=100)]  # the dealer application's country, province and city cap
+
 
 class InventoryInput(BaseModel):
     listing_id: str | None
-    stock_quantity: int
-    unit: str
-    purchase_cost: float | None = None
-    selling_price: float | None = None
-    min_stock_threshold: int
+    stock_quantity: WholeStock
+    unit: _Unit
+    purchase_cost: Amount | None = None
+    selling_price: Amount | None = None
+    min_stock_threshold: WholeStock
 
 
 class InventoryUpdateInput(BaseModel):
     listing_id: str | None = None
-    unit: str | None = None
-    purchase_cost: float | None = None
-    selling_price: float | None = None
-    min_stock_threshold: int | None = None
+    unit: _Unit | None = None
+    purchase_cost: Amount | None = None
+    selling_price: Amount | None = None
+    min_stock_threshold: WholeStock | None = None
+
+
+# The types that record a change by its size; adjustment and correction set the exact quantity instead.
+CHANGE_TYPES = ("addition", "reduction", "sale", "restock")
 
 
 class AdjustStockRequest(BaseModel):
+    """`quantity` is the size of the change for addition, restock, sale and reduction, so it must be positive (a
+    restock of -1 used to be recorded as +1); for adjustment and correction it is the new stock, so zero is allowed."""
+
     type: InventoryTransactionType
-    quantity: int
-    notes: str | None = None
+    quantity: WholeStock
+    notes: _Text | None = None
+
+    @model_validator(mode="after")
+    def _positive_change(self) -> Self:
+        if self.type in CHANGE_TYPES and self.quantity <= 0:
+            raise ValueError(f"A {self.type} needs a quantity of more than zero")
+        return self
 
 
 class StoreInput(BaseModel):
-    name: str
-    address: str | None = None
-    contact: str | None = None
-    opening_info: str | None = None
+    name: _Name
+    address: _Address | None = None
+    contact: _Contact | None = None
+    opening_info: _Text | None = None
     status: DealerEntityStatus = "active"
-    country: str | None = None
-    province: str | None = None
-    city: str | None = None
+    country: _Place | None = None
+    province: _Place | None = None
+    city: _Place | None = None
 
 
 class StoreUpdateInput(BaseModel):
-    name: str | None = None
-    address: str | None = None
-    contact: str | None = None
-    opening_info: str | None = None
+    name: _Name | None = None
+    address: _Address | None = None
+    contact: _Contact | None = None
+    opening_info: _Text | None = None
     status: DealerEntityStatus | None = None
-    country: str | None = None
-    province: str | None = None
-    city: str | None = None
+    country: _Place | None = None
+    province: _Place | None = None
+    city: _Place | None = None
 
 
 class SupplierInput(BaseModel):
-    name: str
-    contact: str | None = None
-    products_supplied: str | None = None
-    notes: str | None = None
+    name: _Name
+    contact: _Contact | None = None
+    products_supplied: _Text | None = None
+    notes: _Text | None = None
     status: DealerEntityStatus = "active"
 
 
 class SupplierUpdateInput(BaseModel):
-    name: str | None = None
-    contact: str | None = None
-    products_supplied: str | None = None
-    notes: str | None = None
+    name: _Name | None = None
+    contact: _Contact | None = None
+    products_supplied: _Text | None = None
+    notes: _Text | None = None
     status: DealerEntityStatus | None = None
 
 

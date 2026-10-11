@@ -1,6 +1,36 @@
 {
+ "GET /api/v1/admin/ai-activity": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/audit-events": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
  "GET /api/v1/admin/audit-logs": {
   "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/consultations": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/consultations/{consultation_id}": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/admin/consultations/{consultation_id}/moderate": {
+  "kind": "aal2",
   "roles": [
    "admin"
   ]
@@ -23,7 +53,43 @@
    "admin"
   ]
  },
+ "GET /api/v1/admin/disease-knowledge": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/disease-knowledge/{class_label}": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/admin/disease-knowledge/{class_label}": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "POST /api/v1/admin/disease-knowledge/{class_label}/review": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
  "GET /api/v1/admin/orders": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
+ "POST /api/v1/admin/orders/{order_id}/cancel": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "GET /api/v1/admin/queues": {
   "kind": "roles",
   "roles": [
    "admin"
@@ -150,6 +216,26 @@
   ]
  },
  "GET /api/v1/consultations/{consultation_id}": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "GET /api/v1/consultations/{consultation_id}/assessments": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
+ "POST /api/v1/consultations/{consultation_id}/assessments": {
   "kind": "auth",
   "roles": [
    "admin",
@@ -532,6 +618,288 @@
    "farmer"
   ]
  },
+ "GET /api/v1/inventory/alerts": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/alerts/low-stock": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/alerts/out-of-stock": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/alerts/settings": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "PUT /api/v1/inventory/alerts/settings": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/dashboard": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/exports": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/locations": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/locations": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "DELETE /api/v1/inventory/locations/{location_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/locations/{location_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "PATCH /api/v1/inventory/locations/{location_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/movements": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/movements/adjustment": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/movements/stock-in": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/movements/stock-out": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/movements/{movement_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/products": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/products": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "DELETE /api/v1/inventory/products/{product_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/products/{product_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "PATCH /api/v1/inventory/products/{product_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/products/{product_id}/listings": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "DELETE /api/v1/inventory/products/{product_id}/listings/{listing_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/purchases": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/purchases": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/purchases/{purchase_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "PATCH /api/v1/inventory/purchases/{purchase_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/purchases/{purchase_id}/cancel": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/purchases/{purchase_id}/receive": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/reports/analytics": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/reports/low-out-of-stock": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/reports/movements-by-source": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/reports/reconciliation": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/reports/sales-split": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/reports/stock-summary": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/reports/supplier-purchases": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/reports/valuation": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/stock": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/stock/transfer": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/suppliers": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/suppliers": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "DELETE /api/v1/inventory/suppliers/{supplier_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/suppliers/{supplier_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "PATCH /api/v1/inventory/suppliers/{supplier_id}": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "GET /api/v1/inventory/sync/log": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
+ "POST /api/v1/inventory/sync/retry": {
+  "kind": "roles",
+  "roles": [
+   "dealer"
+  ]
+ },
  "GET /api/v1/marketplace/categories": {
   "kind": "public",
   "roles": [
@@ -543,19 +911,19 @@
   ]
  },
  "POST /api/v1/marketplace/categories": {
-  "kind": "roles",
+  "kind": "aal2",
   "roles": [
    "admin"
   ]
  },
  "DELETE /api/v1/marketplace/categories/{category_id}": {
-  "kind": "roles",
+  "kind": "aal2",
   "roles": [
    "admin"
   ]
  },
  "PATCH /api/v1/marketplace/categories/{category_id}": {
-  "kind": "roles",
+  "kind": "aal2",
   "roles": [
    "admin"
   ]
@@ -968,6 +1336,12 @@
    "farmer"
   ]
  },
+ "GET /api/v1/reviews/admin": {
+  "kind": "roles",
+  "roles": [
+   "admin"
+  ]
+ },
  "GET /api/v1/reviews/by-consultation/{consultation_id}": {
   "kind": "public",
   "roles": [
@@ -1028,12 +1402,6 @@
    "farmer"
   ]
  },
- "DELETE /api/v1/reviews/{review_id}": {
-  "kind": "roles",
-  "roles": [
-   "admin"
-  ]
- },
  "GET /api/v1/reviews/{review_id}": {
   "kind": "public",
   "roles": [
@@ -1042,6 +1410,18 @@
    "dealer",
    "expert",
    "farmer"
+  ]
+ },
+ "PATCH /api/v1/reviews/{review_id}/hide": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
+  ]
+ },
+ "PATCH /api/v1/reviews/{review_id}/restore": {
+  "kind": "aal2",
+  "roles": [
+   "admin"
   ]
  },
  "GET /health": {

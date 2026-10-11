@@ -3,10 +3,11 @@
 They mirror supabase/migrations/20261021080000_inventory_data_model.sql and 20261022090000_inventory_sync.sql.
 """
 
-from datetime import date
-from typing import Literal, Self
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
+from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 # SRDS §24: every stock change carries one of these sources.
 MovementSource = Literal[
@@ -19,6 +20,68 @@ MovementDirection = Literal["in", "out"]
 LocationKind = Literal["shop", "godown", "shelf", "other"]
 PurchaseStatus = Literal["draft", "received", "cancelled"]
 SyncStatus = Literal["applied", "skipped_duplicate", "failed"]
+
+
+# What numeric(12, 2) holds, the bound the database checks on every stock quantity and every figure a dealer types
+# (20261021080000_inventory_data_model.sql).
+NUMERIC_LIMIT = 10_000_000_000
+
+
+def _two_decimals_at_most(value: float) -> float:
+    """B1 refuses a finer figure rather than round it into the ledger; the API refuses it the same way, as a field
+    error, instead of rounding 1.255 to 1.25 before the database ever sees it."""
+    # repr is the shortest text that reads back as the same float, so 1.255 is read as 1.255, not as its binary value.
+    # The exponent is a letter only for NaN and infinity, which allow_inf_nan has already refused.
+    exponent = Decimal(repr(value)).as_tuple().exponent
+    if isinstance(exponent, int) and exponent < -2:
+        raise ValueError("Use at most two decimals")
+    return value
+
+
+# A quantity of stock: finite (JSON NaN and Infinity are refused, not passed on), more than zero, two decimals.
+Quantity = Annotated[float, Field(gt=0, lt=NUMERIC_LIMIT, allow_inf_nan=False), AfterValidator(_two_decimals_at_most)]
+# A price, cost or threshold: the same, but zero is allowed.
+Amount = Annotated[float, Field(ge=0, lt=NUMERIC_LIMIT, allow_inf_nan=False), AfterValidator(_two_decimals_at_most)]
+
+# Length caps on every free-text input (B2 verification F8: a 1 MB product name was accepted). The app's forms set no
+# limit of their own, so these follow the dealer application's caps (dealer/schemas.py: a business name is 120, an
+# address 300): a name or code fits a label, a reference fits an invoice number, a note or reason fits a paragraph.
+NAME_MAX = 120
+UNIT_MAX = 40
+REFERENCE_MAX = 80
+CONTACT_MAX = 120
+ADDRESS_MAX = 300
+TEXT_MAX = 1000
+
+# A name or SKU: something there, and short enough for a label.
+Name = Annotated[str, Field(min_length=1, max_length=NAME_MAX)]
+Unit = Annotated[str, Field(min_length=1, max_length=UNIT_MAX)]
+Address = Annotated[str, Field(max_length=ADDRESS_MAX)]
+Contact = Annotated[str, Field(max_length=CONTACT_MAX)]
+Reference = Annotated[str, Field(max_length=REFERENCE_MAX)]
+Note = Annotated[str, Field(max_length=TEXT_MAX)]
+# A reason the ledger shows: at least one character that is not a space (record_movement trims it).
+Reason = Annotated[str, Field(min_length=1, max_length=TEXT_MAX, pattern=r"\S")]
+
+# The days a purchase may be dated (B2 verification F6). A plain string let Postgres read "infinity", "epoch" and
+# "0001-01-01" as dates. The IMS starts in 2026, so nothing it records predates 2000; a year ahead covers a purchase
+# entered before the goods are due.
+EARLIEST_PURCHASE = date(2000, 1, 1)
+PURCHASE_LEAD = timedelta(days=365)
+
+
+def _plausible_purchase_day(value: date) -> date:
+    latest = datetime.now(UTC).date() + PURCHASE_LEAD
+    if not EARLIEST_PURCHASE <= value <= latest:
+        raise ValueError(f"A purchase date must be between {EARLIEST_PURCHASE.isoformat()} and {latest.isoformat()}")
+    return value
+
+
+PurchaseDay = Annotated[date, AfterValidator(_plausible_purchase_day)]
+
+# The most lines one purchase takes, the bound create_purchase and replace_purchase_items hold too (B2
+# re-verification N3): far beyond a real delivery note, and a bounded payload.
+PURCHASE_LINES_MAX = 200
 
 
 class Location(BaseModel):
@@ -34,9 +97,9 @@ class Location(BaseModel):
 
 
 class LocationInput(BaseModel):
-    name: str = Field(min_length=1)
+    name: Name
     kind: LocationKind = "shop"
-    address: str | None = None
+    address: Address | None = None
     is_default: bool = False
     is_active: bool = True
 
@@ -54,10 +117,10 @@ class Supplier(BaseModel):
 
 
 class SupplierInput(BaseModel):
-    name: str = Field(min_length=1)
-    contact: str | None = None
-    products_supplied: str | None = None
-    notes: str | None = None
+    name: Name
+    contact: Contact | None = None
+    products_supplied: Note | None = None
+    notes: Note | None = None
     is_active: bool = True
 
 
@@ -77,13 +140,13 @@ class Product(BaseModel):
 
 
 class ProductInput(BaseModel):
-    sku: str = Field(min_length=1)
-    name: str = Field(min_length=1)
+    sku: Name
+    name: Name
     category_id: str | None = None
-    unit: str = "unit"
-    cost_price: float | None = Field(default=None, ge=0)
-    selling_price: float | None = Field(default=None, ge=0)
-    reorder_threshold: float = Field(default=0, ge=0)
+    unit: Unit = "unit"
+    cost_price: Amount | None = None
+    selling_price: Amount | None = None
+    reorder_threshold: Amount = 0
     is_active: bool = True
 
 
@@ -119,16 +182,16 @@ class MovementInput(BaseModel):
     location_id: str
     direction: MovementDirection
     source: ManualMovementSource
-    quantity: float = Field(gt=0)
-    reason: str | None = None
+    quantity: Quantity
+    reason: Note | None = None
 
 
 class TransferInput(BaseModel):
     product_id: str
     from_location_id: str
     to_location_id: str
-    quantity: float = Field(gt=0)
-    reason: str | None = None
+    quantity: Quantity
+    reason: Note | None = None
 
 
 class PurchaseItem(BaseModel):
@@ -145,8 +208,8 @@ class PurchaseItem(BaseModel):
 class PurchaseItemInput(BaseModel):
     product_id: str
     location_id: str
-    quantity: float = Field(gt=0)
-    unit_cost: float | None = Field(default=None, ge=0)
+    quantity: Quantity
+    unit_cost: Amount | None = None
 
 
 class Purchase(BaseModel):
@@ -165,10 +228,10 @@ class Purchase(BaseModel):
 
 class PurchaseInput(BaseModel):
     supplier_id: str | None = None
-    reference: str | None = None
-    purchased_on: str | None = None
-    notes: str | None = None
-    items: list[PurchaseItemInput] = []
+    reference: Reference | None = None
+    purchased_on: PurchaseDay | None = None
+    notes: Note | None = None
+    items: Annotated[list[PurchaseItemInput], Field(max_length=PURCHASE_LINES_MAX)] = []
 
 
 class AlertSettings(BaseModel):
@@ -181,7 +244,7 @@ class AlertSettings(BaseModel):
 
 
 class AlertSettingsInput(BaseModel):
-    default_reorder_threshold: float = Field(default=0, ge=0)
+    default_reorder_threshold: Amount = 0
     notify_low_stock: bool = True
     notify_sync_failure: bool = True
 
@@ -216,29 +279,29 @@ class ReconciliationRow(BaseModel):
 
 
 class LocationUpdateInput(BaseModel):
-    name: str | None = Field(default=None, min_length=1)
+    name: Name | None = None
     kind: LocationKind | None = None
-    address: str | None = None
+    address: Address | None = None
     is_default: bool | None = None
     is_active: bool | None = None
 
 
 class SupplierUpdateInput(BaseModel):
-    name: str | None = Field(default=None, min_length=1)
-    contact: str | None = None
-    products_supplied: str | None = None
-    notes: str | None = None
+    name: Name | None = None
+    contact: Contact | None = None
+    products_supplied: Note | None = None
+    notes: Note | None = None
     is_active: bool | None = None
 
 
 class ProductUpdateInput(BaseModel):
-    sku: str | None = Field(default=None, min_length=1)
-    name: str | None = Field(default=None, min_length=1)
+    sku: Name | None = None
+    name: Name | None = None
     category_id: str | None = None
-    unit: str | None = Field(default=None, min_length=1)
-    cost_price: float | None = Field(default=None, ge=0)
-    selling_price: float | None = Field(default=None, ge=0)
-    reorder_threshold: float | None = Field(default=None, ge=0)
+    unit: Unit | None = None
+    cost_price: Amount | None = None
+    selling_price: Amount | None = None
+    reorder_threshold: Amount | None = None
     is_active: bool | None = None
 
 
@@ -271,8 +334,8 @@ class StockInInput(BaseModel):
 
     product_id: str
     location_id: str
-    quantity: float = Field(gt=0)
-    reason: str | None = None
+    quantity: Quantity
+    reason: Note | None = None
 
 
 StockOutSource = Literal["LOCAL_SALE", "DAMAGE", "EXPIRY", "OTHER"]
@@ -285,8 +348,8 @@ class StockOutInput(BaseModel):
     product_id: str
     location_id: str
     source: StockOutSource
-    quantity: float = Field(gt=0)
-    reason: str | None = None
+    quantity: Quantity
+    reason: Note | None = None
 
     @model_validator(mode="after")
     def _reason_when_required(self) -> Self:
@@ -301,18 +364,18 @@ class AdjustmentInput(BaseModel):
     product_id: str
     location_id: str
     direction: MovementDirection
-    quantity: float = Field(gt=0)
-    reason: str = Field(min_length=1)
+    quantity: Quantity
+    reason: Reason
 
 
 class PurchaseUpdateInput(BaseModel):
     """Edits a draft purchase. `items`, when sent, replaces every line."""
 
     supplier_id: str | None = None
-    reference: str | None = None
-    purchased_on: str | None = None
-    notes: str | None = None
-    items: list[PurchaseItemInput] | None = None
+    reference: Reference | None = None
+    purchased_on: PurchaseDay | None = None
+    notes: Note | None = None
+    items: Annotated[list[PurchaseItemInput], Field(max_length=PURCHASE_LINES_MAX)] | None = None
 
 
 StockAlertStatus = Literal["low_stock", "out_of_stock"]
