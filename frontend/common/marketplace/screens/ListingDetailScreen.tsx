@@ -1,9 +1,21 @@
 import { MessageCircle, Pencil, ShoppingCart } from 'lucide-react-native';
 import React, { useEffect, useMemo } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, ScreenState, Skeleton, SkeletonList, StatusBadge, useToast } from '../../components';
+import {
+  Avatar,
+  Button,
+  ScreenState,
+  Skeleton,
+  SkeletonList,
+  StatusBadge,
+  useToast,
+} from '../../components';
 import { RatingSummary, ReviewCard, useListingReviews } from '../../reviews';
-import { APP_TABS, MARKETPLACE_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
+import {
+  APP_TABS,
+  MARKETPLACE_ROUTES,
+  MESSAGING_ROUTES,
+} from '../../constants/routes';
 import { useListing, useRecordListingView } from '../hooks/marketplace';
 import { useOpenConversation } from '../../messaging';
 import { useAuthStore } from '../../../state/authStore';
@@ -15,7 +27,10 @@ import { hapticTap } from '../../../utils/haptics';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { formatRs } from '../../../utils/money';
 
-export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProps<'ListingDetail'>) {
+export function ListingDetailScreen({
+  route,
+  navigation,
+}: MarketplaceScreenProps<'ListingDetail'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
@@ -47,7 +62,10 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
               <SkeletonList count={2} />
             </View>
           }
-          empty={{ title: 'Listing not found', description: 'It may have been removed.' }}
+          empty={{
+            title: 'Listing not found',
+            description: 'It may have been removed.',
+          }}
           errorTitle="Couldn't load this listing"
         />
       </View>
@@ -70,7 +88,9 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
       )}
 
       <Text style={styles.title}>{listing.title}</Text>
-      <Text style={styles.price}>{`${formatRs(listing.price)} / ${listing.unit}`}</Text>
+      <Text
+        style={styles.price}
+      >{`${formatRs(listing.price)} / ${listing.unit}`}</Text>
       {/* The stock word (A4), not the listing's quantity field: a dealer's stock is their inventory, which a buyer
           never sees in figures (SRDS §15). An out-of-stock listing offers no Add to Cart. */}
       {listing.availability ? (
@@ -78,13 +98,23 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
           <StatusBadge kind="stock" status={listing.availability} />
         </View>
       ) : null}
-      {listing.category ? <Text style={styles.category}>{listing.category.name}</Text> : null}
-      {listing.description ? <Text style={styles.description}>{listing.description}</Text> : null}
+      {listing.category ? (
+        <Text style={styles.category}>{listing.category.name}</Text>
+      ) : null}
+      {listing.description ? (
+        <Text style={styles.description}>{listing.description}</Text>
+      ) : null}
 
       {listing.owner ? (
         <View style={styles.sellerRow}>
-          <Avatar name={listing.owner.full_name} uri={listing.owner.avatar_url} size={theme.size.avatarMd} />
-          <Text style={styles.sellerName}>{listing.owner.full_name || 'Unknown seller'}</Text>
+          <Avatar
+            name={listing.owner.full_name}
+            uri={listing.owner.avatar_url}
+            size={theme.size.avatarMd}
+          />
+          <Text style={styles.sellerName}>
+            {listing.owner.full_name || 'Unknown seller'}
+          </Text>
         </View>
       ) : null}
 
@@ -93,7 +123,9 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
           label="Edit Listing"
           icon={Pencil}
           onPress={() =>
-            navigation.navigate(MARKETPLACE_ROUTES.EditListing, { listingId: listing.id })
+            navigation.navigate(MARKETPLACE_ROUTES.EditListing, {
+              listingId: listing.id,
+            })
           }
           style={styles.action}
         />
@@ -134,7 +166,10 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
                 tabNavigation?.navigate(APP_TABS.Messages, {
                   screen: MESSAGING_ROUTES.Chat,
                   initial: false,
-                  params: { conversationId: conversation.id, otherUserName: listing.owner.full_name },
+                  params: {
+                    conversationId: conversation.id,
+                    otherUserName: listing.owner.full_name,
+                  },
                 });
               } catch (error) {
                 toast.error(errorMessage(error));

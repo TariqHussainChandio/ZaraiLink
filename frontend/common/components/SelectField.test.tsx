@@ -112,10 +112,37 @@ describe('SelectField — search', () => {
     expect(screen.getByText('No results')).toBeTruthy();
   });
 
+  it('shows the empty state when there are no options at all', async () => {
+    await render(<SelectField value={null} options={[]} onSelect={() => {}} />);
+    await fireEvent.press(screen.getByText('Select...'));
+    expect(screen.getByText('No results')).toBeTruthy();
+  });
+
   it('omits the search field when searchable is false', async () => {
     await render(<SelectField value={null} options={options} onSelect={() => {}} searchable={false} />);
     await fireEvent.press(screen.getByText('Select...'));
     expect(screen.queryByPlaceholderText('Search')).toBeNull();
     expect(screen.getByText('Kilogram')).toBeTruthy();
+  });
+});
+
+// A long list is virtualised (FlashList with a fixed height); a short one is a plain ScrollView (N1, B3 verification).
+describe('SelectField — a long option list', () => {
+  const many: SelectOption[] = Array.from({ length: 60 }, (_, i) => ({ id: `p${i}`, label: `Product ${i}` }));
+
+  it('renders the first options and selects one', async () => {
+    const onSelect = jest.fn();
+    await render(<SelectField label="Product" value={null} options={many} onSelect={onSelect} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Product, Select...' }));
+    await fireEvent.press(await screen.findByText('Product 0'));
+    expect(onSelect).toHaveBeenCalledWith('p0');
+  });
+
+  it('narrows by search, back into the short list', async () => {
+    await render(<SelectField value={null} options={many} onSelect={() => {}} />);
+    await fireEvent.press(screen.getByText('Select...'));
+    await fireEvent.changeText(screen.getByPlaceholderText('Search'), 'Product 42');
+    expect(screen.getByText('Product 42')).toBeTruthy();
+    expect(screen.queryByText('Product 0')).toBeNull();
   });
 });

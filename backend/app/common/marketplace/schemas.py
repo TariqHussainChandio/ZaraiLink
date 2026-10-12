@@ -36,6 +36,9 @@ class ListingInput(BaseModel):
     country: str | None = None
     province: str | None = None
     city: str | None = None
+    # The dealer's IMS product this listing sells from (B3, contract "Listing availability"): availability then comes
+    # from that product's stock. The database trigger guard_inventory_references refuses another dealer's product.
+    inventory_product_id: str | None = None
 
 
 class ListingUpdateInput(BaseModel):
@@ -52,6 +55,9 @@ class ListingUpdateInput(BaseModel):
     country: str | None = None
     province: str | None = None
     city: str | None = None
+    # The dealer's IMS product this listing sells from (B3, contract "Listing availability"): availability then comes
+    # from that product's stock. The database trigger guard_inventory_references refuses another dealer's product.
+    inventory_product_id: str | None = None
 
 
 class UpdateListingStatusRequest(BaseModel):
@@ -110,6 +116,7 @@ class Listing(BaseModel):
     condition: str | None = None
     location: Location | None = None
     seller_role: str | None = None
+    inventory_product_id: str | None = None
 
 
 class ListingWithRelations(Listing):

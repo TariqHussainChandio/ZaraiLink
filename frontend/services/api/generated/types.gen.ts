@@ -5089,9 +5089,21 @@ export type SyncLogEntry = {
      */
     id: string;
     /**
+     * Listing Id
+     */
+    listing_id?: string | null;
+    /**
      * Order Event Id
      */
     order_event_id: string;
+    /**
+     * Order Id
+     */
+    order_id?: string | null;
+    /**
+     * Order Item Id
+     */
+    order_item_id?: string | null;
     /**
      * Processed At
      */

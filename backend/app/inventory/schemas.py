@@ -253,6 +253,11 @@ class SyncLogEntry(BaseModel):
     id: str
     dealer_id: str
     order_event_id: str
+    # Which order, line and listing the event is about, so the dealer can fix the cause before retrying (null on a
+    # row whose order or listing has since been deleted).
+    order_id: str | None = None
+    order_item_id: str | None = None
+    listing_id: str | None = None
     status: SyncStatus
     error: str | None = None
     attempts: int

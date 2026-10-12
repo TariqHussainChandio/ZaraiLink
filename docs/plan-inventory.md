@@ -108,6 +108,10 @@ and router registration.
 
 ### B3 — Marketplace synchronisation
 
+> **Status (2026-10-12): done.** pgTAP `20261022090000_inventory_sync` (and the eight files the dropped legacy tables broke, repaired); unit and real-stack (`test_smoke_inventory_sync.py`, `test_smoke_dispatch.py`, `test_smoke_listing_inventory_link.py`, `test_smoke_checkout_stock.py`). Testing fixed: D6 summed per product and per unlinked listing and net of owed lines; a dealer with no location dispatches with lines pending; retry rotation; the sync log names order, line and listing. The fresh-context verifier returned NOT VERIFIED (owed lines ignored, an IMS hang broke checkout and dispatch, exact stock readable by any signed-in user); all fixed. Round 2 found on the emulator that the shared picker drew no options (FlashList measured zero inside the sheet), so a dealer could not link a listing; fixed with the keyboard and cart-ownership issues it surfaced. Final re-verification: VERIFIED WITH FINDINGS (N4 the trade-off below; N5, the sync log screen naming its order, deferred to B4). Emulator walk: link in Edit Listing → buyer sees the word only → checkout → dispatch → the sync log shows the applied line → the next account's cart is empty.
+
+> **D6/D7 trade-off (recorded 2026-10-12, B3 verifier).** D6 refuses a dispatch only for a shortage the IMS can read. When the IMS stock is locked past the bound (2 s for a table lock, under the 8 s statement timeout for a row lock), the stock is unknown, so the dispatch goes through (D7: the marketplace never breaks) and its linked lines are logged pending, counted as owed by availability and later dispatches, and applied by the dealer's retry. No client can take such a lock (MAINTAIN is revoked, PostgREST has no LOCK), so only maintenance or DDL can open this window.
+
 **Goal:** SRDS §19–§21, §48, §53.14–§53.15, §53.39 (D5–D8).
 
 | Lane | Tasks | Needs |

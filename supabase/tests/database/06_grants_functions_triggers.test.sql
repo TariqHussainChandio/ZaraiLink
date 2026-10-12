@@ -130,7 +130,7 @@ select is(
   array[
     -- The admin dashboard's queue counts; refuses a non-admin inside (20261023080000).
     'authenticated admin_queue_counts()',
-    'authenticated available_stock(uuid[])',
+    -- available_stock is service_role only since 20261022090000 (B3 verifier F3: exact IMS stock stays server side).
     'authenticated caller_role()',
     -- Policy helper for conversation contexts (20261020080000).
     'authenticated conversation_context_allowed(conversation_context,uuid,uuid)',
@@ -159,7 +159,7 @@ select is(
     'authenticated submit_application()',
     'authenticated transfer_stock(uuid,uuid,uuid,numeric,text)'
   ],
-  'the extra functions signed-in users can execute: the stock read, the IMS client functions (B1/B3), is_seller_role, and the account-status helpers and decisions (20261005080000), the application helper and submission (20261012080000)');
+  'the extra functions signed-in users can execute: the IMS client functions (B1/B3), is_seller_role, and the account-status helpers and decisions (20261005080000), the application helper and submission (20261012080000)');
 
 -- profiles_public: exactly id, name, avatar ------------------------------------------------------------
 select is(

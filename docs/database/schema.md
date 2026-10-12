@@ -886,11 +886,17 @@ Row-level security: **on**. Grants: authenticated: select; service_role: select.
 | `error` | text | yes |  |
 | `attempts` | integer | no | 1 |
 | `processed_at` | timestamp with time zone | no | now() |
+| `order_id` | uuid | yes |  |
+| `order_item_id` | uuid | yes |  |
+| `listing_id` | uuid | yes |  |
 
-Constraints: `inventory_sync_log_attempts_check`: CHECK ((attempts > 0)); `inventory_sync_log_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_sync_log_event_key`: UNIQUE (order_event_id); `inventory_sync_log_order_event_id_fkey`: FOREIGN KEY (order_event_id) REFERENCES order_events(id) ON DELETE CASCADE; `inventory_sync_log_pkey`: PRIMARY KEY (id); `inventory_sync_log_status_check`: CHECK ((status = ANY (ARRAY['applied'::text, 'skipped_duplicate'::text, 'failed'::text]))).
+Constraints: `inventory_sync_log_attempts_check`: CHECK ((attempts > 0)); `inventory_sync_log_dealer_id_fkey`: FOREIGN KEY (dealer_id) REFERENCES profiles(id) ON DELETE CASCADE; `inventory_sync_log_event_key`: UNIQUE (order_event_id); `inventory_sync_log_listing_id_fkey`: FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE SET NULL; `inventory_sync_log_order_event_id_fkey`: FOREIGN KEY (order_event_id) REFERENCES order_events(id) ON DELETE CASCADE; `inventory_sync_log_order_id_fkey`: FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE; `inventory_sync_log_order_item_id_fkey`: FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE; `inventory_sync_log_pkey`: PRIMARY KEY (id); `inventory_sync_log_status_check`: CHECK ((status = ANY (ARRAY['applied'::text, 'skipped_duplicate'::text, 'failed'::text]))).
 
 Indexes:
 - `CREATE INDEX inventory_sync_log_dealer_id_idx ON public.inventory_sync_log USING btree (dealer_id, processed_at DESC)`
+- `CREATE INDEX inventory_sync_log_listing_id_idx ON public.inventory_sync_log USING btree (listing_id)`
+- `CREATE INDEX inventory_sync_log_order_id_idx ON public.inventory_sync_log USING btree (order_id)`
+- `CREATE INDEX inventory_sync_log_order_item_id_idx ON public.inventory_sync_log USING btree (order_item_id)`
 - `CREATE UNIQUE INDEX inventory_sync_log_event_key ON public.inventory_sync_log USING btree (order_event_id)`
 - `CREATE UNIQUE INDEX inventory_sync_log_pkey ON public.inventory_sync_log USING btree (id)`
 
@@ -1033,10 +1039,12 @@ Row-level security: **on**. Grants: service_role: select.
 | `type` | text | no |  |
 | `inventory_applied_at` | timestamp with time zone | yes |  |
 | `created_at` | timestamp with time zone | no | now() |
+| `inventory_product_id` | uuid | yes |  |
 
-Constraints: `order_events_item_type_key`: UNIQUE (order_item_id, type); `order_events_listing_id_fkey`: FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE SET NULL; `order_events_order_id_fkey`: FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE; `order_events_order_item_id_fkey`: FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE; `order_events_pkey`: PRIMARY KEY (id); `order_events_quantity_check`: CHECK ((quantity > (0)::numeric)); `order_events_quantity_not_nan`: CHECK ((quantity <> 'NaN'::numeric)); `order_events_seller_id_fkey`: FOREIGN KEY (seller_id) REFERENCES profiles(id) ON DELETE CASCADE; `order_events_type_check`: CHECK ((type = 'dispatched'::text)).
+Constraints: `order_events_inventory_product_id_fkey`: FOREIGN KEY (inventory_product_id) REFERENCES inventory_products(id) ON DELETE SET NULL; `order_events_item_type_key`: UNIQUE (order_item_id, type); `order_events_listing_id_fkey`: FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE SET NULL; `order_events_order_id_fkey`: FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE; `order_events_order_item_id_fkey`: FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE; `order_events_pkey`: PRIMARY KEY (id); `order_events_quantity_check`: CHECK ((quantity > (0)::numeric)); `order_events_quantity_not_nan`: CHECK ((quantity <> 'NaN'::numeric)); `order_events_seller_id_fkey`: FOREIGN KEY (seller_id) REFERENCES profiles(id) ON DELETE CASCADE; `order_events_type_check`: CHECK ((type = 'dispatched'::text)).
 
 Indexes:
+- `CREATE INDEX order_events_inventory_product_id_idx ON public.order_events USING btree (inventory_product_id)`
 - `CREATE INDEX order_events_listing_id_idx ON public.order_events USING btree (listing_id)`
 - `CREATE INDEX order_events_order_id_idx ON public.order_events USING btree (order_id)`
 - `CREATE INDEX order_events_seller_id_idx ON public.order_events USING btree (seller_id)`
@@ -1415,6 +1423,7 @@ Indexes:
 | `inventory_apply_movement(uuid,uuid,uuid,inventory_movement_direction,inventory_movement_source,numeric,text,uuid,uuid,uuid,uuid,uuid)` | uuid | definer | search_path=public, pg_temp |
 | `inventory_caller()` | uuid | definer | search_path=public, pg_temp |
 | `inventory_reconciliation()` | TABLE(product_id uuid, marketplace_sales numeric, local_sales numeric, adjustments numeric, restocks_and_purchases numeric, losses numeric, transfers numeric, other numeric, ledger_total numeric, current_stock numeric, balanced boolean) | invoker | search_path=public, pg_temp |
+| `inventory_sellable(uuid,uuid,uuid)` | numeric | definer | search_path=public, pg_temp |
 | `inventory_write_purchase_lines(uuid,uuid,jsonb)` | void | definer | search_path=pg_catalog, pg_temp |
 | `is_account_approved()` | boolean | definer | search_path=public, pg_temp |
 | `is_admin_aal2()` | boolean | definer | search_path=public, pg_temp |

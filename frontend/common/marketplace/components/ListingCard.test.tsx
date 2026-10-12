@@ -19,6 +19,7 @@ const baseListing: ListingWithRelations = {
   condition: null,
   location: null,
   seller_role: 'dealer',
+  inventory_product_id: null,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
   category: { id: 'c1', name: 'Fertilizers', slug: 'fertilizers' },
@@ -39,7 +40,12 @@ describe('ListingCard', () => {
     ['out_of_stock', 'Out of stock'],
     ['unknown', 'Stock not known'],
   ] as const)('shows the %s stock word (A4)', async (availability, word) => {
-    await render(<ListingCard listing={{ ...baseListing, availability }} onPress={() => {}} />);
+    await render(
+      <ListingCard
+        listing={{ ...baseListing, availability }}
+        onPress={() => {}}
+      />,
+    );
     expect(screen.getByText(word)).toBeTruthy();
   });
 
@@ -57,7 +63,10 @@ describe('ListingCard', () => {
 
   it('renders brand and condition as chips when present', async () => {
     await render(
-      <ListingCard listing={{ ...baseListing, brand: 'Engro', condition: 'New' }} onPress={() => {}} />,
+      <ListingCard
+        listing={{ ...baseListing, brand: 'Engro', condition: 'New' }}
+        onPress={() => {}}
+      />,
     );
     expect(screen.getByText('Engro')).toBeTruthy();
     expect(screen.getByText('New')).toBeTruthy();

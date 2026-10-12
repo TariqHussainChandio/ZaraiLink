@@ -1,6 +1,9 @@
+import asyncio
+import time
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -26,9 +29,9 @@ SELLER_A = "seller-a"
 SELLER_B = "seller-b"
 
 LISTINGS = [
-    {"id": "l-1", "status": "active", "quantity": 100, "price": 50.0, "owner_id": SELLER_A},
-    {"id": "l-2", "status": "active", "quantity": 100, "price": 20.0, "owner_id": SELLER_A},
-    {"id": "l-3", "status": "active", "quantity": 100, "price": 10.0, "owner_id": SELLER_B},
+    {"id": "l-1", "status": "active", "quantity": 100, "price": 50.0, "owner_id": SELLER_A, "title": "Wheat seeds"},
+    {"id": "l-2", "status": "active", "quantity": 100, "price": 20.0, "owner_id": SELLER_A, "title": "Rice"},
+    {"id": "l-3", "status": "active", "quantity": 100, "price": 10.0, "owner_id": SELLER_B, "title": "Maize"},
 ]
 AVAILABILITY = [{"listing_id": l["id"], "available": l["quantity"]} for l in LISTINGS]
 
@@ -91,20 +94,117 @@ async def test_checkout_splits_multi_seller_cart_into_separate_orders():
 async def test_checkout_rejects_inactive_listing():
     inactive_listings = [{**LISTINGS[0], "status": "inactive"}]
     with patch("app.common.orders.service.repo.fetch_listings_for_checkout", return_value=inactive_listings):
-        with patch("app.common.orders.service.repo.get_available_stock", return_value=[]):
-            with pytest.raises(HTTPException) as exc_info:
-                await service.checkout(BUYER, [{"listing_id": "l-1", "quantity": 1}], {})
+        with pytest.raises(HTTPException) as exc_info:
+            await service.checkout(BUYER, [{"listing_id": "l-1", "quantity": 1}], {})
     assert exc_info.value.status_code == 422
+
+
+# --- checkout: the stock check (D6, D7, SRDS §15) ------------------------------------------
+
+LINKED = {
+    "id": "l-9",
+    "status": "active",
+    "quantity": 100,  # the listing's own figure; a linked listing sells from the IMS product instead
+    "price": 3900.0,
+    "owner_id": SELLER_B,
+    "title": "Urea 50kg",
+    "inventory_product_id": "product-1",
+}
+
+
+@contextmanager
+def _checkout_with(listings, stock):
+    """Checkout with these listing rows; `stock` is what the IMS read returns, or the exception it raises."""
+    read = AsyncMock(side_effect=stock) if isinstance(stock, BaseException) else AsyncMock(return_value=stock)
+    with (
+        patch("app.common.orders.service.repo.fetch_listings_for_checkout", AsyncMock(return_value=listings)),
+        patch("app.common.orders.service.repo.get_available_stock", read),
+        patch("app.common.orders.service.repo.insert_order", AsyncMock(return_value={"id": "order-1"})),
+        patch("app.common.orders.service.repo.insert_order_items", AsyncMock()),
+        patch(
+            "app.common.orders.service.repo.fetch_order_by_id",
+            AsyncMock(side_effect=lambda _token, order_id: {"id": order_id}),
+        ),
+    ):
+        yield read
 
 
 @pytest.mark.asyncio
-async def test_checkout_rejects_over_available_stock():
-    low_stock = [{"listing_id": "l-1", "available": 1}]
-    with patch("app.common.orders.service.repo.fetch_listings_for_checkout", return_value=LISTINGS):
-        with patch("app.common.orders.service.repo.get_available_stock", return_value=low_stock):
-            with pytest.raises(HTTPException) as exc_info:
-                await service.checkout(BUYER, [{"listing_id": "l-1", "quantity": 5}], {})
+async def test_an_unlinked_listing_is_checked_against_its_own_quantity_and_never_asks_the_ims():
+    # A farmer's listing has no IMS product: even with the IMS down, its checkout neither waits on nor fails with it.
+    with _checkout_with(LISTINGS, APIError({"message": "lock timeout", "code": "55P03"})) as ims:
+        orders = await service.checkout(BUYER, [{"listing_id": "l-1", "quantity": 100}], {})
+        assert orders == [{"id": "order-1"}]
+        with pytest.raises(HTTPException) as exc_info:
+            await service.checkout(BUYER, [{"listing_id": "l-1", "quantity": 101}], {})
+    ims.assert_not_awaited()
     assert exc_info.value.status_code == 422
+    assert exc_info.value.detail == "Not enough stock for Wheat seeds."
+
+
+@pytest.mark.asyncio
+async def test_a_linked_listing_is_checked_against_the_ims_and_the_refusal_names_no_figure():
+    with (
+        _checkout_with([LINKED], [{"listing_id": "l-9", "available": 3}]) as ims,
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await service.checkout(BUYER, [{"listing_id": "l-9", "quantity": 5}], {})
+    ims.assert_awaited_once_with(["l-9"])  # only the linked listings of the caller's own cart
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.code == "insufficient_stock"
+    # SRDS §15: the buyer learns that it is short, never the dealer's figure (3) or the listing's own (100).
+    assert exc_info.value.detail == "Not enough stock for Urea 50kg."
+    assert not any(ch.isdigit() for ch in exc_info.value.detail.replace("50kg", ""))
+
+
+@pytest.mark.asyncio
+async def test_a_linked_listing_within_its_ims_stock_checks_out():
+    with _checkout_with([LINKED], [{"listing_id": "l-9", "available": 5}]):
+        assert await service.checkout(BUYER, [{"listing_id": "l-9", "quantity": 5}], {}) == [{"id": "order-1"}]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "fault",
+    [
+        APIError({"message": "canceling statement due to statement timeout", "code": "57014"}),
+        httpx.ReadTimeout("timed out"),
+        httpx.ConnectError("connection refused"),
+        TimeoutError(),
+        [{"available": 1}],  # a row without its listing id
+        ValueError("Expecting value"),
+    ],
+    ids=["database-timeout", "client-timeout", "connection-lost", "deadline", "malformed-row", "bad-body"],
+)
+async def test_an_ims_fault_never_breaks_checkout_the_database_decides_at_confirm(fault):
+    # D7, SRDS §53.39: the pre-check is skipped, not failed; check_stock_on_confirm and the dispatch stay the D6 gate.
+    with _checkout_with([LINKED, LISTINGS[0]], fault):
+        orders = await service.checkout(
+            BUYER, [{"listing_id": "l-9", "quantity": 5000}, {"listing_id": "l-1", "quantity": 1}], {}
+        )
+    assert len(orders) == 2
+
+
+@pytest.mark.asyncio
+async def test_a_slow_ims_read_is_abandoned_after_the_deadline():
+    async def never_answers(_ids):
+        await asyncio.sleep(30)
+
+    with (
+        _checkout_with([LINKED], []) as ims,
+        patch("app.common.orders.service.STOCK_READ_TIMEOUT_SECONDS", 0.05),
+    ):
+        ims.side_effect = never_answers
+        started = time.monotonic()
+        orders = await service.checkout(BUYER, [{"listing_id": "l-9", "quantity": 1}], {})
+    assert orders == [{"id": "order-1"}]
+    assert time.monotonic() - started < 5
+
+
+@pytest.mark.asyncio
+async def test_a_programming_error_in_the_ims_read_is_not_swallowed():
+    with _checkout_with([LINKED], RuntimeError("bug")), pytest.raises(RuntimeError):
+        await service.checkout(BUYER, [{"listing_id": "l-9", "quantity": 1}], {})
 
 
 # --- status transitions: server-authoritative current state ------------------------------
@@ -241,14 +341,15 @@ async def test_update_status_allows_non_participant_admin_to_resolve_dispute():
                 with patch("app.common.orders.service.log_admin_action", new_callable=AsyncMock) as mock_audit:
                     await service.update_order_status(ADMIN, "o-1", "refunded")
     mock_update.assert_called_once_with(ADMIN.access_token, "o-1", "refunded")
-    # BR-15: the admin's decision leaves an audit row
+    # BR-15: the admin's decision leaves an audit row, under SRDS §51's one order event with the kind in metadata
     mock_audit.assert_awaited_once_with(
         ADMIN,
-        "resolve_order_dispute",
+        "order_administrative_action",
         "order",
         "o-1",
         previous_state={"status": "disputed"},
         new_state={"status": "refunded"},
+        metadata={"change": "resolve_dispute"},
     )
 
 

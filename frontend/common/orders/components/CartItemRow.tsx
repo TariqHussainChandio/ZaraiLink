@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
@@ -18,7 +19,8 @@ export function CartItemRow({ item, onIncrement, onDecrement, onRemove }: CartIt
   return (
     <View style={styles.row}>
       {item.image ? (
-        <Image source={{ uri: item.image }} style={styles.image} />
+        // Decorative: the title beside it names the item, so TalkBack skips the picture.
+        <Image source={{ uri: item.image }} style={styles.image} accessible={false} importantForAccessibility="no" />
       ) : (
         <View style={styles.image} />
       )}
@@ -39,7 +41,9 @@ export function CartItemRow({ item, onIncrement, onDecrement, onRemove }: CartIt
           >
             <Text style={styles.stepperLabel}>−</Text>
           </TouchableOpacity>
-          <Text style={styles.quantity}>{item.quantity}</Text>
+          <Text style={styles.quantity} accessibilityLabel={`Quantity ${item.quantity}`}>
+            {item.quantity}
+          </Text>
           <TouchableOpacity
             style={styles.stepperButton}
             onPress={onIncrement}
@@ -57,6 +61,7 @@ export function CartItemRow({ item, onIncrement, onDecrement, onRemove }: CartIt
         accessibilityRole="button"
         accessibilityLabel={`Remove ${item.title} from the cart`}
       >
+        <Trash2 color={theme.colors.status.danger.mark} size={theme.size.iconSm} />
         <Text style={styles.remove}>Remove</Text>
       </TouchableOpacity>
     </View>
@@ -118,6 +123,9 @@ function makeStyles({ colors, space, radius, typography, fontWeight, size, borde
     // The whole 48 dp area is the target, not only the word.
     removeButton: {
       minHeight: size.touchMin,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[1],
       justifyContent: 'center',
       paddingHorizontal: space[2],
     },

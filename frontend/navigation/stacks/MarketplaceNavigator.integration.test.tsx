@@ -59,6 +59,7 @@ const listing: ListingWithRelations = {
   id: 'listing-1',
   owner_id: 'seller-1',
   category_id: null,
+  inventory_product_id: null,
   title: 'Premium Wheat Seeds',
   description: 'Certified high-yield wheat seeds.',
   price: 250,

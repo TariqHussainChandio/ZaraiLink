@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useAuthStore } from './authStore';
 
 /**
  * The marketplace filters the buyer has set: client state, so it lives in a store. Categories, crops and listings are
@@ -34,3 +35,10 @@ export const useMarketplaceStore = create<MarketplaceState>(set => ({
   setFilters: filters => set(state => ({ filters: { ...state.filters, ...filters } })),
   resetFilters: () => set({ filters: defaultFilters }),
 }));
+
+/** A search or filter one account typed must not greet the next account on the phone (B3 verifier), as with the cart. */
+export function connectMarketplaceToAuth(): () => void {
+  return useAuthStore.subscribe((state, previous) => {
+    if (state.user?.id !== previous.user?.id) useMarketplaceStore.getState().resetFilters();
+  });
+}

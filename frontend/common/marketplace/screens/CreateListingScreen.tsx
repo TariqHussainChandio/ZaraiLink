@@ -1,8 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ImagePlus, Send } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button } from '../../components';
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Banner, Button, useToast } from '../../components';
 import {
   ListingFormFields,
   listingFormDefaults,
@@ -17,12 +25,18 @@ import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
 
-export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'CreateListing'>) {
+export function CreateListingScreen({
+  navigation,
+}: MarketplaceScreenProps<'CreateListing'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const [images, setImages] = useState<PickedPhoto[]>([]);
   const createListing = useCreateListing();
+  const toast = useToast();
+  // Form problems stay on the screen (and are announced) until fixed; a toast could vanish before it is read.
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     control,
@@ -37,16 +51,20 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
 
   const pickImages = async () => {
     const assets = await pickPhotos({ selectionLimit: 5 });
-    if (assets.length > 0) setImages(assets);
+    if (assets.length > 0) {
+      setImages(assets);
+      setPhotoError(null);
+    }
   };
 
   const onSubmit = async (values: ListingFormValues) => {
     if (!userId) return;
     if (images.length === 0) {
-      Alert.alert('Add a photo', 'Please add at least one image of your produce.');
+      setPhotoError('Add at least one photo of your produce.');
       return;
     }
 
+    setSubmitError(null);
     try {
       await createListing.mutateAsync({
         userId,
@@ -58,28 +76,70 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
           condition: values.condition || null,
         },
       });
+      toast.success('Listing published');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Failed to create listing', errorMessage(error));
+      setSubmitError(errorMessage(error));
     }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <ListingFormFields
+        control={control}
+        errors={errors}
+        setValue={setValue}
+        watch={watch}
+      />
 
       <Text style={styles.label}>Photos</Text>
       <View style={styles.imageRow}>
         {images.map((image, index) => (
-          <Image key={image.uri ?? index} source={{ uri: image.uri }} style={styles.thumbnail} />
+          <Image
+            key={image.uri ?? index}
+            source={{ uri: image.uri }}
+            style={styles.thumbnail}
+            accessibilityRole="image"
+            accessibilityLabel={`Photo ${index + 1}`}
+          />
         ))}
-        <TouchableOpacity style={styles.addImage} onPress={pickImages}>
-          <Text style={styles.addImageLabel}>+ Add</Text>
+        <TouchableOpacity
+          style={styles.addImage}
+          onPress={pickImages}
+          accessibilityRole="button"
+          accessibilityLabel={
+            images.length > 0 ? 'Change photos' : 'Add photos'
+          }
+        >
+          <ImagePlus color={theme.colors.ink2} size={theme.size.iconMd} />
+          <Text style={styles.addImageLabel}>Add</Text>
         </TouchableOpacity>
       </View>
+      {photoError ? (
+        <Text
+          style={styles.fieldError}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+        >
+          {photoError}
+        </Text>
+      ) : null}
+
+      {submitError ? (
+        <View style={styles.submitError}>
+          <Banner tone="danger" title="Listing not published">
+            {submitError}
+          </Banner>
+        </View>
+      ) : null}
 
       <Button
         label="Publish Listing"
+        icon={Send}
         loading={createListing.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
@@ -88,7 +148,14 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
   );
 }
 
-function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
+function makeStyles({
+  colors,
+  space,
+  radius,
+  typography,
+  size,
+  borders,
+}: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -123,6 +190,15 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme)
       borderStyle: 'dashed',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    fieldError: {
+      ...typography.caption,
+      color: colors.status.danger.ink,
+      marginTop: -space[4],
+      marginBottom: space[4],
+    },
+    submitError: {
+      marginBottom: space[3],
     },
     addImageLabel: {
       color: colors.ink2,

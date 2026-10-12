@@ -1,9 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, TextField, LocationPicker, SelectField } from '../../common/components';
+import {
+  Button,
+  LocationPicker,
+  SelectField,
+  TextField,
+  useToast,
+} from '../../common/components';
 import { useCreateFarm } from '../hooks/farmer';
 import { useUnits } from '../../common/reference-data';
 import { useAuthStore } from '../../state/authStore';
@@ -25,18 +32,21 @@ function buildFarmSchema(nameRequiredMessage: string) {
 
 type FarmFormValues = z.infer<ReturnType<typeof buildFarmSchema>>;
 
-export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) {
+export function CreateFarmScreen({
+  navigation,
+}: HomeScreenProps<'CreateFarm'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const { data: units = [] } = useUnits();
   const createFarm = useCreateFarm();
-  const areaUnits = useMemo(() => units.filter(u => u.applies_to === 'area'), [units]);
-
-  const farmSchema = useMemo(
-    () => buildFarmSchema('Enter a farm name'),
-    [],
+  const toast = useToast();
+  const areaUnits = useMemo(
+    () => units.filter(u => u.applies_to === 'area'),
+    [units],
   );
+
+  const farmSchema = useMemo(() => buildFarmSchema('Enter a farm name'), []);
 
   const {
     control,
@@ -69,17 +79,19 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
         province: values.province,
         city: values.city,
       });
+      toast.success('Farm added');
       navigation.goBack();
     } catch (error) {
-      Alert.alert(
-        'Failed to create farm',
-        errorMessage(error),
-      );
+      toast.error(`Farm not added. ${errorMessage(error)}`);
     }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Controller
         control={control}
         name="name"
@@ -147,6 +159,8 @@ export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) 
 
       <Button
         label="Create Farm"
+        icon={Plus}
+        size="lg"
         loading={isSubmitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}

@@ -1,10 +1,26 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { z } from 'zod';
 import { ImagePlus, ScanLine, Send } from 'lucide-react-native';
-import { Banner, Button, ListGroup, ListRow, ListRowIcon, TextField, SelectField, useToast } from '../../components';
+import {
+  Banner,
+  Button,
+  ListGroup,
+  ListRow,
+  ListRowIcon,
+  TextField,
+  SelectField,
+  useToast,
+} from '../../components';
 import { useRequestConsultation } from '../hooks/consultations';
 import { useAuthStore } from '../../../state/authStore';
 import { useFarms } from '../../../farmer';
@@ -22,7 +38,10 @@ const PRIORITY_LABELS: Record<ConsultationPriority, string> = {
   medium: 'Medium',
   high: 'High',
 };
-const PRIORITY_OPTIONS = PRIORITY_IDS.map(id => ({ id, label: PRIORITY_LABELS[id] }));
+const PRIORITY_OPTIONS = PRIORITY_IDS.map(id => ({
+  id,
+  label: PRIORITY_LABELS[id],
+}));
 
 function buildRequestSchema() {
   return z.object({
@@ -36,7 +55,10 @@ function buildRequestSchema() {
 
 type RequestFormValues = z.infer<ReturnType<typeof buildRequestSchema>>;
 
-export function RequestConsultationScreen({ route, navigation }: ConsultationsScreenProps<'RequestConsultation'>) {
+export function RequestConsultationScreen({
+  route,
+  navigation,
+}: ConsultationsScreenProps<'RequestConsultation'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { expertId, prefill } = route.params;
@@ -49,7 +71,13 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   const casePhotoUrl = prefill?.diseaseCaseId ? prefill.imageUrl : null;
   const [images, setImages] = useState<PickedPhoto[]>(
     !prefill?.diseaseCaseId && prefill?.imageUrl
-      ? [{ uri: prefill.imageUrl, fileName: 'disease-photo.jpg', mimeType: 'image/jpeg' }]
+      ? [
+          {
+            uri: prefill.imageUrl,
+            fileName: 'disease-photo.jpg',
+            mimeType: 'image/jpeg',
+          },
+        ]
       : [],
   );
   const requestConsultation = useRequestConsultation(userId);
@@ -107,7 +135,11 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       {prefill?.diseaseCaseId ? (
         // The AI report goes with the request so the expert assesses the same case (SRDS §34); it stays advisory (BR-13).
         <View style={styles.attached}>
@@ -127,7 +159,9 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
                 accessibilityRole="image"
                 accessibilityLabel="Photo from your scan"
               />
-              <Text style={styles.casePhotoCaption}>Photo from your scan (attached with the AI report)</Text>
+              <Text style={styles.casePhotoCaption}>
+                Photo from your scan (attached with the AI report)
+              </Text>
             </View>
           ) : null}
         </View>
@@ -222,7 +256,9 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
           style={({ pressed }) => [styles.addImage, pressed && styles.pressed]}
           onPress={pickImages}
           accessibilityRole="button"
-          accessibilityLabel={images.length > 0 ? 'Change photos' : 'Add photos'}
+          accessibilityLabel={
+            images.length > 0 ? 'Change photos' : 'Add photos'
+          }
           accessibilityHint="Opens your photo gallery, up to 4 photos"
         >
           <ImagePlus size={theme.size.iconMd} color={theme.colors.ink2} />
@@ -249,7 +285,14 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   );
 }
 
-function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
+function makeStyles({
+  colors,
+  space,
+  radius,
+  typography,
+  size,
+  borders,
+}: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,

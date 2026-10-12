@@ -1,6 +1,6 @@
 import { X } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { Modal, type ModalProps, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, type ModalProps, Pressable, StyleSheet, Text, View } from 'react-native';
 import { type Theme, useTheme } from '../../theme';
 
 export interface SheetProps extends Pick<ModalProps, 'visible'> {
@@ -18,21 +18,26 @@ export function Sheet({ visible, onClose, title, children }: SheetProps) {
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <Pressable testID="sheet-backdrop" style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
-      <View style={styles.sheet} accessibilityViewIsModal accessibilityLabel={title}>
-        <View style={styles.grip} />
-        {title ? (
-          <View style={styles.head}>
-            <Text style={styles.title} accessibilityRole="header">
-              {title}
-            </Text>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
-              <X color={theme.colors.ink} size={theme.size.iconMd} />
-            </Pressable>
-          </View>
-        ) : null}
-        {children}
-      </View>
+      {/* The sheet rides up on the keyboard: a picker's search field focuses itself, and without this the keyboard
+          covered the options it was filtering (B3 verification, N1). The modal window is not resized for the keyboard
+          on Android (edge to edge), so padding is used on both platforms. */}
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
+        <Pressable testID="sheet-backdrop" style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
+        <View style={styles.sheet} accessibilityViewIsModal accessibilityLabel={title}>
+          <View style={styles.grip} />
+          {title ? (
+            <View style={styles.head}>
+              <Text style={styles.title} accessibilityRole="header">
+                {title}
+              </Text>
+              <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
+                <X color={theme.colors.ink} size={theme.size.iconMd} />
+              </Pressable>
+            </View>
+          ) : null}
+          {children}
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -40,6 +45,7 @@ export function Sheet({ visible, onClose, title, children }: SheetProps) {
 function makeStyles({ colors, space, size, components, shadows, typography, radius }: Theme) {
   const { sheet } = components;
   return StyleSheet.create({
+    fill: { flex: 1 },
     backdrop: { flex: 1, backgroundColor: colors.scrim },
     sheet: {
       backgroundColor: colors.surface,

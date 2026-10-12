@@ -3,7 +3,9 @@ import { apiFetch } from '../../../services/api/client';
 
 jest.mock('../../../services/api/client');
 jest.mock('../../../services/supabase/client', () => {
-  const { makeSupabaseMock } = jest.requireActual('../../../testUtils/supabaseMock');
+  const { makeSupabaseMock } = jest.requireActual(
+    '../../../testUtils/supabaseMock',
+  );
   return { supabase: makeSupabaseMock() };
 });
 
@@ -28,12 +30,16 @@ import {
 } from './listingsService';
 
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
-const mockedSupabase = supabase as unknown as ReturnType<typeof makeSupabaseMock>;
+const mockedSupabase = supabase as unknown as ReturnType<
+  typeof makeSupabaseMock
+>;
 
 beforeEach(() => {
   jest.clearAllMocks();
   globalThis.fetch = jest.fn(() =>
-    Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) } as never),
+    Promise.resolve({
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+    } as never),
   ) as never;
 });
 
@@ -89,7 +95,9 @@ describe('reads', () => {
   it('fetchListingById fetches a single listing', async () => {
     mockApiFetch.mockResolvedValue({});
     await fetchListingById('listing-1');
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings/listing-1');
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/listings/listing-1',
+    );
   });
 
   it('fetchCategories fetches all categories', async () => {
@@ -107,7 +115,9 @@ describe('reads', () => {
   it('fetchAllListingsForModeration fetches the moderation queue', async () => {
     mockApiFetch.mockResolvedValue([]);
     await fetchAllListingsForModeration();
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings/moderation');
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/listings/moderation',
+    );
   });
 });
 
@@ -115,25 +125,34 @@ describe('categories CRUD', () => {
   it('createCategory POSTs the input as-is', async () => {
     mockApiFetch.mockResolvedValue({});
     await createCategory({ name: 'Seeds', slug: 'seeds', icon: 'sprout' });
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/categories', {
-      method: 'POST',
-      body: { name: 'Seeds', slug: 'seeds', icon: 'sprout' },
-    });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/categories',
+      {
+        method: 'POST',
+        body: { name: 'Seeds', slug: 'seeds', icon: 'sprout' },
+      },
+    );
   });
 
   it('updateCategory PATCHes a partial input', async () => {
     mockApiFetch.mockResolvedValue({});
     await updateCategory('cat-1', { name: 'Renamed' });
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/categories/cat-1', {
-      method: 'PATCH',
-      body: { name: 'Renamed' },
-    });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/categories/cat-1',
+      {
+        method: 'PATCH',
+        body: { name: 'Renamed' },
+      },
+    );
   });
 
   it('deleteCategory DELETEs the category', async () => {
     mockApiFetch.mockResolvedValue(undefined);
     await deleteCategory('cat-1');
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/categories/cat-1', { method: 'DELETE' });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/categories/cat-1',
+      { method: 'DELETE' },
+    );
   });
 });
 
@@ -180,25 +199,71 @@ describe('listings CRUD', () => {
   it('updateListing omits fields the caller did not set', async () => {
     mockApiFetch.mockResolvedValue({});
     await updateListing('listing-1', { price: 120 });
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings/listing-1', {
-      method: 'PATCH',
-      body: { price: 120 },
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/listings/listing-1',
+      {
+        method: 'PATCH',
+        body: { price: 120 },
+      },
+    );
+  });
+
+  it('createListing sends the inventory product link when one is chosen (D8)', async () => {
+    mockApiFetch.mockResolvedValue({});
+    await createListing({ ...listingInput, inventoryProductId: 'product-1' });
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings', {
+      method: 'POST',
+      body: expect.objectContaining({ inventory_product_id: 'product-1' }),
     });
+  });
+
+  it.each([
+    [
+      'moves the link to another product',
+      'product-2',
+      { inventory_product_id: 'product-2' },
+    ],
+    [
+      'clears the link with an explicit null',
+      null,
+      { inventory_product_id: null },
+    ],
+  ])('updateListing %s', async (_name, inventoryProductId, body) => {
+    mockApiFetch.mockResolvedValue({});
+    await updateListing('listing-1', { inventoryProductId });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/listings/listing-1',
+      { method: 'PATCH', body },
+    );
+  });
+
+  it('updateListing leaves the link out when the caller did not set it, so the server keeps it', async () => {
+    mockApiFetch.mockResolvedValue({});
+    await updateListing('listing-1', { title: 'Urea 50kg' });
+    const options = mockApiFetch.mock.calls[0]?.[1];
+    expect(options?.body).toEqual({ title: 'Urea 50kg' });
+    expect(options?.body).not.toHaveProperty('inventory_product_id');
   });
 
   it('deleteListing DELETEs the listing', async () => {
     mockApiFetch.mockResolvedValue(undefined);
     await deleteListing('listing-1');
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings/listing-1', { method: 'DELETE' });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/listings/listing-1',
+      { method: 'DELETE' },
+    );
   });
 
   it('updateListingStatus PATCHes only the status, no actorId', async () => {
     mockApiFetch.mockResolvedValue(undefined);
     await updateListingStatus('listing-1', 'inactive');
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings/listing-1/status', {
-      method: 'PATCH',
-      body: { status: 'inactive' },
-    });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/listings/listing-1/status',
+      {
+        method: 'PATCH',
+        body: { status: 'inactive' },
+      },
+    );
   });
 });
 
@@ -206,7 +271,10 @@ describe('recordListingView', () => {
   it('POSTs a view with no explicit viewerId', async () => {
     mockApiFetch.mockResolvedValue(undefined);
     await recordListingView('listing-1');
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings/listing-1/views', { method: 'POST' });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/listings/listing-1/views',
+      { method: 'POST' },
+    );
   });
 });
 
@@ -220,47 +288,75 @@ describe('fetchListingViewCounts', () => {
   it('POSTs the id list otherwise', async () => {
     mockApiFetch.mockResolvedValue({ 'listing-1': 5 });
     const result = await fetchListingViewCounts(['listing-1']);
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings/view-counts', {
-      method: 'POST',
-      body: { listing_ids: ['listing-1'] },
-    });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/v1/marketplace/listings/view-counts',
+      {
+        method: 'POST',
+        body: { listing_ids: ['listing-1'] },
+      },
+    );
     expect(result).toEqual({ 'listing-1': 5 });
   });
 });
 
 describe('uploadListingImages', () => {
-  const withUri = (uri: string): PickedPhoto => ({ uri, fileName: `${uri}.jpg`, mimeType: 'image/jpeg' });
+  const withUri = (uri: string): PickedPhoto => ({
+    uri,
+    fileName: `${uri}.jpg`,
+    mimeType: 'image/jpeg',
+  });
 
   it('uploads every image with a uri and returns a public URL derived from its own path', async () => {
     mockedSupabase.storage.from.mockReturnValue({
       upload: jest.fn(() => Promise.resolve({ data: {}, error: null })),
-      getPublicUrl: jest.fn((path: string) => ({ data: { publicUrl: `https://example.com/${path}` } })),
+      getPublicUrl: jest.fn((path: string) => ({
+        data: { publicUrl: `https://example.com/${path}` },
+      })),
     } as never);
 
-    const urls = await uploadListingImages('user-1', [withUri('a'), withUri('b')]);
+    const urls = await uploadListingImages('user-1', [
+      withUri('a'),
+      withUri('b'),
+    ]);
 
     expect(urls).toHaveLength(2);
-    urls.forEach(url => expect(url).toMatch(/^https:\/\/example\.com\/user-1\/\d+-\d+\.jpg$/));
+    urls.forEach(url =>
+      expect(url).toMatch(/^https:\/\/example\.com\/user-1\/\d+-\d+\.jpg$/),
+    );
     expect(urls[0]).not.toEqual(urls[1]);
   });
 
   it('skips assets with no uri', async () => {
     mockedSupabase.storage.from.mockReturnValue({
-      upload: jest.fn(() => Promise.resolve({ data: { path: 'mock' }, error: null })),
-      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://example.com/image.jpg' } })),
+      upload: jest.fn(() =>
+        Promise.resolve({ data: { path: 'mock' }, error: null }),
+      ),
+      getPublicUrl: jest.fn(() => ({
+        data: { publicUrl: 'https://example.com/image.jpg' },
+      })),
     } as never);
 
-    const urls = await uploadListingImages('user-1', [{ uri: '' }, withUri('a')]);
+    const urls = await uploadListingImages('user-1', [
+      { uri: '' },
+      withUri('a'),
+    ]);
 
     expect(urls).toEqual(['https://example.com/image.jpg']);
   });
 
   it('throws if any single upload fails', async () => {
     mockedSupabase.storage.from.mockReturnValue({
-      upload: jest.fn(() => Promise.resolve({ data: null, error: new Error('storage quota exceeded') })),
+      upload: jest.fn(() =>
+        Promise.resolve({
+          data: null,
+          error: new Error('storage quota exceeded'),
+        }),
+      ),
       getPublicUrl: jest.fn(),
     } as never);
 
-    await expect(uploadListingImages('user-1', [withUri('a')])).rejects.toThrow('storage quota exceeded');
+    await expect(uploadListingImages('user-1', [withUri('a')])).rejects.toThrow(
+      'storage quota exceeded',
+    );
   });
 });

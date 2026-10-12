@@ -2,10 +2,16 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, Query
 
-from app.auth.dependencies import AuthenticatedUser, require_authenticated_user, require_marketplace_buyer
+from app.auth.dependencies import (
+    AuthenticatedUser,
+    require_admin_aal2,
+    require_authenticated_user,
+    require_marketplace_buyer,
+)
 from app.common import idempotency
 from app.common.orders import service
 from app.common.orders.schemas import (
+    AdminCancelOrderRequest,
     CheckoutRequest,
     Order,
     OrderStatusHistoryEntry,
@@ -15,6 +21,8 @@ from app.common.orders.schemas import (
 from app.common.pagination import Page, paginate
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
+# The admin's order actions (SRDS §14) sit under the admin prefix but stay in this module, which owns the order rules.
+admin_router = APIRouter(prefix="/api/v1/admin/orders", tags=["orders"])
 
 
 @router.post("/checkout", response_model=list[Order])
@@ -66,3 +74,12 @@ async def update_order_status(
     order_id: str, request: UpdateOrderStatusRequest, user: AuthenticatedUser = Depends(require_authenticated_user)
 ) -> None:
     await service.update_order_status(user, order_id, request.to)
+
+
+# An admin cancels an order before dispatch, with a reason (SRDS §14). An admin write, so a second factor is needed, as
+# for every other admin write (admin_mfa_enforcement). No refund is made through the platform (BR-11). Audited (BR-15).
+@admin_router.post("/{order_id}/cancel", response_model=OrderWithItems)
+async def cancel_order_as_admin(
+    order_id: str, request: AdminCancelOrderRequest, user: AuthenticatedUser = Depends(require_admin_aal2)
+) -> dict:
+    return await service.cancel_order_as_admin(user, order_id, request.reason)

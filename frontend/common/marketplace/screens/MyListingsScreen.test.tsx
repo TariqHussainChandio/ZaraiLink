@@ -31,7 +31,9 @@ jest.mock('../services/listingsService', () => ({
 
 const mockFetchListings = fetchListings as jest.Mock;
 
-const listing = (overrides: Partial<ListingWithRelations> = {}): ListingWithRelations => ({
+const listing = (
+  overrides: Partial<ListingWithRelations> = {},
+): ListingWithRelations => ({
   id: 'listing-1',
   owner_id: 'user-1',
   category_id: null,
@@ -47,6 +49,7 @@ const listing = (overrides: Partial<ListingWithRelations> = {}): ListingWithRela
   condition: null,
   location: null,
   seller_role: 'farmer',
+  inventory_product_id: null,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
   category: null,
@@ -61,7 +64,7 @@ beforeEach(() => {
 });
 
 describe('MyListingsScreen', () => {
-  it('loads and renders the current user\'s own listings', async () => {
+  it("loads and renders the current user's own listings", async () => {
     mockFetchListings.mockResolvedValue([listing()]);
     await renderWithQuery(<MyListingsScreen />);
 
@@ -70,7 +73,9 @@ describe('MyListingsScreen', () => {
     // The status reads through the vocabulary: an active listing is "Listed", never the raw value.
     expect(screen.getByText('Listed')).toBeTruthy();
     expect(screen.queryByText('active')).toBeNull();
-    expect(screen.getByLabelText('Wheat seeds, Rs 100 per kg, Listed')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Wheat seeds, Rs 100 per kg, Listed'),
+    ).toBeTruthy();
   });
 
   it('shows an empty state when there are no listings', async () => {

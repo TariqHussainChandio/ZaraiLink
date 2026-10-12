@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, StringConstraints
 
 OrderStatus = Literal[
     "pending",
@@ -65,6 +65,9 @@ class Order(BaseModel):
     total: float
     created_at: str
     updated_at: str
+    # Why an admin cancelled the order or resolved its dispute (SRDS §14); null for every participant's move. The
+    # platform holds no money (BR-11), so a cancellation moves none: any refund is settled between buyer and seller.
+    admin_action_reason: str | None = None
 
 
 class OrderWithItems(Order):
@@ -80,3 +83,8 @@ class OrderStatusHistoryEntry(BaseModel):
     to_status: OrderStatus
     changed_by: str | None
     created_at: str
+
+
+class AdminCancelOrderRequest(BaseModel):
+    # guard_orders_update refuses an admin cancellation without a reason (23514); trimmed and required here too.
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]

@@ -35,12 +35,17 @@ export function DiseaseUploadScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title} accessibilityRole="header">
         Identify a Crop Disease
       </Text>
       <Text style={styles.subtitle}>
-        Take a clear photo of the sick leaf. The app gives a best guess, not a sure answer. Ask an expert before you spray.
+        Take a clear photo of the sick leaf. The app gives a best guess, not a
+        sure answer. Ask an expert before you spray.
       </Text>
 
       <SelectField
@@ -57,9 +62,16 @@ export function DiseaseUploadScreen() {
           accessibilityRole="button"
           accessibilityLabel="Your leaf photo"
           accessibilityHint="Opens your photos to choose a different one"
-          style={({ pressed }) => [styles.photoTarget, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.photoTarget,
+            pressed && styles.pressed,
+          ]}
         >
-          <Image source={{ uri: image.uri }} style={styles.preview} accessibilityIgnoresInvertColors />
+          <Image
+            source={{ uri: image.uri }}
+            style={styles.preview}
+            accessibilityIgnoresInvertColors
+          />
         </Pressable>
       ) : (
         <Pressable
@@ -74,12 +86,25 @@ export function DiseaseUploadScreen() {
         </Pressable>
       )}
 
-      <Button label="Analyze" icon={ScanSearch} onPress={onAnalyze} disabled={!image?.uri} style={styles.submit} />
+      <Button
+        label="Analyze"
+        icon={ScanSearch}
+        onPress={onAnalyze}
+        disabled={!image?.uri}
+        style={styles.submit}
+      />
     </ScrollView>
   );
 }
 
-function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
+function makeStyles({
+  colors,
+  space,
+  radius,
+  typography,
+  size,
+  borders,
+}: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,

@@ -1,10 +1,13 @@
-"""A4 and B0 on the real stack (20261019080000_order_dispatch.sql, 20261019090000_inventory_boundary.sql).
+"""A4, B0 and B3 on the real stack (20261019080000_order_dispatch.sql, 20261019090000_inventory_boundary.sql,
+20261022090000_inventory_sync.sql).
 
 Through the real API and database: stock leaves the seller when the order is dispatched, never at confirm (D5); a known
-shortage refuses the dispatch and changes nothing (D6); every dispatched line writes exactly one outbox event, already
-applied while the legacy inventory is the stock (D7, SRDS §21); a farmer's listing loses its own quantity and is sold at
-0; buyers see a stock word, never figures; experts and the admin cannot check out (D9); and a pending dealer or the
-admin reaches no inventory data (B0, SRDS §15-§16). Two real database sessions race two dispatches for the same stock.
+shortage refuses the dispatch and changes nothing (D6); every dispatched line writes exactly one outbox event, applied
+to the dealer's IMS stock in the same transaction (D7, SRDS §21); a farmer's listing loses its own quantity and is sold
+at 0; buyers see a stock word, never figures; experts and the admin cannot check out (D9); and a pending dealer or the
+admin reaches no inventory data in the IMS tables (B0, SRDS §15-§16). Two real database sessions race two dispatches
+for the same stock. The dealer's stock is set up through the legacy /api/v1/dealer/inventory route, which B3 serves from
+the IMS tables (a product linked to the listing, its stock at the default location).
 """
 
 from __future__ import annotations
@@ -13,6 +16,7 @@ import json
 import os
 import subprocess
 import time
+import uuid
 
 import httpx
 from conftest import _local_db_container
@@ -192,25 +196,97 @@ def _rest_select(table: str, token: str, query: str) -> list:
     return response.json()
 
 
-def test_a_pending_dealer_and_the_admin_reach_no_inventory_data(world, api_client, make_applicant):
-    """B0: through both doors, the API and PostgREST, with the owner's own reads as the allowed path."""
-    pending_id, _, pending_token = make_applicant("dealer")
-    _sql(f"insert into public.inventory (dealer_id, stock_quantity) values ('{pending_id}', 3)")
+# Every IMS table a dealer's data lives in (20261021080000_inventory_data_model.sql); B3 dropped the legacy inventory,
+# dealer_stores, suppliers and inventory_transactions tables these checks used to read.
+IMS_TABLES = (
+    "inventory_products",
+    "inventory_stock",
+    "inventory_locations",
+    "inventory_movements",
+    "inventory_suppliers",
+    "inventory_purchases",
+    "inventory_sync_log",
+)
 
-    for path in ("/api/v1/dealer/inventory", "/api/v1/dealer/stores", "/api/v1/dealer/suppliers"):
+
+def _seed_pending_inventory(dealer_id: str) -> None:
+    """IMS rows of a pending dealer's, written as the database owner: through the API they could never have any (every
+    write route refuses them), and that is the point. Stock and the ledger come from inventory_apply_movement, the only
+    writer of both. A sync log row needs a dispatched order, which a pending dealer cannot have."""
+    uuid.UUID(dealer_id)  # interpolated into SQL below
+    location, product = str(uuid.uuid4()), str(uuid.uuid4())
+    _sql(
+        f"insert into public.inventory_locations (id, dealer_id, name, is_default) "
+        f"values ('{location}', '{dealer_id}', 'Pending shop', true); "
+        f"insert into public.inventory_products (id, dealer_id, sku, name) "
+        f"values ('{product}', '{dealer_id}', 'PEND-1', 'Pending urea'); "
+        f"insert into public.inventory_suppliers (dealer_id, name) values ('{dealer_id}', 'Pending depot'); "
+        f"insert into public.inventory_purchases (dealer_id, reference) values ('{dealer_id}', 'PO-PENDING'); "
+        f"select public.inventory_apply_movement('{dealer_id}', '{product}', '{location}', 'in', 'OTHER', 3, "
+        "'B0 proof', null)"
+    )
+
+
+def _owner_count(table: str, dealer_id: str) -> int:
+    return int(_sql(f"select count(*) from public.{table} where dealer_id = '{dealer_id}'"))
+
+
+def test_a_pending_dealer_and_the_admin_reach_no_inventory_data(world, api_client, make_applicant):
+    """B0 on the IMS tables: through both doors, the API and PostgREST, with the approved owner's own reads as the
+    allowed path. Each refused read is checked against rows that do exist (counted as the database owner), so an empty
+    answer means refused, not merely empty."""
+    pending_id, _, pending_token = make_applicant("dealer")
+    _seed_pending_inventory(pending_id)
+    for table in IMS_TABLES[:-1]:
+        assert _owner_count(table, pending_id) > 0, table
+
+    # The API: every inventory read and a write refuse the pending dealer for who they are, on the IMS routes and on
+    # the legacy dealer routes that B3 repointed at the IMS tables.
+    for path in (
+        "/api/v1/inventory/products",
+        "/api/v1/inventory/stock",
+        "/api/v1/inventory/locations",
+        "/api/v1/inventory/movements",
+        "/api/v1/inventory/suppliers",
+        "/api/v1/inventory/purchases",
+        "/api/v1/inventory/sync/log",
+        "/api/v1/dealer/inventory",
+        "/api/v1/dealer/stores",
+        "/api/v1/dealer/suppliers",
+    ):
         refused = api_client("GET", path, pending_token)
         assert refused.status_code == 403, (path, refused.text)
-        assert refused.json()["code"] == "account_not_approved"
-    added = api_client("POST", "/api/v1/dealer/inventory", pending_token, json={"stock_quantity": 1, "unit": "bag"})
+        assert refused.json()["code"] == "account_not_approved", (path, refused.text)
+    added = api_client("POST", "/api/v1/inventory/products", pending_token, json={"sku": "PEND-2", "name": "More urea"})
     assert added.status_code == 403, added.text
+    assert _owner_count("inventory_products", pending_id) == 1
 
-    # PostgREST: the pending dealer does not read even their own row; the admin reads none of the dealer's
-    assert _rest_select("inventory", pending_token, f"dealer_id=eq.{pending_id}") == []
-    for table in ("inventory", "dealer_stores", "suppliers"):
+    # PostgREST: the pending dealer does not read even their own rows
+    for table in IMS_TABLES:
+        assert _rest_select(table, pending_token, f"dealer_id=eq.{pending_id}") == [], table
+
+    # The admin reads none of the approved dealer's rows, the sync log included. One dispatch of a linked listing makes
+    # sure the dealer has a row in every table, whichever tests ran before this one.
+    listing_id = _listing(api_client, world, "Dispatch B0 proof", quantity=1, stock=2)
+    order_id = _buy(api_client, world.buyer, listing_id, 1)
+    assert (
+        _move(api_client, world.dealer, order_id, "confirmed", "processing", "ready", "dispatched").status_code == 204
+    )
+    for table in IMS_TABLES:
+        if table not in ("inventory_suppliers", "inventory_purchases"):  # world's dealer keeps neither
+            assert _owner_count(table, world.dealer.id) > 0, table
         assert _rest_select(table, world.admin.token, f"dealer_id=eq.{world.dealer.id}") == [], table
-    assert _rest_select("inventory_transactions", world.admin.token, "select=id") == []
-    # the approved owner does read theirs
-    assert _rest_select("inventory", world.dealer.token, f"id=eq.{world.dealer_inventory_id}") != []
+        # nor anyone's: the pending dealer's supplier and purchase rows exist, so this covers those two tables too
+        assert _rest_select(table, world.admin.token, "select=dealer_id&limit=1") == [], table
+
+    # the approved owner does read theirs, through both doors
+    assert _rest_select("inventory_products", world.dealer.token, f"id=eq.{world.dealer_inventory_id}") != []
+    assert _rest_select("inventory_stock", world.dealer.token, f"product_id=eq.{world.dealer_inventory_id}") != []
+    assert _rest_select("inventory_sync_log", world.dealer.token, f"dealer_id=eq.{world.dealer.id}") != []
+    own = api_client("GET", "/api/v1/inventory/products", world.dealer.token)
+    assert own.status_code == 200, own.text
+    assert world.dealer_inventory_id in [row["id"] for row in own.json()]
+
     # and no client reads the outbox
     outbox = httpx.get(
         f"{REST}/order_events?select=id",

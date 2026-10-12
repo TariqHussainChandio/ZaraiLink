@@ -2,12 +2,19 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ListingDetailScreen } from './ListingDetailScreen';
-import { fetchListingById, recordListingView } from '../services/listingsService';
+import {
+  fetchListingById,
+  recordListingView,
+} from '../services/listingsService';
 import { findOrCreateConversation } from '../../messaging/services/messagingService';
 import { fetchReviewsForListing } from '../../reviews/services/reviewsService';
 import { useAuthStore } from '../../../state/authStore';
 import { useCartStore } from '../../../state/cartStore';
-import { APP_TABS, MARKETPLACE_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
+import {
+  APP_TABS,
+  MARKETPLACE_ROUTES,
+  MESSAGING_ROUTES,
+} from '../../constants/routes';
 import type { ListingWithRelations } from '../types/marketplace';
 import type { ReviewWithBuyer } from '../../reviews/types/reviews';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
@@ -40,7 +47,9 @@ const mockRecordListingView = recordListingView as jest.Mock;
 const mockFindOrCreateConversation = findOrCreateConversation as jest.Mock;
 const mockFetchReviewsForListing = fetchReviewsForListing as jest.Mock;
 
-const listing = (overrides: Partial<ListingWithRelations> = {}): ListingWithRelations => ({
+const listing = (
+  overrides: Partial<ListingWithRelations> = {},
+): ListingWithRelations => ({
   id: 'listing-1',
   owner_id: 'seller-1',
   category_id: 'cat-1',
@@ -114,7 +123,9 @@ describe('ListingDetailScreen', () => {
 
   it('names a seller whose name is empty as unknown', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
-    mockFetchListingById.mockResolvedValue(listing({ owner: { id: 'seller-1', full_name: '', avatar_url: null } }));
+    mockFetchListingById.mockResolvedValue(
+      listing({ owner: { id: 'seller-1', full_name: '', avatar_url: null } }),
+    );
     mockFetchReviewsForListing.mockResolvedValue([]);
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
     expect(await screen.findByText('Unknown seller')).toBeTruthy();
@@ -150,9 +161,12 @@ describe('ListingDetailScreen', () => {
     await renderWithQuery(<ListingDetailScreen {...props} />);
     await fireEvent.press(await screen.findByText('Edit Listing'));
 
-    expect(props.navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.EditListing, {
-      listingId: 'listing-1',
-    });
+    expect(props.navigation.navigate).toHaveBeenCalledWith(
+      MARKETPLACE_ROUTES.EditListing,
+      {
+        listingId: 'listing-1',
+      },
+    );
     expect(screen.queryByText('Add to Cart')).toBeNull();
     // An owner cannot cold-message people from their own listing (A5); they answer in the asker's thread.
     expect(screen.queryByText('Message Seller')).toBeNull();
@@ -160,7 +174,9 @@ describe('ListingDetailScreen', () => {
 
   it('shows the stock word, never the listing quantity as stock (A4, SRDS §15)', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
-    mockFetchListingById.mockResolvedValue(listing({ availability: 'low_stock' }));
+    mockFetchListingById.mockResolvedValue(
+      listing({ availability: 'low_stock' }),
+    );
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
 
@@ -172,7 +188,9 @@ describe('ListingDetailScreen', () => {
 
   it('offers no Add to Cart for an out-of-stock listing, but still lets the buyer message the seller', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
-    mockFetchListingById.mockResolvedValue(listing({ availability: 'out_of_stock' }));
+    mockFetchListingById.mockResolvedValue(
+      listing({ availability: 'out_of_stock' }),
+    );
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
 
@@ -189,7 +207,11 @@ describe('ListingDetailScreen', () => {
     await fireEvent.press(await screen.findByText('Add to Cart'));
 
     expect(useCartStore.getState().items).toEqual([
-      expect.objectContaining({ listingId: 'listing-1', sellerId: 'seller-1', quantity: 1 }),
+      expect.objectContaining({
+        listingId: 'listing-1',
+        sellerId: 'seller-1',
+        quantity: 1,
+      }),
     ]);
     expect(await screen.findByText('Added to cart')).toBeTruthy();
   });
@@ -197,12 +219,16 @@ describe('ListingDetailScreen', () => {
   it('shows the refusal and stays put when the conversation cannot be opened', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());
-    mockFindOrCreateConversation.mockRejectedValue(new Error('Your account cannot send messages right now.'));
+    mockFindOrCreateConversation.mockRejectedValue(
+      new Error('Your account cannot send messages right now.'),
+    );
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
     await fireEvent.press(await screen.findByText('Message Seller'));
 
-    expect(await screen.findByText('Your account cannot send messages right now.')).toBeTruthy();
+    expect(
+      await screen.findByText('Your account cannot send messages right now.'),
+    ).toBeTruthy();
     expect(mockTabNavigate).not.toHaveBeenCalled();
   });
 
@@ -214,11 +240,17 @@ describe('ListingDetailScreen', () => {
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
     await fireEvent.press(await screen.findByText('Message Seller'));
 
-    expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1', { type: 'listing', id: 'listing-1' });
+    expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1', {
+      type: 'listing',
+      id: 'listing-1',
+    });
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
       screen: MESSAGING_ROUTES.Chat,
       initial: false,
-      params: { conversationId: 'conversation-1', otherUserName: 'Green Farms' },
+      params: {
+        conversationId: 'conversation-1',
+        otherUserName: 'Green Farms',
+      },
     });
   });
 });

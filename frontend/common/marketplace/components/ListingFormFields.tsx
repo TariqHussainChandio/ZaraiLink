@@ -1,9 +1,20 @@
 import React, { useMemo } from 'react';
-import { Controller, type Control, type FieldErrors, type UseFormSetValue, type UseFormWatch } from 'react-hook-form';
+import {
+  Controller,
+  type Control,
+  type FieldErrors,
+  type UseFormSetValue,
+  type UseFormWatch,
+} from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Chip, LocationPicker, TextField } from '../../components';
-import { useCategories, useCrops } from '../hooks/marketplace';
+import { Chip, LocationPicker, SelectField, TextField } from '../../components';
+import {
+  useCategories,
+  useCrops,
+  useLinkableInventoryProducts,
+} from '../hooks/marketplace';
+import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 
 export const listingSchema = z.object({
@@ -19,6 +30,8 @@ export const listingSchema = z.object({
   country: z.string().nullable(),
   province: z.string().nullable(),
   city: z.string().nullable(),
+  /** D8: an approved dealer's linked inventory product; null when unlinked (and always for everyone else). */
+  inventoryProductId: z.string().nullable(),
 });
 
 // z.coerce.number() has a different input type (unknown, pre-coercion) than output type
@@ -41,7 +54,11 @@ export const listingFormDefaults: ListingFormInput = {
   country: null,
   province: null,
   city: null,
+  inventoryProductId: null,
 };
+
+/** The picker's "no product" choice; SelectField needs a string id for it. */
+const NO_PRODUCT = 'none';
 
 export interface ListingFormFieldsProps {
   control: Control<ListingFormInput>;
@@ -53,11 +70,35 @@ export interface ListingFormFieldsProps {
 /** The data-entry fields shared by CreateListingScreen and EditListingScreen. Photos are
  * handled by each screen separately since their image state (single list vs. existing +
  * newly-picked) differs. */
-export function ListingFormFields({ control, errors, setValue, watch }: ListingFormFieldsProps) {
+export function ListingFormFields({
+  control,
+  errors,
+  setValue,
+  watch,
+}: ListingFormFieldsProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { data: categories = [] } = useCategories();
   const { data: crops = [] } = useCrops();
+  // Only an approved dealer has an inventory to link (BR-03/04, D8); the API refuses anyone else, so nobody else asks.
+  const canLinkProduct = useAuthStore(
+    state =>
+      state.profile?.role === 'dealer' &&
+      state.profile.account_status === 'approved',
+  );
+  const products = useLinkableInventoryProducts(canLinkProduct);
+  const productOptions = useMemo(
+    () => [
+      { id: NO_PRODUCT, label: 'None' },
+      ...(products.data ?? [])
+        .filter(product => product.is_active)
+        .map(product => ({
+          id: product.id,
+          label: `${product.name} · ${product.sku}`,
+        })),
+    ],
+    [products.data],
+  );
 
   const country = watch('country');
   const province = watch('province');
@@ -106,7 +147,9 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
                 key={category.id}
                 label={category.name}
                 selected={value === category.id}
-                onPress={() => onChange(value === category.id ? null : category.id)}
+                onPress={() =>
+                  onChange(value === category.id ? null : category.id)
+                }
               />
             ))}
           </View>
@@ -219,6 +262,38 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         </>
       ) : null}
 
+      {canLinkProduct ? (
+        <Controller
+          control={control}
+          name="inventoryProductId"
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.linkedProduct}>
+              <SelectField
+                label="Linked inventory product (optional)"
+                // Shown when the linked product is not among the choices: inactive, or the list did not load.
+                placeholder={
+                  products.isError
+                    ? 'Linked product'
+                    : 'A product no longer active'
+                }
+                value={value ?? NO_PRODUCT}
+                options={productOptions}
+                onSelect={id => onChange(id === NO_PRODUCT ? null : id)}
+                loading={products.isPending}
+                error={
+                  products.isError
+                    ? 'Your inventory products could not be loaded.'
+                    : undefined
+                }
+              />
+              <Text style={styles.helper}>
+                Stock for this listing then comes from your inventory.
+              </Text>
+            </View>
+          )}
+        />
+      ) : null}
+
       <Text style={styles.label}>Location (optional)</Text>
       <LocationPicker
         country={country}
@@ -250,6 +325,13 @@ function makeStyles({ colors, space, typography }: Theme) {
     },
     rowItem: {
       flex: 1,
+    },
+    linkedProduct: {
+      marginBottom: space[3],
+    },
+    helper: {
+      ...typography.caption,
+      color: colors.ink2,
     },
   });
 }

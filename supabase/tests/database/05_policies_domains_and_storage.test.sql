@@ -31,43 +31,45 @@ select tests.expect(tests.fx('F'), 'update public.farmer_profiles set updated_at
 select tests.expect(tests.fx('F2'), 'update public.farmer_profiles set updated_at = now() where id = ' || tests.l('F'), 'n:0', 'farmer_profiles: another farmer cannot');
 select tests.expect(tests.fx('F2'), 'delete from public.farmer_profiles where id = ' || tests.l('F'), 'err:42501', 'farmer_profiles: nobody deletes through the API (no delete grant)');
 
--- dealer stores, suppliers, inventory ------------------------------------------------------------------
-select tests.expect(tests.fx('D'), 'select id from public.dealer_stores where id = ' || tests.l('DS1'), 'rows:1', 'dealer_stores: the dealer reads their store');
-select tests.expect(tests.fx('D2'), 'select id from public.dealer_stores where id = ' || tests.l('DS1'), 'rows:0', 'dealer_stores: another dealer does not');
-select tests.expect(tests.fx('A'), 'select id from public.dealer_stores where id = ' || tests.l('DS1'), 'rows:0', 'dealer_stores: an admin reads nothing (B0, SRDS §15)');
-select tests.expect(tests.fx('A'), 'insert into public.dealer_stores (dealer_id, name) values (' || tests.l('D') || $$, 'Admin store')$$, 'err:42501', 'dealer_stores: an admin cannot write into a dealer store (BR-03/04: dealer-only)');
-select tests.expect(tests.fx('D'), 'insert into public.dealer_stores (dealer_id, name) values (' || tests.l('D') || $$, 'Second store')$$, 'n:1', 'dealer_stores: the dealer adds one');
-select tests.expect(tests.fx('D2'), 'insert into public.dealer_stores (dealer_id, name) values (' || tests.l('D') || $$, 'Forged')$$, 'err:42501', 'dealer_stores: cannot add one for another dealer');
-select tests.expect(tests.fx('D'), $$update public.dealer_stores set name = 'Renamed' where id = $$ || tests.l('DS1'), 'n:1', 'dealer_stores: the dealer updates');
-select tests.expect(tests.fx('D2'), $$update public.dealer_stores set name = 'Hijack' where id = $$ || tests.l('DS1'), 'n:0', 'dealer_stores: another dealer cannot');
-select tests.expect(tests.fx('A'), $$update public.dealer_stores set name = 'Admin edit' where id = $$ || tests.l('DS1'), 'n:0', 'dealer_stores: an admin cannot');
-select tests.expect(tests.fx('D2'), 'delete from public.dealer_stores where id = ' || tests.l('DS1'), 'n:0', 'dealer_stores: another dealer cannot delete');
-select tests.expect(tests.fx('D'), 'delete from public.dealer_stores where id = ' || tests.l('DS1'), 'n:1', 'dealer_stores: the dealer deletes');
-select tests.expect(tests.fx('D'), 'select id from public.suppliers where id = ' || tests.l('SUP1'), 'rows:1', 'suppliers: the dealer reads them');
-select tests.expect(tests.fx('D2'), 'select id from public.suppliers where id = ' || tests.l('SUP1'), 'rows:0', 'suppliers: another dealer does not');
-select tests.expect(tests.fx('A'), 'select id from public.suppliers where id = ' || tests.l('SUP1'), 'rows:0', 'suppliers: an admin reads nothing (B0)');
-select tests.expect(tests.fx('D'), 'insert into public.suppliers (dealer_id, name) values (' || tests.l('D') || $$, 'Second supplier')$$, 'n:1', 'suppliers: the dealer adds one');
-select tests.expect(tests.fx('D2'), 'insert into public.suppliers (dealer_id, name) values (' || tests.l('D') || $$, 'Forged')$$, 'err:42501', 'suppliers: another dealer cannot');
-select tests.expect(tests.fx('D'), $$update public.suppliers set name = 'Renamed' where id = $$ || tests.l('SUP1'), 'n:1', 'suppliers: the dealer updates');
-select tests.expect(tests.fx('D2'), $$update public.suppliers set name = 'Hijack' where id = $$ || tests.l('SUP1'), 'n:0', 'suppliers: another dealer cannot');
-select tests.expect(tests.fx('D2'), 'delete from public.suppliers where id = ' || tests.l('SUP1'), 'n:0', 'suppliers: another dealer cannot delete');
-select tests.expect(tests.fx('D'), 'delete from public.suppliers where id = ' || tests.l('SUP1'), 'n:1', 'suppliers: the dealer deletes');
-select tests.expect(tests.fx('D'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:1', 'inventory: the dealer reads theirs');
-select tests.expect(tests.fx('D2'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:0', 'inventory: another dealer does not');
-select tests.expect(tests.fx('F'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:0', 'inventory: a farmer does not (BR-03/04)');
-select tests.expect(tests.fx('A'), 'select id from public.inventory where id = ' || tests.l('INV1'), 'rows:0', 'inventory: an admin reads nothing (B0, SRDS §15)');
-select tests.expect(tests.fx('D'), 'insert into public.inventory (dealer_id) values (' || tests.l('D') || ')', 'n:1', 'inventory: the dealer adds a row');
-select tests.expect(tests.fx('D2'), 'insert into public.inventory (dealer_id) values (' || tests.l('D') || ')', 'err:42501', 'inventory: another dealer cannot');
-select tests.expect(tests.fx('A'), 'insert into public.inventory (dealer_id) values (' || tests.l('D') || ')', 'err:42501', 'inventory: an admin cannot write');
-select tests.expect(tests.fx('D'), 'update public.inventory set updated_at = now() where id = ' || tests.l('INV1'), 'n:1', 'inventory: the dealer updates');
-select tests.expect(tests.fx('D2'), 'update public.inventory set updated_at = now() where id = ' || tests.l('INV1'), 'n:0', 'inventory: another dealer cannot');
-select tests.expect(tests.fx('D2'), 'delete from public.inventory where id = ' || tests.l('INV1'), 'n:0', 'inventory: another dealer cannot delete');
-select tests.expect(tests.fx('D'), 'select id from public.inventory_transactions where id = ' || tests.l('IT1'), 'rows:1', 'inventory_transactions: the dealer reads them');
-select tests.expect(tests.fx('D2'), 'select id from public.inventory_transactions where id = ' || tests.l('IT1'), 'rows:0', 'inventory_transactions: another dealer does not');
-select tests.expect(tests.fx('A'), 'select id from public.inventory_transactions where id = ' || tests.l('IT1'), 'rows:0', 'inventory_transactions: an admin reads nothing (B0)');
-select tests.expect(tests.fx('D'), 'insert into public.inventory_transactions (inventory_id, type, quantity) values (' || tests.l('INV1') || $$, 'addition', 1)$$, 'n:1', 'inventory_transactions: the dealer records one');
-select tests.expect(tests.fx('D2'), 'insert into public.inventory_transactions (inventory_id, type, quantity) values (' || tests.l('INV1') || $$, 'addition', 1)$$, 'err:42501', 'inventory_transactions: another dealer cannot');
-select tests.expect(tests.fx('A'), 'insert into public.inventory_transactions (inventory_id, type, quantity) values (' || tests.l('INV1') || $$, 'addition', 1)$$, 'err:42501', 'inventory_transactions: an admin cannot');
+-- dealer locations, suppliers, products, ledger (B3 dropped dealer_stores, suppliers, inventory and
+-- inventory_transactions; the same cases run on the B1 tables that replaced them) -------------------------------
+select tests.expect(tests.fx('D'), 'select id from public.inventory_locations where id = ' || tests.l('DS1'), 'rows:1', 'inventory_locations: the dealer reads their location');
+select tests.expect(tests.fx('D2'), 'select id from public.inventory_locations where id = ' || tests.l('DS1'), 'rows:0', 'inventory_locations: another dealer does not');
+select tests.expect(tests.fx('A'), 'select id from public.inventory_locations where id = ' || tests.l('DS1'), 'rows:0', 'inventory_locations: an admin reads nothing (B0, SRDS §15)');
+select tests.expect(tests.fx('A'), 'insert into public.inventory_locations (dealer_id, name) values (' || tests.l('D') || $$, 'Admin store')$$, 'err:42501', 'inventory_locations: an admin cannot write into a dealer''s locations (BR-03/04: dealer-only)');
+select tests.expect(tests.fx('D'), 'insert into public.inventory_locations (dealer_id, name) values (' || tests.l('D') || $$, 'Second store')$$, 'n:1', 'inventory_locations: the dealer adds one');
+select tests.expect(tests.fx('D2'), 'insert into public.inventory_locations (dealer_id, name) values (' || tests.l('D') || $$, 'Forged')$$, 'err:42501', 'inventory_locations: cannot add one for another dealer');
+select tests.expect(tests.fx('D'), $$update public.inventory_locations set name = 'Renamed' where id = $$ || tests.l('DS1'), 'n:1', 'inventory_locations: the dealer updates');
+select tests.expect(tests.fx('D2'), $$update public.inventory_locations set name = 'Hijack' where id = $$ || tests.l('DS1'), 'n:0', 'inventory_locations: another dealer cannot');
+select tests.expect(tests.fx('A'), $$update public.inventory_locations set name = 'Admin edit' where id = $$ || tests.l('DS1'), 'n:0', 'inventory_locations: an admin cannot');
+select tests.expect(tests.fx('D2'), $$delete from public.inventory_locations where dealer_id = $$ || tests.l('D') || $$ and name = 'Second store'$$, 'n:0', 'inventory_locations: another dealer cannot delete');
+select tests.expect(tests.fx('D'), $$delete from public.inventory_locations where dealer_id = $$ || tests.l('D') || $$ and name = 'Second store'$$, 'n:1', 'inventory_locations: the dealer deletes one with no stock (DS1 holds stock, which the ledger keeps)');
+select tests.expect(tests.fx('D'), 'select id from public.inventory_suppliers where id = ' || tests.l('SUP1'), 'rows:1', 'inventory_suppliers: the dealer reads them');
+select tests.expect(tests.fx('D2'), 'select id from public.inventory_suppliers where id = ' || tests.l('SUP1'), 'rows:0', 'inventory_suppliers: another dealer does not');
+select tests.expect(tests.fx('A'), 'select id from public.inventory_suppliers where id = ' || tests.l('SUP1'), 'rows:0', 'inventory_suppliers: an admin reads nothing (B0)');
+select tests.expect(tests.fx('D'), 'insert into public.inventory_suppliers (dealer_id, name) values (' || tests.l('D') || $$, 'Second supplier')$$, 'n:1', 'inventory_suppliers: the dealer adds one');
+select tests.expect(tests.fx('D2'), 'insert into public.inventory_suppliers (dealer_id, name) values (' || tests.l('D') || $$, 'Forged')$$, 'err:42501', 'inventory_suppliers: another dealer cannot');
+select tests.expect(tests.fx('D'), $$update public.inventory_suppliers set name = 'Renamed' where id = $$ || tests.l('SUP1'), 'n:1', 'inventory_suppliers: the dealer updates');
+select tests.expect(tests.fx('D2'), $$update public.inventory_suppliers set name = 'Hijack' where id = $$ || tests.l('SUP1'), 'n:0', 'inventory_suppliers: another dealer cannot');
+select tests.expect(tests.fx('D2'), 'delete from public.inventory_suppliers where id = ' || tests.l('SUP1'), 'n:0', 'inventory_suppliers: another dealer cannot delete');
+select tests.expect(tests.fx('D'), 'delete from public.inventory_suppliers where id = ' || tests.l('SUP1'), 'n:1', 'inventory_suppliers: the dealer deletes');
+select tests.expect(tests.fx('D'), 'select id from public.inventory_products where id = ' || tests.l('INV1'), 'rows:1', 'inventory_products: the dealer reads theirs');
+select tests.expect(tests.fx('D2'), 'select id from public.inventory_products where id = ' || tests.l('INV1'), 'rows:0', 'inventory_products: another dealer does not');
+select tests.expect(tests.fx('F'), 'select id from public.inventory_products where id = ' || tests.l('INV1'), 'rows:0', 'inventory_products: a farmer does not (BR-03/04)');
+select tests.expect(tests.fx('A'), 'select id from public.inventory_products where id = ' || tests.l('INV1'), 'rows:0', 'inventory_products: an admin reads nothing (B0, SRDS §15)');
+select tests.expect(tests.fx('D'), 'insert into public.inventory_products (dealer_id, sku, name) values (' || tests.l('D') || $$, 'SKU-2', 'Second')$$, 'n:1', 'inventory_products: the dealer adds one');
+select tests.expect(tests.fx('D2'), 'insert into public.inventory_products (dealer_id, sku, name) values (' || tests.l('D') || $$, 'SKU-3', 'Forged')$$, 'err:42501', 'inventory_products: another dealer cannot');
+select tests.expect(tests.fx('A'), 'insert into public.inventory_products (dealer_id, sku, name) values (' || tests.l('D') || $$, 'SKU-4', 'Admin')$$, 'err:42501', 'inventory_products: an admin cannot write');
+select tests.expect(tests.fx('D'), 'update public.inventory_products set updated_at = now() where id = ' || tests.l('INV1'), 'n:1', 'inventory_products: the dealer updates');
+select tests.expect(tests.fx('D2'), 'update public.inventory_products set updated_at = now() where id = ' || tests.l('INV1'), 'n:0', 'inventory_products: another dealer cannot');
+select tests.expect(tests.fx('D2'), 'delete from public.inventory_products where id = ' || tests.l('INV1'), 'n:0', 'inventory_products: another dealer cannot delete');
+select tests.expect(tests.fx('D'), 'select id from public.inventory_movements where id = ' || tests.l('IT1'), 'rows:1', 'inventory_movements: the dealer reads them');
+select tests.expect(tests.fx('D2'), 'select id from public.inventory_movements where id = ' || tests.l('IT1'), 'rows:0', 'inventory_movements: another dealer does not');
+select tests.expect(tests.fx('A'), 'select id from public.inventory_movements where id = ' || tests.l('IT1'), 'rows:0', 'inventory_movements: an admin reads nothing (B0)');
+-- The ledger has no client write grant (B1): a movement is recorded through record_movement, which checks the caller.
+select tests.expect(tests.fx('D'), 'select public.record_movement(' || tests.l('INV1') || ',' || tests.l('DS1') || $$, 'in', 'RESTOCK', 1)$$, 'rows:1', 'inventory_movements: the dealer records one');
+select tests.expect(tests.fx('D2'), 'select public.record_movement(' || tests.l('INV1') || ',' || tests.l('DS1') || $$, 'in', 'RESTOCK', 1)$$, 'err:42501', 'inventory_movements: another dealer cannot');
+select tests.expect(tests.fx('A'), 'select public.record_movement(' || tests.l('INV1') || ',' || tests.l('DS1') || $$, 'in', 'RESTOCK', 1)$$, 'err:42501', 'inventory_movements: an admin cannot', 'aal2');
 
 -- experts ----------------------------------------------------------------------------------------------
 select tests.expect(tests.fx('E'), 'select id from public.experts where id = ' || tests.l('E'), 'rows:1', 'experts: an expert reads their own record');
@@ -193,13 +195,13 @@ do $$
 declare tf uuid; ti uuid;
 begin
   insert into public.farms (owner_id, name) values (tests.fx('F'), 'Temp farm') returning id into tf;
-  insert into public.inventory (dealer_id) values (tests.fx('D')) returning id into ti;
+  insert into public.inventory_products (dealer_id, sku, name) values (tests.fx('D'), 'SKU-T', 'Temp') returning id into ti;
   insert into tests.fixtures values ('TFARM', tf), ('TINV', ti);
 end $$;
 select tests.expect(tests.fx('F2'), 'delete from public.farms where id = ' || tests.l('TFARM'), 'n:0', 'farms: another farmer cannot delete');
 select tests.expect(tests.fx('F'), 'delete from public.farms where id = ' || tests.l('TFARM'), 'n:1', 'farms: the owner deletes a farm');
-select tests.expect(tests.fx('D2'), 'delete from public.inventory where id = ' || tests.l('TINV'), 'n:0', 'inventory: another dealer cannot delete');
-select tests.expect(tests.fx('D'), 'delete from public.inventory where id = ' || tests.l('TINV'), 'n:1', 'inventory: the dealer deletes a row');
+select tests.expect(tests.fx('D2'), 'delete from public.inventory_products where id = ' || tests.l('TINV'), 'n:0', 'inventory_products: another dealer cannot delete');
+select tests.expect(tests.fx('D'), 'delete from public.inventory_products where id = ' || tests.l('TINV'), 'n:1', 'inventory_products: the dealer deletes one with no history');
 select tests.expect(tests.fx('E'), $$update public.expert_specializations set specialization = 'general_agriculture' where expert_id = $$ || tests.l('E') || $$ and specialization = 'plant_diseases'$$, 'n:1', 'expert_specializations: the expert changes one');
 select tests.expect(tests.fx('B'), $$update public.expert_specializations set specialization = 'irrigation' where expert_id = $$ || tests.l('E'), 'n:0', 'expert_specializations: another user cannot');
 
@@ -211,12 +213,12 @@ select tests.expect(tests.fx('SF'), 'delete from public.farms where id = ' || te
 select tests.expect(tests.fx('SF'), 'update public.farm_crops set updated_at = now() where id = ' || tests.l('SFC'), 'n:0', 'farm_crops: a suspended owner cannot update');
 select tests.expect(tests.fx('SF'), 'delete from public.farm_crops where id = ' || tests.l('SFC'), 'n:0', 'farm_crops: or delete');
 select tests.expect(tests.fx('SF'), 'update public.farmer_profiles set updated_at = now() where id = ' || tests.l('SF'), 'n:0', 'farmer_profiles: a suspended farmer cannot update');
-select tests.expect(tests.fx('SD'), $$update public.dealer_stores set name = 'x' where id = $$ || tests.l('SDS'), 'n:0', 'dealer_stores: a suspended dealer cannot update');
-select tests.expect(tests.fx('SD'), 'delete from public.dealer_stores where id = ' || tests.l('SDS'), 'n:0', 'dealer_stores: or delete');
-select tests.expect(tests.fx('SD'), $$update public.suppliers set name = 'x' where id = $$ || tests.l('SSUP'), 'n:0', 'suppliers: a suspended dealer cannot update');
-select tests.expect(tests.fx('SD'), 'delete from public.suppliers where id = ' || tests.l('SSUP'), 'n:0', 'suppliers: or delete');
-select tests.expect(tests.fx('SD'), 'update public.inventory set updated_at = now() where id = ' || tests.l('SINV'), 'n:0', 'inventory: a suspended dealer cannot update');
-select tests.expect(tests.fx('SD'), 'delete from public.inventory where id = ' || tests.l('SINV'), 'n:0', 'inventory: or delete');
+select tests.expect(tests.fx('SD'), $$update public.inventory_locations set name = 'x' where id = $$ || tests.l('SDS'), 'n:0', 'inventory_locations: a suspended dealer cannot update');
+select tests.expect(tests.fx('SD'), 'delete from public.inventory_locations where id = ' || tests.l('SDS'), 'n:0', 'inventory_locations: or delete');
+select tests.expect(tests.fx('SD'), $$update public.inventory_suppliers set name = 'x' where id = $$ || tests.l('SSUP'), 'n:0', 'inventory_suppliers: a suspended dealer cannot update');
+select tests.expect(tests.fx('SD'), 'delete from public.inventory_suppliers where id = ' || tests.l('SSUP'), 'n:0', 'inventory_suppliers: or delete');
+select tests.expect(tests.fx('SD'), 'update public.inventory_products set updated_at = now() where id = ' || tests.l('SINV'), 'n:0', 'inventory_products: a suspended dealer cannot update');
+select tests.expect(tests.fx('SD'), 'delete from public.inventory_products where id = ' || tests.l('SINV'), 'n:0', 'inventory_products: or delete');
 select tests.expect(tests.fx('SE'), 'update public.experts set updated_at = now() where id = ' || tests.l('SE'), 'n:0', 'experts: a suspended expert cannot update their record');
 
 select * from finish();
