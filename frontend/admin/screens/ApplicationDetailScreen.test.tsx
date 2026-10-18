@@ -88,8 +88,20 @@ describe('ApplicationDetailScreen (SRDS §12)', () => {
     (decideDealerApplication as jest.Mock).mockResolvedValue({ role: 'dealer', previous_status: 'pending', new_status: 'approved', email_delivered: true });
     await renderFor('dealer');
     await fireEvent.press(await screen.findByText('Approve'));
+    // The button only asks; the sheet's button decides.
+    expect(decideDealerApplication).not.toHaveBeenCalled();
+    expect(screen.getByText('The dealer can sell on the marketplace once they sign in again.')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Approve application'));
     expect(decideDealerApplication).toHaveBeenCalledWith('dealer-1', 'approved', undefined);
     expect(await screen.findByText('The applicant has been emailed.')).toBeTruthy();
+  });
+
+  it('backing out of the approval decides nothing', async () => {
+    await renderFor('dealer');
+    await fireEvent.press(await screen.findByText('Approve'));
+    await fireEvent.press(screen.getByText('Not now'));
+    expect(screen.queryByText('Approve application')).toBeNull();
+    expect(decideDealerApplication).not.toHaveBeenCalled();
   });
 
   it('rejects only with a reason the dealer can read, and says when the email could not be sent', async () => {
@@ -144,6 +156,7 @@ describe('ApplicationDetailScreen (SRDS §12)', () => {
     await waitFor(() => expect(resolveExpertDocumentUrl).toHaveBeenCalledWith('expert-1', 'edoc'));
 
     await fireEvent.press(screen.getByText('Approve'));
+    await fireEvent.press(screen.getByText('Approve application'));
     expect(reviewExpertVerification).toHaveBeenCalledWith('expert-1', 'approved', '');
     expect(fetchDealerApplication).not.toHaveBeenCalled();
   });

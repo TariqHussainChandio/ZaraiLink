@@ -4,7 +4,6 @@ from datetime import UTC, datetime, time, timedelta
 from app.admin import repository as repo
 from app.auth.dependencies import AuthenticatedUser, forget_profile
 from app.common import account_status
-from app.common.audit_log import log_admin_action
 from app.common.errors import AppHTTPException
 from app.common.notifications import service as notifications
 from app.common.orders import service as orders_service
@@ -35,40 +34,16 @@ async def fetch_all_profiles(
     return await repo.fetch_all_profiles(user.access_token, role, account_status)
 
 
-# Audit action names are the SRDS §51 vocabulary (audit_event_names, 20261023080000_admin_moderation.sql); the
-# database refuses any other name through the audit_logs.action foreign key (BR-15). The old fine-grained names are not
-# kept in metadata here: each §51 name below already says the same thing, and the state diff carries the detail.
-
-
 async def set_profile_suspended(user: AuthenticatedUser, profile_id: str, is_suspended: bool) -> None:
     await repo.set_profile_suspended(user.access_token, profile_id, is_suspended)
     forget_profile(profile_id)
-    await log_admin_action(
-        user,
-        "user_suspended" if is_suspended else "user_reactivated",
-        "profiles",
-        profile_id,
-        previous_state={"is_suspended": not is_suspended},
-        new_state={"is_suspended": is_suspended},
-    )
+    # The audit row is written atomically by the database (20261023080000).
 
 
 async def update_user_role(user: AuthenticatedUser, profile_id: str, new_role: str) -> None:
-    # Reads the real current role right before overwriting it, rather than trusting whatever
-    # role the client's (possibly stale) cached profile object claims was "previous" — a small
-    # correctness fix over the original frontend implementation, audit-log content only, not a
-    # security boundary.
-    previous_role = await repo.fetch_profile_role(user.access_token, profile_id)
     await repo.update_profile_role(user.access_token, profile_id, new_role)
     forget_profile(profile_id)
-    await log_admin_action(
-        user,
-        "user_role_changed",
-        "profiles",
-        profile_id,
-        previous_state={"role": previous_role},
-        new_state={"role": new_role},
-    )
+    # The audit row is written atomically by the database (20261023080000).
 
 
 async def decide_dealer_application(
@@ -94,16 +69,12 @@ async def fetch_reports(user: AuthenticatedUser, status: str | None) -> list[dic
 
 async def resolve_report(user: AuthenticatedUser, report_id: str, notes: str | None) -> None:
     await repo.resolve_report(user.access_token, report_id, "resolved", user.id, notes)
-    await log_admin_action(
-        user, "report_resolved", "reports", report_id, new_state={"status": "resolved"}, metadata={"notes": notes}
-    )
+    # The audit row is written atomically by the database (20261023080000).
 
 
 async def dismiss_report(user: AuthenticatedUser, report_id: str, notes: str | None) -> None:
     await repo.resolve_report(user.access_token, report_id, "dismissed", user.id, notes)
-    await log_admin_action(
-        user, "report_dismissed", "reports", report_id, new_state={"status": "dismissed"}, metadata={"notes": notes}
-    )
+    # The audit row is written atomically by the database (20261023080000).
 
 
 async def fetch_audit_logs(

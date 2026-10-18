@@ -738,6 +738,8 @@ emulator against the real API.
 
 **Exit:** every admin write leaves an audit row with the §51 name; no admin route or policy touches inventory.
 
+> **Status (2026-10-18): done.** Migration `20261023080000_admin_moderation.sql`; pgTAP (the whole suite green, 1749 tests; policy mutation 0 survivors across 16 domains); backend unit (803) and real-stack (`test_smoke_admin_audit.py`, `test_smoke_admin_boundary.py`, `test_smoke_admin_order_actions.py`, `test_smoke_review_moderation.py`, the authorization matrix); admin Jest; emulator walk of every admin screen. The verifier's first pass (NOT VERIFIED) found that an aal2 admin's direct Data API writes left no audit row and audit rows could be forged. Decision (the A6 precedent): the database writes every admin audit row in the same transaction, the backend writes none, and no client may insert one. Also fixed: aal1 writes to categories, crops and disputes in the database; a suspended admin still acting; a dispute without a reason; one tap on a sheet after typing; no confirmation on Approve and Suspend; no way to settle a dispute in the app. Re-verification: VERIFIED WITH FINDINGS (insider-only, all fixed: an admin redaction may only write the moderator marker and touches no other message column, an admin's change to their own profile is audited, writes that change nothing leave no row, `reports.resolved_by` is the acting admin). Emulator: one-tap sheet actions after typing, Suspend confirmation, each action once in the audit log.
+
 ### A8 — UI/UX rollout and accessibility
 
 **Goal:** the prototype on every screen; WCAG 2.2 AA; low-literacy patterns.

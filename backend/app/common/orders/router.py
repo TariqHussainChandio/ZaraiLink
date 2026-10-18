@@ -73,11 +73,12 @@ async def get_status_history(
 async def update_order_status(
     order_id: str, request: UpdateOrderStatusRequest, user: AuthenticatedUser = Depends(require_authenticated_user)
 ) -> None:
-    await service.update_order_status(user, order_id, request.to)
+    await service.update_order_status(user, order_id, request.to, request.reason)
 
 
 # An admin cancels an order before dispatch, with a reason (SRDS §14). An admin write, so a second factor is needed, as
-# for every other admin write (admin_mfa_enforcement). No refund is made through the platform (BR-11). Audited (BR-15).
+# for every other admin write (admin_mfa_enforcement). No money moves through the platform (BR-11). Audited (BR-15).
+# The admin's other order action, resolving a dispute, goes through PATCH /orders/{id}/status (see update_order_status).
 @admin_router.post("/{order_id}/cancel", response_model=OrderWithItems)
 async def cancel_order_as_admin(
     order_id: str, request: AdminCancelOrderRequest, user: AuthenticatedUser = Depends(require_admin_aal2)

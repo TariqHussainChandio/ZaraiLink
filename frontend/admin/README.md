@@ -1,6 +1,6 @@
 # admin (app)
 
-The administrator console: platform dashboard, user management, listing moderation, expert verification, platform orders, reports, categories, reference data, the audit log and admin analytics.
+The administrator console: platform dashboard with the queues waiting for the admin, user management, listing, review and consultation moderation, expert verification, platform orders (with the admin's cancellation), reports, categories, reference data, the audit log (by SRDS §51 event) and admin analytics.
 
 - **Owner lane:** `zl-admin` (docs/plan.md §3)
 - **SRDS:** §12, §14, §51
@@ -12,6 +12,6 @@ Other modules import only what [`index.ts`](index.ts) exports; the reality gate'
 
 ## Inside
 
-`hooks/` · `screens/` (11, with the Moderation hub) · `services/` · `types/` · `index.ts`. Tests sit beside the code they test.
+`hooks/` · `screens/` (21, with the Moderation hub) · `services/` · `types/` · `index.ts`. Tests sit beside the code they test.
 
 `navigation/` mounts its screens directly, in the admin shell's Overview, Approvals, Moderation and Audit tabs. The admin never sees dealer inventory (SRDS §15).

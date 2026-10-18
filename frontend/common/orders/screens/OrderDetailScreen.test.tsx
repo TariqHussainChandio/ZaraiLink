@@ -318,4 +318,29 @@ describe('OrderDetailScreen', () => {
       sellerId: 'seller-1',
     });
   });
+
+  it("shows the buyer their own hidden review with the moderator's reason, and offers no second review", async () => {
+    // SRDS §14: the API returns a hidden review only to its author; reviews_one_per_order allows no second one.
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchOrderById.mockResolvedValue(order({ status: 'completed' }));
+    mockFetchReviewByOrderId.mockResolvedValue({
+      id: 'review-1',
+      order_id: 'order-1',
+      consultation_id: null,
+      listing_id: 'listing-1',
+      seller_id: 'seller-1',
+      buyer_id: 'buyer-1',
+      rating: 1,
+      comment: 'Never again',
+      created_at: '2026-01-02T00:00:00.000Z',
+      hidden_at: '2026-01-03T00:00:00.000Z',
+      hidden_reason: 'Abusive language',
+      buyer: { id: 'buyer-1', full_name: 'Ali Khan', avatar_url: null },
+    });
+    await renderScreen();
+    await screen.findByText('Hidden by a moderator');
+
+    expect(screen.getByText(/Reason: Abusive language/)).toBeTruthy();
+    expect(screen.queryByText('Write a Review')).toBeNull();
+  });
 });

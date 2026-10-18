@@ -5215,6 +5215,10 @@ export type UpdateListingStatusRequest = {
  */
 export type UpdateOrderStatusRequest = {
     /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
      * To
      */
     to: 'pending' | 'confirmed' | 'processing' | 'ready' | 'dispatched' | 'completed' | 'cancelled' | 'rejected' | 'payment_failed' | 'disputed' | 'refunded' | 'expired';
@@ -5647,7 +5651,7 @@ export type AdminListAuditLogsData = {
         /**
          * Action
          */
-        action?: string | null;
+        action?: 'dealer_application_approved' | 'dealer_application_rejected' | 'expert_application_approved' | 'expert_application_rejected' | 'user_suspended' | 'user_reactivated' | 'user_role_changed' | 'product_moderated' | 'review_moderated' | 'order_administrative_action' | 'ai_configuration_changed' | 'report_resolved' | 'report_dismissed' | 'report_updated' | 'message_redacted' | 'category_changed' | 'reference_data_changed' | 'required_document_changed' | 'admin_email_changed' | 'consultation_moderated' | 'account_self_deleted' | null;
         /**
          * Limit
          */

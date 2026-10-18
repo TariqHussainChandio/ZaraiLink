@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,17 +14,16 @@ FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access
 
 
 @pytest.mark.asyncio
-async def test_update_user_role_logs_the_real_previous_role_not_a_client_supplied_one():
-    with patch("app.admin.service.repo.fetch_profile_role", return_value="farmer") as mock_fetch:
-        with patch("app.admin.service.repo.update_profile_role") as mock_update:
-            with patch("app.admin.service.log_admin_action") as mock_log:
-                await service.update_user_role(ADMIN, "user-1", "dealer")
+async def test_update_user_role_writes_the_role_and_leaves_the_audit_to_the_database():
+    with (
+        patch("app.admin.service.repo.update_profile_role") as mock_update,
+        patch("app.admin.service.log_admin_action", new=AsyncMock(), create=True) as mock_log,
+    ):
+        await service.update_user_role(ADMIN, "user-1", "dealer")
 
-    mock_fetch.assert_called_once_with(ADMIN.access_token, "user-1")
     mock_update.assert_called_once_with(ADMIN.access_token, "user-1", "dealer")
-    mock_log.assert_called_once_with(
-        ADMIN, "change_role", "profiles", "user-1", previous_state={"role": "farmer"}, new_state={"role": "dealer"}
-    )
+    # The database writes the audit row in the same transaction (20261023080000); the service writes none of its own.
+    mock_log.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -33,8 +32,17 @@ async def test_fetch_all_orders_returns_every_order_not_scoped_to_the_caller():
     with patch("app.common.orders.service.repo.fetch_all_orders", return_value=orders) as mock_fetch:
         result = await service.fetch_all_orders(ADMIN)
 
-    mock_fetch.assert_called_once_with(ADMIN.access_token)
+    # No status filter: the admin's "All" view passes None through to the database query, so nothing is narrowed.
+    mock_fetch.assert_called_once_with(ADMIN.access_token, None)
     assert result == orders
+
+
+@pytest.mark.asyncio
+async def test_fetch_all_orders_passes_the_status_filter_to_the_database():
+    with patch("app.common.orders.service.repo.fetch_all_orders", return_value=[]) as mock_fetch:
+        await service.fetch_all_orders(ADMIN, "disputed")
+
+    mock_fetch.assert_called_once_with(ADMIN.access_token, "disputed")
 
 
 def test_platform_stats_route_rejects_non_admin():

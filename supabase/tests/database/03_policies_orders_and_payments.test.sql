@@ -53,9 +53,17 @@ select tests.expect(tests.fx('S'), 'insert into public.orders (buyer_id, seller_
 select tests.expect(tests.fx('B'), 'update public.orders set product_subtotal = 101 where id = ' || tests.l('O1'), 'err:42501', 'orders: the buyer cannot change the price of their order (BR-09)');
 select tests.expect(tests.fx('F'), 'update public.orders set product_subtotal = 102 where id = ' || tests.l('O1'), 'err:42501', 'orders: nor can the seller');
 select tests.expect(tests.fx('B2'), 'update public.orders set product_subtotal = 1 where id = ' || tests.l('O1'), 'n:0', 'orders: a stranger updates nothing');
+-- A7 (20261023080000): an admin with a second factor now reaches an order before dispatch, to cancel it with a reason;
+-- refunding it is still refused, by the guard (23514), and a password-only admin session does not reach it at all.
+-- The cancellation itself is proven in 20261023080000_admin_moderation.test.sql.
 select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O1'), 'n:0', 'orders: an admin cannot touch an order that is not disputed');
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'pending' where id = $$ || tests.l('O_DISPUTED'), 'err:23514', 'orders: an admin cannot move a dispute anywhere but refunded or completed');
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O_DISPUTED'), 'n:1', 'orders: an admin resolves a disputed order');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O1'), 'err:23514', 'orders: an admin with a second factor reaches a pending order, but cannot refund it', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OCOMP'), 'n:0', 'orders: an admin with a second factor does not reach a completed order that is not disputed', 'aal2');
+-- A7: resolving a dispute is a second-factor admin write; a password-only admin session does not reach the order.
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O_DISPUTED'), 'n:0', 'orders: an admin without a second factor cannot resolve a dispute');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'pending' where id = $$ || tests.l('O_DISPUTED'), 'err:23514', 'orders: an admin cannot move a dispute anywhere but refunded or completed', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O_DISPUTED'), 'err:23514', 'orders: an admin settles a dispute only with a reason (A7)', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded', admin_action_reason = 'Refund agreed' where id = $$ || tests.l('O_DISPUTED'), 'n:1', 'orders: an admin with a second factor resolves a disputed order', 'aal2');
 select tests.expect(tests.fx('B'), 'delete from public.orders where id = ' || tests.l('O1'), 'err:42501', 'orders: nobody deletes orders through the API');
 
 -- order INSERT guard (guard_orders_insert, guard_order_items_insert, sync_order_subtotal) -------------------
@@ -151,8 +159,9 @@ select tests.expect(tests.fx('B'), $$update public.orders set status = 'disputed
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'disputed' where id = $$ || tests.l('OG_CO2'), 'err:42501', 'order guard: the seller cannot dispute their own sale');
 select tests.expect(tests.fx('B'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OG_D1'), 'err:42501', 'order guard: a buyer cannot settle their own dispute');
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OG_D2'), 'err:42501', 'order guard: nor can the seller');
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OG_D3'), 'n:1', 'order guard: an admin settles it');
-select tests.expect(tests.fx('A'), 'update public.orders set product_subtotal = 1 where id = ' || tests.l('OG_D1'), 'err:42501', 'order guard: even an admin cannot change the price');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OG_D3'), 'n:0', 'order guard: an admin without a second factor does not settle it');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded', admin_action_reason = 'Refund agreed' where id = $$ || tests.l('OG_D3'), 'n:1', 'order guard: an admin with a second factor settles it', 'aal2');
+select tests.expect(tests.fx('A'), 'update public.orders set product_subtotal = 1 where id = ' || tests.l('OG_D1'), 'err:42501', 'order guard: even an admin cannot change the price', 'aal2');
 
 
 -- order items ------------------------------------------------------------------------------------------

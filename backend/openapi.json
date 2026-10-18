@@ -9667,6 +9667,19 @@
       },
       "UpdateOrderStatusRequest": {
         "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
           "to": {
             "enum": [
               "pending",
@@ -10537,8 +10550,29 @@
             "schema": {
               "anyOf": [
                 {
-                  "maxLength": 80,
-                  "pattern": "^[a-z][a-z0-9_]*$",
+                  "enum": [
+                    "dealer_application_approved",
+                    "dealer_application_rejected",
+                    "expert_application_approved",
+                    "expert_application_rejected",
+                    "user_suspended",
+                    "user_reactivated",
+                    "user_role_changed",
+                    "product_moderated",
+                    "review_moderated",
+                    "order_administrative_action",
+                    "ai_configuration_changed",
+                    "report_resolved",
+                    "report_dismissed",
+                    "report_updated",
+                    "message_redacted",
+                    "category_changed",
+                    "reference_data_changed",
+                    "required_document_changed",
+                    "admin_email_changed",
+                    "consultation_moderated",
+                    "account_self_deleted"
+                  ],
                   "type": "string"
                 },
                 {
@@ -24440,6 +24474,11 @@
             "description": "Error (application/problem+json)"
           }
         },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "Get Review By Consultation",
         "tags": [
           "reviews"
@@ -24694,6 +24733,11 @@
             "description": "Error (application/problem+json)"
           }
         },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "Get Review By Order",
         "tags": [
           "reviews"

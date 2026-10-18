@@ -1983,7 +1983,11 @@ export const reviewsListReviewsForModeration = <ThrowOnError extends boolean = f
 /**
  * Get Review By Consultation
  */
-export const reviewsGetReviewByConsultation = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewByConsultationData, ThrowOnError>): RequestResult<ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByConsultationErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByConsultationErrors, ThrowOnError>({ url: '/api/v1/reviews/by-consultation/{consultation_id}', ...options });
+export const reviewsGetReviewByConsultation = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewByConsultationData, ThrowOnError>): RequestResult<ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByConsultationErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByConsultationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/reviews/by-consultation/{consultation_id}',
+    ...options
+});
 
 /**
  * List Reviews For Expert
@@ -1998,7 +2002,11 @@ export const reviewsListReviewsForListing = <ThrowOnError extends boolean = fals
 /**
  * Get Review By Order
  */
-export const reviewsGetReviewByOrder = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewByOrderData, ThrowOnError>): RequestResult<ReviewsGetReviewByOrderResponses, ReviewsGetReviewByOrderErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewByOrderResponses, ReviewsGetReviewByOrderErrors, ThrowOnError>({ url: '/api/v1/reviews/by-order/{order_id}', ...options });
+export const reviewsGetReviewByOrder = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewByOrderData, ThrowOnError>): RequestResult<ReviewsGetReviewByOrderResponses, ReviewsGetReviewByOrderErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewByOrderResponses, ReviewsGetReviewByOrderErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/reviews/by-order/{order_id}',
+    ...options
+});
 
 /**
  * List Reviews For Seller

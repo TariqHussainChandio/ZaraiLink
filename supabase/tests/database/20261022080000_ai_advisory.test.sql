@@ -7,6 +7,9 @@ begin;
 \ir ../helpers/rls_helpers.inc
 select * from no_plan();
 select tests.world();
+-- The audit log as it stood before this test: every count below is of the rows this test adds, so rows another run
+-- committed to the shared local database (a backend smoke run edits and reviews disease knowledge) do not move it.
+create temporary table audit_seen on commit drop as select id from public.audit_logs;
 
 -- fixtures, made as the owner: E2 a second approved expert; SF2 a suspended farmer; DCF F's case with its prediction DPF,
 -- DCF_B a second case of F's, DCF2 F2's case
@@ -98,8 +101,8 @@ select ok(not has_table_privilege('authenticated', 'public.disease_knowledge', '
   'disease_knowledge: authenticated holds no insert or delete grant');
 select is((select count(*)::int from public.disease_knowledge), 38, 'disease_knowledge: still the 38 classes');
 -- The seed is the migration's starting content, not a change: the audit trigger is created after it.
-select is((select count(*)::int from public.audit_logs where target_entity = 'disease_knowledge'), 0,
-  'disease_knowledge audit: the 38 seeded rows (and the refused writes above) wrote no audit row');
+select is((select count(*)::int from public.audit_logs where id not in (select id from audit_seen) and target_entity = 'disease_knowledge'), 0,
+  'disease_knowledge audit: the refused writes above wrote no audit row (the 38 seeded rows predate the trigger)');
 
 -- The reviewer is always the caller: the client sends E as reviewer and an old date, the row records A and now().
 select tests.expect(tests.fx('A'), $$update public.disease_knowledge set review_status = 'reviewed', reviewed_by = $$ || tests.l('E') || $$, reviewed_at = '2001-01-01' where class_label = 'Tomato___healthy'$$,
@@ -111,13 +114,13 @@ select is((select row(review_status, reviewed_by, reviewed_at = now())::text fro
 -- BR-15 / SRDS §51: the table's own trigger audits every change in the same transaction. The aal2 review above wrote
 -- exactly one "ai_configuration_changed" row, as A, naming the class in metadata and holding only the changed columns.
 select is((select count(*)::int from public.audit_logs
-            where action = 'ai_configuration_changed' and target_entity = 'disease_knowledge'
+            where id not in (select id from audit_seen) and action = 'ai_configuration_changed' and target_entity = 'disease_knowledge'
               and metadata->>'class_label' = 'Tomato___healthy'), 1,
   'disease_knowledge audit: the aal2 review wrote exactly one ai_configuration_changed row');
 select is((select row(actor_id, target_id, metadata->>'change',
                       previous_state->>'review_status', new_state->>'review_status', new_state ? 'advisory')::text
              from public.audit_logs
-            where action = 'ai_configuration_changed' and metadata->>'class_label' = 'Tomato___healthy'),
+            where id not in (select id from audit_seen) and action = 'ai_configuration_changed' and metadata->>'class_label' = 'Tomato___healthy'),
   row(tests.fx('A'), null::uuid, 'review', 'pending_review', 'reviewed', false)::text,
   'disease_knowledge audit: actor is the admin, no target_id, change=review, only the changed columns');
 -- Once reviewed, the recorded review cannot be moved to someone else while the text stays the same.
@@ -135,7 +138,7 @@ select is((select row(review_status, reviewed_by, reviewed_at)::text from public
   'disease_knowledge review: a text edit on a reviewed row ends up pending_review with no reviewer');
 select is((select array_agg(metadata->>'change' order by metadata->>'change')
              from public.audit_logs
-            where action = 'ai_configuration_changed' and metadata->>'class_label' = 'Tomato___healthy'),
+            where id not in (select id from audit_seen) and action = 'ai_configuration_changed' and metadata->>'class_label' = 'Tomato___healthy'),
   array['edit', 'edit', 'review'],
   'disease_knowledge audit: every update writes one row (the reviewer rewrite and the text edit are edits)');
 
@@ -152,7 +155,7 @@ select tests.expect(tests.fx('A'), $$update public.disease_knowledge set advisor
   'n:0', 'disease_knowledge audit: an aal1 edit changes nothing');
 select tests.expect(tests.fx('A'), $$update public.disease_knowledge set review_status = 'bogus' where class_label = 'Potato___healthy'$$,
   'err:23514', 'disease_knowledge audit: an invalid aal2 edit fails', 'aal2');
-select is((select count(*)::int from public.audit_logs where metadata->>'class_label' = 'Potato___healthy'), 0,
+select is((select count(*)::int from public.audit_logs where id not in (select id from audit_seen) and metadata->>'class_label' = 'Potato___healthy'), 0,
   'disease_knowledge audit: a refused or failed update writes no audit row');
 select ok(
   (select p.prosecdef and exists (select 1 from unnest(p.proconfig) c where c = 'search_path=public, pg_temp')
@@ -167,7 +170,7 @@ delete from public.disease_knowledge where class_label = 'Verify___probe';
 select is((select array_agg(row(metadata->>'change', target_id, previous_state ? 'class_label', new_state ? 'class_label')::text
                             order by metadata->>'change' desc)
              from public.audit_logs
-            where action = 'ai_configuration_changed' and metadata->>'class_label' = 'Verify___probe'),
+            where id not in (select id from audit_seen) and action = 'ai_configuration_changed' and metadata->>'class_label' = 'Verify___probe'),
   array[row('insert', null::uuid, null::boolean, true)::text, row('delete', null::uuid, true, null::boolean)::text],
   'disease_knowledge audit: a privileged insert and delete each write a row (change=insert/delete, the whole row)');
 select is((select array_agg(e order by e) from (

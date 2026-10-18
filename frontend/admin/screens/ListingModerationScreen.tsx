@@ -1,8 +1,9 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Button, EmptyState, Spinner, StatusBadge } from '../../common/components';
+import { Eye, EyeOff, Store } from 'lucide-react-native';
+import { Button, ScreenState, StatusBadge, useToast } from '../../common/components';
 import { useModerationListings, useSetListingStatus } from '../hooks/admin';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
@@ -14,7 +15,9 @@ export function ListingModerationScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const actorId = useAuthStore(state => state.user?.id);
-  const { data: listings = [], isPending: loading, refetch } = useModerationListings();
+  const listings = useModerationListings();
+  const { refetch } = listings;
+  const toast = useToast();
   const setListingStatus = useSetListingStatus();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -28,51 +31,56 @@ export function ListingModerationScreen() {
     if (!actorId) return;
     setUpdatingId(listing.id);
     try {
-      await setListingStatus.mutateAsync({ id: listing.id, status: listing.status === 'active' ? 'inactive' : 'active' });
+      const next = listing.status === 'active' ? 'inactive' : 'active';
+      await setListingStatus.mutateAsync({ id: listing.id, status: next });
+      toast.success(next === 'active' ? 'Listing activated' : 'Listing deactivated');
     } catch (error) {
-      Alert.alert('Could not update the listing', errorMessage(error));
+      toast.error(`Could not update the listing. ${errorMessage(error)}`);
     } finally {
       setUpdatingId(null);
     }
   };
 
-  if (loading) return <Spinner fullscreen />;
-
   return (
-    <FlashList
-      style={styles.container}
-      contentContainerStyle={styles.list}
-      data={listings}
-      keyExtractor={item => item.id}
-      renderItem={({ item }) => (
-        <View style={styles.row}>
-          <View style={styles.info}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <Text style={styles.owner} numberOfLines={1}>
-              {`${item.owner?.full_name || 'Unknown'} · ${formatRs(item.price)}/${item.unit}`}
-            </Text>
-            <StatusBadge kind="listing" status={item.status} />
-          </View>
-          {item.status !== 'sold' ? (
-            <Button
-              label={item.status === 'active' ? 'Deactivate' : 'Activate'}
-              variant={item.status === 'active' ? 'danger' : 'secondary'}
-              fullWidth={false}
-              loading={updatingId === item.id}
-              onPress={() => toggleActive(item)}
-            />
-          ) : null}
-        </View>
-      )}
-      ListEmptyComponent={
-        <EmptyState
-          title="No listings yet"
-          description="Listings will show up here once sellers start publishing."
-        />
-      }
-    />
+    <View style={styles.container}>
+      <ScreenState
+        query={listings}
+        errorTitle="Couldn't load the listings"
+        empty={{ title: 'No listings yet', description: 'Listings will show up here once sellers start publishing.', icon: Store }}
+      >
+        {data => (
+          <FlashList
+            style={styles.container}
+            contentContainerStyle={styles.list}
+            data={data}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.row}>
+                <View style={styles.info}>
+                  <Text style={styles.title} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.owner} numberOfLines={1}>
+                    {`${item.owner?.full_name || 'Unknown'} · ${formatRs(item.price)}/${item.unit}`}
+                  </Text>
+                  <StatusBadge kind="listing" status={item.status} />
+                </View>
+                {item.status !== 'sold' ? (
+                  <Button
+                    label={item.status === 'active' ? 'Deactivate' : 'Activate'}
+                    icon={item.status === 'active' ? EyeOff : Eye}
+                    variant={item.status === 'active' ? 'danger' : 'secondary'}
+                    fullWidth={false}
+                    loading={updatingId === item.id}
+                    onPress={() => toggleActive(item)}
+                  />
+                ) : null}
+              </View>
+            )}
+          />
+        )}
+      </ScreenState>
+    </View>
   );
 }
 

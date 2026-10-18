@@ -2,7 +2,6 @@ from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
 from app.auth.dependencies import AuthenticatedUser
-from app.common.audit_log import log_admin_action
 from app.common.messaging import repository as repo
 
 
@@ -60,7 +59,7 @@ async def fetch_message_by_id(user: AuthenticatedUser, message_id: str) -> dict:
 
 async def redact_message(user: AuthenticatedUser, message_id: str) -> None:
     await repo.redact_message(user.access_token, message_id)
-    await log_admin_action(user, "message_redacted", "messages", message_id)
+    # The audit row is written atomically by the database (20261023080000).
 
 
 async def mark_conversation_read(user: AuthenticatedUser, conversation_id: str) -> None:

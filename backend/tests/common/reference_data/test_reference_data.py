@@ -8,7 +8,7 @@ province/city/phone_codes were dropped in Phase 0.5b for free-text fields). Two 
    documented), and admin-write routes reject an unauthenticated caller.
 """
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,36 +26,49 @@ ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_to
 
 
 @pytest.mark.asyncio
-async def test_create_row_logs_admin_action_with_new_state():
-    with patch(
-        "app.common.reference_data.service.repo.create_row", return_value={"id": "row-1", "code": "PKR"}
-    ) as mock_create:
-        with patch("app.common.reference_data.service.log_admin_action") as mock_log:
-            result = await service.create_row(
-                ADMIN, "currencies", {"code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"}
-            )
+async def test_create_row_writes_the_row_and_leaves_the_audit_to_the_database():
+    with (
+        patch(
+            "app.common.reference_data.service.repo.create_row", return_value={"id": "row-1", "code": "PKR"}
+        ) as mock_create,
+        patch("app.common.reference_data.service.log_admin_action", new=AsyncMock(), create=True) as mock_log,
+    ):
+        result = await service.create_row(
+            ADMIN, "currencies", {"code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"}
+        )
 
     mock_create.assert_called_once_with(
         ADMIN.access_token, "currencies", {"code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"}
     )
-    mock_log.assert_called_once_with(
-        ADMIN,
-        "create_reference_data",
-        "currencies",
-        "row-1",
-        new_state={"code": "PKR", "symbol": "Rs.", "name": "Pakistani Rupee"},
-    )
+    # The database writes the audit row in the same transaction (20261023080000); the service writes none of its own.
+    mock_log.assert_not_awaited()
     assert result == {"id": "row-1", "code": "PKR"}
 
 
 @pytest.mark.asyncio
-async def test_delete_row_logs_admin_action():
-    with patch("app.common.reference_data.service.repo.delete_row") as mock_delete:
-        with patch("app.common.reference_data.service.log_admin_action") as mock_log:
-            await service.delete_row(ADMIN, "units", "unit-1")
+async def test_delete_row_leaves_the_audit_to_the_database():
+    with (
+        patch("app.common.reference_data.service.repo.delete_row") as mock_delete,
+        patch("app.common.reference_data.service.log_admin_action", new=AsyncMock(), create=True) as mock_log,
+    ):
+        await service.delete_row(ADMIN, "units", "unit-1")
 
     mock_delete.assert_called_once_with(ADMIN.access_token, "units", "unit-1")
-    mock_log.assert_called_once_with(ADMIN, "delete_reference_data", "units", "unit-1")
+    # The database writes the audit row in the same transaction (20261023080000); the service writes none of its own.
+    mock_log.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_row_writes_the_patch_and_leaves_the_audit_to_the_database():
+    with (
+        patch("app.common.reference_data.service.repo.update_row") as mock_update,
+        patch("app.common.reference_data.service.log_admin_action", new=AsyncMock(), create=True) as mock_log,
+    ):
+        await service.update_row(ADMIN, "units", "unit-1", {"label": "Kilogram"})
+
+    mock_update.assert_called_once_with(ADMIN.access_token, "units", "unit-1", {"label": "Kilogram"})
+    # The database writes the audit row in the same transaction (20261023080000); the service writes none of its own.
+    mock_log.assert_not_awaited()
 
 
 # --- router layer (real app, real dependency-injection chain) ----------------------------

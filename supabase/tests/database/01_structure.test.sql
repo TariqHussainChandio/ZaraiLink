@@ -88,7 +88,6 @@ select is(
      from pg_policies where schemaname in ('public', 'storage')),
   array[
   'public.audit_event_names.audit_event_names_select_admin',
-  'public.audit_logs.audit_logs_insert_admin',
   'public.audit_logs.audit_logs_select_admin',
   'public.categories.categories_admin_delete',
   'public.categories.categories_admin_insert',

@@ -15,7 +15,7 @@ import type {
   ConsultationWithRelations,
   ModerateConsultationRequest,
 } from '../types/consultations';
-import type { OrderStatusHistoryEntry } from '../types/orders';
+import type { DisputeOutcome, OrderStatusHistoryEntry } from '../types/orders';
 import type { Review, ReviewWithBuyer } from '../types/reviews';
 
 export interface PlatformStats {
@@ -140,6 +140,16 @@ export async function fetchOrderForAdmin(orderId: string): Promise<AdminOrderDet
  */
 export async function cancelOrderAsAdmin(orderId: string, reason: string): Promise<AdminOrder> {
   return apiFetch(`/api/v1/admin/orders/${orderId}/cancel`, { method: 'POST', body: { reason } });
+}
+
+/**
+ * Settles a disputed order (SRDS §14). The platform holds no money (BR-11): "refunded" records the outcome, and any
+ * refund is paid by the seller to the buyer off the platform. Needs a second factor; the API writes the audit entry as
+ * "Order Administrative Action" (BR-15). The order status route is the one the API offers for it. The reason is
+ * required (422 without it) and stored on the order as `admin_action_reason`, for the buyer and the seller to read.
+ */
+export async function resolveDisputeAsAdmin(orderId: string, outcome: DisputeOutcome, reason: string): Promise<void> {
+  return apiFetch(`/api/v1/orders/${orderId}/status`, { method: 'PATCH', body: { to: outcome, reason } });
 }
 
 // ---- consultations (SRDS §14). Moderation needs a second factor and is audited by the API (BR-15).

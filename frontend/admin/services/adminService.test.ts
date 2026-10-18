@@ -16,6 +16,15 @@ import {
   resolveReport,
   setProfileSuspended,
   updateUserRole,
+  cancelOrderAsAdmin,
+  fetchAdminQueues,
+  fetchAuditEvents,
+  fetchConsultationsForAdmin,
+  fetchReviewsForModeration,
+  hideReview,
+  moderateConsultation,
+  resolveDisputeAsAdmin,
+  restoreReview,
 } from './adminService';
 
 jest.mock('../../services/api/client');
@@ -183,3 +192,52 @@ describe('required documents (A3b)', () => {
     expect(mockApiFetch).toHaveBeenNthCalledWith(3, '/api/v1/admin/required-documents/d1', { method: 'PATCH', body: { active: false } });
   });
 });
+
+describe('A7 moderation calls (SRDS §14)', () => {
+  beforeEach(() => mockApiFetch.mockResolvedValue(undefined as never));
+
+  it('reads the queues and the §51 event names', async () => {
+    await fetchAdminQueues();
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/queues');
+    await fetchAuditEvents();
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/audit-events');
+  });
+
+  it('filters the audit log by one event name', async () => {
+    await fetchAuditLogs({ action: 'review_moderated' });
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/audit-logs', {
+      query: { target_entity: undefined, actor_id: undefined, action: 'review_moderated' },
+    });
+  });
+
+  it('cancels an order with a reason, and settles a dispute through the status route', async () => {
+    await cancelOrderAsAdmin('order-1', 'Fraud');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/orders/order-1/cancel', { method: 'POST', body: { reason: 'Fraud' } });
+    await resolveDisputeAsAdmin('order-1', 'refunded', 'Goods arrived spoiled');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/orders/order-1/status', {
+      method: 'PATCH',
+      body: { to: 'refunded', reason: 'Goods arrived spoiled' },
+    });
+  });
+
+  it('lists and moderates consultations', async () => {
+    await fetchConsultationsForAdmin({ status: 'requested', olderThanDays: 7 });
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/consultations', { query: { status: 'requested', older_than_days: 7 } });
+    await moderateConsultation('c-1', { action: 'close', reason: 'Duplicate' });
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/consultations/c-1/moderate', {
+      method: 'PATCH',
+      body: { action: 'close', reason: 'Duplicate' },
+    });
+  });
+
+  it('lists every review with the hidden ones, hides with a reason and restores; nothing deletes', async () => {
+    await fetchReviewsForModeration();
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/reviews/admin', { query: { include_hidden: true } });
+    await hideReview('review-1', 'Abusive');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/reviews/review-1/hide', { method: 'PATCH', body: { reason: 'Abusive' } });
+    await restoreReview('review-1');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/reviews/review-1/restore', { method: 'PATCH' });
+    expect(mockApiFetch.mock.calls.some(([, options]) => (options as { method?: string } | undefined)?.method === 'DELETE')).toBe(false);
+  });
+});
+

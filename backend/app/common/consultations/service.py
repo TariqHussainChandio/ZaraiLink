@@ -10,7 +10,6 @@ from storage3.utils import StorageException
 from app.ai import service as ai_service
 from app.ai.schemas import DiseaseReport
 from app.auth.dependencies import AuthenticatedUser
-from app.common.audit_log import log_admin_action
 from app.common.consultations import repository as repo
 from app.common.errors import AppHTTPException
 from app.expert import service as expert_service
@@ -207,13 +206,5 @@ async def moderate(user: AuthenticatedUser, consultation_id: str, action: str, r
             raise HTTPException(status_code=403, detail="Only an admin can moderate a consultation") from exc
         raise
     updated = await fetch_by_id(user, consultation_id)
-    await log_admin_action(
-        user,
-        "consultation_moderated",
-        "consultations",
-        consultation_id,
-        previous_state={"status": previous["status"], "moderation_reason": previous.get("moderation_reason")},
-        new_state={"status": updated["status"], "moderation_reason": updated.get("moderation_reason")},
-        metadata={"change": action},
-    )
+    # The audit row is written atomically by the database (20261023080000).
     return updated

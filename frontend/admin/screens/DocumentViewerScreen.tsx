@@ -22,13 +22,16 @@ export function DocumentViewerScreen({ route }: AdminScreenProps<typeof ADMIN_HO
           source={{ uri: route.params.url }}
           style={styles.image}
           resizeMode="contain"
+          // One TalkBack stop that names the document; without `accessible` Android skips a labelled image.
+          accessible
+          accessibilityRole="image"
           accessibilityLabel={route.params.title}
           onLoad={() => setState('shown')}
           onError={() => setState('failed')}
         />
       )}
       {state === 'loading' ? (
-        <View style={styles.overlay}>
+        <View style={styles.overlay} accessible accessibilityLabel="Opening the document" accessibilityLiveRegion="polite">
           <Spinner />
         </View>
       ) : null}

@@ -1,6 +1,8 @@
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import BaseModel, Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, model_validator
+
+from app.common.audit_events import AuditEvent
 
 Role = Literal["admin", "expert", "dealer", "farmer", "buyer"]
 ReportStatus = Literal["open", "investigating", "resolved", "dismissed"]
@@ -73,10 +75,11 @@ class ActorRef(BaseModel):
     full_name: str
 
 
-# An SRDS §51 audit event name as stored in audit_event_names. A pattern, not a closed Literal: the table also holds the
-# names of rows an older client wrote before the vocabulary existed (20261023080000_admin_moderation.sql), and those
-# rows must stay filterable. GET /admin/audit-events lists the names the filter accepts.
-AuditEventName = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*$", max_length=80)]
+# The audit filter accepts only an SRDS §51 event name (BR-15): the AuditEvent literal, which mirrors the
+# audit_event_names rows the migrations insert. A made-up name is a 422 instead of a silent empty page that reads as
+# "nothing happened". A historic row under an unmapped pre-§51 name (20261023080000_admin_moderation.sql) stays in the
+# unfiltered log; it is not offered as a filter.
+AuditEventName = AuditEvent
 
 
 class AuditEventNameEntry(BaseModel):

@@ -2,15 +2,27 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, EmptyState, ChipRow, Spinner } from '../../common/components';
-import { useAuditLogs } from '../hooks/admin';
+import { ScrollText } from 'lucide-react-native';
+import { Badge, ScreenState, SelectField } from '../../common/components';
+import { useAuditEvents, useAuditLogs } from '../hooks/admin';
 import { useTheme, type Theme } from '../../theme';
 
+const WHEN = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+// The SelectField's "every event" option; never an SRDS §51 event name, which are lower_snake_case.
+const ALL = 'all';
+
+/**
+ * Every admin action (BR-15), newest first, under the SRDS §51 event label the API sends with each row. The filter
+ * asks the server for one event, from the list of event names the API publishes (/admin/audit-events).
+ */
 export function AuditLogScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { data: entries = [], isPending: loading, refetch } = useAuditLogs();
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(ALL);
+  const logs = useAuditLogs(filter === ALL ? undefined : filter);
+  const { refetch } = logs;
+  const events = useAuditEvents();
 
   useFocusEffect(
     useCallback(() => {
@@ -18,54 +30,76 @@ export function AuditLogScreen() {
     }, [refetch]),
   );
 
-  const filterOptions = useMemo(() => {
-    const entities = Array.from(new Set(entries.map(e => e.target_entity))).sort();
-    return [{ value: 'all', label: 'All' }, ...entities.map(e => ({ value: e, label: e }))];
-  }, [entries]);
-
-  const filtered = filter === 'all' ? entries : entries.filter(e => e.target_entity === filter);
-
-  if (loading) return <Spinner fullscreen />;
+  const filterOptions = useMemo(
+    () => [
+      { id: ALL, label: 'Every event' },
+      ...(events.data ?? []).map(event => ({
+        id: event.name,
+        label: event.label,
+      })),
+    ],
+    [events.data],
+  );
 
   return (
     <View style={styles.container}>
-      <ChipRow options={filterOptions} value={filter} onChange={setFilter} />
-      <FlashList
-        contentContainerStyle={styles.list}
-        data={filtered}
-        keyExtractor={item => item.id}
-        ListEmptyComponent={
-          <EmptyState
-            title="No audit log entries yet"
-            description={filter === 'all' ? undefined : 'Try a different entity filter.'}
-          />
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.headerRow}>
-              <Badge label={item.action} tone="neutral" />
-              <Text style={styles.time}>{new Date(item.created_at).toLocaleString()}</Text>
-            </View>
-            <Text style={styles.summary}>
-              <Text style={styles.bold}>{item.actor?.full_name || 'System'}</Text> · {item.target_entity}
-              {item.target_id ? ` #${item.target_id.slice(0, 8)}` : ''}
-            </Text>
-            {item.previous_state || item.new_state ? (
-              <View style={styles.stateBlock}>
-                {item.previous_state ? (
-                  <Text style={styles.mono}>{`previous: ${JSON.stringify(item.previous_state)}`}</Text>
-                ) : null}
-                {item.new_state ? <Text style={styles.mono}>{`new: ${JSON.stringify(item.new_state)}`}</Text> : null}
-              </View>
-            ) : null}
-          </View>
-        )}
+      <SelectField
+        label="Event"
+        value={filter}
+        options={filterOptions}
+        onSelect={setFilter}
+        loading={events.isPending}
+        searchable={filterOptions.length > 8}
       />
+      <ScreenState
+        query={logs}
+        errorTitle="Couldn't load the audit log"
+        empty={{
+          title: 'No audit log entries yet',
+          description: filter === ALL ? undefined : 'Try a different event.',
+          icon: ScrollText,
+        }}
+      >
+        {entries => (
+          <FlashList
+            contentContainerStyle={styles.list}
+            data={entries}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.card}>
+                <View style={styles.headerRow}>
+                  <Badge label={item.action_label || item.action} tone="neutral" />
+                  <Text style={styles.time}>{WHEN.format(new Date(item.created_at))}</Text>
+                </View>
+                <Text style={styles.summary}>
+                  <Text style={styles.bold}>{item.actor?.full_name || 'System'}</Text> · {item.target_entity}
+                  {item.target_id ? ` #${item.target_id.slice(0, 8)}` : ''}
+                </Text>
+                {item.previous_state || item.new_state ? (
+                  <View style={styles.stateBlock}>
+                    {item.previous_state ? (
+                      <Text style={styles.mono}>{`previous: ${JSON.stringify(item.previous_state)}`}</Text>
+                    ) : null}
+                    {item.new_state ? <Text style={styles.mono}>{`new: ${JSON.stringify(item.new_state)}`}</Text> : null}
+                  </View>
+                ) : null}
+              </View>
+            )}
+          />
+        )}
+      </ScreenState>
     </View>
   );
 }
 
-function makeStyles({ colors, space, radius, typography, fontWeight, borders }: Theme) {
+function makeStyles({
+  colors,
+  space,
+  radius,
+  typography,
+  fontWeight,
+  borders,
+}: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,

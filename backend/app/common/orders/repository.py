@@ -106,9 +106,16 @@ async def fetch_order_status_history(access_token: str, order_id: str) -> list[d
     return as_rows(response)
 
 
-async def update_order_status(access_token: str, order_id: str, status: str) -> None:
+async def update_order_status(
+    access_token: str, order_id: str, status: str, admin_action_reason: str | None = None
+) -> None:
+    # admin_action_reason goes only with an admin's dispute resolution: guard_orders_update refuses it from anyone else
+    # and without a status change, so it always explains the move it was written with.
+    fields = {"status": status}
+    if admin_action_reason is not None:
+        fields["admin_action_reason"] = admin_action_reason
     client = await get_user_scoped_client(access_token)
-    await client.table("orders").update({"status": status}).eq("id", order_id).execute()
+    await client.table("orders").update(fields).eq("id", order_id).execute()
 
 
 async def cancel_order_as_admin(access_token: str, order_id: str, reason: str) -> dict:

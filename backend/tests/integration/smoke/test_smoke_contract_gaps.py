@@ -99,19 +99,20 @@ def test_review_read_by_id(world, api_client):
 
 
 def test_disease_case_read(world, api_client):
+    # D11 (A6): the AI advisory is farmer-only, so the farmer runs it.
     buffer = io.BytesIO()
     Image.new("RGB", (64, 64), (30, 100, 40)).save(buffer, format="JPEG")
-    path = f"{world.buyer.id}/contract-leaf.jpg"
+    path = f"{world.farmer.id}/contract-leaf.jpg"
     upload = httpx.post(
         f"{LOCAL_URL}/storage/v1/object/disease-images/{path}",
-        headers={"apikey": ANON_KEY, "Authorization": f"Bearer {world.buyer.token}", "Content-Type": "image/jpeg"},
+        headers={"apikey": ANON_KEY, "Authorization": f"Bearer {world.farmer.token}", "Content-Type": "image/jpeg"},
         content=buffer.getvalue(),
         timeout=30,
     )
     assert upload.status_code in (200, 201), upload.text
-    case = api_client("POST", "/api/v1/disease/cases", world.buyer.token, json={"storage_path": path})
+    case = api_client("POST", "/api/v1/disease/cases", world.farmer.token, json={"storage_path": path})
     assert case.status_code == 200, case.text
-    read = api_client("GET", f"/api/v1/disease/cases/{case.json()['id']}", world.buyer.token)
+    read = api_client("GET", f"/api/v1/disease/cases/{case.json()['id']}", world.farmer.token)
     assert read.status_code == 200, read.text
 
 

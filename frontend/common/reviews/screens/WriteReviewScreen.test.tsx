@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { WriteReviewScreen } from './WriteReviewScreen';
@@ -23,7 +22,6 @@ function makeProps() {
 beforeEach(() => {
   mockCreateReview.mockReset();
   useAuthStore.setState({ user: { id: 'buyer-1' } as never });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -64,14 +62,15 @@ describe('WriteReviewScreen', () => {
     expect(mockCreateReview).toHaveBeenCalledWith('order-1', 'listing-1', 5, null);
   });
 
-  it('shows an alert and stays on the screen when submission fails', async () => {
+  it('shows the error in a toast and stays on the screen when submission fails', async () => {
     mockCreateReview.mockRejectedValue(new Error('Review already submitted'));
     const props = makeProps();
     await renderWithQuery(<WriteReviewScreen {...props} />);
 
     await fireEvent.press(screen.getByText('Submit Review'));
 
-    expect(Alert.alert).toHaveBeenCalledWith('Could not submit review', 'Review already submitted');
+    // renderWithQuery mounts the ToastProvider, as App.tsx does; the API's message is what the buyer reads.
+    expect(await screen.findByText('Review already submitted')).toBeTruthy();
     expect(props.navigation.goBack).not.toHaveBeenCalled();
   });
 });

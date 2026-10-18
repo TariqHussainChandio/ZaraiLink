@@ -7,7 +7,6 @@ from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
 from app.auth.dependencies import AuthenticatedUser
-from app.common.audit_log import log_admin_action
 from app.common.errors import AppHTTPException
 from app.common.orders import repository as repo
 
@@ -205,7 +204,7 @@ async def fetch_order_status_history(user: AuthenticatedUser, order_id: str) -> 
     return await repo.fetch_order_status_history(user.access_token, order_id)
 
 
-async def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -> None:
+async def update_order_status(user: AuthenticatedUser, order_id: str, to: str, reason: str | None = None) -> None:
     """
     Never trusts a client-supplied "current status" — the order (and therefore its real current
     status) is always re-read from the database first. Ownership: only the order's buyer or
@@ -215,6 +214,10 @@ async def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -
     any other transition, and in particular never on `ready -> dispatched`, which takes the seller's stock (the
     `apply_order_dispatch` trigger, 20261019080000_order_dispatch.sql). The database enforces the same rule again
     (`orders_update_participants` and `guard_orders_update`) as defense in depth.
+
+    `reason` belongs to the admin's dispute resolution alone (SRDS §14): required there, stored as admin_action_reason
+    and audited. From anyone else it is refused rather than dropped, so a client never believes a reason was recorded
+    when it was not (and guard_orders_update would refuse it from a non-admin anyway).
     """
     await _expire_stale_pending_orders(user)
     order = await repo.fetch_order_by_id(user.access_token, order_id)
@@ -225,6 +228,10 @@ async def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -
     is_admin_resolving_dispute = user.role == "admin" and order["status"] == "disputed"
     if not is_participant and not is_admin_resolving_dispute:
         raise HTTPException(status_code=403, detail="Not a participant in this order")
+    if is_admin_resolving_dispute and user.aal != "aal2":
+        # A dispute decision is an admin write, so it needs a second factor like every other one (require_admin_aal2,
+        # admin_mfa_enforcement). This route is open to participants, so the check is here rather than on the route.
+        raise AppHTTPException(403, "This action requires a verified second factor (MFA).", "mfa_required")
 
     from_status = order["status"]
     if to not in ALLOWED_TRANSITIONS.get(from_status, []):
@@ -239,11 +246,19 @@ async def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -
     elif to in BUYER_ONLY_TARGETS and order["buyer_id"] != user.id:
         raise HTTPException(status_code=403, detail="Only the buyer can make this change to an order")
 
+    if is_admin_resolving_dispute and reason is None:
+        raise AppHTTPException(422, "Settling a dispute needs a reason both parties can read.", "validation_failed")
+    if not is_admin_resolving_dispute and reason is not None:
+        raise AppHTTPException(422, "Only an admin settling a dispute gives a reason here.", "validation_failed")
+
     try:
         # Database triggers do the rest in the same statement: confirming checks the stock is there, dispatching takes
         # it and writes the outbox events (D5-D7), and each move writes its history row. A shortage (P0001) fails the
         # update as a whole, so nothing is half done.
-        await repo.update_order_status(user.access_token, order_id, to)
+        if is_admin_resolving_dispute:
+            await repo.update_order_status(user.access_token, order_id, to, admin_action_reason=reason)
+        else:
+            await repo.update_order_status(user.access_token, order_id, to)
     except APIError as exc:
         if exc.code == "P0001":
             raise AppHTTPException(
@@ -251,18 +266,8 @@ async def update_order_status(user: AuthenticatedUser, order_id: str, to: str) -
             ) from exc
         raise
 
-    if is_admin_resolving_dispute:
-        # BR-15: an admin's dispute decision is an admin action and is audit-logged.
-        # SRDS §51 names one event for every admin action on an order; which one goes in metadata.change.
-        await log_admin_action(
-            user,
-            "order_administrative_action",
-            "order",
-            order_id,
-            previous_state={"status": from_status},
-            new_state={"status": to},
-            metadata={"change": "resolve_dispute"},
-        )
+    # BR-15: an admin's dispute decision is audited as order_administrative_action with the reason in new_state.
+    # The audit row is written atomically by the database (20261023080000).
 
 
 # The statuses an admin may cancel from (guard_orders_update, 20261023080000_admin_moderation.sql). Dispatched and
@@ -273,10 +278,10 @@ ADMIN_CANCELLABLE_STATUSES = frozenset({"pending", "confirmed", "processing", "r
 async def cancel_order_as_admin(user: AuthenticatedUser, order_id: str, reason: str) -> dict:
     """
     SRDS §14: an admin may cancel an order before dispatch, always with a reason the buyer and seller can read. No money
-    moves (BR-11: the platform holds no funds, so there is nothing to refund here; any refund is between buyer and
-    seller). The status is checked first so a dispatched order gets a clear 422 instead of the empty update the row
+    moves (BR-11: the platform holds no funds, so it pays nothing back; any money already paid is settled between buyer
+    and seller). The status is checked first so a dispatched order gets a clear 422 instead of the empty update the row
     policy would give (it hides such an order from the admin's write); the database checks the same rules again.
-    BR-15: logged with the status before and after.
+    BR-15: the database audits it with the status before and after.
     """
     order = await repo.fetch_order_by_id(user.access_token, order_id)
     if order is None:
@@ -294,13 +299,5 @@ async def cancel_order_as_admin(user: AuthenticatedUser, order_id: str, reason: 
             raise HTTPException(status_code=403, detail="Only an admin can cancel this order") from exc
         raise
 
-    await log_admin_action(
-        user,
-        "order_administrative_action",
-        "order",
-        order_id,
-        previous_state={"status": from_status},
-        new_state={"status": updated["status"], "admin_action_reason": updated.get("admin_action_reason")},
-        metadata={"change": "cancel"},
-    )
+    # The audit row is written atomically by the database (20261023080000).
     return await repo.fetch_order_by_id(user.access_token, order_id) or updated

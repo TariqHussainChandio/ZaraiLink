@@ -2,7 +2,6 @@ from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
 from app.auth.dependencies import AuthenticatedUser
-from app.common.audit_log import log_admin_action
 from app.common.errors import AppHTTPException
 from app.common.marketplace import repository as repo
 
@@ -93,24 +92,19 @@ async def fetch_categories() -> list[dict]:
 
 async def create_category(user: AuthenticatedUser, fields: dict) -> dict:
     created = await repo.create_category(user.access_token, fields)
-    # SRDS §51: one event for every category change; which one goes in metadata.change (BR-15).
-    await log_admin_action(
-        user, "category_changed", "categories", created["id"], new_state=fields, metadata={"change": "create"}
-    )
+    # The audit row is written atomically by the database (20261023080000).
     return created
 
 
 async def update_category(user: AuthenticatedUser, category_id: str, fields: dict) -> dict:
     updated = await repo.update_category(user.access_token, category_id, fields)
-    await log_admin_action(
-        user, "category_changed", "categories", category_id, new_state=fields, metadata={"change": "update"}
-    )
+    # The audit row is written atomically by the database (20261023080000).
     return updated
 
 
 async def delete_category(user: AuthenticatedUser, category_id: str) -> None:
     await repo.delete_category(user.access_token, category_id)
-    await log_admin_action(user, "category_changed", "categories", category_id, metadata={"change": "delete"})
+    # The audit row is written atomically by the database (20261023080000).
 
 
 async def fetch_crops() -> list[dict]:
@@ -161,7 +155,7 @@ async def delete_listing(user: AuthenticatedUser, listing_id: str) -> None:
 async def update_listing_status(user: AuthenticatedUser, listing_id: str, status: str) -> None:
     await repo.update_listing_status(user.access_token, listing_id, status)
     # SRDS §51 "product moderated" (BR-15).
-    await log_admin_action(user, "product_moderated", "listings", listing_id, new_state={"status": status})
+    # The audit row is written atomically by the database (20261023080000).
 
 
 async def fetch_all_listings_for_moderation(user: AuthenticatedUser) -> list[dict]:

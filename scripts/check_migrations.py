@@ -164,7 +164,8 @@ def check_sql(sql: str) -> list[str]:
         if re.search(r"(?:using|with check) \( ?true ?\)", rest, re.I) and not re.search(r" for select\b", rest, re.I):
             problems.append(f"policy {policy}: unconditional write (using/with check true)")
         if verb == "create" and table in tables:
-            for col in re.findall(r"(\w+) = \( ?select auth\.uid\(\)", rest, re.I):
+            # (?<![.\w]) skips an aliased column such as `c.user_id`: it belongs to a joined table, not the policy's own.
+            for col in re.findall(r"(?<![.\w])(\w+) = \( ?select auth\.uid\(\)", rest, re.I):
                 if not is_indexed(text, table, col.lower(), tables[table]):
                     problems.append(f"policy {policy}: column {table}.{col} compared with the caller has no index")
 

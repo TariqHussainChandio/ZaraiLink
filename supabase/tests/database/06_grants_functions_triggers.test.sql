@@ -31,7 +31,8 @@ select is(
     'anon units SELECT',
     -- Read-only event-name catalogue for the audit log screen (20261023080000).
     'authenticated audit_event_names SELECT',
-    'authenticated audit_logs INSERT,SELECT',
+    -- No INSERT since 20261023080000: the database's definer triggers write the log, no client does.
+    'authenticated audit_logs SELECT',
     'authenticated categories DELETE,INSERT,SELECT,UPDATE',
     -- The expert's assessment of an AI case (20261022080000, BR-13).
     'authenticated consultation_assessments INSERT,SELECT',
@@ -82,8 +83,9 @@ select is(
     'authenticated profiles_public SELECT',
     'authenticated reports INSERT,SELECT,UPDATE',
     'authenticated required_documents INSERT,SELECT,UPDATE',
-    -- No DELETE since 20261023080000: a review is hidden by moderation, never deleted by its author.
-    'authenticated reviews INSERT,SELECT',
+    -- Since 20261023080000: no DELETE (a review is hidden by moderation, never deleted), and INSERT and UPDATE are
+    -- column grants (the author's own columns; the moderation columns), so they are not in the table's ACL.
+    'authenticated reviews SELECT',
     'authenticated units DELETE,INSERT,SELECT,UPDATE',
     'service_role audit_event_names SELECT',
     'service_role audit_logs INSERT,SELECT',
@@ -111,7 +113,6 @@ select is(
     where p.pronamespace = 'public'::regnamespace and has_function_privilege('anon', p.oid, 'execute')),
   array[
     'anon guard_experts_verification_status()',
-    'anon guard_messages_updates()',
     'anon guard_profiles_role()',
     'anon is_admin_aal2()',
     'anon is_admin()',

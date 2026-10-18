@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BaseModel, Field, StringConstraints
 
 
 class BuyerRef(BaseModel):
@@ -17,6 +19,10 @@ class Review(BaseModel):
     rating: int
     comment: str | None
     created_at: str
+    # Moderation (SRDS §14): a hidden review is kept, with the reason, so an admin can restore it. Public readers never
+    # receive a hidden row (the select policy and the repository filter); the author and the admin see these fields.
+    hidden_at: str | None = None
+    hidden_reason: str | None = None
 
 
 class ReviewWithBuyer(Review):
@@ -34,3 +40,8 @@ class CreateConsultationReviewRequest(BaseModel):
     consultation_id: str
     rating: int = Field(ge=1, le=5)
     comment: str | None = None
+
+
+class HideReviewRequest(BaseModel):
+    # Matches reviews_hidden_reason_check (1-500 characters after trimming): a hidden review always says why.
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]

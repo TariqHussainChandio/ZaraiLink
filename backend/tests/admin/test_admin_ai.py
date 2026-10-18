@@ -149,7 +149,7 @@ async def test_editing_a_reviewed_entry_sends_it_back_to_review_and_leaves_the_a
     with (
         patch("app.admin.service.repo.fetch_disease_knowledge_entry", new=AsyncMock(return_value=ENTRY)),
         patch("app.admin.service.repo.update_disease_knowledge", new=AsyncMock(return_value=updated)) as update,
-        patch("app.admin.service.log_admin_action", new=AsyncMock()) as audit,
+        patch("app.admin.service.log_admin_action", new=AsyncMock(), create=True) as audit,
     ):
         result = await service.update_disease_knowledge(ADMIN, ENTRY["class_label"], {"advisory": "New text"})
 
@@ -168,7 +168,7 @@ async def test_editing_a_pending_entry_changes_only_the_text():
     with (
         patch("app.admin.service.repo.fetch_disease_knowledge_entry", new=AsyncMock(return_value=pending)),
         patch("app.admin.service.repo.update_disease_knowledge", new=AsyncMock(return_value=pending)) as update,
-        patch("app.admin.service.log_admin_action", new=AsyncMock()) as audit,
+        patch("app.admin.service.log_admin_action", new=AsyncMock(), create=True) as audit,
     ):
         await service.update_disease_knowledge(ADMIN, ENTRY["class_label"], {"symptoms": ["Yellow spots"]})
     assert update.await_args.args[2] == {"symptoms": ["Yellow spots"]}
@@ -179,7 +179,7 @@ async def test_editing_a_pending_entry_changes_only_the_text():
 async def test_an_empty_edit_is_refused_and_nothing_is_written_or_audited():
     with (
         patch("app.admin.service.repo.update_disease_knowledge", new=AsyncMock()) as update,
-        patch("app.admin.service.log_admin_action", new=AsyncMock()) as audit,
+        patch("app.admin.service.log_admin_action", new=AsyncMock(), create=True) as audit,
         pytest.raises(HTTPException) as exc_info,
     ):
         await service.update_disease_knowledge(ADMIN, ENTRY["class_label"], {})
@@ -192,7 +192,7 @@ async def test_an_empty_edit_is_refused_and_nothing_is_written_or_audited():
 async def test_editing_a_missing_class_is_a_404_with_no_audit():
     with (
         patch("app.admin.service.repo.fetch_disease_knowledge_entry", new=AsyncMock(return_value=None)),
-        patch("app.admin.service.log_admin_action", new=AsyncMock()) as audit,
+        patch("app.admin.service.log_admin_action", new=AsyncMock(), create=True) as audit,
         pytest.raises(HTTPException) as exc_info,
     ):
         await service.update_disease_knowledge(ADMIN, "Nope", {"advisory": "x"})
@@ -207,7 +207,7 @@ async def test_reviewing_records_this_admin_as_reviewer_and_leaves_the_audit_to_
     with (
         patch("app.admin.service.repo.fetch_disease_knowledge_entry", new=AsyncMock(return_value=pending)),
         patch("app.admin.service.repo.update_disease_knowledge", new=AsyncMock(return_value=reviewed)) as update,
-        patch("app.admin.service.log_admin_action", new=AsyncMock()) as audit,
+        patch("app.admin.service.log_admin_action", new=AsyncMock(), create=True) as audit,
     ):
         await service.review_disease_knowledge(ADMIN, ENTRY["class_label"])
 

@@ -30,6 +30,9 @@ class CheckoutRequest(BaseModel):
 
 class UpdateOrderStatusRequest(BaseModel):
     to: OrderStatus
+    # Only for the admin settling a dispute (SRDS §14), where it is required and stored on the order as
+    # admin_action_reason for both parties to read; anyone else sending one is refused (422 validation_failed).
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)] | None = None
 
 
 class OrderProfileRef(BaseModel):
@@ -66,7 +69,7 @@ class Order(BaseModel):
     created_at: str
     updated_at: str
     # Why an admin cancelled the order or resolved its dispute (SRDS §14); null for every participant's move. The
-    # platform holds no money (BR-11), so a cancellation moves none: any refund is settled between buyer and seller.
+    # platform holds no money (BR-11), so a cancellation moves none: money already paid is settled by buyer and seller.
     admin_action_reason: str | None = None
 
 

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ReportsScreen } from './ReportsScreen';
@@ -7,13 +6,14 @@ import {
   dismissReport,
   fetchAllProfiles,
   fetchReports,
+  hideReview,
   resolveReport,
   setProfileSuspended,
 } from '../services/adminService';
 import { reviewExpertVerification, fetchExpertById, fetchExpertForAdminById } from '../../expert/services/expertService';
 import { fetchListingById, updateListingStatus } from '../../common/marketplace/services/listingsService';
 import { fetchMessageById, redactMessage } from '../../common/messaging/services/messagingService';
-import { deleteReview, fetchReviewById } from '../../common/reviews/services/reviewsService';
+import { fetchReviewById } from '../../common/reviews/services/reviewsService';
 import { useAuthStore } from '../../state/authStore';
 import type { ReportWithReporter } from '../types/reports';
 
@@ -30,6 +30,7 @@ jest.mock('../services/adminService', () => ({
   dismissReport: jest.fn(),
   fetchAllProfiles: jest.fn(),
   fetchReports: jest.fn(),
+  hideReview: jest.fn(),
   resolveReport: jest.fn(),
   setProfileSuspended: jest.fn(),
 }));
@@ -47,7 +48,6 @@ jest.mock('../../common/messaging/services/messagingService', () => ({
   redactMessage: jest.fn(),
 }));
 jest.mock('../../common/reviews/services/reviewsService', () => ({
-  deleteReview: jest.fn(),
   fetchReviewById: jest.fn(),
 }));
 
@@ -59,7 +59,7 @@ const mockFetchAllProfiles = fetchAllProfiles as jest.Mock;
 const mockFetchListingById = fetchListingById as jest.Mock;
 const mockUpdateListingStatus = updateListingStatus as jest.Mock;
 const mockFetchReviewById = fetchReviewById as jest.Mock;
-const mockDeleteReview = deleteReview as jest.Mock;
+const mockHideReview = hideReview as jest.Mock;
 
 const report = (overrides: Partial<ReportWithReporter> = {}): ReportWithReporter => ({
   id: 'report-1',
@@ -85,17 +85,29 @@ beforeEach(() => {
   mockFetchListingById.mockReset();
   mockUpdateListingStatus.mockReset();
   mockFetchReviewById.mockReset();
-  mockDeleteReview.mockReset();
+  mockHideReview.mockReset();
   (fetchExpertById as jest.Mock).mockReset();
   (fetchExpertForAdminById as jest.Mock).mockReset();
   (fetchMessageById as jest.Mock).mockReset();
   (redactMessage as jest.Mock).mockReset();
   (reviewExpertVerification as jest.Mock).mockReset();
   useAuthStore.setState({ user: { id: 'admin-1' } as never });
-  jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
-    buttons?.find((b: { style?: string }) => b.style === 'destructive')?.onPress?.();
-  });
 });
+
+/** The sheet's button: it renders after the card's button of the same name, so it is the last match. */
+function sheetButton(label: string) {
+  const matches = screen.getAllByText(label);
+  const last = matches[matches.length - 1];
+  if (!last) throw new Error(`No "${label}" button`);
+  return last;
+}
+
+/** A moderation action is confirmed in a sheet: the card's button opens it, the sheet's button of the same name acts. */
+async function pressAndConfirm(label: string) {
+  await fireEvent.press(screen.getByText(label));
+  expect(await screen.findByText(`This will ${label.toLowerCase()} and mark the report resolved.`)).toBeTruthy();
+  await fireEvent.press(sheetButton(label));
+}
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -148,6 +160,9 @@ describe('ReportsScreen', () => {
     await screen.findByText('Suspicious Tractor');
 
     await fireEvent.press(screen.getByText('Remove Listing'));
+    // Opening the confirmation changes nothing yet.
+    expect(mockUpdateListingStatus).not.toHaveBeenCalled();
+    await fireEvent.press(sheetButton('Remove Listing'));
 
     expect(mockUpdateListingStatus).toHaveBeenCalledWith('listing-1', 'inactive');
     expect(mockResolveReport).toHaveBeenCalledWith('report-1', null);
@@ -161,24 +176,52 @@ describe('ReportsScreen', () => {
     await renderWithQuery(<ReportsScreen />);
     await screen.findByText('Unruly Umar');
 
-    await fireEvent.press(screen.getByText('Suspend User'));
+    await pressAndConfirm('Suspend User');
 
     expect(mockSetProfileSuspended).toHaveBeenCalledWith('user-9', true);
     expect(mockResolveReport).toHaveBeenCalledWith('report-1', null);
   });
 
-  it('deletes a reported review', async () => {
-    mockFetchReports.mockResolvedValue([report({ target_type: 'review', target_id: 'review-1' })]);
+  it('hides a reported review with the report as its reason, never deletes it', async () => {
+    mockFetchReports.mockResolvedValue([report({ target_type: 'review', target_id: 'review-1', reason: 'Abusive' })]);
     mockFetchReviewById.mockResolvedValue({ id: 'review-1', comment: 'Terrible seller' });
-    mockDeleteReview.mockResolvedValue(undefined);
+    mockHideReview.mockResolvedValue({ id: 'review-1' });
     mockResolveReport.mockResolvedValue(undefined);
     await renderWithQuery(<ReportsScreen />);
     await screen.findByText('Terrible seller');
 
-    await fireEvent.press(screen.getByText('Delete Review'));
+    expect(screen.queryByText('Delete Review')).toBeNull();
+    await pressAndConfirm('Hide Review');
 
-    expect(mockDeleteReview).toHaveBeenCalledWith('review-1');
+    expect(mockHideReview).toHaveBeenCalledWith('review-1', 'Reported: Abusive');
     expect(mockResolveReport).toHaveBeenCalledWith('report-1', null);
+    expect(await screen.findByText('Done. The report is resolved.')).toBeTruthy();
+  });
+
+  it('cancelling the confirmation takes no action', async () => {
+    mockFetchReports.mockResolvedValue([report({ target_type: 'user', target_id: 'user-9' })]);
+    mockFetchAllProfiles.mockResolvedValue([{ id: 'user-9', full_name: 'Unruly Umar' }]);
+    await renderWithQuery(<ReportsScreen />);
+    await screen.findByText('Unruly Umar');
+
+    await fireEvent.press(screen.getByText('Suspend User'));
+    await fireEvent.press(await screen.findByText('Cancel'));
+
+    expect(mockSetProfileSuspended).not.toHaveBeenCalled();
+    expect(mockResolveReport).not.toHaveBeenCalled();
+  });
+
+  it('tells the admin when the action fails and leaves the report open', async () => {
+    mockFetchReports.mockResolvedValue([report({ target_type: 'user', target_id: 'user-9' })]);
+    mockFetchAllProfiles.mockResolvedValue([{ id: 'user-9', full_name: 'Unruly Umar' }]);
+    mockSetProfileSuspended.mockRejectedValue(new Error('This action requires a verified second factor (MFA).'));
+    await renderWithQuery(<ReportsScreen />);
+    await screen.findByText('Unruly Umar');
+
+    await pressAndConfirm('Suspend User');
+
+    expect(await screen.findByText(/Could not update the report/)).toBeTruthy();
+    expect(mockResolveReport).not.toHaveBeenCalled();
   });
 
   it('dismisses a report without taking a primary action', async () => {

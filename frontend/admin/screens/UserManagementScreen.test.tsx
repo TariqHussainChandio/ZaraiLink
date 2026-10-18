@@ -73,13 +73,26 @@ describe('UserManagementScreen', () => {
     expect(screen.getByText('Farmer')).toBeTruthy();
   });
 
-  it('reads an empty name like a missing one, in the row and the role sheet', async () => {
-    // profiles.full_name is never null but defaults to ''.
-    mockFetchAllProfiles.mockResolvedValue([profile({ full_name: '' })]);
+  it('tells apart profiles with no name by their short id, in the row and the role sheet', async () => {
+    // profiles.full_name is never null but defaults to ''. Two of them must not read as the same "Unknown user".
+    mockFetchAllProfiles.mockResolvedValue([
+      profile({ id: 'aaaaaaaa-1111', full_name: '' }),
+      profile({ id: 'bbbbbbbb-2222', full_name: '' }),
+    ]);
     await renderWithQuery(<UserManagementScreen />);
-    expect(await screen.findByText('Unknown user')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Change Role'));
-    expect(await screen.findByText('Change role for this user')).toBeTruthy();
+    expect(await screen.findByText('User aaaaaaaa')).toBeTruthy();
+    expect(screen.getByText('User bbbbbbbb')).toBeTruthy();
+    expect(screen.queryByText('Unknown user')).toBeNull();
+    const [firstChangeRole] = screen.getAllByText('Change Role');
+    if (!firstChangeRole) throw new Error('No Change Role button');
+    await fireEvent.press(firstChangeRole);
+    expect(await screen.findByText('Change role for User aaaaaaaa')).toBeTruthy();
+  });
+
+  it('shows an identifier line: phone, city, join date and short id', async () => {
+    mockFetchAllProfiles.mockResolvedValue([profile({ phone: '+923001234567', city: 'Multan' })]);
+    await renderWithQuery(<UserManagementScreen />);
+    expect(await screen.findByText(/\+923001234567 · Multan · Joined .* · #user-1/)).toBeTruthy();
   });
 
   it('shows a Suspended badge for suspended users', async () => {
@@ -96,15 +109,45 @@ describe('UserManagementScreen', () => {
     expect(screen.queryByText('Change Role')).toBeNull();
   });
 
-  it('suspends and unsuspends a user', async () => {
+  it('suspends a user only after confirming in a sheet', async () => {
     mockFetchAllProfiles.mockResolvedValue([profile()]);
     mockSetProfileSuspended.mockResolvedValue(undefined);
     await renderWithQuery(<UserManagementScreen />);
     await screen.findByText('Farmer Sana');
 
     await fireEvent.press(screen.getByText('Suspend'));
+    // The row's button only asks.
+    expect(mockSetProfileSuspended).not.toHaveBeenCalled();
+    expect(await screen.findByText('Suspend Farmer Sana')).toBeTruthy();
+    expect(screen.getByText(/cannot buy, sell, message or consult/)).toBeTruthy();
 
+    await fireEvent.press(screen.getByText('Suspend user'));
     expect(mockSetProfileSuspended).toHaveBeenCalledWith('user-1', true);
+    expect(await screen.findByText('User suspended')).toBeTruthy();
+  });
+
+  it('backing out of a suspension changes nothing', async () => {
+    mockFetchAllProfiles.mockResolvedValue([profile()]);
+    await renderWithQuery(<UserManagementScreen />);
+    await screen.findByText('Farmer Sana');
+
+    await fireEvent.press(screen.getByText('Suspend'));
+    await fireEvent.press(await screen.findByText('Not now'));
+
+    expect(screen.queryByText('Suspend user')).toBeNull();
+    expect(mockSetProfileSuspended).not.toHaveBeenCalled();
+  });
+
+  it('tells the admin when the suspension is refused', async () => {
+    mockFetchAllProfiles.mockResolvedValue([profile()]);
+    mockSetProfileSuspended.mockRejectedValue(new Error('offline'));
+    await renderWithQuery(<UserManagementScreen />);
+    await screen.findByText('Farmer Sana');
+
+    await fireEvent.press(screen.getByText('Suspend'));
+    await fireEvent.press(screen.getByText('Suspend user'));
+
+    expect(await screen.findByText(/Could not update the user/)).toBeTruthy();
   });
 
   it('unsuspends an already-suspended user', async () => {
@@ -114,6 +157,9 @@ describe('UserManagementScreen', () => {
     await screen.findByText('Farmer Sana');
 
     await fireEvent.press(screen.getByText('Unsuspend'));
+    expect(mockSetProfileSuspended).not.toHaveBeenCalled();
+    expect(await screen.findByText('They can sign in and use ZaraiLink again.')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Unsuspend user'));
 
     expect(mockSetProfileSuspended).toHaveBeenCalledWith('user-1', false);
   });

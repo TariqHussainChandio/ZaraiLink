@@ -28,7 +28,11 @@ import {
 } from '../../components';
 import { useResolvePayment } from '../../payments';
 import { ReviewCard } from '../../reviews';
-import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
+import {
+  APP_TABS,
+  MESSAGING_ROUTES,
+  ORDERS_ROUTES,
+} from '../../constants/routes';
 import { useOpenConversation } from '../../messaging';
 import { useOrderDetail, useUpdateOrderStatus } from '../hooks/orders';
 import { useAuthStore } from '../../../state/authStore';
@@ -40,12 +44,20 @@ import { errorMessage } from '../../../utils/errorMessage';
 import { statusMeta } from '../../constants/status';
 import { formatRs } from '../../../utils/money';
 
-const WHEN = new Intl.DateTimeFormat('en-PK', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const WHEN = new Intl.DateTimeFormat('en-PK', {
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+});
 
 /** When each status was first reached, from the order's status history. */
-function reachedAt(history: OrderStatusHistoryEntry[]): Partial<Record<OrderStatus, string>> {
+function reachedAt(
+  history: OrderStatusHistoryEntry[],
+): Partial<Record<OrderStatus, string>> {
   const out: Partial<Record<OrderStatus, string>> = {};
-  for (const entry of history) out[entry.to_status] ??= WHEN.format(new Date(entry.created_at));
+  for (const entry of history)
+    out[entry.to_status] ??= WHEN.format(new Date(entry.created_at));
   return out;
 }
 
@@ -113,7 +125,10 @@ export function OrderDetailScreen() {
           query={detail}
           skeleton={skeleton}
           isEmpty={loaded => !loaded.order}
-          empty={{ title: 'Order not found', description: 'It may have been removed, or it is not yours to see.' }}
+          empty={{
+            title: 'Order not found',
+            description: 'It may have been removed, or it is not yours to see.',
+          }}
           errorTitle="Couldn't load this order"
         />
       </View>
@@ -122,7 +137,8 @@ export function OrderDetailScreen() {
 
   const isSeller = order.seller_id === userId;
   const isBuyer = order.buyer_id === userId;
-  const canCancel = (isBuyer || isSeller) && ['pending', 'confirmed'].includes(order.status);
+  const canCancel =
+    (isBuyer || isSeller) && ['pending', 'confirmed'].includes(order.status);
   const canConfirm = isSeller && order.status === 'pending';
   const canReject = isSeller && order.status === 'pending';
   const canProcess = isSeller && order.status === 'confirmed';
@@ -131,15 +147,25 @@ export function OrderDetailScreen() {
   const canDispatch = isSeller && order.status === 'ready';
   const canComplete = isSeller && order.status === 'dispatched';
   const canDispute = isBuyer && order.status === 'completed';
-  const canPay = isBuyer && !payment && ['pending', 'confirmed'].includes(order.status);
-  const paymentPending = payment && ['pending', 'processing'].includes(payment.status);
+  const canPay =
+    isBuyer && !payment && ['pending', 'confirmed'].includes(order.status);
+  const paymentPending =
+    payment && ['pending', 'processing'].includes(payment.status);
   const canReview = isBuyer && !review && order.status === 'completed';
 
   return (
     <View style={styles.container}>
-      <ScreenState query={detail} skeleton={skeleton} errorTitle="Couldn't refresh this order">
+      <ScreenState
+        query={detail}
+        skeleton={skeleton}
+        errorTitle="Couldn't refresh this order"
+      >
         {() => (
-          <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.headerRow}>
               <Text style={styles.total}>{formatRs(order.total)}</Text>
               <StatusBadge kind="order" status={order.status} />
@@ -177,13 +203,20 @@ export function OrderDetailScreen() {
               <Button
                 label="Pay Now"
                 icon={CreditCard}
-                onPress={() => navigation.navigate(ORDERS_ROUTES.PaymentMethod, { orderId: order.id })}
+                onPress={() =>
+                  navigation.navigate(ORDERS_ROUTES.PaymentMethod, {
+                    orderId: order.id,
+                  })
+                }
                 style={styles.action}
               />
             ) : null}
 
             <Card style={styles.itemsCard}>
-              <OrderTimeline status={order.status} reachedAt={reachedAt(history)} />
+              <OrderTimeline
+                status={order.status}
+                reachedAt={reachedAt(history)}
+              />
             </Card>
 
             <Card style={styles.itemsCard}>
@@ -199,7 +232,11 @@ export function OrderDetailScreen() {
                 </View>
               ))}
               <View style={styles.summaryDivider} />
-              <PriceBreakdown subtotal={order.product_subtotal} delivery={order.delivery_charge} total={order.total} />
+              <PriceBreakdown
+                subtotal={order.product_subtotal}
+                delivery={order.delivery_charge}
+                total={order.total}
+              />
             </Card>
 
             <Card style={styles.partiesCard}>
@@ -207,7 +244,9 @@ export function OrderDetailScreen() {
               <Text style={styles.partyName}>
                 {order.buyer?.full_name || 'Unknown'}
               </Text>
-              <Text style={[styles.sectionTitle, styles.sellerLabel]}>Seller</Text>
+              <Text style={[styles.sectionTitle, styles.sellerLabel]}>
+                Seller
+              </Text>
               <Text style={styles.partyName}>
                 {order.seller?.full_name || 'Unknown'}
               </Text>
@@ -221,9 +260,13 @@ export function OrderDetailScreen() {
                 loading={openConversation.isPending}
                 onPress={async () => {
                   if (!userId) return;
-                  const otherPartyId = isBuyer ? order.seller_id : order.buyer_id;
+                  const otherPartyId = isBuyer
+                    ? order.seller_id
+                    : order.buyer_id;
                   const otherPartyName =
-                    (isBuyer ? order.seller?.full_name : order.buyer?.full_name) ?? '';
+                    (isBuyer
+                      ? order.seller?.full_name
+                      : order.buyer?.full_name) ?? '';
                   try {
                     const conversation = await openConversation.mutateAsync({
                       otherUserId: otherPartyId,
@@ -233,7 +276,10 @@ export function OrderDetailScreen() {
                     tabNavigation?.navigate(APP_TABS.Messages, {
                       screen: MESSAGING_ROUTES.Chat,
                       initial: false,
-                      params: { conversationId: conversation.id, otherUserName: otherPartyName },
+                      params: {
+                        conversationId: conversation.id,
+                        otherUserName: otherPartyName,
+                      },
                     });
                   } catch (error) {
                     toast.error(errorMessage(error));
@@ -346,24 +392,39 @@ export function OrderDetailScreen() {
                         : ''}
                       {statusMeta('order', entry.to_status).label}
                     </Text>
-                    <Text style={styles.historyDate}>{new Date(entry.created_at).toLocaleString()}</Text>
+                    <Text style={styles.historyDate}>
+                      {new Date(entry.created_at).toLocaleString()}
+                    </Text>
                   </View>
                 ))}
               </Card>
             ) : null}
 
-            <Sheet visible={confirmingDispatch} onClose={() => setConfirmingDispatch(false)} title="Dispatch this order?">
+            <Sheet
+              visible={confirmingDispatch}
+              onClose={() => setConfirmingDispatch(false)}
+              title="Dispatch this order?"
+            >
               <Text style={styles.sheetText}>
-                {"The stock leaves your inventory now, and the buyer sees the order as dispatched. This can't be undone."}
+                {
+                  "The stock leaves your inventory now, and the buyer sees the order as dispatched. This can't be undone."
+                }
               </Text>
               <Button
                 label="Dispatch now"
                 icon={Truck}
                 loading={updating}
-                onPress={() => advance('dispatched', () => setConfirmingDispatch(false))}
+                onPress={() =>
+                  advance('dispatched', () => setConfirmingDispatch(false))
+                }
                 style={styles.action}
               />
-              <Button label="Not yet" variant="secondary" onPress={() => setConfirmingDispatch(false)} style={styles.action} />
+              <Button
+                label="Not yet"
+                variant="secondary"
+                onPress={() => setConfirmingDispatch(false)}
+                style={styles.action}
+              />
             </Sheet>
           </ScrollView>
         )}

@@ -24,6 +24,7 @@ import {
   reviewDiseaseKnowledge,
   updateDiseaseKnowledge,
   cancelOrderAsAdmin,
+  resolveDisputeAsAdmin,
   fetchAdminQueues,
   fetchAuditEvents,
   fetchConsultationForAdmin,
@@ -36,6 +37,7 @@ import {
 } from '../services/adminService';
 import type { DiseaseKnowledgeEntry, DiseaseKnowledgeUpdate } from '../types/ai';
 import type { ConsultationStatus } from '../types/consultations';
+import type { DisputeOutcome } from '../types/orders';
 import { fetchAdminAnalytics } from '../../common/analytics';
 import {
   fetchExpertById,
@@ -439,6 +441,20 @@ export function useCancelOrderAsAdmin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) => cancelOrderAsAdmin(orderId, reason),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.orders.all }),
+      ]),
+  });
+}
+
+/** Settling a dispute changes the order for its buyer and seller too, so their order lists refetch. */
+export function useResolveDispute() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, outcome, reason }: { orderId: string; outcome: DisputeOutcome; reason: string }) =>
+      resolveDisputeAsAdmin(orderId, outcome, reason),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),

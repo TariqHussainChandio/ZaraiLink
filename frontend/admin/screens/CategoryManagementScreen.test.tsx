@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { CategoryManagementScreen } from './CategoryManagementScreen';
@@ -52,12 +51,19 @@ beforeEach(() => {
   mockUpdateCategory.mockReset();
   mockDeleteCategory.mockReset();
   useAuthStore.setState({ user: { id: 'admin-1' } as never });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
   jest.restoreAllMocks();
 });
+
+/** The sheet's button: it renders after the card's button of the same name, so it is the last match. */
+function sheetButton(label: string) {
+  const matches = screen.getAllByText(label);
+  const last = matches[matches.length - 1];
+  if (!last) throw new Error(`No "${label}" button`);
+  return last;
+}
 
 describe('CategoryManagementScreen', () => {
   it('shows an empty state when there are no categories', async () => {
@@ -108,17 +114,31 @@ describe('CategoryManagementScreen', () => {
     });
   });
 
-  it('deletes a category after confirming the alert', async () => {
+  it('deletes a category only after confirming in the sheet', async () => {
     mockFetchCategories.mockResolvedValue([category()]);
     mockDeleteCategory.mockResolvedValue(undefined);
-    (Alert.alert as jest.Mock).mockImplementation((_title, _msg, buttons) => {
-      buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
-    });
     await renderWithQuery(<CategoryManagementScreen />);
     await screen.findByText('Seeds');
 
     await fireEvent.press(screen.getByText('Delete'));
+    expect(await screen.findByText('Delete "Seeds"? This cannot be undone.')).toBeTruthy();
+    expect(mockDeleteCategory).not.toHaveBeenCalled();
+
+    await fireEvent.press(sheetButton('Delete'));
 
     expect(mockDeleteCategory).toHaveBeenCalledWith('cat-1');
+    expect(await screen.findByText('Category deleted')).toBeTruthy();
+  });
+
+  it('cancelling the confirmation deletes nothing', async () => {
+    mockFetchCategories.mockResolvedValue([category()]);
+    await renderWithQuery(<CategoryManagementScreen />);
+    await screen.findByText('Seeds');
+
+    await fireEvent.press(screen.getByText('Delete'));
+    await fireEvent.press(await screen.findByText('Cancel'));
+
+    expect(screen.queryByText('Delete "Seeds"? This cannot be undone.')).toBeNull();
+    expect(mockDeleteCategory).not.toHaveBeenCalled();
   });
 });

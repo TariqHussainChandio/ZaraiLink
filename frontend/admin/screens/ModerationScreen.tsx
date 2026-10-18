@@ -1,4 +1,4 @@
-import { Flag, List, Receipt, Store, Tags, Users } from 'lucide-react-native';
+import { Flag, List, Receipt, Star, Stethoscope, Store, Tags, Users } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { ListGroup, ListRow, ListRowIcon } from '../../common/components';
@@ -11,6 +11,8 @@ const DESTINATIONS = [
   { route: ADMIN_HOME_ROUTES.ListingModeration, icon: Store, title: 'Listings', meta: 'Hide or restore marketplace listings' },
   { route: ADMIN_HOME_ROUTES.Reports, icon: Flag, title: 'Reports', meta: 'What buyers and sellers have reported' },
   { route: ADMIN_HOME_ROUTES.Orders, icon: Receipt, title: 'Orders', meta: 'Every order on the platform' },
+  { route: ADMIN_HOME_ROUTES.ConsultationModeration, icon: Stethoscope, title: 'Consultations', meta: 'Close or cancel a consultation left open' },
+  { route: ADMIN_HOME_ROUTES.ReviewModeration, icon: Star, title: 'Reviews', meta: 'Hide or restore buyer reviews' },
   { route: ADMIN_HOME_ROUTES.Categories, icon: Tags, title: 'Categories', meta: 'Marketplace categories' },
   { route: ADMIN_HOME_ROUTES.ReferenceData, icon: List, title: 'Reference data', meta: 'Units, currencies and other lists' },
 ] as const;
