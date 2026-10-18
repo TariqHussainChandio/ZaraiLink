@@ -6,6 +6,7 @@ import { SplashScreen } from '../../common/auth/screens/SplashScreen';
 import { SuspendedScreen } from '../../common/auth/screens/SuspendedScreen';
 import { ErrorBoundary } from '../../common/components/ErrorBoundary';
 import { useAuthStore } from '../../state/authStore';
+import { AccountUnavailableScreen } from '../AccountUnavailableScreen';
 import { AdminNavigator } from './AdminNavigator';
 import { AppNavigator } from './AppNavigator';
 import { ApprovalNavigator } from './ApprovalNavigator';
@@ -33,6 +34,9 @@ export function RootNavigator() {
   }
   if (status === 'approvalGranted') return <ApprovalGrantedScreen />;
   if (status === 'secondFactor') return <SecondFactorScreen />;
+  // Signed in, but the account could not be checked (offline with nothing remembered, or the read failed): no shell
+  // is guessed in its place (B4 verification, F1).
+  if (status === 'accountUnavailable') return <AccountUnavailableScreen />;
   if (status !== 'authenticated') {
     return (
       <Guarded name="auth navigator">
@@ -57,6 +61,7 @@ export function RootNavigator() {
       </Guarded>
     );
   }
+  // AppNavigator guesses no role either: without a marketplace role it shows the account state instead of a shell.
   return (
     <Guarded name="app navigator">
       <AppNavigator />

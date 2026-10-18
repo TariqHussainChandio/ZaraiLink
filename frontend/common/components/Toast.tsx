@@ -1,11 +1,32 @@
-import { CircleAlert, CircleCheck, CircleX, X, type LucideIcon } from 'lucide-react-native';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  X,
+  type LucideIcon,
+} from 'lucide-react-native';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  AccessibilityInfo,
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { type Theme, type ToneKey, useTheme } from '../../theme';
 
 /** How long a toast stays before it leaves on its own. Long enough to read one plain sentence. */
-export const TOAST_DURATION_MS = 4000;
+const TOAST_DURATION_MS = 4000;
 
 export type ToastTone = 'success' | 'info' | 'error';
 
@@ -61,7 +82,10 @@ const ToastContext = createContext<ToastApi | null>(null);
  */
 export function useToast(): ToastApi {
   const api = useContext(ToastContext);
-  if (!api) throw new Error('useToast must be called inside <ToastProvider> (mounted once in App.tsx).');
+  if (!api)
+    throw new Error(
+      'useToast must be called inside <ToastProvider> (mounted once in App.tsx).',
+    );
   return api;
 }
 
@@ -90,19 +114,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      {current ? <Toast key={current.id} tone={current.tone} message={current.message} onDismiss={dismiss} /> : null}
+      {current ? (
+        <Toast
+          key={current.id}
+          tone={current.tone}
+          message={current.message}
+          onDismiss={dismiss}
+        />
+      ) : null}
     </ToastContext.Provider>
   );
 }
 
-export interface ToastProps {
+interface ToastProps {
   tone: ToastTone;
   message: string;
   onDismiss: () => void;
 }
 
 /** The toast itself. Screens do not render it; they call `useToast()`. Exported for the provider and its tests. */
-export function Toast({ tone, message, onDismiss }: ToastProps) {
+function Toast({ tone, message, onDismiss }: ToastProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
@@ -146,7 +177,10 @@ export function Toast({ tone, message, onDismiss }: ToastProps) {
   return (
     <View
       // Above the bottom tab bar and the gesture inset, whichever screen is on top; touches pass through around it.
-      style={[styles.layer, { bottom: insets.bottom + theme.size.tabBar + theme.space[2] }]}
+      style={[
+        styles.layer,
+        { bottom: insets.bottom + theme.size.tabBar + theme.space[2] },
+      ]}
       pointerEvents="box-none"
     >
       <Animated.View
@@ -177,7 +211,14 @@ export function Toast({ tone, message, onDismiss }: ToastProps) {
   );
 }
 
-function makeStyles({ space, size, borders, shadows, components, typography }: Theme) {
+function makeStyles({
+  space,
+  size,
+  borders,
+  shadows,
+  components,
+  typography,
+}: Theme) {
   return StyleSheet.create({
     layer: {
       position: 'absolute',

@@ -126,6 +126,8 @@ orders, the event stays pending, and is applied on recovery; every deduction has
 
 ### B4 — IMS app
 
+> **Status (2026-10-18): done.** 22 Jest suites for every screen, hook and service; `InventoryGate` refuses anyone but an approved, unsuspended dealer; the device cache is wiped on sign-out and on an account switch; writes send an Idempotency-Key; the sync log names its order and listing (B3 N5). The emulator walk of every flow found and fixed: a new dealer stuck on "Loading locations", the movement filters failing (the app sent timestamps, the API wants dates), a cold-cache purchase line with no location, an empty trend drawing blank bars, no screen for editing a draft purchase, and the offline banner covering the app bar. The fresh-context verifier first returned NOT VERIFIED: an approved dealer who started the app offline landed in the buyer shell (the profile read failed and the role fell back to buyer). Fixed with a remembered role and account status per user, an "account can't be checked offline" state and a reload on reconnect; also a lost-reply write now says it is unconfirmed and keeps its key with the form, low stock reads the default location everywhere, and the sync log opens its order in a sheet. Re-verification: VERIFIED WITH FINDINGS (Low: an unsigned remembered record a rooted device could alter, offline application-status wording; known limit: an offline start after the token expires goes to sign-in).
+
 **Goal:** the separate inventory application (SRDS §16–§18) in `frontend/inventory/`.
 
 | Sub-lane (`zl-inventory-app`) | Screens | Needs |

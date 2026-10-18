@@ -1,119 +1,56 @@
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Badge, Card, EmptyState, Spinner } from '../../common/components';
-import { HOME_ROUTES } from '../../common/constants/routes';
-import { useSuppliers } from '../hooks/dealer';
-import { useAuthStore } from '../../state/authStore';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
-import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
+import { Plus, Truck } from 'lucide-react-native';
+import React, { useMemo } from 'react';
+import { RefreshControl, View } from 'react-native';
+import { Badge, Button, EmptyState, ListRow, ScreenState } from '../../common/components';
+import { type Theme, useTheme } from '../../theme';
+import { makeScreenStyles } from '../components/screenStyles';
+import { useSuppliers } from '../hooks/inventory';
+import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
 
-export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>) {
+/** The dealer's suppliers (SRDS §23). */
+export function SupplierListScreen({ navigation }: InventoryScreenProps<typeof INVENTORY_ROUTES.Suppliers>) {
   const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
-  const userId = useAuthStore(state => state.user?.id);
-  const { data: suppliers = [], isPending, error, refetch } = useSuppliers(!!userId);
-  const loading = isPending && !!userId;
-  const load = () => refetch();
-
-  // Coming back to the list shows what was added or changed elsewhere.
-  useFocusEffect(
-    useCallback(() => {
-      if (userId) refetch();
-    }, [userId, refetch]),
-  );
-
-  if (loading) return <Spinner fullscreen />;
-  if (error && suppliers.length === 0) {
-    return (
-      <EmptyState
-        title="Couldn't load suppliers"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const result = useSuppliers();
+  const { data, refetch, isRefetching } = result;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
       <FlashList
-        data={suppliers}
-        keyExtractor={item => item.id}
+        data={data ?? []}
+        keyExtractor={supplier => supplier.id}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => navigation.navigate(HOME_ROUTES.SupplierDetail, { supplierId: item.id })}
-          >
-            <Card style={styles.card}>
-              <View style={styles.row}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Badge label={item.status} tone={item.status === 'active' ? 'success' : 'neutral'} />
-              </View>
-              <Text style={styles.meta}>{item.products_supplied ?? 'No products listed'}</Text>
-            </Card>
-          </TouchableOpacity>
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Button label="Add supplier" icon={Plus} onPress={() => navigation.navigate(INVENTORY_ROUTES.SupplierForm, {})} />
+          </View>
+        }
+        renderItem={({ item: supplier }) => (
+          <ListRow
+            title={supplier.name}
+            meta={[supplier.contact, supplier.products_supplied].filter(Boolean).join(' · ') || undefined}
+            trailing={supplier.is_active ? undefined : <Badge label="Inactive" size="sm" />}
+            onPress={() => navigation.navigate(INVENTORY_ROUTES.SupplierForm, { supplierId: supplier.id })}
+          />
         )}
         ListEmptyComponent={
-          <EmptyState
-            title="No suppliers yet"
-            description="Add your first supplier to get started."
-          />
+          data ? (
+            <EmptyState icon={Truck} title="No suppliers yet" description="Add who you buy from to record purchases." />
+          ) : (
+            <ScreenState query={result} errorTitle="Couldn't load your suppliers" />
+          )
         }
       />
-      <TouchableOpacity
-        accessibilityRole="button"
-        style={styles.fab}
-        onPress={() => navigation.navigate(HOME_ROUTES.SupplierDetail, {})}
-      >
-        <Text style={styles.fabLabel}>+ New Supplier</Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
-function makeStyles({ colors, space, radius, typography, shadows }: Theme, accent: Accent) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    list: {
-      padding: space[4],
-      paddingBottom: space[12],
-    },
-    card: {
-      marginBottom: space[3],
-    },
-    row: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    name: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-    },
-    meta: {
-      marginTop: space[1] / 2,
-      ...typography.caption,
-      color: colors.ink2,
-    },
-    fab: {
-      position: 'absolute',
-      right: space[4],
-      bottom: space[4],
-      backgroundColor: accent.fill,
-      paddingHorizontal: space[4],
-      paddingVertical: space[3],
-      borderRadius: radius.pill,
-      ...shadows.elev2,
-    },
-    fabLabel: {
-      ...typography.label,
-      color: colors.onAccent,
-    },
-  });
+function makeStyles(theme: Theme) {
+  return {
+    ...makeScreenStyles(theme),
+    list: { padding: theme.space[4], paddingBottom: theme.space[12] },
+    header: { marginBottom: theme.space[3] },
+  };
 }

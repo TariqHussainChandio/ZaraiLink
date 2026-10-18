@@ -7,6 +7,8 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { isApiError } from '../services/api/errors';
 import { useAuthStore } from '../state/authStore';
 import { useNetworkStore } from '../state/networkStore';
+import { forgetRememberedProfile } from '../state/rememberedProfile';
+import { logger } from '../utils/logger';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -35,16 +37,52 @@ function createQueryClient(): QueryClient {
 export const queryClient = createQueryClient();
 
 /**
- * Only public marketplace reads are written to disk. Orders, messages, profiles and anything else personal stay
- * in memory, so a lost or shared phone never exposes them and there is nothing to purge for correctness.
+ * Only public marketplace reads and the dealer's own inventory are written to disk. Orders, messages, profiles and
+ * anything else personal stay in memory, so a lost or shared phone never exposes them.
+ *
+ * 'inventory' is the dealer's private stock data (BR-03/04: dealer-only). The maintainer decided (2026-10-11) that it
+ * is kept on the device for 24 hours so the inventory system opens offline; in exchange the whole persisted cache is
+ * wiped on sign-out and whenever a different user's session starts (`connectQueryManagers` below).
  */
-const PERSISTED_ROOTS = new Set<unknown>(['marketplace']);
+const PERSISTED_ROOTS = new Set<unknown>(['marketplace', 'inventory']);
 
 export function shouldPersist(query: Query): boolean {
   return query.state.status === 'success' && PERSISTED_ROOTS.has(query.queryKey[0]);
 }
 
 const persister = createAsyncStoragePersister({ storage: AsyncStorage, key: 'zl-query-cache' });
+
+/** The id of the user whose data the persisted cache holds; it outlives the session so a cold start can compare. */
+const CACHE_OWNER_KEY = 'zl-query-cache-owner';
+
+/**
+ * Drops every cached query, in memory and on disk, forgets whose data it was, and forgets the profile remembered for
+ * an offline start (`frontend/state/rememberedProfile.ts`) under the same rules, so a remembered approved dealer never
+ * outlives a sign-out or an account switch. `keepUserId` is the account starting now, whose own record is kept.
+ */
+async function wipeCache(keepUserId?: string): Promise<void> {
+  queryClient.clear();
+  await persister.removeClient();
+  await AsyncStorage.removeItem(CACHE_OWNER_KEY);
+  await forgetRememberedProfile(keepUserId);
+}
+
+/**
+ * A session has started (sign-in or a restored session at launch). In-memory comparison alone misses the cold start:
+ * the previous user may have signed out or expired while the app was closed, so the disk cache restored at launch can
+ * still hold their inventory. The stored owner id catches that case.
+ */
+async function claimCache(userId: string): Promise<void> {
+  const owner = await AsyncStorage.getItem(CACHE_OWNER_KEY);
+  if (owner !== null && owner !== userId) {
+    await wipeCache(userId);
+  }
+  await AsyncStorage.setItem(CACHE_OWNER_KEY, userId);
+}
+
+function reportWipeFailure(err: unknown): void {
+  logger.warn('queryClient: could not wipe the persisted cache', err);
+}
 
 export const persistOptions: PersistQueryClientProviderProps['persistOptions'] = {
   persister,
@@ -70,11 +108,22 @@ export function connectQueryManagers(): () => void {
   });
 
   // Another account must never see the previous one's cached data, whichever way the session ended
-  // (sign out, expiry, suspension).
+  // (sign out, expiry, suspension). The persisted part now includes the dealer's inventory (BR-03/04), so the disk
+  // copy is wiped with the memory one.
   const unsubscribeAuth = useAuthStore.subscribe((state, previous) => {
     if (previous.user && state.user?.id !== previous.user.id) {
-      queryClient.clear();
-      persister.removeClient();
+      wipeCache(state.user?.id)
+        .then(() => (state.user ? claimCache(state.user.id) : undefined))
+        .catch(reportWipeFailure);
+      return;
+    }
+    if (!previous.user && state.user) {
+      claimCache(state.user.id).catch(reportWipeFailure);
+      return;
+    }
+    // Launch found no session: whoever owned the restored cache is signed out, so their data goes too.
+    if (previous.status === 'loading' && state.status === 'unauthenticated') {
+      wipeCache().catch(reportWipeFailure);
     }
   });
 

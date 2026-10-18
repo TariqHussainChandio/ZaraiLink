@@ -9,7 +9,7 @@ import { EmptyState } from './EmptyState';
 import { SkeletonList } from './Skeleton';
 
 /** The part of a React Query result ScreenState reads; a `useQuery(...)` result fits as it is. */
-export interface ScreenStateQuery<T> {
+interface ScreenStateQuery<T> {
   data: T | undefined;
   isPending: boolean;
   isError: boolean;
@@ -20,7 +20,7 @@ export interface ScreenStateQuery<T> {
   refetch: () => unknown;
 }
 
-export interface ScreenStateEmpty {
+interface ScreenStateEmpty {
   title: string;
   description?: string;
   icon?: LucideIcon;
@@ -82,17 +82,30 @@ export function ScreenState<T>({
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const isOffline = useNetworkStore(state => state.isOffline);
-  const { data, isPending, isError, error, isFetching = false, refetch } = query;
+  const {
+    data,
+    isPending,
+    isError,
+    error,
+    isFetching = false,
+    refetch,
+  } = query;
   const retry = () => {
     refetch();
   };
 
   if (data === undefined) {
-    if (isPending || (isError && isFetching)) return <>{skeleton ?? <SkeletonList count={4} />}</>;
+    if (isPending || (isError && isFetching))
+      return <>{skeleton ?? <SkeletonList count={4} />}</>;
     if (isError) {
       return (
         <View style={styles.inset}>
-          <Banner tone="danger" title={errorTitle} actionLabel="Retry" onAction={retry}>
+          <Banner
+            tone="danger"
+            title={errorTitle}
+            actionLabel="Retry"
+            onAction={retry}
+          >
             {errorMessage(error)}
           </Banner>
         </View>
@@ -101,7 +114,12 @@ export function ScreenState<T>({
     return empty ? <EmptyState {...empty} /> : null;
   }
 
-  const content = empty && isEmpty(data) ? <EmptyState {...empty} /> : (children?.(data) ?? null);
+  const content =
+    empty && isEmpty(data) ? (
+      <EmptyState {...empty} />
+    ) : (
+      (children?.(data) ?? null)
+    );
   // Offline, the global OfflineBanner already says why the copy is old; a second banner here would only repeat it.
   if (!isError || isOffline) return <>{content}</>;
 
@@ -109,7 +127,12 @@ export function ScreenState<T>({
     <View style={styles.fill}>
       <View style={styles.inset}>
         {/* Retry is hidden while a refetch runs, so a second press cannot queue the same request. */}
-        <Banner tone="danger" title={errorTitle} actionLabel={isFetching ? undefined : 'Retry'} onAction={retry}>
+        <Banner
+          tone="danger"
+          title={errorTitle}
+          actionLabel={isFetching ? undefined : 'Retry'}
+          onAction={retry}
+        >
           Showing the last copy saved on this phone.
         </Banner>
       </View>

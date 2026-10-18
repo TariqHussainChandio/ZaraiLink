@@ -34,7 +34,7 @@ describe('DealerDashboardScreen', () => {
   it('renders the dealer variant of the shared seller dashboard', async () => {
     await renderWithProviders(<DealerDashboardScreen />);
     expect(await screen.findByText('Low Stock')).toBeTruthy();
-    expect(screen.getByText('Products')).toBeTruthy();
+    expect(screen.getByText('My Listings')).toBeTruthy();
     expect(screen.getByText('6')).toBeTruthy();
   });
 
