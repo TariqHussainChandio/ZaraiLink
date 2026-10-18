@@ -1,11 +1,22 @@
 import { Check } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
 import { EmptyState } from './EmptyState';
 import { Sheet } from './Sheet';
 import { Spinner } from './Spinner';
+
+/**
+ * Up to this many options render in a plain ScrollView; a longer list is virtualised with FlashList.
+ *
+ * Why two paths: FlashList v2 sizes its render window from the measured height of its own outer view. Inside the
+ * Sheet that view has no height of its own (only a `maxHeight`), so it measured 0, FlashList rendered no rows, and the
+ * empty content kept it at 0: on Android the picker showed no options and no empty text (B3 verification, N1). A
+ * ScrollView with `maxHeight` grows with its rows up to the cap, which is what a short picker needs; a long one gets a
+ * fixed height, the bounded parent FlashList requires.
+ */
+const VIRTUALISE_ABOVE = 50;
 
 export interface SelectOption {
   id: string;
@@ -54,6 +65,22 @@ export function SelectField({
     setQuery('');
   };
 
+  const renderOption = (item: SelectOption) => (
+    <TouchableOpacity
+      key={item.id}
+      style={styles.option}
+      onPress={() => {
+        onSelect(item.id);
+        close();
+      }}
+      accessibilityRole="button"
+      accessibilityState={{ selected: item.id === value }}
+    >
+      <Text style={item.id === value ? styles.optionLabelSelected : styles.optionLabel}>{item.label}</Text>
+      {item.id === value ? <Check color={accent.ink} size={theme.size.iconButton} /> : null}
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -84,30 +111,18 @@ export function SelectField({
         ) : null}
         {loading ? (
           <Spinner />
-        ) : (
+        ) : filteredOptions.length > VIRTUALISE_ABOVE ? (
           <FlashList
             data={filteredOptions}
             keyExtractor={item => item.id}
-            style={styles.list}
+            style={styles.longList}
             keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={<EmptyState title="No results" />}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.option}
-                onPress={() => {
-                  onSelect(item.id);
-                  close();
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: item.id === value }}
-              >
-                <Text style={item.id === value ? styles.optionLabelSelected : styles.optionLabel}>
-                  {item.label}
-                </Text>
-                {item.id === value ? <Check color={accent.ink} size={theme.size.iconButton} /> : null}
-              </TouchableOpacity>
-            )}
+            renderItem={({ item }) => renderOption(item)}
           />
+        ) : (
+          <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+            {filteredOptions.length === 0 ? <EmptyState title="No results" /> : filteredOptions.map(item => renderOption(item))}
+          </ScrollView>
         )}
       </Sheet>
     </View>
@@ -163,8 +178,14 @@ function makeStyles({ colors, space, radius, typography, size, borders, componen
       color: colors.ink,
       marginBottom: space[3],
     },
+    // Grows with its rows up to the cap, then scrolls.
     list: {
       maxHeight: size.sheetListMax,
+      flexGrow: 0,
+    },
+    // FlashList needs a parent with a real height (see VIRTUALISE_ABOVE).
+    longList: {
+      height: size.sheetListMax,
     },
     option: {
       flexDirection: 'row',

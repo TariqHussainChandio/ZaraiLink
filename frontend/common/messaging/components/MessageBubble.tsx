@@ -8,16 +8,28 @@ export interface MessageBubbleProps {
   isOwn: boolean;
   /** Signed URLs for `message.attachments`, keyed by storage path — resolved by the parent screen. */
   attachmentUrls: Record<string, string>;
+  /** The other person's name, read out by a screen reader on their messages ("From Ali, 10:30: ..."). */
+  senderName?: string;
 }
 
-export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, attachmentUrls, senderName }: MessageBubbleProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const time = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const from = isOwn ? 'you' : senderName || 'the other person';
+  const photoCount = message.attachments.length;
+  const photos = photoCount > 0 ? `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}` : '';
+  const content = [photos, message.body].filter(Boolean).join('. ');
 
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
-      <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
+      {/* One focus stop per message, read as "From <name>, <time>: <text>". */}
+      <View
+        style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}
+        accessible
+        accessibilityLabel={`From ${from}, ${time}: ${content}`}
+      >
         {message.attachments.length > 0 ? (
           <View style={styles.imagesRow}>
             {message.attachments.map(path =>
@@ -27,6 +39,7 @@ export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleP
                   testID={`attachment-image-${path}`}
                   source={{ uri: attachmentUrls[path] }}
                   style={styles.image}
+                  accessibilityLabel="Photo in message"
                 />
               ) : (
                 <View key={path} style={styles.image} />
@@ -35,9 +48,7 @@ export function MessageBubble({ message, isOwn, attachmentUrls }: MessageBubbleP
           </View>
         ) : null}
         {message.body ? <Text style={[styles.body, isOwn && styles.bodyOwn]}>{message.body}</Text> : null}
-        <Text style={[styles.time, isOwn && styles.timeOwn]}>
-          {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+        <Text style={[styles.time, isOwn && styles.timeOwn]}>{time}</Text>
       </View>
     </View>
   );

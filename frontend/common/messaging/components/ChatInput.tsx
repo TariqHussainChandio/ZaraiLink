@@ -1,4 +1,4 @@
-import { ImagePlus, X } from 'lucide-react-native';
+import { ImagePlus, Send, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
 import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
@@ -26,6 +26,8 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
     setImages(current => current.filter(image => image.uri !== uri));
   };
 
+  const canSend = (!!value.trim() || images.length > 0) && !sending;
+
   const submit = () => {
     const trimmed = value.trim();
     if (!trimmed && images.length === 0) return;
@@ -41,7 +43,7 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
         <ScrollView horizontal style={styles.previewRow} showsHorizontalScrollIndicator={false}>
           {images.map(image => (
             <View key={image.uri} style={styles.previewWrap}>
-              <Image source={{ uri: image.uri }} style={styles.previewImage} />
+              <Image source={{ uri: image.uri }} style={styles.previewImage} accessibilityLabel="Photo to send" />
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => removeImage(image.uri)}
@@ -62,6 +64,7 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
           disabled={sending}
           accessibilityRole="button"
           accessibilityLabel="Add photo"
+          accessibilityState={{ disabled: sending }}
         >
           <ImagePlus size={theme.size.iconMd} color={theme.colors.ink2} />
         </TouchableOpacity>
@@ -71,15 +74,18 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
           placeholderTextColor={theme.colors.ink2}
           value={value}
           onChangeText={setValue}
+          accessibilityLabel="Message"
           multiline
         />
         <TouchableOpacity
           style={[styles.sendButton, !value.trim() && images.length === 0 && styles.sendButtonDisabled]}
           onPress={submit}
-          disabled={(!value.trim() && images.length === 0) || sending}
+          disabled={!canSend}
           accessibilityRole="button"
           accessibilityLabel="Send message"
+          accessibilityState={{ disabled: !canSend, busy: sending }}
         >
+          <Send size={theme.size.iconSm} color={theme.colors.onAccent} />
           <Text style={styles.sendLabel}>Send</Text>
         </TouchableOpacity>
       </View>
@@ -147,7 +153,9 @@ function makeStyles({ colors, space, radius, size, borders, typography }: Theme,
       borderRadius: radius.md,
       paddingHorizontal: space[4],
       minHeight: size.touchMin,
-      justifyContent: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[1],
     },
     sendButtonDisabled: {
       opacity: 0.5,

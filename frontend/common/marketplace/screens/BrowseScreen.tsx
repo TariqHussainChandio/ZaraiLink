@@ -1,3 +1,4 @@
+import { Plus, Store } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import {
   RefreshControl,
@@ -7,15 +8,19 @@ import {
   View,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, SkeletonCard, StaggeredItem } from '../../components';
+import { ScreenState, SkeletonCard, StaggeredItem } from '../../components';
 import { FilterBar } from '../components/FilterBar';
 import { ListingCard } from '../components/ListingCard';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useCategories, useListings } from '../hooks/marketplace';
 import { useAuthStore } from '../../../state/authStore';
 import { useMarketplaceStore } from '../../../state/marketplaceStore';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
-import { errorMessage } from '../../../utils/errorMessage';
+import {
+  useTheme,
+  type Theme,
+  useRoleAccent,
+  type Accent,
+} from '../../../theme';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
 export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
@@ -39,8 +44,9 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
     }),
     [filters],
   );
-  const { data, isPending, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useListings(params);
-  const listings = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const listingsQuery = useListings(params);
+  const { refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    listingsQuery;
 
   const onRefresh = async () => {
     setPulling(true);
@@ -51,6 +57,17 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   const onEndReached = () => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   };
+
+  // The first load shows the grid's shape, two cards a row, so the page does not jump when listings arrive.
+  const skeleton = (
+    <View style={[styles.list, styles.skeletonGrid]}>
+      {Array.from({ length: 6 }, (_, i) => (
+        <View key={i} style={styles.skeletonGridCell}>
+          <SkeletonCard />
+        </View>
+      ))}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -66,64 +83,62 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
         cropName={filters.cropName}
         onApplyMoreFilters={setFilters}
       />
-      {isPending ? (
-        <View style={[styles.list, styles.skeletonGrid]}>
-          {Array.from({ length: 6 }, (_, i) => (
-            <View key={i} style={styles.skeletonGridCell}>
-              <SkeletonCard />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <FlashList
-          data={listings}
-          keyExtractor={item => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={pulling} onRefresh={onRefresh} />}
-          onEndReachedThreshold={0.4}
-          onEndReached={onEndReached}
-          renderItem={({ item, index }) => (
-            <StaggeredItem index={index} style={styles.staggeredCard}>
-              <ListingCard
-                listing={item}
-                onPress={() =>
-                  navigation.navigate(MARKETPLACE_ROUTES.ListingDetail, { listingId: item.id })
-                }
-              />
-            </StaggeredItem>
-          )}
-          ListEmptyComponent={
-            error ? (
-              <EmptyState
-                title="Could not load listings"
-                description={errorMessage(error)}
-                actionLabel="Retry"
-                onAction={() => refetch()}
-              />
-            ) : (
-              <EmptyState
-                title="No listings yet"
-                description="Check back soon, or be the first to list produce here."
-              />
-            )
-          }
-        />
-      )}
+      <ScreenState
+        query={listingsQuery}
+        skeleton={skeleton}
+        isEmpty={loaded => loaded.pages.every(page => page.length === 0)}
+        empty={{
+          icon: Store,
+          title: 'No listings yet',
+          description: 'Check back soon, or be the first to list produce here.',
+        }}
+        errorTitle="Couldn't load listings"
+      >
+        {loaded => (
+          <FlashList
+            data={loaded.pages.flat()}
+            keyExtractor={item => item.id}
+            numColumns={2}
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl refreshing={pulling} onRefresh={onRefresh} />
+            }
+            onEndReachedThreshold={0.4}
+            onEndReached={onEndReached}
+            renderItem={({ item, index }) => (
+              <StaggeredItem index={index} style={styles.staggeredCard}>
+                <ListingCard
+                  listing={item}
+                  onPress={() =>
+                    navigation.navigate(MARKETPLACE_ROUTES.ListingDetail, {
+                      listingId: item.id,
+                    })
+                  }
+                />
+              </StaggeredItem>
+            )}
+          />
+        )}
+      </ScreenState>
       {canSell ? (
         <TouchableOpacity
           accessibilityRole="button"
+          accessibilityLabel="List produce for sale"
           style={styles.fab}
           onPress={() => navigation.navigate(MARKETPLACE_ROUTES.CreateListing)}
         >
-          <Text style={styles.fabLabel}>+ List</Text>
+          <Plus color={theme.colors.onAccent} size={theme.size.iconButton} />
+          <Text style={styles.fabLabel}>List</Text>
         </TouchableOpacity>
       ) : null}
     </View>
   );
 }
 
-function makeStyles({ colors, space, radius, shadows, typography }: Theme, accent: Accent) {
+function makeStyles(
+  { colors, space, radius, shadows, typography, size }: Theme,
+  accent: Accent,
+) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -148,6 +163,10 @@ function makeStyles({ colors, space, radius, shadows, typography }: Theme, accen
       right: space[4],
       bottom: space[4],
       backgroundColor: accent.fill,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space[1],
+      minHeight: size.touchMin,
       paddingHorizontal: space[4],
       paddingVertical: space[3],
       borderRadius: radius.pill,

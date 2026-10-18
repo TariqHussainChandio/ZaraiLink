@@ -2,7 +2,6 @@ from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
 from app.auth.dependencies import AuthenticatedUser
-from app.common.audit_log import log_admin_action
 from app.common.messaging import repository as repo
 
 
@@ -29,16 +28,25 @@ async def send_message(user: AuthenticatedUser, conversation_id: str, body: str,
         raise
 
 
-async def find_or_create_conversation(user: AuthenticatedUser, other_user_id: str) -> dict:
+async def find_or_create_conversation(
+    user: AuthenticatedUser, other_user_id: str, context_type: str, context_id: str
+) -> dict:
+    # One conversation per pair: an existing thread is reused whatever started it, so a pair that already talks can
+    # keep talking. A new one needs a relationship, which `conversations_insert_related` checks at the database
+    # (A5, SRDS §30); an unrelated pair is refused there as a 42501.
     existing = await repo.find_conversation(user.access_token, user.id, other_user_id)
     if existing:
         return existing
 
     try:
-        return await repo.create_conversation(user.access_token, user.id, other_user_id)
+        return await repo.create_conversation(user.access_token, user.id, other_user_id, context_type, context_id)
     except APIError as exc:
         if exc.code == "23505":  # unique-index race: someone else created the same pair first
-            return await find_or_create_conversation(user, other_user_id)
+            return await find_or_create_conversation(user, other_user_id, context_type, context_id)
+        if exc.code == "42501":
+            raise HTTPException(
+                status_code=403, detail="You can message someone only about a listing, order or consultation you share."
+            ) from exc
         raise
 
 
@@ -51,7 +59,7 @@ async def fetch_message_by_id(user: AuthenticatedUser, message_id: str) -> dict:
 
 async def redact_message(user: AuthenticatedUser, message_id: str) -> None:
     await repo.redact_message(user.access_token, message_id)
-    await log_admin_action(user, "redact_message", "messages", message_id)
+    # The audit row is written atomically by the database (20261023080000).
 
 
 async def mark_conversation_read(user: AuthenticatedUser, conversation_id: str) -> None:

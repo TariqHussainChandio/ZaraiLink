@@ -34,6 +34,9 @@ export interface Listing {
   location: GeoLocation | null;
   /** Denormalized from the owner's profile at insert time — see set_listings_seller_role. */
   seller_role: 'farmer' | 'buyer' | 'dealer' | 'expert' | 'admin' | null;
+  /** The dealer's inventory product this listing sells (D8): its availability then comes from that product's stock.
+   * Null for an unlinked listing and for every non-dealer listing. */
+  inventory_product_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,4 +55,13 @@ export interface ListingWithRelations extends Listing {
     full_name: string;
     avatar_url: string | null;
   } | null;
+}
+
+/** A dealer's inventory product as the listing form offers it for linking (D8): only what the picker shows. */
+export interface LinkableInventoryProduct {
+  id: string;
+  sku: string;
+  name: string;
+  unit: string;
+  is_active: boolean;
 }

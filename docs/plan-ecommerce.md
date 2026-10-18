@@ -696,6 +696,8 @@ transaction as the event; a listing with no inventory row loses its own quantity
 
 ### A5 — Messaging and notifications
 
+> **Status (2026-10-11): done.** Migration `20261020080000_conversation_context.sql`; pgTAP (41), backend unit (19) and real-stack (`test_smoke_messaging.py`) pass, Jest messaging suites pass; device run of a listing inquiry; fresh-context verifier: VERIFIED WITH FINDINGS (Low only, fixed). Notifications for approval, dispatch and low stock already existed (A3, A4, the IMS trigger in B3).
+
 **Goal:** SRDS §30–§31 (D12).
 
 | Lane | Tasks | Needs |
@@ -722,6 +724,8 @@ transaction as the event; a listing with no inventory row loses its own quantity
 **Exit:** scan → report → consult → expert sees the full case → expert assessment → farmer sees both, on the
 emulator against the real API.
 
+> **Status (2026-10-11): done, open items below.** Migration `20261022080000_ai_advisory.sql`; pgTAP (`20261022080000_ai_advisory`, policy mutation on every `disease` policy 0 survivors), backend unit and real-stack (`test_smoke_ai_advisory.py`, `test_smoke_consultation_assessments.py`), Jest AI, consultation and admin AI suites pass; emulator run of the exit path. Fresh-context verifier: VERIFIED WITH FINDINGS (Medium: unaudited knowledge insert/delete, a healthy result worded as a diagnosis; Low: review rule only in the API, a missing photo gave 500, a 24-hour photo link), all fixed. Open: the agronomist review of the 38 entries (outside dependency) and a licence-clear real leaf photo for the real-photo test.
+
 ### A7 — Admin moderation and audit
 
 **Goal:** SRDS §14, §51, §53.10.
@@ -733,6 +737,8 @@ emulator against the real API.
 | `zl-backend-core` | The audit-coverage test lists every admin write route | — |
 
 **Exit:** every admin write leaves an audit row with the §51 name; no admin route or policy touches inventory.
+
+> **Status (2026-10-18): done.** Migration `20261023080000_admin_moderation.sql`; pgTAP (the whole suite green, 1749 tests; policy mutation 0 survivors across 16 domains); backend unit (803) and real-stack (`test_smoke_admin_audit.py`, `test_smoke_admin_boundary.py`, `test_smoke_admin_order_actions.py`, `test_smoke_review_moderation.py`, the authorization matrix); admin Jest; emulator walk of every admin screen. The verifier's first pass (NOT VERIFIED) found that an aal2 admin's direct Data API writes left no audit row and audit rows could be forged. Decision (the A6 precedent): the database writes every admin audit row in the same transaction, the backend writes none, and no client may insert one. Also fixed: aal1 writes to categories, crops and disputes in the database; a suspended admin still acting; a dispute without a reason; one tap on a sheet after typing; no confirmation on Approve and Suspend; no way to settle a dispute in the app. Re-verification: VERIFIED WITH FINDINGS (insider-only, all fixed: an admin redaction may only write the moderator marker and touches no other message column, an admin's change to their own profile is audited, writes that change nothing leave no row, `reports.resolved_by` is the acting admin). Emulator: one-tap sheet actions after typing, Suspend confirmation, each action once in the audit log.
 
 ### A8 — UI/UX rollout and accessibility
 

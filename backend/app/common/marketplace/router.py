@@ -92,20 +92,22 @@ async def list_categories(page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_categories())
 
 
+# Category changes are admin writes: like every other one they need a second factor (admin_mfa_enforcement) and are
+# audited as category_changed (SRDS §51, BR-15).
 @router.post("/categories", response_model=Category)
-async def create_category(request: CategoryInput, user: AuthenticatedUser = Depends(require_admin)) -> dict:
+async def create_category(request: CategoryInput, user: AuthenticatedUser = Depends(require_admin_aal2)) -> dict:
     return await service.create_category(user, request.model_dump())
 
 
 @router.patch("/categories/{category_id}", response_model=Category)
 async def update_category(
-    category_id: str, request: CategoryUpdateInput, user: AuthenticatedUser = Depends(require_admin)
+    category_id: str, request: CategoryUpdateInput, user: AuthenticatedUser = Depends(require_admin_aal2)
 ) -> dict:
     return await service.update_category(user, category_id, request.model_dump(exclude_unset=True))
 
 
 @router.delete("/categories/{category_id}", status_code=204)
-async def delete_category(category_id: str, user: AuthenticatedUser = Depends(require_admin)) -> None:
+async def delete_category(category_id: str, user: AuthenticatedUser = Depends(require_admin_aal2)) -> None:
     await service.delete_category(user, category_id)
 
 

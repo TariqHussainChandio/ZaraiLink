@@ -23,11 +23,13 @@ begin
       values (tests.fx('B'), tests.fx('F'), 100, 20) returning id into ord;
     insert into tests.fixtures values (k, ord);
   end loop;
-  -- a dealer listing with linked stock for the confirm-commits-stock tests
-  insert into public.listings (owner_id, title, price, quantity, status, seller_role)
-    values (tests.fx('D'), 'Dealer item', 50, 10, 'active', 'dealer') returning id into lp;
-  insert into public.inventory (dealer_id, listing_id, stock_quantity, unit) values (tests.fx('D'), lp, 5, 'bag')
+  -- a dealer listing linked to an IMS product holding 5 at D's default location (DS1), for the stock tests (B3: the
+  -- legacy inventory row became a product, its stock a ledger movement)
+  insert into public.inventory_products (dealer_id, sku, name, unit) values (tests.fx('D'), 'SKU-D', 'Dealer item', 'bag')
     returning id into inv;
+  perform public.inventory_apply_movement(tests.fx('D'), inv, tests.fx('DS1'), 'in', 'RESTOCK', 5, null, tests.fx('D'));
+  insert into public.listings (owner_id, title, price, quantity, status, seller_role, inventory_product_id)
+    values (tests.fx('D'), 'Dealer item', 50, 10, 'active', 'dealer', inv) returning id into lp;
   insert into tests.fixtures values ('LD', lp), ('INVD', inv);
 end $$;
 
@@ -51,9 +53,17 @@ select tests.expect(tests.fx('S'), 'insert into public.orders (buyer_id, seller_
 select tests.expect(tests.fx('B'), 'update public.orders set product_subtotal = 101 where id = ' || tests.l('O1'), 'err:42501', 'orders: the buyer cannot change the price of their order (BR-09)');
 select tests.expect(tests.fx('F'), 'update public.orders set product_subtotal = 102 where id = ' || tests.l('O1'), 'err:42501', 'orders: nor can the seller');
 select tests.expect(tests.fx('B2'), 'update public.orders set product_subtotal = 1 where id = ' || tests.l('O1'), 'n:0', 'orders: a stranger updates nothing');
+-- A7 (20261023080000): an admin with a second factor now reaches an order before dispatch, to cancel it with a reason;
+-- refunding it is still refused, by the guard (23514), and a password-only admin session does not reach it at all.
+-- The cancellation itself is proven in 20261023080000_admin_moderation.test.sql.
 select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O1'), 'n:0', 'orders: an admin cannot touch an order that is not disputed');
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'pending' where id = $$ || tests.l('O_DISPUTED'), 'err:23514', 'orders: an admin cannot move a dispute anywhere but refunded or completed');
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O_DISPUTED'), 'n:1', 'orders: an admin resolves a disputed order');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O1'), 'err:23514', 'orders: an admin with a second factor reaches a pending order, but cannot refund it', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OCOMP'), 'n:0', 'orders: an admin with a second factor does not reach a completed order that is not disputed', 'aal2');
+-- A7: resolving a dispute is a second-factor admin write; a password-only admin session does not reach the order.
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O_DISPUTED'), 'n:0', 'orders: an admin without a second factor cannot resolve a dispute');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'pending' where id = $$ || tests.l('O_DISPUTED'), 'err:23514', 'orders: an admin cannot move a dispute anywhere but refunded or completed', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('O_DISPUTED'), 'err:23514', 'orders: an admin settles a dispute only with a reason (A7)', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded', admin_action_reason = 'Refund agreed' where id = $$ || tests.l('O_DISPUTED'), 'n:1', 'orders: an admin with a second factor resolves a disputed order', 'aal2');
 select tests.expect(tests.fx('B'), 'delete from public.orders where id = ' || tests.l('O1'), 'err:42501', 'orders: nobody deletes orders through the API');
 
 -- order INSERT guard (guard_orders_insert, guard_order_items_insert, sync_order_subtotal) -------------------
@@ -85,18 +95,18 @@ begin
   insert into tests.fixtures values ('ODS1', o1), ('ODS2', o2), ('ODS3', o3);
 end $$;
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('ODS1'), 'n:1', 'stock: the dealer confirms an order for 3 of 5');
-select tests.expect(tests.fx('D'), 'select id from public.inventory where id = ' || tests.l('INVD') || ' and stock_quantity = 5', 'rows:1', 'stock: confirming cut nothing (D5: a confirmed order can still be cancelled)');
+select tests.expect(tests.fx('D'), 'select 1 from public.inventory_stock where product_id = ' || tests.l('INVD') || ' and location_id = ' || tests.l('DS1') || ' and quantity = 5', 'rows:1', 'stock: confirming cut nothing (D5: a confirmed order can still be cancelled)');
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('ODS2'), 'n:1', 'stock: a second order for 3 of the same 5 confirms too');
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('ODS3'), 'err:P0001', 'stock: an order for 6 of 5 is refused at confirm');
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'processing' where id in ($$ || tests.l('ODS1') || ',' || tests.l('ODS2') || ')', 'n:2', 'stock: both go to processing');
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'ready' where id in ($$ || tests.l('ODS1') || ',' || tests.l('ODS2') || ')', 'n:2', 'stock: and to ready');
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('ODS1'), 'n:1', 'stock: the dealer dispatches the first');
-select tests.expect(tests.fx('D'), 'select id from public.inventory where id = ' || tests.l('INVD') || ' and stock_quantity = 2', 'rows:1', 'stock: dispatch cut it in the same statement (5 - 3)');
-select tests.expect(tests.fx('D'), 'select id from public.inventory_transactions where inventory_id = ' || tests.l('INVD') || $$ and type = 'sale' and quantity = -3$$, 'rows:1', 'stock: and left one ledger row');
+select tests.expect(tests.fx('D'), 'select 1 from public.inventory_stock where product_id = ' || tests.l('INVD') || ' and location_id = ' || tests.l('DS1') || ' and quantity = 2', 'rows:1', 'stock: dispatch cut it in the same statement (5 - 3)');
+select tests.expect(tests.fx('D'), 'select id from public.inventory_movements where product_id = ' || tests.l('INVD') || ' and order_id = ' || tests.l('ODS1') || $$ and source = 'ZARAILINK_ORDER' and direction = 'out' and quantity = 3$$, 'rows:1', 'stock: and left one ZARAILINK_ORDER ledger row with the order id');
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('ODS2'), 'err:P0001', 'stock: the second, for 3 of the 2 left, cannot be dispatched (D6)');
 select tests.expect(tests.fx('D'), 'select id from public.orders where id = ' || tests.l('ODS2') || $$ and status = 'ready'$$, 'rows:1', 'stock: and stays ready');
 select tests.expect(tests.fx('D'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('ODS1'), 'n:1', 'stock: setting dispatched again is a no-op update...');
-select tests.expect(tests.fx('D'), 'select id from public.inventory_transactions where inventory_id = ' || tests.l('INVD') || $$ and type = 'sale'$$, 'rows:1', 'stock: ...that cuts nothing more (SRDS §21)');
+select tests.expect(tests.fx('D'), 'select id from public.inventory_movements where product_id = ' || tests.l('INVD') || $$ and source = 'ZARAILINK_ORDER'$$, 'rows:1', 'stock: ...that cuts nothing more (SRDS §21)');
 
 -- order guard (guard_orders_update): who may move which status, and that nothing else changes -------------------
 do $$
@@ -149,8 +159,9 @@ select tests.expect(tests.fx('B'), $$update public.orders set status = 'disputed
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'disputed' where id = $$ || tests.l('OG_CO2'), 'err:42501', 'order guard: the seller cannot dispute their own sale');
 select tests.expect(tests.fx('B'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OG_D1'), 'err:42501', 'order guard: a buyer cannot settle their own dispute');
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OG_D2'), 'err:42501', 'order guard: nor can the seller');
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OG_D3'), 'n:1', 'order guard: an admin settles it');
-select tests.expect(tests.fx('A'), 'update public.orders set product_subtotal = 1 where id = ' || tests.l('OG_D1'), 'err:42501', 'order guard: even an admin cannot change the price');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OG_D3'), 'n:0', 'order guard: an admin without a second factor does not settle it');
+select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded', admin_action_reason = 'Refund agreed' where id = $$ || tests.l('OG_D3'), 'n:1', 'order guard: an admin with a second factor settles it', 'aal2');
+select tests.expect(tests.fx('A'), 'update public.orders set product_subtotal = 1 where id = ' || tests.l('OG_D1'), 'err:42501', 'order guard: even an admin cannot change the price', 'aal2');
 
 
 -- order items ------------------------------------------------------------------------------------------

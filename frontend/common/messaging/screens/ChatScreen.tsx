@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components';
+import { ScreenState, useToast } from '../../components';
 import { ChatInput } from '../components/ChatInput';
 import { MessageBubble } from '../components/MessageBubble';
 import { useAttachmentUrls, useConversationMessages, useSendMessage } from '../hooks/messaging';
@@ -15,9 +15,11 @@ import type { MessagingScreenProps } from '../../../navigation/stacks/MessagingN
 export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { conversationId } = route.params;
+  const { conversationId, otherUserName } = route.params;
   const userId = useAuthStore(state => state.user?.id);
-  const { data: messages = [], isPending, error, refetch } = useConversationMessages(conversationId, userId);
+  const toast = useToast();
+  const conversation = useConversationMessages(conversationId, userId);
+  const messages = useMemo(() => conversation.data ?? [], [conversation.data]);
   const send = useSendMessage(conversationId, userId);
   const attachmentPaths = useMemo(() => messages.flatMap(m => m.attachments), [messages]);
   const { data: attachmentUrls = {} } = useAttachmentUrls(attachmentPaths);
@@ -25,41 +27,45 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
 
   const onSend = async (body: string, images: PickedPhoto[]) => {
     if (!userId) return;
-    await send.mutateAsync({ body, images });
+    try {
+      await send.mutateAsync({ body, images });
+    } catch (error) {
+      // Nothing to decide: the message simply did not go, so a short toast says so and why.
+      toast.error(`Message not sent. ${errorMessage(error)}`);
+    }
   };
 
-  if (isPending) return <Spinner fullscreen />;
-  if (error && messages.length === 0) {
-    return (
-      <EmptyState
-        title="Couldn't load messages"
-        description={errorMessage(error)}
-        actionLabel="Retry"
-        onAction={() => refetch()}
-      />
-    );
-  }
-
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={composer.keyboardOffset}
-    >
-      <View style={[styles.flex, { paddingBottom: composer.bottom }]}>
-        <FlashList
-          data={messages}
-          // FlashList v2 has no `inverted`: the newest message is at the bottom and the list starts and follows there.
-          maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <MessageBubble message={item} isOwn={item.sender_id === userId} attachmentUrls={attachmentUrls} />
-          )}
-        />
-        <ChatInput onSend={onSend} sending={send.isPending} />
-      </View>
-    </KeyboardAvoidingView>
+    <View style={styles.flex}>
+      <ScreenState query={conversation} errorTitle="Couldn't load messages">
+        {() => (
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={composer.keyboardOffset}
+          >
+            <View style={[styles.flex, { paddingBottom: composer.bottom }]}>
+              <FlashList
+                data={messages}
+                // FlashList v2 has no `inverted`: the newest message is at the bottom and the list starts and follows there.
+                maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
+                keyExtractor={item => item.id}
+                contentContainerStyle={styles.list}
+                renderItem={({ item }) => (
+                  <MessageBubble
+                    message={item}
+                    isOwn={item.sender_id === userId}
+                    attachmentUrls={attachmentUrls}
+                    senderName={otherUserName}
+                  />
+                )}
+              />
+              <ChatInput onSend={onSend} sending={send.isPending} />
+            </View>
+          </KeyboardAvoidingView>
+        )}
+      </ScreenState>
+    </View>
   );
 }
 

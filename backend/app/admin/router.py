@@ -3,8 +3,14 @@ from fastapi import APIRouter, Depends
 from app.admin import service
 from app.admin.schemas import (
     AccountStatus,
+    AdminQueues,
+    AiActivity,
+    AuditEventName,
+    AuditEventNameEntry,
     AuditLogEntryWithActor,
     DecideAccountRequest,
+    DiseaseKnowledgeEntry,
+    DiseaseKnowledgeUpdate,
     PlatformStats,
     Profile,
     ReportWithReporter,
@@ -16,7 +22,7 @@ from app.admin.schemas import (
     UpdateUserRoleRequest,
 )
 from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2
-from app.common.orders.schemas import OrderWithItems
+from app.common.orders.schemas import OrderStatus, OrderWithItems
 from app.common.pagination import Page, paginate
 from app.common.schemas import AccountDecision, RequiredDocument, SignedUrl
 from app.dealer.schemas import DealerApplicationForAdmin
@@ -29,6 +35,12 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 @router.get("/stats", response_model=PlatformStats)
 async def get_platform_stats(user: AuthenticatedUser = Depends(require_admin)) -> dict:
     return await service.fetch_platform_stats(user)
+
+
+@router.get("/queues", response_model=AdminQueues)
+async def get_admin_queues(user: AuthenticatedUser = Depends(require_admin)) -> dict:
+    """The moderation queue counts for the dashboard (SRDS §14). A read, so no second factor and no audit row."""
+    return await service.fetch_queue_counts(user)
 
 
 @router.get("/users", response_model=list[Profile])
@@ -127,14 +139,55 @@ async def dismiss_report(
 async def list_audit_logs(
     target_entity: str | None = None,
     actor_id: str | None = None,
+    action: AuditEventName | None = None,
     user: AuthenticatedUser = Depends(require_admin),
     page: Page = Depends(paginate),
 ) -> list[dict]:
-    return page.finish(await service.fetch_audit_logs(user, target_entity, actor_id))
+    """The audit log, newest first, each row with its §51 label (BR-15). `action` filters by one event name."""
+    return page.finish(await service.fetch_audit_logs(user, target_entity, actor_id, action))
+
+
+@router.get("/audit-events", response_model=list[AuditEventNameEntry])
+async def list_audit_events(user: AuthenticatedUser = Depends(require_admin)) -> list[dict]:
+    """The SRDS §51 audit event names with their labels, for the audit screen's filter. Reference data, so no paging."""
+    return await service.fetch_audit_event_names(user)
 
 
 @router.get("/orders", response_model=list[OrderWithItems])
 async def list_all_orders(
-    user: AuthenticatedUser = Depends(require_admin), page: Page = Depends(paginate)
+    user: AuthenticatedUser = Depends(require_admin),
+    page: Page = Depends(paginate),
+    status: OrderStatus | None = None,
 ) -> list[dict]:
-    return page.finish(await service.fetch_all_orders(user))
+    return page.finish(await service.fetch_all_orders(user, status))
+
+
+@router.get("/ai-activity", response_model=AiActivity)
+async def get_ai_activity(user: AuthenticatedUser = Depends(require_admin)) -> dict:
+    """Scans, failures, low-confidence results and expert referrals over the last 30 days (SRDS §37). Counts only."""
+    return await service.fetch_ai_activity(user)
+
+
+@router.get("/disease-knowledge", response_model=list[DiseaseKnowledgeEntry])
+async def list_disease_knowledge(user: AuthenticatedUser = Depends(require_admin)) -> list[dict]:
+    """The advisory text per model class, with its review state (SRDS §37). One row per class, so no paging."""
+    return await service.fetch_disease_knowledge(user)
+
+
+@router.get("/disease-knowledge/{class_label}", response_model=DiseaseKnowledgeEntry)
+async def get_disease_knowledge(class_label: str, user: AuthenticatedUser = Depends(require_admin)) -> dict:
+    return await service.fetch_disease_knowledge_entry(user, class_label)
+
+
+@router.patch("/disease-knowledge/{class_label}", response_model=DiseaseKnowledgeEntry)
+async def update_disease_knowledge(
+    class_label: str, request: DiseaseKnowledgeUpdate, user: AuthenticatedUser = Depends(require_admin_aal2)
+) -> dict:
+    """Edits the text; a reviewed entry goes back to pending review. Audited as AI Configuration Changed (BR-15)."""
+    return await service.update_disease_knowledge(user, class_label, request.model_dump(exclude_unset=True))
+
+
+@router.post("/disease-knowledge/{class_label}/review", response_model=DiseaseKnowledgeEntry)
+async def review_disease_knowledge(class_label: str, user: AuthenticatedUser = Depends(require_admin_aal2)) -> dict:
+    """Signs the entry off as reviewed by this admin. Audited as AI Configuration Changed (BR-15)."""
+    return await service.review_disease_knowledge(user, class_label)

@@ -35,11 +35,12 @@ export async function createDiseaseCase(cropId: string | null, storagePath: stri
 }
 
 /**
- * Calls the FastAPI inference endpoint. It answers 503 when the model checkpoint is missing or
- * fails to load, and 422 when the stored image can't be fetched or decoded — callers should treat
- * any failure here as "AI analysis isn't available right now" rather than a hard error. A
- * successful response is advisory only (BR-13): the model cannot yet tell "not a plant leaf" from
- * a real leaf, so a confident label is not evidence of a diagnosis (docs/status/baseline-2026-09.md).
+ * Calls the FastAPI inference endpoint. It answers 503 when the model is unavailable (checkpoint
+ * missing or failing to load), which the Processing screen shows as its own "unavailable" state,
+ * and 422 when the stored image can't be fetched or decoded. A successful response carries the
+ * `report` built from the expert-reviewed knowledge base; it is advisory only (BR-13): the model
+ * cannot yet tell "not a plant leaf" from a real leaf, so a confident label is not evidence of a
+ * diagnosis (docs/status/baseline-2026-09.md).
  */
 export async function predictDisease(diseaseCaseId: string): Promise<DiseasePrediction> {
   return apiFetch('/api/v1/disease/predict', {

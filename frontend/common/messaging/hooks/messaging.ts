@@ -9,14 +9,17 @@ import {
   sendMessage,
   uploadMessageAttachments,
 } from '../services/messagingService';
-import type { Message } from '../types/messaging';
+import type { ConversationContext, Message } from '../types/messaging';
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { useRealtimeMessages } from '../../../hooks/realtime/useRealtimeMessages';
 import { queryKeys } from '../../../hooks/keys';
 
-/** Opens (or creates) the conversation with another user, for a "Message seller" button. */
+/** Opens (or creates) the conversation with another user about a listing or order, for a "Message" button. */
 export function useOpenConversation() {
-  return useMutation({ mutationFn: (otherUserId: string) => findOrCreateConversation(otherUserId) });
+  return useMutation({
+    mutationFn: ({ otherUserId, context }: { otherUserId: string; context: ConversationContext }) =>
+      findOrCreateConversation(otherUserId, context),
+  });
 }
 
 export function useConversations(enabled: boolean) {

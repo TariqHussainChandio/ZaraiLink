@@ -4,6 +4,7 @@ import { RoleBadge, StatusBadge } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
 import type { ListingWithRelations } from '../types/marketplace';
 import { formatRs } from '../../../utils/money';
+import { statusMeta } from '../../constants/status';
 
 export interface ListingCardProps {
   listing: ListingWithRelations;
@@ -14,11 +15,34 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const imageUri = listing.images[0];
+  // One label for the whole card, so TalkBack reads the listing in one stop instead of each line in turn.
+  const label = [
+    listing.title,
+    `${formatRs(listing.price)} per ${listing.unit}`,
+    listing.category?.name,
+    listing.availability
+      ? statusMeta('stock', listing.availability).label
+      : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Opens the listing"
+    >
       {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.image} />
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.image}
+          accessible={false}
+          importantForAccessibility="no"
+        />
       ) : (
         <View style={[styles.image, styles.imagePlaceholder]} />
       )}
@@ -34,7 +58,9 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
         <Text style={styles.price}>
           {formatRs(listing.price)} / {listing.unit}
         </Text>
-        {listing.category ? <Text style={styles.category}>{listing.category.name}</Text> : null}
+        {listing.category ? (
+          <Text style={styles.category}>{listing.category.name}</Text>
+        ) : null}
         {listing.availability ? (
           <View style={styles.stock}>
             <StatusBadge kind="stock" status={listing.availability} size="sm" />
@@ -63,7 +89,16 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
   );
 }
 
-function makeStyles({ colors, space, radius, typography, borders, fontWeight, size, components }: Theme) {
+function makeStyles({
+  colors,
+  space,
+  radius,
+  typography,
+  borders,
+  fontWeight,
+  size,
+  components,
+}: Theme) {
   return StyleSheet.create({
     card: {
       flex: 1,

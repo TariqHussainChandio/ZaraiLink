@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ListingModerationScreen } from './ListingModerationScreen';
@@ -48,6 +47,7 @@ const listing = (overrides: Partial<ListingWithRelations> = {}): ListingWithRela
   condition: null,
   location: null,
   seller_role: 'farmer',
+  inventory_product_id: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   category: { id: 'cat-1', name: 'Seeds', slug: 'seeds' },
@@ -108,14 +108,14 @@ describe('ListingModerationScreen', () => {
     mockUpdateListingStatus.mockRejectedValue(
       new ApiError({ status: 403, code: 'mfa_required', kind: 'forbidden', message: 'MFA required' }),
     );
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await renderWithQuery(<ListingModerationScreen />);
     await screen.findByText('Wheat Seeds');
 
     await fireEvent.press(screen.getByText('Deactivate'));
 
-    expect(alert).toHaveBeenCalledWith('Could not update the listing', 'This action needs two-step verification.');
-    alert.mockRestore();
+    // The refusal shows as a toast, in the words of the error code, and the listing keeps its state.
+    expect(await screen.findByText('Could not update the listing. This action needs two-step verification.')).toBeTruthy();
+    expect(screen.getByText('Deactivate')).toBeTruthy();
   });
 
   it('hides the toggle action for sold listings', async () => {

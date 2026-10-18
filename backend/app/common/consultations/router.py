@@ -1,12 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
-from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2, require_authenticated_user
 from app.common.consultations import service
 from app.common.consultations.schemas import (
     Consultation,
+    ConsultationAssessment,
+    ConsultationAssessmentInput,
+    ConsultationDetail,
     ConsultationMessageWithListing,
+    ConsultationStatus,
     ConsultationWithRelations,
     CreateConsultationRequest,
+    ModerateConsultationRequest,
     SendConsultationMessageRequest,
     UpdateImagesRequest,
     UpdateStatusRequest,
@@ -29,6 +34,7 @@ async def create_request(
         "farm_id": request.farm_id,
         "images": request.images,
         "priority": request.priority,
+        "disease_case_id": request.disease_case_id,
     }
     return await service.create_request(user, fields)
 
@@ -47,7 +53,7 @@ async def list_for_expert(
     return page.finish(await service.fetch_for_expert(user))
 
 
-@router.get("/{consultation_id}", response_model=ConsultationWithRelations)
+@router.get("/{consultation_id}", response_model=ConsultationDetail)
 async def get_consultation(consultation_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> dict:
     return await service.fetch_by_id(user, consultation_id)
 
@@ -88,3 +94,55 @@ async def send_message(
     return await service.send_message(
         user, consultation_id, request.body, request.attachments, request.recommended_listing_id
     )
+
+
+@router.get("/{consultation_id}/assessments", response_model=list[ConsultationAssessment])
+async def list_assessments(
+    consultation_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)
+) -> list[dict]:
+    # Newest first: the latest assessment is the expert's current answer (SRDS §36).
+    return await service.fetch_assessments(user, consultation_id)
+
+
+@router.post("/{consultation_id}/assessments", response_model=ConsultationAssessment, status_code=201)
+async def create_assessment(
+    consultation_id: str,
+    request: ConsultationAssessmentInput,
+    user: AuthenticatedUser = Depends(require_authenticated_user),
+) -> dict:
+    fields = {
+        "verdict": request.verdict,
+        "diagnosis": (request.diagnosis or "").strip() or None,
+        "recommendations": (request.recommendations or "").strip() or None,
+    }
+    return await service.create_assessment(user, consultation_id, fields)
+
+
+# Admin oversight of consultations (SRDS §14): a second router so the admin's routes sit under /api/v1/admin with the
+# rest of the admin surface, while the code stays with the consultation module that owns the table. Reads need the
+# admin role; the moderation write also needs a second factor this session, as every admin write does.
+admin_router = APIRouter(prefix="/api/v1/admin/consultations", tags=["admin"])
+
+
+@admin_router.get("", response_model=list[ConsultationWithRelations])
+async def admin_list(
+    status: ConsultationStatus | None = None,
+    older_than_days: int | None = Query(default=None, ge=0),
+    user: AuthenticatedUser = Depends(require_admin),
+    page: Page = Depends(paginate),
+) -> list[dict]:
+    return page.finish(await service.fetch_for_admin(user, status, older_than_days))
+
+
+@admin_router.get("/{consultation_id}", response_model=ConsultationDetail)
+async def admin_get(consultation_id: str, user: AuthenticatedUser = Depends(require_admin)) -> dict:
+    return await service.fetch_by_id(user, consultation_id)
+
+
+@admin_router.patch("/{consultation_id}/moderate", response_model=ConsultationDetail)
+async def admin_moderate(
+    consultation_id: str,
+    request: ModerateConsultationRequest,
+    user: AuthenticatedUser = Depends(require_admin_aal2),
+) -> dict:
+    return await service.moderate(user, consultation_id, request.action, request.reason)

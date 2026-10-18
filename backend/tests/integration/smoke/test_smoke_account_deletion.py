@@ -61,6 +61,17 @@ def test_account_deletion_anonymizes_profile_and_a_counterpartys_order_still_ren
     )
     assert upload.status_code in (200, 201), upload.text
 
+    # B5: a file in the owner's folder of the inventory exports bucket. Only the API writes there (service role, under
+    # the verified caller's id), so it is placed the same way; a deleted account's report files must go with it.
+    export_path = f"{farmer_id}/stock-summary-smoke.csv"
+    planted = httpx.post(
+        f"{LOCAL_URL}/storage/v1/object/inventory-exports/{export_path}",
+        headers={"apikey": SERVICE_KEY, "Authorization": f"Bearer {SERVICE_KEY}", "Content-Type": "text/csv"},
+        content=b"product_id,sku",
+        timeout=30,
+    )
+    assert planted.status_code in (200, 201), planted.text
+
     # Farmer sells something to buyer, so there's a real cross-user record to check afterwards.
     categories = api_client("GET", "/api/v1/marketplace/categories", buyer_token)
     category_id = categories.json()[0]["id"]
@@ -118,6 +129,13 @@ def test_account_deletion_anonymizes_profile_and_a_counterpartys_order_still_ren
         timeout=30,
     )
     assert listed.json() == [], listed.text
+    listed_exports = httpx.post(
+        f"{LOCAL_URL}/storage/v1/object/list/inventory-exports",
+        headers={"apikey": SERVICE_KEY, "Authorization": f"Bearer {SERVICE_KEY}"},
+        json={"prefix": f"{farmer_id}/"},
+        timeout=30,
+    )
+    assert listed_exports.json() == [], listed_exports.text
 
     # The audit log entry was written (service-role insert, since this isn't an admin action —
     # 20260924080000_account_deletion_audit_grant.sql).

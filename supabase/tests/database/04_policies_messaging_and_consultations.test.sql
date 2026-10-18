@@ -26,9 +26,11 @@ select tests.expect(tests.fx('F'), 'select id from public.conversations where id
 select tests.expect(tests.fx('B2'), 'select id from public.conversations where id = ' || tests.l('C1'), 'rows:0', 'conversations: a stranger does not');
 select tests.expect(tests.fx('A'), 'select id from public.conversations where id = ' || tests.l('C1'), 'rows:0', 'conversations: even an admin does not (messages are moderated, chats are private)');
 select tests.expect(null, 'select id from public.conversations where id = ' || tests.l('C1'), 'err:42501', 'conversations: anon has no access at all (no grant)');
-select tests.expect(tests.fx('B'), 'insert into public.conversations (participant_one, participant_two) values (' || tests.l('B') || ',' || tests.l('D') || ')', 'n:1', 'conversations: a user starts one they are part of');
-select tests.expect(tests.fx('B'), 'insert into public.conversations (participant_one, participant_two) values (' || tests.l('F2') || ',' || tests.l('D2') || ')', 'err:42501', 'conversations: cannot start one between two others');
-select tests.expect(tests.fx('S'), 'insert into public.conversations (participant_one, participant_two) values (' || tests.l('S') || ',' || tests.l('D') || ')', 'err:42501', 'conversations: a suspended user cannot');
+-- Since A5 a new conversation carries its context (20261020080000_conversation_context.sql); here the inquiry about
+-- dealer D's listing LD1, so each line still differs from the allowed one only in who starts it.
+select tests.expect(tests.fx('B'), 'insert into public.conversations (participant_one, participant_two, context_type, context_id) values (' || tests.l('B') || ',' || tests.l('D') || $$, 'listing', $$ || tests.l('LD1') || ')', 'n:1', 'conversations: a user starts one they are part of');
+select tests.expect(tests.fx('B'), 'insert into public.conversations (participant_one, participant_two, context_type, context_id) values (' || tests.l('F2') || ',' || tests.l('D') || $$, 'listing', $$ || tests.l('LD1') || ')', 'err:42501', 'conversations: cannot start one between two others');
+select tests.expect(tests.fx('S'), 'insert into public.conversations (participant_one, participant_two, context_type, context_id) values (' || tests.l('S') || ',' || tests.l('D') || $$, 'listing', $$ || tests.l('LD1') || ')', 'err:42501', 'conversations: a suspended user cannot');
 
 -- messages ---------------------------------------------------------------------------------------------
 select tests.expect(tests.fx('B'), 'select id from public.messages where id = ' || tests.l('M1'), 'rows:1', 'messages: the sender reads it');
@@ -40,8 +42,10 @@ select tests.expect(tests.fx('B2'), 'insert into public.messages (conversation_i
 select tests.expect(tests.fx('B'), 'insert into public.messages (conversation_id, sender_id, body) values (' || tests.l('C1') || ',' || tests.l('F') || $$, 'spoof')$$, 'err:42501', 'messages: cannot send as the other participant');
 select tests.expect(tests.fx('F'), 'update public.messages set read_at = now() where id = ' || tests.l('M1'), 'n:1', 'messages: a participant marks a message read');
 select tests.expect(tests.fx('B2'), 'update public.messages set read_at = now() where id = ' || tests.l('M1'), 'n:0', 'messages: a stranger updates nothing');
-select tests.expect(tests.fx('A'), $$update public.messages set body = '[redacted]' where id = $$ || tests.l('M1'), 'n:0', 'messages: an admin without a second factor cannot redact');
-select tests.expect(tests.fx('A'), $$update public.messages set body = '[redacted]' where id = $$ || tests.l('M1'), 'n:1', 'messages: an admin with a second factor redacts', 'aal2');
+-- A7 (G1): a redaction writes exactly the API's marker; the wider cases are in 20261023080000_admin_moderation.test.sql.
+select tests.expect(tests.fx('A'), $$update public.messages set body = '[removed by moderator]' where id = $$ || tests.l('M1'), 'n:0', 'messages: an admin without a second factor cannot redact');
+select tests.expect(tests.fx('A'), $$update public.messages set body = '[redacted]' where id = $$ || tests.l('M1'), 'err:42501', 'messages: an admin cannot write other words as a redaction', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.messages set body = '[removed by moderator]' where id = $$ || tests.l('M1'), 'n:1', 'messages: an admin with a second factor redacts', 'aal2');
 
 -- notifications ----------------------------------------------------------------------------------------
 select tests.expect(tests.fx('B'), 'select id from public.notifications where id = ' || tests.l('N1'), 'rows:1', 'notifications: the owner reads theirs');
@@ -61,7 +65,9 @@ select tests.expect(tests.fx('B'), 'insert into public.consultations (user_id, e
 select tests.expect(tests.fx('S'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('S') || ',' || tests.l('E') || $$, 'Suspended')$$, 'err:42501', 'consultations: a suspended user cannot');
 select tests.expect(tests.fx('B'), $$update public.consultations set subject = 'Edited' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: the subject cannot be rewritten after the request');
 select tests.expect(tests.fx('E'), $$update public.consultations set subject = 'Edited by expert' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: nor by the expert');
-select tests.expect(tests.fx('A'), $$update public.consultations set subject = 'Edited by admin' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: nor by an admin');
+-- A7: the admin reaches a consultation only with a second factor, and then the guard still refuses a rewrite.
+select tests.expect(tests.fx('A'), $$update public.consultations set subject = 'Edited by admin' where id = $$ || tests.l('CONS1'), 'n:0', 'consultations: an admin without a second factor does not reach it');
+select tests.expect(tests.fx('A'), $$update public.consultations set subject = 'Edited by admin' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: nor by an admin', 'aal2');
 select tests.expect(tests.fx('B2'), $$update public.consultations set subject = 'Hijack' where id = $$ || tests.l('CONS1'), 'n:0', 'consultations: a stranger updates nothing');
 
 -- consultation guard (guard_consultations_update, consultations_insert_requester) ------------------------

@@ -1,13 +1,12 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
-import { FileCheck } from 'lucide-react-native';
+import { FileCheck, Inbox } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Banner, Button, ChipRow, EmptyState, ListRow, Spinner, StatusBadge } from '../../common/components';
+import { Button, ChipRow, ListRow, ScreenState, StatusBadge } from '../../common/components';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
 import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
 import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
 import { useDealerApplications, useExpertVerifications } from '../hooks/admin';
 
 type Role = 'dealer' | 'expert';
@@ -53,15 +52,15 @@ export function ApprovalsScreen({ navigation }: AdminScreenProps<typeof ADMIN_HO
     }, [refetch]),
   );
 
-  const rows: Row[] =
+  const rows: Row[] | undefined =
     role === 'dealer'
-      ? (dealers.data ?? []).map(d => ({
+      ? dealers.data?.map(d => ({
           id: d.id,
           name: d.full_name || 'Unnamed dealer',
           meta: [d.dealer_profile?.business_name, sent(d.application_submitted_at)].filter(Boolean).join(' · '),
           status: d.account_status,
         }))
-      : (experts.data ?? []).map(e => ({
+      : experts.data?.map(e => ({
           id: e.id,
           name: e.profile?.full_name || 'Unnamed expert',
           meta: [e.qualifications, sent(e.profile?.application_submitted_at)].filter(Boolean).join(' · '),
@@ -82,30 +81,28 @@ export function ApprovalsScreen({ navigation }: AdminScreenProps<typeof ADMIN_HO
           onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.RequiredDocuments)}
         />
       </View>
-      {query.isPending ? (
-        <Spinner />
-      ) : query.error ? (
-        <Banner tone="danger" actionLabel="Try again" onAction={() => query.refetch()}>
-          {errorMessage(query.error)}
-        </Banner>
-      ) : (
-        <FlashList
-          data={rows}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <ListRow
-              title={item.name}
-              meta={item.meta}
-              trailing={<StatusBadge kind="application" status={item.status} />}
-              onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.ApplicationDetail, { role, id: item.id })}
-            />
-          )}
-          ListEmptyComponent={
-            <EmptyState title={status === 'pending' ? 'No application is waiting' : `No ${status} applications`} />
-          }
-        />
-      )}
+      <ScreenState
+        // The rows are the chosen queue's data, mapped for one list; loading and failure are that queue's own.
+        query={{ ...query, data: rows }}
+        errorTitle="Couldn't load the applications"
+        empty={{ title: status === 'pending' ? 'No application is waiting' : `No ${status} applications`, icon: Inbox }}
+      >
+        {data => (
+          <FlashList
+            data={data}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => (
+              <ListRow
+                title={item.name}
+                meta={item.meta}
+                trailing={<StatusBadge kind="application" status={item.status} />}
+                onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.ApplicationDetail, { role, id: item.id })}
+              />
+            )}
+          />
+        )}
+      </ScreenState>
     </View>
   );
 }

@@ -12,8 +12,9 @@ from app.database.supabase_client import get_reauth_client, get_service_role_cli
 # and `consultation-attachments` are deliberately NOT included — their paths are keyed by
 # conversation/consultation id, not user id (grep-verified), so finding "this user's" objects
 # there needs a join through messages/consultation_messages, not a prefix list. Known gap, not
-# silently dropped: see the account-deletion service's own docstring.
-_OWNER_PREFIXED_BUCKETS = ("avatars", "disease-images", "expert-documents", "dealer-documents")
+# silently dropped: see the account-deletion service's own docstring. `inventory-exports` (B5) holds a dealer's report
+# CSVs under `{dealer_id}/...`; a deleted dealer's stock figures must not outlive the account.
+_OWNER_PREFIXED_BUCKETS = ("avatars", "disease-images", "expert-documents", "dealer-documents", "inventory-exports")
 
 
 async def update_profile(access_token: str, user_id: str, patch: dict[str, Any]) -> None:

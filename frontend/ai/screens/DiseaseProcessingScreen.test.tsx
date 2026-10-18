@@ -5,6 +5,7 @@ import { DiseaseProcessingScreen } from './DiseaseProcessingScreen';
 import { createDiseaseCase, predictDisease, uploadDiseaseImage } from '../services/diseaseService';
 import { CONSULTATIONS_ROUTES, APP_TABS } from '../../common/constants/routes';
 import { useAuthStore } from '../../state/authStore';
+import { ApiError } from '../../services/api/errors';
 
 const mockReplace = jest.fn();
 const mockGetParent = jest.fn();
@@ -103,11 +104,64 @@ describe('DiseaseProcessingScreen', () => {
         specialization: 'plant_diseases',
         prefill: {
           subject: 'Crop disease advisory',
-          problemDescription: '',
           cropId: 'crop-1',
           imageUrl: 'file://leaf.jpg',
         },
       },
     });
+  });
+
+  // A 503 means the model itself is down (lane rule: a clear outage, confined to the AI module), so it has its own
+  // wording instead of the server's title.
+  it('shows the model-unavailable state on a 503', async () => {
+    mockUploadDiseaseImage.mockResolvedValue('farmer-1/leaf.jpg');
+    mockCreateDiseaseCase.mockResolvedValue({ id: 'case-1' });
+    mockPredictDisease.mockRejectedValue(
+      new ApiError({
+        status: 503,
+        code: 'service_unavailable',
+        kind: 'server',
+        message: 'The AI advisory is temporarily unavailable. Please try again later.',
+      }),
+    );
+    await renderWithQuery(<DiseaseProcessingScreen />);
+
+    expect(await screen.findByText('Disease scan is unavailable right now')).toBeTruthy();
+    expect(screen.getByText('Try again in a few minutes, or send the photo to an expert now.')).toBeTruthy();
+    expect(screen.queryByText("AI analysis isn't available right now")).toBeNull();
+    expect(screen.getByText('Retry')).toBeTruthy();
+  });
+
+  it('links the recorded case when the model fails after the case was created, and retries without a second case', async () => {
+    mockUploadDiseaseImage.mockResolvedValue('farmer-1/leaf.jpg');
+    mockCreateDiseaseCase.mockResolvedValue({ id: 'case-1' });
+    mockPredictDisease.mockRejectedValue(
+      new ApiError({ status: 503, code: 'service_unavailable', kind: 'server', message: 'down' }),
+    );
+    const tabNavigate = jest.fn();
+    mockGetParent.mockReturnValue({ navigate: tabNavigate });
+    await renderWithQuery(<DiseaseProcessingScreen />);
+
+    await screen.findByText('Disease scan is unavailable right now');
+    await fireEvent.press(screen.getByText('Talk to an Expert'));
+    expect(tabNavigate).toHaveBeenCalledWith(APP_TABS.Consultations, {
+      screen: CONSULTATIONS_ROUTES.ExpertList,
+      params: {
+        specialization: 'plant_diseases',
+        prefill: {
+          subject: 'Crop disease advisory',
+          cropId: 'crop-1',
+          imageUrl: 'file://leaf.jpg',
+          diseaseCaseId: 'case-1',
+        },
+      },
+    });
+
+    await fireEvent.press(screen.getByText('Retry'));
+    await screen.findByText('Disease scan is unavailable right now');
+    await waitFor(() => expect(mockPredictDisease).toHaveBeenCalledTimes(2));
+    expect(mockUploadDiseaseImage).toHaveBeenCalledTimes(1);
+    expect(mockCreateDiseaseCase).toHaveBeenCalledTimes(1);
+    expect(mockPredictDisease).toHaveBeenLastCalledWith('case-1');
   });
 });

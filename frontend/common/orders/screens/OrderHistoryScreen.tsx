@@ -2,7 +2,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { ChipRow, type ChipOption, EmptyState, SkeletonList, StaggeredItem } from '../../components';
+import { ReceiptText } from 'lucide-react-native';
+import { ChipRow, type ChipOption, ScreenState, StaggeredItem } from '../../components';
 import { OrderCard } from '../components/OrderCard';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { useOrders } from '../hooks/orders';
@@ -26,7 +27,8 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
     role === 'farmer' || role === 'dealer' ? 'seller' : 'buyer',
   );
 
-  const { data: orders = [], isLoading: loading, refetch } = useOrders(segment, !!userId);
+  const orders = useOrders(segment, !!userId);
+  const { refetch } = orders;
 
   useFocusEffect(
     useCallback(() => {
@@ -40,33 +42,35 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
         <ChipRow options={SEGMENTS} value={segment} onChange={setSegment} />
       </View>
 
-      {loading ? (
-        <SkeletonList />
-      ) : (
-        <FlashList
-          data={orders}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item, index }) => (
-            <StaggeredItem index={index}>
-              <OrderCard
-                order={item}
-                counterpartyName={
-                  (segment === 'buyer' ? item.seller?.full_name : item.buyer?.full_name) ||
-                  'Unknown'
-                }
-                onPress={() => navigation.navigate(ORDERS_ROUTES.OrderDetail, { orderId: item.id })}
-              />
-            </StaggeredItem>
-          )}
-          ListEmptyComponent={
-            <EmptyState
-              title={segment === 'buyer' ? 'No purchases yet' : 'No sales yet'}
-              description="Orders will show up here once they're placed."
-            />
-          }
-        />
-      )}
+      <ScreenState
+        query={orders}
+        errorTitle="Couldn't load your orders"
+        empty={{
+          icon: ReceiptText,
+          title: segment === 'buyer' ? 'No purchases yet' : 'No sales yet',
+          description: "Orders will show up here once they're placed.",
+        }}
+      >
+        {list => (
+          <FlashList
+            data={list}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item, index }) => (
+              <StaggeredItem index={index}>
+                <OrderCard
+                  order={item}
+                  counterpartyName={
+                    (segment === 'buyer' ? item.seller?.full_name : item.buyer?.full_name) ||
+                    'Unknown'
+                  }
+                  onPress={() => navigation.navigate(ORDERS_ROUTES.OrderDetail, { orderId: item.id })}
+                />
+              </StaggeredItem>
+            )}
+          />
+        )}
+      </ScreenState>
     </View>
   );
 }

@@ -88,12 +88,10 @@ export const MESSAGING_ROUTES = {
   Chat: 'Chat',
 } as const;
 
-// Shared Home stack for buyer/farmer/dealer. Farms/Crops (Module 7), Stores/Suppliers/
-// Inventory (Module 8), and Disease Advisory (Module 15) are real screens; My Listings/
-// Products remain placeholders owned by later modules. Every route here is reachable via Quick
-// Actions on the dashboard, but not every role gets every action — Disease Advisory is
-// farmer-only (like Inventory is dealer-only), gated purely at the Quick Actions level, same as
-// Farms/Crops already are.
+// Shared Home stack for buyer/farmer/dealer. Farms/Crops (Module 7) and Disease Advisory (Module 15) are real screens;
+// My Listings/Products remain placeholders owned by later modules. Every route here is reachable via Quick Actions on
+// the dashboard, but not every role gets every action: Disease Advisory is farmer-only, gated at the Quick Actions
+// level, same as Farms/Crops. The dealer's inventory is its own system with its own navigator (frontend/inventory, B4).
 export const HOME_ROUTES = {
   Dashboard: 'Dashboard',
   MyListings: 'MyListings',
@@ -108,12 +106,6 @@ export const HOME_ROUTES = {
   Products: 'Products',
   // A3b: an approved dealer's business details.
   BusinessDetails: 'BusinessDetails',
-  Stores: 'Stores',
-  StoreDetail: 'StoreDetail',
-  Suppliers: 'Suppliers',
-  SupplierDetail: 'SupplierDetail',
-  Inventory: 'Inventory',
-  InventoryTransactions: 'InventoryTransactions',
   Notifications: 'Notifications',
   Analytics: 'Analytics',
 } as const;
@@ -137,6 +129,14 @@ export const ADMIN_HOME_ROUTES = {
   Categories: 'Categories',
   ReferenceData: 'ReferenceData',
   AuditLogs: 'AuditLogs',
+  // A6 (SRDS §37): AI activity counts and the disease knowledge base the AI report reads.
+  AiActivity: 'AiActivity',
+  DiseaseKnowledge: 'DiseaseKnowledge',
+  DiseaseKnowledgeEdit: 'DiseaseKnowledgeEdit',
+  // A7 (SRDS §14): consultation and review moderation, from the Moderation hub and the Overview's queues.
+  ConsultationModeration: 'AdminConsultations',
+  ConsultationModerationDetail: 'AdminConsultationDetail',
+  ReviewModeration: 'ReviewModeration',
 } as const;
 
 // Consultations tab (Buyer/Farmer per §34; Dealer's nav tree omits it — no dealer entry point

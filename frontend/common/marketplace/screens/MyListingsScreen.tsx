@@ -1,13 +1,13 @@
+import { Store } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner, StatusBadge } from '../../components';
+import { ScreenState, StatusBadge } from '../../components';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useMyListings } from '../hooks/marketplace';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
-import { errorMessage } from '../../../utils/errorMessage';
 import { formatRs } from '../../../utils/money';
 import { statusMeta } from '../../constants/status';
 
@@ -18,57 +18,53 @@ export function MyListingsScreen() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const tabNavigation = useAppTabNavigation();
-  const { data: listings = [], isPending, error, refetch } = useMyListings(userId);
-
-  if (isPending) return <Spinner fullscreen />;
-  if (error && listings.length === 0) {
-    return (
-      <EmptyState
-        title="Could not load your listings"
-        description={errorMessage(error)}
-        actionLabel="Retry"
-        onAction={() => refetch()}
-      />
-    );
-  }
+  const listingsQuery = useMyListings(userId);
 
   return (
-    <FlashList
-      style={styles.container}
-      contentContainerStyle={styles.list}
-      data={listings}
-      keyExtractor={item => item.id}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.row}
-          activeOpacity={0.7}
-          onPress={() =>
-            tabNavigation?.navigate(APP_TABS.Marketplace, {
-              screen: MARKETPLACE_ROUTES.ListingDetail,
-              params: { listingId: item.id },
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel={`${item.title}, ${formatRs(item.price)} per ${item.unit}, ${statusMeta('listing', item.status).label}`}
-        >
-          <View style={styles.info}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <Text style={styles.meta} numberOfLines={1}>
-              {`${formatRs(item.price)}/${item.unit} · Qty ${item.quantity}`}
-            </Text>
-          </View>
-          <StatusBadge kind="listing" status={item.status} />
-        </TouchableOpacity>
-      )}
-      ListEmptyComponent={
-        <EmptyState
-          title="No listings yet"
-          description="Listings you create will show up here."
-        />
-      }
-    />
+    <View style={styles.container}>
+      <ScreenState
+        query={listingsQuery}
+        errorTitle="Couldn't load your listings"
+        empty={{
+          icon: Store,
+          title: 'No listings yet',
+          description: 'Listings you create will show up here.',
+        }}
+      >
+        {listings => (
+          <FlashList
+            style={styles.container}
+            contentContainerStyle={styles.list}
+            data={listings}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.row}
+                activeOpacity={0.7}
+                onPress={() =>
+                  tabNavigation?.navigate(APP_TABS.Marketplace, {
+                    screen: MARKETPLACE_ROUTES.ListingDetail,
+                    params: { listingId: item.id },
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`${item.title}, ${formatRs(item.price)} per ${item.unit}, ${statusMeta('listing', item.status).label}`}
+              >
+                <View style={styles.info}>
+                  <Text style={styles.title} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.meta} numberOfLines={1}>
+                    {`${formatRs(item.price)}/${item.unit} · Qty ${item.quantity}`}
+                  </Text>
+                </View>
+                <StatusBadge kind="listing" status={item.status} />
+              </TouchableOpacity>
+            )}
+          />
+        )}
+      </ScreenState>
+    </View>
   );
 }
 

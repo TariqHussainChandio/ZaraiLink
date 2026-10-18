@@ -1,6 +1,7 @@
+import { CircleCheck } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, TextField } from '../../components';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Button, Card, TextField, useToast } from '../../components';
 import { useCheckout } from '../hooks/orders';
 import { useAuthStore } from '../../../state/authStore';
 import { useCartStore, type CartItem } from '../../../state/cartStore';
@@ -25,6 +26,7 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
   const userId = useAuthStore(state => state.user?.id);
   const { items, clear } = useCartStore();
   const checkout = useCheckout();
+  const toast = useToast();
   const grouped = useMemo(() => groupBySeller(items), [items]);
 
   // BR-09: delivery is always a separate, explicit charge the buyer proposes per seller here
@@ -51,13 +53,11 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
       }
       const orders = await checkout.mutateAsync({ items, deliveryChargeBySeller });
       clear();
-      Alert.alert(
-        'Order placed',
-        `${orders.length} ${orders.length === 1 ? 'order' : 'orders'} created. Track them from the Orders tab.`,
-      );
+      toast.success(orders.length === 1 ? 'Order placed' : `${orders.length} orders placed`);
       navigation.popToTop();
     } catch (error) {
-      Alert.alert('Checkout failed', errorMessage(error));
+      // Nothing was placed and the cart is kept, so the person can press Place order again.
+      toast.error(errorMessage(error));
     }
   };
 
@@ -116,7 +116,7 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
             {formatRs(grandTotal)}
           </Text>
         </View>
-        <Button label="Place Order" loading={checkout.isPending} onPress={onConfirm} />
+        <Button label="Place Order" icon={CircleCheck} loading={checkout.isPending} onPress={onConfirm} />
       </View>
     </View>
   );

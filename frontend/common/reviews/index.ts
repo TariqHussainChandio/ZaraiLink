@@ -4,4 +4,4 @@ export { RatingStars } from './components/RatingStars';
 export { RatingSummary } from './components/RatingSummary';
 export { ReviewCard } from './components/ReviewCard';
 export { useListingReviews } from './hooks/reviews';
-export { createConsultationReview, deleteReview, fetchReviewByConsultationId, fetchReviewById, fetchReviewByOrderId, fetchReviewsForExpert } from './services/reviewsService';
+export { createConsultationReview, fetchReviewByConsultationId, fetchReviewById, fetchReviewByOrderId, fetchReviewsForExpert } from './services/reviewsService';

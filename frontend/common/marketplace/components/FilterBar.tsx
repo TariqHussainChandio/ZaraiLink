@@ -1,9 +1,26 @@
-import { SlidersHorizontal } from 'lucide-react-native';
+import { Check, SlidersHorizontal, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, Chip, LocationPicker, Sheet, TextField } from '../../components';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import {
+  Button,
+  Chip,
+  LocationPicker,
+  Sheet,
+  TextField,
+} from '../../components';
 import { useCrops } from '../hooks/marketplace';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
+import {
+  useTheme,
+  type Theme,
+  useRoleAccent,
+  type Accent,
+} from '../../../theme';
 import type { Category } from '../types/marketplace';
 
 export interface FilterBarProps {
@@ -16,7 +33,12 @@ export interface FilterBarProps {
   maxPrice: number | null;
   city: string | null;
   cropName: string | null;
-  onApplyMoreFilters: (filters: { minPrice: number | null; maxPrice: number | null; city: string | null; cropName: string | null }) => void;
+  onApplyMoreFilters: (filters: {
+    minPrice: number | null;
+    maxPrice: number | null;
+    city: string | null;
+    cropName: string | null;
+  }) => void;
 }
 
 export function FilterBar({
@@ -35,8 +57,12 @@ export function FilterBar({
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [draftMinPrice, setDraftMinPrice] = useState(minPrice ? String(minPrice) : '');
-  const [draftMaxPrice, setDraftMaxPrice] = useState(maxPrice ? String(maxPrice) : '');
+  const [draftMinPrice, setDraftMinPrice] = useState(
+    minPrice ? String(minPrice) : '',
+  );
+  const [draftMaxPrice, setDraftMaxPrice] = useState(
+    maxPrice ? String(maxPrice) : '',
+  );
   const [draftCountry, setDraftCountry] = useState<string | null>(null);
   const [draftProvince, setDraftProvince] = useState<string | null>(null);
   const [draftCity, setDraftCity] = useState<string | null>(city);
@@ -44,7 +70,9 @@ export function FilterBar({
 
   const { data: crops = [] } = useCrops();
 
-  const activeMoreFiltersCount = [minPrice, maxPrice, city, cropName].filter(v => v !== null).length;
+  const activeMoreFiltersCount = [minPrice, maxPrice, city, cropName].filter(
+    v => v !== null,
+  ).length;
 
   const openSheet = () => {
     setDraftMinPrice(minPrice ? String(minPrice) : '');
@@ -71,7 +99,12 @@ export function FilterBar({
     setDraftProvince(null);
     setDraftCity(null);
     setDraftCropName(null);
-    onApplyMoreFilters({ minPrice: null, maxPrice: null, city: null, cropName: null });
+    onApplyMoreFilters({
+      minPrice: null,
+      maxPrice: null,
+      city: null,
+      cropName: null,
+    });
     setSheetOpen(false);
   };
 
@@ -81,6 +114,7 @@ export function FilterBar({
         <View style={styles.searchField}>
           <TextField
             placeholder="Search listings..."
+            accessibilityLabel="Search listings"
             value={search}
             onChangeText={onSearchChange}
           />
@@ -90,13 +124,17 @@ export function FilterBar({
           onPress={openSheet}
           accessibilityRole="button"
           accessibilityLabel={
-            activeMoreFiltersCount > 0 ? `Filters, ${activeMoreFiltersCount} active` : 'Filters'
+            activeMoreFiltersCount > 0
+              ? `Filters, ${activeMoreFiltersCount} active`
+              : 'Filters'
           }
         >
           <SlidersHorizontal color={accent.mark} size={theme.size.iconButton} />
           {activeMoreFiltersCount > 0 ? (
             <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeLabel}>{activeMoreFiltersCount}</Text>
+              <Text style={styles.filterBadgeLabel}>
+                {activeMoreFiltersCount}
+              </Text>
             </View>
           ) : null}
         </TouchableOpacity>
@@ -123,7 +161,9 @@ export function FilterBar({
 
       <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)}>
         <ScrollView keyboardShouldPersistTaps="handled">
-          <Text style={styles.sheetTitle}>Filters</Text>
+          <Text style={styles.sheetTitle} accessibilityRole="header">
+            Filters
+          </Text>
 
           <View style={styles.priceRow}>
             <View style={styles.priceField}>
@@ -164,22 +204,39 @@ export function FilterBar({
                     key={crop.id}
                     label={crop.name}
                     selected={draftCropName === crop.name}
-                    onPress={() => setDraftCropName(draftCropName === crop.name ? null : crop.name)}
+                    onPress={() =>
+                      setDraftCropName(
+                        draftCropName === crop.name ? null : crop.name,
+                      )
+                    }
                   />
                 ))}
               </View>
             </>
           ) : null}
 
-          <Button label="Apply Filters" onPress={apply} style={styles.applyButton} />
-          <Button label="Clear Filters" variant="secondary" onPress={clear} />
+          <Button
+            label="Apply Filters"
+            icon={Check}
+            onPress={apply}
+            style={styles.applyButton}
+          />
+          <Button
+            label="Clear Filters"
+            icon={X}
+            variant="secondary"
+            onPress={clear}
+          />
         </ScrollView>
       </Sheet>
     </View>
   );
 }
 
-function makeStyles({ colors, space, radius, typography, size, borders, fontWeight }: Theme, accent: Accent) {
+function makeStyles(
+  { colors, space, radius, typography, size, borders, fontWeight }: Theme,
+  accent: Accent,
+) {
   return StyleSheet.create({
     container: {
       paddingHorizontal: space[4],

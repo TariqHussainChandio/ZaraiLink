@@ -19,6 +19,9 @@ export function RatingStars({ value, size = 16, onChange }: RatingStarsProps) {
   return (
     <View
       style={styles.row}
+      // Read-only, the five stars are one picture with one label; as a picker each star is its own button.
+      accessible={!onChange}
+      accessibilityRole={!onChange ? 'image' : undefined}
       accessibilityLabel={!onChange ? `${Math.round(value)} out of 5 stars` : undefined}
     >
       {STAR_VALUES.map(star => {
@@ -35,7 +38,7 @@ export function RatingStars({ value, size = 16, onChange }: RatingStarsProps) {
           <TouchableOpacity
             key={star}
             onPress={() => onChange(star)}
-            hitSlop={theme.space[2]}
+            hitSlop={theme.components.hitSlop(size)}
             accessibilityRole="button"
             accessibilityLabel={`Rate ${star} star${star === 1 ? '' : 's'}`}
             accessibilityState={{ selected: star <= Math.round(value) }}

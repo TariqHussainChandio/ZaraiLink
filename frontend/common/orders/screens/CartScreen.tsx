@@ -1,3 +1,4 @@
+import { ShoppingBag, ShoppingCart } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
@@ -19,8 +20,11 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
     return (
       <View style={styles.empty}>
         <EmptyState
+          icon={ShoppingCart}
           title="Your cart is empty"
           description="Browse the marketplace to add produce."
+          actionLabel="Browse"
+          onAction={() => navigation.navigate(MARKETPLACE_ROUTES.Browse)}
         />
       </View>
     );
@@ -48,6 +52,7 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
         </View>
         <Button
           label="Checkout"
+          icon={ShoppingBag}
           onPress={() => navigation.navigate(MARKETPLACE_ROUTES.Checkout)}
         />
       </View>

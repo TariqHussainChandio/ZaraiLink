@@ -13,12 +13,6 @@ import { FarmDetailScreen } from '../../farmer/screens/FarmDetailScreen';
 import { FarmListScreen } from '../../farmer/screens/FarmListScreen';
 import { DealerAnalyticsScreen } from '../../dealer/screens/AnalyticsScreen';
 import { BusinessDetailsScreen } from '../../dealer/screens/BusinessDetailsScreen';
-import { InventoryScreen } from '../../inventory/screens/InventoryScreen';
-import { InventoryTransactionScreen } from '../../inventory/screens/InventoryTransactionScreen';
-import { StoreDetailScreen } from '../../inventory/screens/StoreDetailScreen';
-import { StoreListScreen } from '../../inventory/screens/StoreListScreen';
-import { SupplierDetailScreen } from '../../inventory/screens/SupplierDetailScreen';
-import { SupplierListScreen } from '../../inventory/screens/SupplierListScreen';
 import { NotificationListScreen } from '../../common/notifications/screens/NotificationListScreen';
 import { DiseaseProcessingScreen } from '../../ai/screens/DiseaseProcessingScreen';
 import { DiseaseResultScreen } from '../../ai/screens/DiseaseResultScreen';
@@ -41,12 +35,6 @@ export type HomeStackParamList = {
   [HOME_ROUTES.DiseaseResult]: { diseaseCaseId: string };
   [HOME_ROUTES.Products]: undefined;
   [HOME_ROUTES.BusinessDetails]: undefined;
-  [HOME_ROUTES.Stores]: undefined;
-  [HOME_ROUTES.StoreDetail]: { storeId?: string };
-  [HOME_ROUTES.Suppliers]: undefined;
-  [HOME_ROUTES.SupplierDetail]: { supplierId?: string };
-  [HOME_ROUTES.Inventory]: undefined;
-  [HOME_ROUTES.InventoryTransactions]: { inventoryId: string };
   [HOME_ROUTES.Analytics]: undefined;
 };
 
@@ -131,35 +119,11 @@ export function HomeNavigator() {
       <Stack.Screen
         name={HOME_ROUTES.Products}
         component={MyListingsScreen}
-        options={{ title: 'Products' }}
+        // The dealer's marketplace listings. "Products" belongs to the inventory system's catalogue, one tile below on
+        // the dealer's Home; two different "Products" confused dealers (B4 verification).
+        options={{ title: 'My Listings' }}
       />
       <Stack.Screen name={HOME_ROUTES.BusinessDetails} component={BusinessDetailsScreen} options={{ title: 'Business details' }} />
-      <Stack.Screen name={HOME_ROUTES.Stores} component={StoreListScreen} options={{ title: 'Stores' }} />
-      <Stack.Screen
-        name={HOME_ROUTES.StoreDetail}
-        component={StoreDetailScreen}
-        options={({ route }) => ({ title: route.params?.storeId ? 'Edit Store' : 'New Store' })}
-      />
-      <Stack.Screen
-        name={HOME_ROUTES.Suppliers}
-        component={SupplierListScreen}
-        options={{ title: 'Suppliers' }}
-      />
-      <Stack.Screen
-        name={HOME_ROUTES.SupplierDetail}
-        component={SupplierDetailScreen}
-        options={({ route }) => ({ title: route.params?.supplierId ? 'Edit Supplier' : 'New Supplier' })}
-      />
-      <Stack.Screen
-        name={HOME_ROUTES.Inventory}
-        component={InventoryScreen}
-        options={{ title: 'Inventory' }}
-      />
-      <Stack.Screen
-        name={HOME_ROUTES.InventoryTransactions}
-        component={InventoryTransactionScreen}
-        options={{ title: 'Stock History' }}
-      />
       <Stack.Screen
         name={HOME_ROUTES.Analytics}
         component={RoleAwareAnalyticsScreen}

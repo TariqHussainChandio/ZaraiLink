@@ -136,3 +136,57 @@ async def send_message(
         client.table("consultation_messages").select(MESSAGE_SELECT).eq("id", inserted["id"]).limit(1).execute()
     )
     return first_row(response)
+
+
+async def create_assessment(access_token: str, consultation_id: str, expert_id: str, fields: dict[str, Any]) -> dict:
+    # User-scoped on purpose: `consultation_assessments_insert_expert` is the authority on who may assess (the assigned,
+    # approved expert while the consultation is accepted or in progress, SRDS §36). The insert returns the full row.
+    client = await get_user_scoped_client(access_token)
+    response = (
+        await client.table("consultation_assessments")
+        .insert({"consultation_id": consultation_id, "expert_id": expert_id, **fields})
+        .execute()
+    )
+    return first_row(response)
+
+
+async def fetch_assessments(access_token: str, consultation_id: str) -> list[dict]:
+    # Row-level security limits the read to the requester, the assigned expert and an admin; anyone else gets no rows.
+    client = await get_user_scoped_client(access_token)
+    response = await (
+        client.table("consultation_assessments")
+        .select("*")
+        .eq("consultation_id", consultation_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return as_rows(response)
+
+
+# --- admin moderation (SRDS §14). Every call below uses the admin's own token: `consultations_select` already lets an
+# admin read every consultation, and `guard_consultations_update` is the authority on what the admin may change, so no
+# service-role client is needed to see or moderate a row.
+
+
+async def fetch_for_admin(access_token: str, status: str | None, created_before: str | None) -> list[dict]:
+    client = await get_user_scoped_client(access_token)
+    query = client.table("consultations").select(CONSULTATION_SELECT)
+    if status is not None:
+        query = query.eq("status", status)
+    if created_before is not None:
+        query = query.lt("created_at", created_before)
+    response = await query.order("created_at", desc=True).range(*page_range()).execute()
+    return [_flatten_expert(row) for row in as_rows(response)]
+
+
+async def moderate(access_token: str, consultation_id: str, status: str, reason: str) -> dict:
+    # Status and reason in one update: the trigger accepts a moderation reason only together with the status change it
+    # explains, and refuses an admin close or cancel without one.
+    client = await get_user_scoped_client(access_token)
+    response = (
+        await client.table("consultations")
+        .update({"status": status, "moderation_reason": reason})
+        .eq("id", consultation_id)
+        .execute()
+    )
+    return first_row(response)

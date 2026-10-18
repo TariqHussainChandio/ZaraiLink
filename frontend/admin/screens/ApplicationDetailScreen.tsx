@@ -1,3 +1,4 @@
+import { CircleCheck, CircleX } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
@@ -6,13 +7,15 @@ import {
   Button,
   Card,
   DocumentTile,
-  EmptyState,
+  ScreenState,
   Sheet,
-  Spinner,
   StatusBadge,
   TextField,
 } from '../../common/components';
-import { BUSINESS_TYPE_LABELS, SPECIALIZATION_LABELS } from '../../common/constants/labels';
+import {
+  BUSINESS_TYPE_LABELS,
+  SPECIALIZATION_LABELS,
+} from '../../common/constants/labels';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
 import type { ApplicationDecision } from '../../expert';
 import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
@@ -28,7 +31,11 @@ import {
 
 // The applicant reads a rejection's reason in the app and in the email, so it must say something (A3a).
 const MIN_REASON = 10;
-const longDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+const longDate = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
 
 interface Document {
   id: string;
@@ -48,7 +55,10 @@ interface Section {
  * submitted documents (each opened from a short-lived link), then the decision. Approving or rejecting needs the
  * second factor and writes the audit row with the decision; the applicant is emailed after it (SRDS §9).
  */
-export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<typeof ADMIN_HOME_ROUTES.ApplicationDetail>) {
+export function ApplicationDetailScreen({
+  route,
+  navigation,
+}: AdminScreenProps<typeof ADMIN_HOME_ROUTES.ApplicationDetail>) {
   const { role, id } = route.params;
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -58,20 +68,22 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
   const decideExpert = useReviewVerification();
   const documentUrl = useApplicationDocumentUrl();
   const [rejecting, setRejecting] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState<string | undefined>(undefined);
   const [outcome, setOutcome] = useState<ApplicationDecision | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
   const query = role === 'dealer' ? dealer : expert;
-  if (query.isPending) return <Spinner fullscreen />;
-  if (query.error || !query.data) {
+  if (!query.data) {
     return (
-      <EmptyState
-        title="Could not load this application"
-        description={query.error ? errorMessage(query.error) : undefined}
-        actionLabel="Try again"
-        onAction={() => query.refetch()}
+      <ScreenState
+        query={query}
+        errorTitle="Couldn't load this application"
+        empty={{
+          title: 'Application not found',
+          description: 'Go back and open it again.',
+        }}
       />
     );
   }
@@ -98,10 +110,18 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
         title: 'Business information',
         rows: [
           ['Business name', business?.business_name],
-          ['Business type', business ? BUSINESS_TYPE_LABELS[business.business_type] : null],
+          [
+            'Business type',
+            business ? BUSINESS_TYPE_LABELS[business.business_type] : null,
+          ],
           ['Registration number', business?.registration_number],
           ['Address', business?.business_address],
-          ['Location', business ? [business.city, business.province, business.country].join(', ') : null],
+          [
+            'Location',
+            business
+              ? [business.city, business.province, business.country].join(', ')
+              : null,
+          ],
         ],
       },
     ];
@@ -113,7 +133,9 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
     statusReason = e?.profile?.account_status_reason;
     submittedAt = e?.profile?.application_submitted_at;
     documents = e?.expert_documents ?? [];
-    specializations = (e?.expert_specializations ?? []).map(s => SPECIALIZATION_LABELS[s.specialization]);
+    specializations = (e?.expert_specializations ?? []).map(
+      s => SPECIALIZATION_LABELS[s.specialization],
+    );
     sections = [
       {
         title: 'Professional information',
@@ -124,8 +146,14 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
           ['About', e?.professional_description],
         ],
       },
-      { title: 'Experience', rows: [['Years of experience', e?.years_experience?.toString()]] },
-      { title: 'Institution affiliation', rows: [['Institution', e?.institution_affiliation]] },
+      {
+        title: 'Experience',
+        rows: [['Years of experience', e?.years_experience?.toString()]],
+      },
+      {
+        title: 'Institution affiliation',
+        rows: [['Institution', e?.institution_affiliation]],
+      },
     ];
   }
   const decidable = status === 'pending' && !!submittedAt;
@@ -136,8 +164,16 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
     try {
       const result =
         role === 'dealer'
-          ? await decideDealer.mutateAsync({ id, status: decision, reason: text })
-          : await decideExpert.mutateAsync({ expertId: id, decision, notes: text ?? '' });
+          ? await decideDealer.mutateAsync({
+              id,
+              status: decision,
+              reason: text,
+            })
+          : await decideExpert.mutateAsync({
+              expertId: id,
+              decision,
+              notes: text ?? '',
+            });
       setOutcome(result);
       await query.refetch();
     } catch (error) {
@@ -157,10 +193,17 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
   const open = async (document: Document) => {
     setFailure(null);
     try {
-      const url = await documentUrl.mutateAsync({ role, applicantId: id, documentId: document.id });
+      const url = await documentUrl.mutateAsync({
+        role,
+        applicantId: id,
+        documentId: document.id,
+      });
       // A photo opens here; a PDF in the phone's own viewer, which reads PDFs better than an image view can.
       if (document.mime_type?.startsWith('image/')) {
-        navigation.navigate(ADMIN_HOME_ROUTES.DocumentViewer, { url, title: document.file_name });
+        navigation.navigate(ADMIN_HOME_ROUTES.DocumentViewer, {
+          url,
+          title: document.file_name,
+        });
       } else {
         await Linking.openURL(url);
       }
@@ -170,7 +213,11 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Card>
         <View style={styles.header}>
           <Text style={styles.name} accessibilityRole="header">
@@ -178,9 +225,15 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
           </Text>
           <StatusBadge kind="application" status={status} />
         </View>
-        <Text style={styles.meta}>{role === 'dealer' ? 'Dealer application' : 'Expert application'}</Text>
+        <Text style={styles.meta}>
+          {role === 'dealer' ? 'Dealer application' : 'Expert application'}
+        </Text>
         {phone ? <Text style={styles.meta}>{phone}</Text> : null}
-        <Text style={styles.meta}>{submittedAt ? `Sent ${longDate.format(new Date(submittedAt))}` : 'Not sent yet'}</Text>
+        <Text style={styles.meta}>
+          {submittedAt
+            ? `Sent ${longDate.format(new Date(submittedAt))}`
+            : 'Not sent yet'}
+        </Text>
       </Card>
 
       {status === 'rejected' && statusReason ? (
@@ -214,17 +267,24 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
 
       <Card>
         <Text style={styles.heading}>Submitted documents</Text>
-        {documents.length === 0 ? <Text style={styles.meta}>No documents attached.</Text> : null}
+        {documents.length === 0 ? (
+          <Text style={styles.meta}>No documents attached.</Text>
+        ) : null}
         <View style={styles.documents}>
           {documents.map(document => (
             <View key={document.id} style={styles.document}>
-              <Text style={styles.term}>{document.required_document?.label ?? 'Earlier document'}</Text>
+              <Text style={styles.term}>
+                {document.required_document?.label ?? 'Earlier document'}
+              </Text>
               <DocumentTile
                 fileName={document.file_name}
                 mimeType={document.mime_type}
                 sizeBytes={document.size_bytes}
                 onView={() => open(document)}
-                busy={documentUrl.isPending && documentUrl.variables?.documentId === document.id}
+                busy={
+                  documentUrl.isPending &&
+                  documentUrl.variables?.documentId === document.id
+                }
               />
             </View>
           ))}
@@ -232,7 +292,10 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
       </Card>
 
       {outcome ? (
-        <Banner tone={outcome.email_delivered ? 'success' : 'warning'} title="Decision recorded">
+        <Banner
+          tone={outcome.email_delivered ? 'success' : 'warning'}
+          title="Decision recorded"
+        >
           {outcome.email_delivered
             ? 'The applicant has been emailed.'
             : 'The email to the applicant could not be sent. They will see the decision in the app.'}
@@ -242,9 +305,15 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
 
       {decidable ? (
         <View style={styles.actions}>
-          <Button label="Approve" loading={deciding} onPress={() => decide('approved')} />
+          <Button
+            label="Approve"
+            icon={CircleCheck}
+            loading={deciding}
+            onPress={() => setApproving(true)}
+          />
           <Button
             label="Reject"
+            icon={CircleX}
             variant="danger"
             disabled={deciding}
             onPress={() => {
@@ -256,7 +325,40 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
         </View>
       ) : null}
 
-      <Sheet visible={rejecting} onClose={() => setRejecting(false)} title={`Reject ${name || 'this application'}`}>
+      {/* An approval opens the account to trade or advise and cannot be taken back here, so it is confirmed first, like
+          a rejection: one stray tap on the button used to decide it. */}
+      <Sheet
+        visible={approving}
+        onClose={() => setApproving(false)}
+        title={`Approve ${name || 'this application'}`}
+      >
+        <View style={styles.sheet}>
+          <Text style={styles.meta}>
+            {role === 'dealer'
+              ? 'The dealer can sell on the marketplace once they sign in again.'
+              : 'The expert can take consultations once they sign in again.'}
+          </Text>
+          <Button
+            label="Approve application"
+            icon={CircleCheck}
+            onPress={() => {
+              setApproving(false);
+              decide('approved');
+            }}
+          />
+          <Button
+            label="Not now"
+            variant="secondary"
+            onPress={() => setApproving(false)}
+          />
+        </View>
+      </Sheet>
+
+      <Sheet
+        visible={rejecting}
+        onClose={() => setRejecting(false)}
+        title={`Reject ${name || 'this application'}`}
+      >
         <View style={styles.sheet}>
           <TextField
             label="Reason"
@@ -266,7 +368,12 @@ export function ApplicationDetailScreen({ route, navigation }: AdminScreenProps<
             error={reasonError}
             multiline
           />
-          <Button label="Reject application" variant="danger" onPress={reject} />
+          <Button
+            label="Reject application"
+            icon={CircleX}
+            variant="danger"
+            onPress={reject}
+          />
         </View>
       </Sheet>
     </ScrollView>
@@ -277,10 +384,19 @@ function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.ground },
     content: { padding: space[4], gap: space[3] },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: space[2],
+    },
     name: { ...typography.title, color: colors.ink, flexShrink: 1 },
     meta: { ...typography.caption, color: colors.ink2, marginTop: space[1] },
-    heading: { ...typography.bodyStrong, color: colors.ink, marginBottom: space[2] },
+    heading: {
+      ...typography.bodyStrong,
+      color: colors.ink,
+      marginBottom: space[2],
+    },
     row: { paddingVertical: space[1], gap: space[1] },
     term: { ...typography.caption, color: colors.ink3 },
     value: { ...typography.body, color: colors.ink },

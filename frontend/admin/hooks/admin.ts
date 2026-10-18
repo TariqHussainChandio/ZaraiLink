@@ -18,7 +18,26 @@ import {
   resolveReport,
   setProfileSuspended,
   updateUserRole,
+  fetchAiActivity,
+  fetchDiseaseKnowledge,
+  fetchDiseaseKnowledgeEntry,
+  reviewDiseaseKnowledge,
+  updateDiseaseKnowledge,
+  cancelOrderAsAdmin,
+  resolveDisputeAsAdmin,
+  fetchAdminQueues,
+  fetchAuditEvents,
+  fetchConsultationForAdmin,
+  fetchConsultationsForAdmin,
+  fetchOrderForAdmin,
+  fetchReviewsForModeration,
+  hideReview,
+  moderateConsultation,
+  restoreReview,
 } from '../services/adminService';
+import type { DiseaseKnowledgeEntry, DiseaseKnowledgeUpdate } from '../types/ai';
+import type { ConsultationStatus } from '../types/consultations';
+import type { DisputeOutcome } from '../types/orders';
 import { fetchAdminAnalytics } from '../../common/analytics';
 import {
   fetchExpertById,
@@ -39,7 +58,7 @@ import {
   type ListingStatus,
 } from '../../common/marketplace';
 import { fetchMessageById, redactMessage } from '../../common/messaging';
-import { deleteReview, fetchReviewById } from '../../common/reviews';
+import { fetchReviewById } from '../../common/reviews';
 import type { Role } from '../../common/constants/roles';
 import type { ReportStatus, ReportWithReporter } from '../types/reports';
 import { queryKeys } from '../../hooks/keys';
@@ -49,6 +68,17 @@ import { queryKeys } from '../../hooks/keys';
  * admin data is never written to the on-disk cache (queryClient.ts persists public marketplace reads only).
  */
 
+// The A7 moderation keys sit under queryKeys.admin.all, so a sign-out or an admin-wide refresh clears them too.
+const moderationKeys = {
+  queues: () => [...queryKeys.admin.all, 'queues'] as const,
+  auditEvents: () => [...queryKeys.admin.all, 'audit-events'] as const,
+  order: (orderId: string) => [...queryKeys.admin.all, 'order', orderId] as const,
+  consultations: (status: ConsultationStatus | undefined, olderThanDays: number | undefined) =>
+    [...queryKeys.admin.all, 'consultations', status ?? 'all', olderThanDays ?? null] as const,
+  consultation: (id: string) => [...queryKeys.admin.all, 'consultation', id] as const,
+  reviews: () => [...queryKeys.admin.all, 'reviews'] as const,
+};
+
 export function useAdminAnalytics() {
   return useQuery({ queryKey: queryKeys.admin.analytics(), queryFn: fetchAdminAnalytics });
 }
@@ -57,12 +87,31 @@ export function usePlatformStats() {
   return useQuery({ queryKey: queryKeys.admin.stats(), queryFn: fetchPlatformStats });
 }
 
-export function useAuditLogs() {
-  return useQuery({ queryKey: queryKeys.admin.auditLogs(), queryFn: () => fetchAuditLogs(), staleTime: 0 });
+/** The audit log, filtered on the server by one SRDS §51 event name when `action` is given. */
+export function useAuditLogs(action?: string) {
+  return useQuery({
+    queryKey: [...queryKeys.admin.auditLogs(), action ?? 'all'],
+    queryFn: () => fetchAuditLogs({ action }),
+    staleTime: 0,
+  });
 }
 
-export function useAllOrders() {
-  return useQuery({ queryKey: queryKeys.admin.orders(), queryFn: fetchAllOrders, staleTime: 0 });
+/** The §51 event names and labels; reference data, so it is kept for the session. */
+export function useAuditEvents() {
+  return useQuery({ queryKey: moderationKeys.auditEvents(), queryFn: fetchAuditEvents, staleTime: Infinity });
+}
+
+/** The Overview's queue counts (SRDS §14). */
+export function useAdminQueues() {
+  return useQuery({ queryKey: moderationKeys.queues(), queryFn: fetchAdminQueues, staleTime: 0 });
+}
+
+export function useAllOrders(status?: 'disputed') {
+  return useQuery({
+    queryKey: [...queryKeys.admin.orders(), status ?? 'all'],
+    queryFn: () => fetchAllOrders(status),
+    staleTime: 0,
+  });
 }
 
 function useInvalidateAdmin() {
@@ -293,7 +342,8 @@ async function applyReportAction(report: ReportWithReporter) {
     case 'user':
       return setProfileSuspended(report.target_id, true);
     case 'review':
-      return deleteReview(report.target_id);
+      // A reported review is hidden, never deleted; the report's own reason is the hidden reason (1-500 characters).
+      return hideReview(report.target_id, `Reported: ${report.reason}`.slice(0, 500));
     case 'message':
       return redactMessage(report.target_id);
     case 'expert':
@@ -326,4 +376,140 @@ export function useModerateReport() {
 export function useDismissReport() {
   const invalidate = useInvalidateAdmin();
   return useMutation({ mutationFn: (reportId: string) => dismissReport(reportId, null), onSuccess: invalidate });
+}
+
+// ---- AI module (A6; SRDS §37)
+
+// The AI keys sit under queryKeys.admin.all, so a sign-out or an admin-wide refresh clears them with the rest.
+const aiKeys = {
+  activity: () => [...queryKeys.admin.all, 'ai-activity'] as const,
+  knowledge: () => [...queryKeys.admin.all, 'disease-knowledge'] as const,
+  knowledgeEntry: (classLabel: string) => [...queryKeys.admin.all, 'disease-knowledge', classLabel] as const,
+};
+
+export function useAiActivity() {
+  return useQuery({ queryKey: aiKeys.activity(), queryFn: fetchAiActivity, staleTime: 0 });
+}
+
+export function useDiseaseKnowledge() {
+  return useQuery({ queryKey: aiKeys.knowledge(), queryFn: fetchDiseaseKnowledge, staleTime: 0 });
+}
+
+export function useDiseaseKnowledgeEntry(classLabel: string) {
+  return useQuery({
+    queryKey: aiKeys.knowledgeEntry(classLabel),
+    queryFn: () => fetchDiseaseKnowledgeEntry(classLabel),
+    staleTime: 0,
+  });
+}
+
+/** Puts the server's copy of an entry into the cache and refreshes the list, which shows its review status. */
+function useStoreKnowledgeEntry() {
+  const queryClient = useQueryClient();
+  return (entry: DiseaseKnowledgeEntry) => {
+    queryClient.setQueryData(aiKeys.knowledgeEntry(entry.class_label), entry);
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: aiKeys.knowledge(), exact: true }),
+      // Farmers read the same text in the disease report, so their copy refreshes too.
+      queryClient.invalidateQueries({ queryKey: queryKeys.disease.all }),
+    ]);
+  };
+}
+
+export function useUpdateDiseaseKnowledge() {
+  const store = useStoreKnowledgeEntry();
+  return useMutation({
+    mutationFn: ({ classLabel, changes }: { classLabel: string; changes: DiseaseKnowledgeUpdate }) =>
+      updateDiseaseKnowledge(classLabel, changes),
+    onSuccess: store,
+  });
+}
+
+export function useReviewDiseaseKnowledge() {
+  const store = useStoreKnowledgeEntry();
+  return useMutation({ mutationFn: (classLabel: string) => reviewDiseaseKnowledge(classLabel), onSuccess: store });
+}
+
+// ---- orders (SRDS §14)
+
+export function useAdminOrder(orderId: string) {
+  return useQuery({ queryKey: moderationKeys.order(orderId), queryFn: () => fetchOrderForAdmin(orderId), staleTime: 0 });
+}
+
+/** An admin cancellation changes the order for its buyer and seller too, so their order lists refetch. */
+export function useCancelOrderAsAdmin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) => cancelOrderAsAdmin(orderId, reason),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.orders.all }),
+      ]),
+  });
+}
+
+/** Settling a dispute changes the order for its buyer and seller too, so their order lists refetch. */
+export function useResolveDispute() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, outcome, reason }: { orderId: string; outcome: DisputeOutcome; reason: string }) =>
+      resolveDisputeAsAdmin(orderId, outcome, reason),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.orders.all }),
+      ]),
+  });
+}
+
+// ---- consultations (SRDS §14)
+
+export function useAdminConsultations(status: ConsultationStatus | undefined, olderThanDays: number | undefined) {
+  return useQuery({
+    queryKey: moderationKeys.consultations(status, olderThanDays),
+    queryFn: () => fetchConsultationsForAdmin({ status, olderThanDays }),
+    staleTime: 0,
+  });
+}
+
+export function useAdminConsultation(consultationId: string) {
+  return useQuery({
+    queryKey: moderationKeys.consultation(consultationId),
+    queryFn: () => fetchConsultationForAdmin(consultationId),
+    staleTime: 0,
+  });
+}
+
+/** Closing or cancelling a consultation changes it for the farmer and the expert too. */
+export function useModerateConsultation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action, reason }: { id: string; action: 'close' | 'cancel'; reason: string }) =>
+      moderateConsultation(id, { action, reason }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.consultations.all }),
+      ]),
+  });
+}
+
+// ---- reviews (SRDS §14)
+
+export function useModerationReviews() {
+  return useQuery({ queryKey: moderationKeys.reviews(), queryFn: fetchReviewsForModeration, staleTime: 0 });
+}
+
+/** Hiding or restoring a review changes what buyers read on the listing and the seller's rating. */
+export function useSetReviewHidden() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string | null }) => (reason === null ? restoreReview(id) : hideReview(id, reason)),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all }),
+      ]),
+  });
 }

@@ -29,8 +29,13 @@ select is(
     'anon profiles_public SELECT',
     'anon reviews SELECT',
     'anon units SELECT',
-    'authenticated audit_logs INSERT,SELECT',
+    -- Read-only event-name catalogue for the audit log screen (20261023080000).
+    'authenticated audit_event_names SELECT',
+    -- No INSERT since 20261023080000: the database's definer triggers write the log, no client does.
+    'authenticated audit_logs SELECT',
     'authenticated categories DELETE,INSERT,SELECT,UPDATE',
+    -- The expert's assessment of an AI case (20261022080000, BR-13).
+    'authenticated consultation_assessments INSERT,SELECT',
     'authenticated consultation_messages INSERT,SELECT',
     'authenticated consultations INSERT,SELECT,UPDATE',
     'authenticated conversations INSERT,SELECT',
@@ -38,8 +43,9 @@ select is(
     'authenticated currencies DELETE,INSERT,SELECT,UPDATE',
     'authenticated dealer_documents DELETE,INSERT,SELECT',
     'authenticated dealer_profiles INSERT,SELECT,UPDATE',
-    'authenticated dealer_stores DELETE,INSERT,SELECT,UPDATE',
     'authenticated disease_cases INSERT,SELECT',
+    -- Admin-curated disease advice: an aal2 admin edits the 38 seeded classes, nobody adds or removes one (20261022080000).
+    'authenticated disease_knowledge SELECT,UPDATE',
     'authenticated disease_predictions SELECT',
     'authenticated expert_documents DELETE,INSERT,SELECT',
     'authenticated expert_specializations DELETE,INSERT,SELECT,UPDATE',
@@ -50,8 +56,20 @@ select is(
     'authenticated farmer_profiles INSERT,SELECT,UPDATE',
     'authenticated farms DELETE,INSERT,SELECT,UPDATE',
     'authenticated idempotency_keys DELETE,INSERT,SELECT,UPDATE',
-    'authenticated inventory DELETE,INSERT,SELECT,UPDATE',
-    'authenticated inventory_transactions INSERT,SELECT',
+    -- The dealer IMS (20261021080000, B1); the legacy dealer_stores, suppliers, inventory and inventory_transactions
+    -- were dropped by 20261022090000 (B3). Stock, the ledger and the sync log are read-only: only the definer functions
+    -- write them.
+    'authenticated inventory_alert_settings DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_locations DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_movements SELECT',
+    'authenticated inventory_products DELETE,INSERT,SELECT,UPDATE',
+    -- Lines and new purchases only through create_purchase / replace_purchase_items (20261025090000, B2 verifier F1/F2);
+    -- the header keeps UPDATE (header-only edits, cancel) and DELETE (a draft).
+    'authenticated inventory_purchase_items SELECT',
+    'authenticated inventory_purchases DELETE,SELECT,UPDATE',
+    'authenticated inventory_stock SELECT',
+    'authenticated inventory_suppliers DELETE,INSERT,SELECT,UPDATE',
+    'authenticated inventory_sync_log SELECT',
     'authenticated listing_views INSERT,SELECT',
     'authenticated listings DELETE,INSERT,SELECT,UPDATE',
     'authenticated messages INSERT,SELECT',
@@ -65,13 +83,26 @@ select is(
     'authenticated profiles_public SELECT',
     'authenticated reports INSERT,SELECT,UPDATE',
     'authenticated required_documents INSERT,SELECT,UPDATE',
-    'authenticated reviews DELETE,INSERT,SELECT',
-    'authenticated suppliers DELETE,INSERT,SELECT,UPDATE',
+    -- Since 20261023080000: no DELETE (a review is hidden by moderation, never deleted), and INSERT and UPDATE are
+    -- column grants (the author's own columns; the moderation columns), so they are not in the table's ACL.
+    'authenticated reviews SELECT',
     'authenticated units DELETE,INSERT,SELECT,UPDATE',
+    'service_role audit_event_names SELECT',
     'service_role audit_logs INSERT,SELECT',
+    'service_role consultation_assessments INSERT,SELECT',
     'service_role crops SELECT',
     'service_role disease_cases INSERT,SELECT',
+    'service_role disease_knowledge SELECT',
     'service_role disease_predictions INSERT,SELECT',
+    'service_role inventory_alert_settings SELECT',
+    'service_role inventory_locations SELECT',
+    'service_role inventory_movements SELECT',
+    'service_role inventory_products SELECT',
+    'service_role inventory_purchase_items SELECT',
+    'service_role inventory_purchases SELECT',
+    'service_role inventory_stock SELECT',
+    'service_role inventory_suppliers SELECT',
+    'service_role inventory_sync_log SELECT',
     'service_role order_events SELECT'
   ],
   'table grants to anon, authenticated and service_role match the reviewed allow-list');
@@ -82,7 +113,6 @@ select is(
     where p.pronamespace = 'public'::regnamespace and has_function_privilege('anon', p.oid, 'execute')),
   array[
     'anon guard_experts_verification_status()',
-    'anon guard_messages_updates()',
     'anon guard_profiles_role()',
     'anon is_admin_aal2()',
     'anon is_admin()',
@@ -99,19 +129,38 @@ select is(
     where p.pronamespace = 'public'::regnamespace and has_function_privilege('authenticated', p.oid, 'execute')
       and not has_function_privilege('anon', p.oid, 'execute')),
   array[
-    'authenticated adjust_stock(uuid,text,numeric,uuid,text)',
-    'authenticated available_stock(uuid[])',
+    -- The admin dashboard's queue counts; refuses a non-admin inside (20261023080000).
+    'authenticated admin_queue_counts()',
+    -- available_stock is service_role only since 20261022090000 (B3 verifier F3: exact IMS stock stays server side).
     'authenticated caller_role()',
+    -- Policy helper for conversation contexts (20261020080000).
+    'authenticated conversation_context_allowed(conversation_context,uuid,uuid)',
+    -- Atomic purchase writes and the default-location move (20261025090000, B2 verifier F1/F2/F7); each checks
+    -- inventory_caller() inside. Their internal helper inventory_write_purchase_lines and the two location triggers'
+    -- functions are revoked.
+    'authenticated create_purchase(uuid,date,text,text,jsonb)',
     'authenticated decide_account_status(uuid,account_status,text)',
+    -- IMS client functions (20261021080000, B1; retry 20261022090000, B3). Each checks inventory_caller() inside. The
+    -- internal ones (inventory_apply_movement, inventory_caller, apply_dispatch_event, retry_dispatch_events_for,
+    -- guard_inventory_references) are revoked, and the legacy adjust_stock was dropped by B3.
+    'authenticated inventory_reconciliation()',
     'authenticated is_account_approved()',
     'authenticated is_application_editable()',
     'authenticated is_approved_dealer()',
     'authenticated is_approved_expert()',
+    -- Policy helper for AI case access (20261022080000).
+    'authenticated is_case_expert(uuid)',
     'authenticated is_seller_role(uuid)',
     'authenticated lock_editable_application(uuid)',
-    'authenticated submit_application()'
+    'authenticated receive_purchase(uuid)',
+    'authenticated record_movement(uuid,uuid,inventory_movement_direction,inventory_movement_source,numeric,text)',
+    'authenticated replace_purchase_items(uuid,jsonb,jsonb)',
+    'authenticated retry_dispatch_events()',
+    'authenticated set_default_location(uuid)',
+    'authenticated submit_application()',
+    'authenticated transfer_stock(uuid,uuid,uuid,numeric,text)'
   ],
-  'the extra functions signed-in users can execute: the stock reads and adjust_stock, is_seller_role, and the account-status helpers and decisions (20261005080000), the application helper and submission (20261012080000)');
+  'the extra functions signed-in users can execute: the IMS client functions (B1/B3), is_seller_role, and the account-status helpers and decisions (20261005080000), the application helper and submission (20261012080000)');
 
 -- profiles_public: exactly id, name, avatar ------------------------------------------------------------
 select is(

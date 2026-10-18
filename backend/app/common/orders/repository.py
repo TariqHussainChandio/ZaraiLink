@@ -2,7 +2,7 @@ from typing import Any
 
 from app.common.pagination import page_range
 from app.common.rows import as_rows, first_row
-from app.database.supabase_client import get_user_scoped_client
+from app.database.supabase_client import get_service_role_client, get_user_scoped_client
 
 # buyer/seller read profiles_public (20260923080100_profiles_public_view.sql), not profiles
 # directly — profiles' own RLS only lets a caller see their own row, so a buyer could never see
@@ -17,14 +17,22 @@ ORDER_SELECT = (
 async def fetch_listings_for_checkout(access_token: str, listing_ids: list[str]) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = (
-        await client.table("listings").select("id,status,quantity,price,owner_id").in_("id", listing_ids).execute()
+        await client.table("listings")
+        .select("id,status,quantity,price,owner_id,title,inventory_product_id")
+        .in_("id", listing_ids)
+        .execute()
     )
     return as_rows(response)
 
 
-async def get_available_stock(access_token: str, listing_ids: list[str]) -> list[dict]:
-    client = await get_user_scoped_client(access_token)
-    response = await client.rpc("available_stock", {"listing_ids": listing_ids}).execute()
+async def get_available_stock(listing_ids: list[str]) -> list[dict]:
+    """The exact figures behind a checkout (available_stock, 20261022090000_inventory_sync.sql), read server side.
+
+    Service role, because the figures are the dealer's private IMS stock (SRDS §15): the function is not granted to
+    `authenticated`, so no buyer or competing dealer can ask PostgREST for them. The ids come only from the caller's own
+    cart, after the caller's own listing read (RLS) has returned them, and the figures never leave the server: checkout
+    answers with a word, not a number."""
+    response = await get_service_role_client().rpc("available_stock", {"listing_ids": listing_ids}).execute()
     return as_rows(response)
 
 
@@ -69,11 +77,12 @@ async def fetch_orders_for_user(access_token: str, user_id: str, as_: str) -> li
     return as_rows(response)
 
 
-async def fetch_all_orders(access_token: str) -> list[dict]:
+async def fetch_all_orders(access_token: str, status: str | None = None) -> list[dict]:
     client = await get_user_scoped_client(access_token)
-    response = (
-        await client.table("orders").select(ORDER_SELECT).order("created_at", desc=True).range(*page_range()).execute()
-    )
+    query = client.table("orders").select(ORDER_SELECT)
+    if status:
+        query = query.eq("status", status)
+    response = await query.order("created_at", desc=True).range(*page_range()).execute()
     return as_rows(response)
 
 
@@ -97,9 +106,29 @@ async def fetch_order_status_history(access_token: str, order_id: str) -> list[d
     return as_rows(response)
 
 
-async def update_order_status(access_token: str, order_id: str, status: str) -> None:
+async def update_order_status(
+    access_token: str, order_id: str, status: str, admin_action_reason: str | None = None
+) -> None:
+    # admin_action_reason goes only with an admin's dispute resolution: guard_orders_update refuses it from anyone else
+    # and without a status change, so it always explains the move it was written with.
+    fields = {"status": status}
+    if admin_action_reason is not None:
+        fields["admin_action_reason"] = admin_action_reason
     client = await get_user_scoped_client(access_token)
-    await client.table("orders").update({"status": status}).eq("id", order_id).execute()
+    await client.table("orders").update(fields).eq("id", order_id).execute()
+
+
+async def cancel_order_as_admin(access_token: str, order_id: str, reason: str) -> dict:
+    # The admin's own token, never the service role: orders_update_participants lets an admin reach an order only before
+    # dispatch (or in dispute), and guard_orders_update allows the move to cancelled only with this reason.
+    client = await get_user_scoped_client(access_token)
+    response = (
+        await client.table("orders")
+        .update({"status": "cancelled", "admin_action_reason": reason})
+        .eq("id", order_id)
+        .execute()
+    )
+    return first_row(response)
 
 
 async def fetch_stale_pending_order_ids(access_token: str, user_id: str, cutoff_iso: str) -> list[str]:

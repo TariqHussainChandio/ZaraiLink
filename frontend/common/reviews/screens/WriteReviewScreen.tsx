@@ -1,6 +1,7 @@
+import { Send } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, TextField } from '../../components';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Button, TextField, useToast } from '../../components';
 import { RatingStars } from '../components/RatingStars';
 import { useCreateReview } from '../hooks/reviews';
 import { useAuthStore } from '../../../state/authStore';
@@ -16,20 +17,24 @@ export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'Writ
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const createReview = useCreateReview();
+  const toast = useToast();
 
   const onSubmit = async () => {
     if (!buyerId) return;
     try {
       await createReview.mutateAsync({ orderId, listingId, rating, comment: comment || null });
+      toast.success('Review sent');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Could not submit review', errorMessage(error));
+      toast.error(errorMessage(error));
     }
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.label}>Your rating</Text>
+      <Text style={styles.label} accessibilityRole="header">
+        Your rating
+      </Text>
       <View style={styles.starsRow}>
         <RatingStars value={rating} size={theme.size.iconLg} onChange={setRating} />
       </View>
@@ -45,6 +50,7 @@ export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'Writ
 
       <Button
         label="Submit Review"
+        icon={Send}
         loading={createReview.isPending}
         onPress={onSubmit}
         style={styles.submit}

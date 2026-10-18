@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from app.ai.service import build_report
 from app.auth.dependencies import AuthenticatedUser, get_current_user
 from app.main import app
 
@@ -37,6 +38,8 @@ def test_predict_rate_limit_returns_429_after_ten_requests_per_minute():
         "model_version": "x",
         "created_at": "2026-01-01T00:00:00Z",
     }
+    # A6: the predict answer carries the assembled report; the fallback text (no knowledge row) is enough here.
+    mock_prediction["report"] = build_report(mock_prediction, None)
     try:
         with patch("app.ai.service.predict", return_value=mock_prediction):
             statuses = [

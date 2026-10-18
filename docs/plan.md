@@ -1,10 +1,31 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-10-05): A0 to A3 closed (A3a PR #25 `59d57fc`; A3b PR #28 `1c57d38`); wave 4 under way: A4 (dispatch)
+> **Status (2026-10-18): testing stage, phase by phase.** Phases A4–A8 and B0–B5 were first written as code only
+> (2026-10-10/11, the maintainer's call); since 2026-10-11 each is tested, security-checked by a fresh-context verifier,
+> walked on the emulator (since 2026-10-12, after a fresh rebuild) and committed, one commit per phase on
+> `phases/b1-b5` (draft PR #36, merging after B5).
+> - **Done:** A4 + B0 (PR #35 merged, `a2bf62c`); B1 `ca3f80d` (inventory data model); A5 `8b8f286` (conversations
+>   only on a real relationship); A6 `4bc44e1` (AI report with the consultation, expert assessment apart, farmers only);
+>   B2 `573dac2` (inventory API; atomic purchase writes); B3 `ae47437` (dispatch deducts once, an IMS fault never breaks
+>   the marketplace, exact stock server-side only); A7 `235ab02` (every admin action audited by the database under
+>   its §51 name; the admin reaches no inventory); B4 `14f626d` (the inventory app, approved dealers only,
+>   readable offline, the device cache and a remembered role wiped on sign-out).
+> - B5 `3b2e490` (reports, exports through a signed link, reconciliation holding over a scripted month).
+> - **Next:** A8 (accessibility; its 8 failing farmer screen tests and the Toast/ScreenState work are A8's); then A9 and
+>   B6. PR #36 (B1–B5, A5–A7) waits on the maintainer's OK to merge.
+> - **Waiting on the maintainer:** the hosted `db push` of A4's two migrations and of B1–B3 and A7 (each checked
+>   read-only first; A7's needs a check that no hosted audit row has a non-snake_case action); an agronomist's review
+>   of the 38 disease-knowledge entries; a licence-clear real leaf photo for the real-photo test.
+> - **Decisions recorded in testing:** the database writes every admin audit row (A6, A7); D6/D7 trade-off when the
+>   IMS is locked past its bound (`plan-inventory.md` B3); a listing with no product link answers availability from
+>   its own quantity.
+
+> **Earlier status (2026-10-05).**
+> A0 to A3 closed (A3a PR #25 `59d57fc`; A3b PR #28 `1c57d38`); wave 4 under way: A4 (dispatch)
 > and B0 (inventory boundary) built together, B1 next. The A3b
 > migration is on the hosted project too (pushed 2026-10-05, 59 migrations in step); the reauthentication and
 > email-change templates are pushed (`config push`, 2026-10-05), and the API's decision email reached a real inbox
-> through Gmail. The A3a migration is on the hosted project (pushed 2026-10-04).**
+> through Gmail. The A3a migration is on the hosted project (pushed 2026-10-04).
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is
 >   configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
 >   Supabase's password rules, reauthentication for old sessions, phone sign-up off).

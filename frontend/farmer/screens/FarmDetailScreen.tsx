@@ -1,9 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useMemo, useRef } from 'react';
+import { Save, Sprout, Trash2 } from 'lucide-react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 import { z } from 'zod';
-import { Button, EmptyState, TextField, LocationPicker, SelectField, Spinner } from '../../common/components';
+import {
+  Button,
+  LocationPicker,
+  ScreenState,
+  SelectField,
+  Sheet,
+  TextField,
+  useToast,
+} from '../../common/components';
 import { HOME_ROUTES } from '../../common/constants/routes';
 import { useDeleteFarm, useFarm, useUpdateFarm } from '../hooks/farmer';
 import { useUnits } from '../../common/reference-data';
@@ -25,21 +34,26 @@ function buildFarmSchema(nameRequiredMessage: string) {
 
 type FarmFormValues = z.infer<ReturnType<typeof buildFarmSchema>>;
 
-export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDetail'>) {
+export function FarmDetailScreen({
+  route,
+  navigation,
+}: HomeScreenProps<'FarmDetail'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { farmId } = route.params;
   const { data: units = [] } = useUnits();
-  const { data: farm, isPending: loading, error, refetch } = useFarm(farmId);
+  const farmQuery = useFarm(farmId);
+  const farm = farmQuery.data;
   const updateFarm = useUpdateFarm(farmId);
   const removeFarm = useDeleteFarm();
-  const load = () => refetch();
-  const areaUnits = useMemo(() => units.filter(u => u.applies_to === 'area'), [units]);
-
-  const farmSchema = useMemo(
-    () => buildFarmSchema('Enter a farm name'),
-    [],
+  const toast = useToast();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const areaUnits = useMemo(
+    () => units.filter(u => u.applies_to === 'area'),
+    [units],
   );
+
+  const farmSchema = useMemo(() => buildFarmSchema('Enter a farm name'), []);
 
   const {
     control,
@@ -88,51 +102,37 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
         province: values.province,
         city: values.city,
       });
+      toast.success('Farm saved');
       navigation.goBack();
     } catch (err) {
-      Alert.alert(
-        'Failed to update farm',
-        errorMessage(err),
-      );
+      toast.error(`Farm not saved. ${errorMessage(err)}`);
     }
   };
 
-  const onDelete = () => {
-    Alert.alert(
-      'Delete farm',
-      'This will also remove its recorded crops. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeFarm.mutateAsync(farmId);
-              navigation.popToTop();
-            } catch (err) {
-              Alert.alert('Failed to delete farm', errorMessage(err));
-            }
-          },
-        },
-      ],
-    );
+  const onDelete = async () => {
+    try {
+      await removeFarm.mutateAsync(farmId);
+      setConfirmingDelete(false);
+      toast.success('Farm deleted');
+      navigation.popToTop();
+    } catch (err) {
+      setConfirmingDelete(false);
+      toast.error(`Farm not deleted. ${errorMessage(err)}`);
+    }
   };
 
-  if (loading) return <Spinner fullscreen />;
-  if (error && !farm) {
+  // Until the first copy arrives the form has nothing to edit: ScreenState shows the skeleton, or the failure with Retry.
+  if (farm === undefined)
     return (
-      <EmptyState
-        title="Couldn't load this farm"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
+      <ScreenState query={farmQuery} errorTitle="Couldn't load this farm" />
     );
-  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Controller
         control={control}
         name="name"
@@ -200,27 +200,59 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
 
       <Button
         label="Crops on this Farm"
+        icon={Sprout}
         variant="secondary"
+        size="lg"
         onPress={() => navigation.navigate(HOME_ROUTES.CropList, { farmId })}
         style={styles.action}
       />
       <Button
         label="Save Changes"
+        icon={Save}
+        size="lg"
         loading={updateFarm.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.action}
       />
       <Button
         label="Delete Farm"
+        icon={Trash2}
         variant="danger"
-        onPress={onDelete}
+        size="lg"
+        onPress={() => setConfirmingDelete(true)}
         style={styles.delete}
       />
+
+      <Sheet
+        visible={confirmingDelete}
+        onClose={() => setConfirmingDelete(false)}
+        title="Delete this farm?"
+      >
+        <Text style={styles.sheetBody}>
+          Its crops are removed too. You cannot undo this.
+        </Text>
+        <Button
+          label="Delete Farm"
+          icon={Trash2}
+          variant="danger"
+          size="lg"
+          loading={removeFarm.isPending}
+          onPress={onDelete}
+          style={styles.action}
+        />
+        <Button
+          label="Keep Farm"
+          variant="secondary"
+          size="lg"
+          onPress={() => setConfirmingDelete(false)}
+          style={styles.action}
+        />
+      </Sheet>
     </ScrollView>
   );
 }
 
-function makeStyles({ colors, space }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -235,6 +267,10 @@ function makeStyles({ colors, space }: Theme) {
     delete: {
       marginTop: space[3],
       marginBottom: space[8],
+    },
+    sheetBody: {
+      ...typography.body,
+      color: colors.ink2,
     },
   });
 }

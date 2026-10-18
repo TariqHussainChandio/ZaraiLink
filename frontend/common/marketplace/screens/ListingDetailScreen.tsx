@@ -1,8 +1,21 @@
+import { MessageCircle, Pencil, ShoppingCart } from 'lucide-react-native';
 import React, { useEffect, useMemo } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, EmptyState, Spinner, StatusBadge } from '../../components';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Avatar,
+  Button,
+  ScreenState,
+  Skeleton,
+  SkeletonList,
+  StatusBadge,
+  useToast,
+} from '../../components';
 import { RatingSummary, ReviewCard, useListingReviews } from '../../reviews';
-import { APP_TABS, MARKETPLACE_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
+import {
+  APP_TABS,
+  MARKETPLACE_ROUTES,
+  MESSAGING_ROUTES,
+} from '../../constants/routes';
 import { useListing, useRecordListingView } from '../hooks/marketplace';
 import { useOpenConversation } from '../../messaging';
 import { useAuthStore } from '../../../state/authStore';
@@ -14,17 +27,22 @@ import { hapticTap } from '../../../utils/haptics';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { formatRs } from '../../../utils/money';
 
-export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProps<'ListingDetail'>) {
+export function ListingDetailScreen({
+  route,
+  navigation,
+}: MarketplaceScreenProps<'ListingDetail'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const addItem = useCartStore(state => state.addItem);
   const tabNavigation = useAppTabNavigation();
-  const { data: listing, isPending, refetch } = useListing(listingId);
+  const listingQuery = useListing(listingId);
+  const { data: listing } = listingQuery;
   const { data: reviews = [] } = useListingReviews(listingId);
   const openConversation = useOpenConversation();
   const { mutate: recordView } = useRecordListingView();
+  const toast = useToast();
 
   const ownerId = listing?.owner_id;
   useEffect(() => {
@@ -32,15 +50,25 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
     if (userId && ownerId && ownerId !== userId) recordView(listingId);
   }, [listingId, ownerId, userId, recordView]);
 
-  if (isPending) return <Spinner fullscreen />;
+  // A skeleton while loading, an error Banner with Retry if the load failed, "not found" if the listing is gone.
   if (!listing) {
     return (
-      <EmptyState
-        title="Listing not found"
-        description="It may have been removed, or there was a connection problem."
-        actionLabel="Retry"
-        onAction={() => refetch()}
-      />
+      <View style={styles.container}>
+        <ScreenState
+          query={listingQuery}
+          skeleton={
+            <View style={styles.content}>
+              <Skeleton style={styles.image} />
+              <SkeletonList count={2} />
+            </View>
+          }
+          empty={{
+            title: 'Listing not found',
+            description: 'It may have been removed.',
+          }}
+          errorTitle="Couldn't load this listing"
+        />
+      </View>
     );
   }
 
@@ -49,13 +77,20 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {listing.images[0] ? (
-        <Image source={{ uri: listing.images[0] }} style={styles.image} />
+        <Image
+          source={{ uri: listing.images[0] }}
+          style={styles.image}
+          accessibilityRole="image"
+          accessibilityLabel={`Photo of ${listing.title}`}
+        />
       ) : (
         <View style={styles.image} />
       )}
 
       <Text style={styles.title}>{listing.title}</Text>
-      <Text style={styles.price}>{`${formatRs(listing.price)} / ${listing.unit}`}</Text>
+      <Text
+        style={styles.price}
+      >{`${formatRs(listing.price)} / ${listing.unit}`}</Text>
       {/* The stock word (A4), not the listing's quantity field: a dealer's stock is their inventory, which a buyer
           never sees in figures (SRDS §15). An out-of-stock listing offers no Add to Cart. */}
       {listing.availability ? (
@@ -63,21 +98,34 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
           <StatusBadge kind="stock" status={listing.availability} />
         </View>
       ) : null}
-      {listing.category ? <Text style={styles.category}>{listing.category.name}</Text> : null}
-      {listing.description ? <Text style={styles.description}>{listing.description}</Text> : null}
+      {listing.category ? (
+        <Text style={styles.category}>{listing.category.name}</Text>
+      ) : null}
+      {listing.description ? (
+        <Text style={styles.description}>{listing.description}</Text>
+      ) : null}
 
       {listing.owner ? (
         <View style={styles.sellerRow}>
-          <Avatar name={listing.owner.full_name} uri={listing.owner.avatar_url} size={theme.size.avatarMd} />
-          <Text style={styles.sellerName}>{listing.owner.full_name || 'Unknown seller'}</Text>
+          <Avatar
+            name={listing.owner.full_name}
+            uri={listing.owner.avatar_url}
+            size={theme.size.avatarMd}
+          />
+          <Text style={styles.sellerName}>
+            {listing.owner.full_name || 'Unknown seller'}
+          </Text>
         </View>
       ) : null}
 
       {isOwner ? (
         <Button
           label="Edit Listing"
+          icon={Pencil}
           onPress={() =>
-            navigation.navigate(MARKETPLACE_ROUTES.EditListing, { listingId: listing.id })
+            navigation.navigate(MARKETPLACE_ROUTES.EditListing, {
+              listingId: listing.id,
+            })
           }
           style={styles.action}
         />
@@ -86,6 +134,7 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
           {listing.availability === 'out_of_stock' ? null : (
             <Button
               label="Add to Cart"
+              icon={ShoppingCart}
               onPress={() => {
                 addItem({
                   listingId: listing.id,
@@ -96,30 +145,34 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
                   image: listing.images[0] ?? null,
                 });
                 hapticTap();
-                Alert.alert(
-                  'Added to cart',
-                  `${listing.title} was added to your cart.`,
-                );
+                toast.success('Added to cart');
               }}
               style={styles.action}
             />
           )}
           <Button
             label="Message Seller"
+            icon={MessageCircle}
             variant="secondary"
             loading={openConversation.isPending}
             onPress={async () => {
               if (!userId || !listing.owner) return;
               try {
-                const conversation = await openConversation.mutateAsync(listing.owner_id);
+                const conversation = await openConversation.mutateAsync({
+                  otherUserId: listing.owner_id,
+                  context: { type: 'listing', id: listing.id },
+                });
                 // On top of the conversation list (initial: false), so Back and the Messages tab reach it, not a stack whose root is this chat.
                 tabNavigation?.navigate(APP_TABS.Messages, {
                   screen: MESSAGING_ROUTES.Chat,
                   initial: false,
-                  params: { conversationId: conversation.id, otherUserName: listing.owner.full_name },
+                  params: {
+                    conversationId: conversation.id,
+                    otherUserName: listing.owner.full_name,
+                  },
                 });
               } catch (error) {
-                Alert.alert('Could not open the conversation', errorMessage(error));
+                toast.error(errorMessage(error));
               }
             }}
             style={styles.secondaryAction}

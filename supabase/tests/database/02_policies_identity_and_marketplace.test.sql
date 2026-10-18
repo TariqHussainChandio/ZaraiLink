@@ -16,7 +16,9 @@ select tests.expect(tests.fx('B'), $$update public.profiles set full_name = 'Ren
 select tests.expect(tests.fx('S'), $$update public.profiles set full_name = 'Renamed' where id = $$ || tests.l('S'), 'n:0', 'profiles: a suspended user cannot update even their own row');
 select tests.expect(tests.fx('B'), $$update public.profiles set role = 'admin' where id = $$ || tests.l('B'), 'err:P0001', 'profiles: a user cannot promote themselves (role guard trigger)');
 select tests.expect(tests.fx('A'), $$update public.profiles set full_name = 'By admin' where id = $$ || tests.l('F'), 'n:0', 'profiles: an admin without a second factor cannot edit another profile');
-select tests.expect(tests.fx('A'), $$update public.profiles set full_name = 'By admin' where id = $$ || tests.l('F'), 'n:1', 'profiles: an admin with a second factor can', 'aal2');
+-- A7: on another user's profile an admin changes the suspension and the role only (guard_profiles_admin_update).
+select tests.expect(tests.fx('A'), $$update public.profiles set full_name = 'By admin' where id = $$ || tests.l('F'), 'err:42501', 'profiles: nor an admin with a second factor (A7: suspension and role only)', 'aal2');
+select tests.expect(tests.fx('A'), $$update public.profiles set is_suspended = false where id = $$ || tests.l('F'), 'n:1', 'profiles: an admin with a second factor changes the suspension', 'aal2');
 select tests.expect(tests.fx('B'), $$insert into public.profiles (id, role, full_name) values (gen_random_uuid(), 'buyer', 'x')$$, 'err:42501', 'profiles: no client can insert a profile (only the signup trigger)');
 select tests.expect(null, 'select id from public.profiles_public where id = ' || tests.l('F'), 'rows:1', 'profiles_public: anon reads the public name view (id, name, avatar only)');
 
@@ -27,19 +29,25 @@ select tests.expect(null, 'select id from public.categories', 'rows:' || (select
 select tests.expect(null, 'select id from public.crops', 'rows:' || (select count(*) from public.crops), 'crops: anon reads all');
 select tests.expect(null, 'select code from public.currencies', 'rows:' || (select count(*) from public.currencies), 'currencies: anon reads all');
 select tests.expect(null, 'select code from public.units', 'rows:' || (select count(*) from public.units), 'units: anon reads all');
-select tests.expect(tests.fx('A'), $$insert into public.categories (name, slug) values ('Pg cat', 'pg-cat')$$, 'n:1', 'categories: an admin inserts');
+select tests.expect(tests.fx('A'), $$insert into public.categories (name, slug) values ('Pg cat', 'pg-cat')$$, 'err:42501', 'categories: an admin without a second factor cannot insert (A7)');
+select tests.expect(tests.fx('A'), $$insert into public.categories (name, slug) values ('Pg cat', 'pg-cat')$$, 'n:1', 'categories: an admin with a second factor inserts', 'aal2');
 select tests.expect(tests.fx('B'), $$insert into public.categories (name, slug) values ('Pg cat 2', 'pg-cat-2')$$, 'err:42501', 'categories: a buyer cannot insert');
 select tests.expect(null, $$insert into public.categories (name, slug) values ('Pg cat 3', 'pg-cat-3')$$, 'err:42501', 'categories: anon cannot insert');
-select tests.expect(tests.fx('A'), $$update public.categories set name = 'Pg cat renamed' where slug = 'pg-cat'$$, 'n:1', 'categories: an admin updates');
+select tests.expect(tests.fx('A'), $$update public.categories set name = 'Pg cat renamed' where slug = 'pg-cat'$$, 'n:0', 'categories: an admin without a second factor cannot update (A7)');
+select tests.expect(tests.fx('A'), $$update public.categories set name = 'Pg cat renamed' where slug = 'pg-cat'$$, 'n:1', 'categories: an admin with a second factor updates', 'aal2');
 select tests.expect(tests.fx('B'), $$update public.categories set name = 'hijack' where slug = 'pg-cat'$$, 'n:0', 'categories: a buyer updates nothing');
 select tests.expect(tests.fx('B'), $$delete from public.categories where slug = 'pg-cat'$$, 'n:0', 'categories: a buyer deletes nothing');
-select tests.expect(tests.fx('A'), $$delete from public.categories where slug = 'pg-cat'$$, 'n:1', 'categories: an admin deletes');
-select tests.expect(tests.fx('A'), $$insert into public.crops (name) values ('Pg crop')$$, 'n:1', 'crops: an admin inserts');
+select tests.expect(tests.fx('A'), $$delete from public.categories where slug = 'pg-cat'$$, 'n:0', 'categories: an admin without a second factor cannot delete (A7)');
+select tests.expect(tests.fx('A'), $$delete from public.categories where slug = 'pg-cat'$$, 'n:1', 'categories: an admin with a second factor deletes', 'aal2');
+select tests.expect(tests.fx('A'), $$insert into public.crops (name) values ('Pg crop')$$, 'err:42501', 'crops: an admin without a second factor cannot insert (A7)');
+select tests.expect(tests.fx('A'), $$insert into public.crops (name) values ('Pg crop')$$, 'n:1', 'crops: an admin with a second factor inserts', 'aal2');
 select tests.expect(tests.fx('F'), $$insert into public.crops (name) values ('Pg crop 2')$$, 'err:42501', 'crops: a farmer cannot insert');
 select tests.expect(tests.fx('F'), $$update public.crops set name = 'x' where name = 'Pg crop'$$, 'n:0', 'crops: a farmer updates nothing');
 select tests.expect(tests.fx('F'), $$delete from public.crops where name = 'Pg crop'$$, 'n:0', 'crops: a farmer deletes nothing');
-select tests.expect(tests.fx('A'), $$update public.crops set name = 'Pg crop b' where name = 'Pg crop'$$, 'n:1', 'crops: an admin updates');
-select tests.expect(tests.fx('A'), $$delete from public.crops where name = 'Pg crop b'$$, 'n:1', 'crops: an admin deletes');
+select tests.expect(tests.fx('A'), $$update public.crops set name = 'Pg crop b' where name = 'Pg crop'$$, 'n:0', 'crops: an admin without a second factor cannot update (A7)');
+select tests.expect(tests.fx('A'), $$update public.crops set name = 'Pg crop b' where name = 'Pg crop'$$, 'n:1', 'crops: an admin with a second factor updates', 'aal2');
+select tests.expect(tests.fx('A'), $$delete from public.crops where name = 'Pg crop b'$$, 'n:0', 'crops: an admin without a second factor cannot delete (A7)');
+select tests.expect(tests.fx('A'), $$delete from public.crops where name = 'Pg crop b'$$, 'n:1', 'crops: an admin with a second factor deletes', 'aal2');
 select tests.expect(tests.fx('A'), $$insert into public.currencies (code, symbol, name) values ('PGT', 'P', 'Pg tender')$$, 'err:42501', 'currencies: an admin without a second factor cannot insert');
 select tests.expect(tests.fx('A'), $$insert into public.currencies (code, symbol, name) values ('PGT', 'P', 'Pg tender')$$, 'n:1', 'currencies: an admin with a second factor inserts', 'aal2');
 select tests.expect(tests.fx('B'), $$update public.currencies set name = 'x' where code = 'PGT'$$, 'n:0', 'currencies: a buyer updates nothing');
@@ -83,8 +91,10 @@ select tests.expect(tests.fx('A'), 'select id from public.listing_views where li
 
 -- reviews ----------------------------------------------------------------------------------------------
 select tests.expect(null, 'select id from public.reviews where id = ' || tests.l('REV1'), 'rows:1', 'reviews: anyone reads reviews');
-select tests.expect(tests.fx('B'), $$delete from public.reviews where id = $$ || tests.l('REV1'), 'n:0', 'reviews: a buyer cannot delete');
-select tests.expect(tests.fx('A'), $$delete from public.reviews where id = $$ || tests.l('REV1'), 'n:1', 'reviews: an admin deletes');
+-- A7 (20261023080000): a review is hidden with a reason, never deleted, so no client role holds delete at all; the
+-- admin's hide and restore are proven in 20261023080000_admin_moderation.test.sql.
+select tests.expect(tests.fx('B'), $$delete from public.reviews where id = $$ || tests.l('REV1'), 'err:42501', 'reviews: a buyer cannot delete');
+select tests.expect(tests.fx('A'), $$delete from public.reviews where id = $$ || tests.l('REV1'), 'err:42501', 'reviews: an admin cannot delete either (A7: hide, not delete)', 'aal2');
 do $$
 declare done uuid; open_o uuid;
 begin
@@ -100,9 +110,14 @@ select tests.expect(tests.fx('B2'), 'insert into public.reviews (seller_id, buye
 select tests.expect(tests.fx('B2'), 'insert into public.reviews (seller_id, buyer_id, rating, order_id) values (' || tests.l('F') || ',' || tests.l('B') || ',5,' || tests.l('O_DONE') || ')', 'err:42501', 'reviews: cannot review as another buyer');
 
 -- audit log and idempotency keys -----------------------------------------------------------------------
-select tests.expect(tests.fx('A'), $$insert into public.audit_logs (action, target_entity) values ('pgtap', 'test')$$, 'n:1', 'audit_logs: an admin writes an entry');
-select tests.expect(tests.fx('B'), $$insert into public.audit_logs (action, target_entity) values ('forged', 'test')$$, 'err:42501', 'audit_logs: a user cannot write one');
-select tests.expect(tests.fx('A'), $$select id from public.audit_logs where action = 'pgtap'$$, 'rows:1', 'audit_logs: an admin reads entries');
+-- A7: the action is a foreign key to audit_event_names (SRDS §51), so the cases use a §51 name: a refusal is the grant's,
+-- not the key's. The row the admin reads is written as the owner.
+-- A7: no client writes the log; the database's triggers do (20261023080000_admin_moderation.test.sql proves them).
+select tests.expect(tests.fx('A'), 'insert into public.audit_logs (actor_id, action, target_entity) values (' || tests.l('A') || $$, 'report_dismissed', 'pgtap')$$, 'err:42501', 'audit_logs: an admin without a second factor cannot write an entry');
+select tests.expect(tests.fx('A'), 'insert into public.audit_logs (actor_id, action, target_entity) values (' || tests.l('A') || $$, 'report_dismissed', 'pgtap')$$, 'err:42501', 'audit_logs: nor an admin with one (A7: no client insert)', 'aal2');
+insert into public.audit_logs (action, target_entity) values ('report_dismissed', 'pgtap');
+select tests.expect(tests.fx('B'), 'insert into public.audit_logs (actor_id, action, target_entity) values (' || tests.l('B') || $$, 'report_dismissed', 'pgtap')$$, 'err:42501', 'audit_logs: a user cannot write one');
+select tests.expect(tests.fx('A'), $$select id from public.audit_logs where target_entity = 'pgtap'$$, 'rows:1', 'audit_logs: an admin reads entries');
 select tests.expect(tests.fx('B'), $$select id from public.audit_logs$$, 'rows:0', 'audit_logs: a user reads none');
 select tests.expect(tests.fx('B'), 'insert into public.idempotency_keys (user_id, key, endpoint) values (' || tests.l('B') || $$, 'pgtap-key-0001', 'orders.checkout')$$, 'n:1', 'idempotency_keys: a user claims a key');
 select tests.expect(tests.fx('B'), 'insert into public.idempotency_keys (user_id, key, endpoint) values (' || tests.l('F') || $$, 'pgtap-key-0002', 'orders.checkout')$$, 'err:42501', 'idempotency_keys: cannot claim one for someone else');

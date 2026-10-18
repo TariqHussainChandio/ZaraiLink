@@ -63,21 +63,28 @@ async def test_farmer_analytics_counts_only_active_listings_and_pending_orders()
 
 @pytest.mark.asyncio
 async def test_dealer_analytics_takes_absolute_value_of_signed_sale_transactions():
-    sale_tx = [
-        {"quantity": -4, "created_at": "2026-01-15T00:00:00Z"},
-        {"quantity": -2, "created_at": "2026-01-20T00:00:00Z"},
+    # Since B3 the sales are the dealer's ZARAILINK_ORDER movements, read through the inventory service. A sale is stock
+    # going out, so its quantity may arrive signed; the chart counts units moved, positive either way.
+    sales = [
+        {"quantity": -4, "created_at": "2026-01-15T00:00:00Z", "product_id": "p"},
+        {"quantity": 2, "created_at": "2026-01-20T00:00:00Z", "product_id": "p"},
     ]
-    with patch("app.common.orders.service.repo.fetch_orders_for_user", return_value=[]):
-        with patch("app.dealer.service.repo.fetch_inventory", return_value=[]):
-            with patch("app.dealer.service.repo.fetch_stores", return_value=[]):
-                with patch("app.dealer.service.repo.fetch_suppliers", return_value=[]):
-                    with (
-                        patch("app.common.analytics.service.repo.fetch_dealer_sale_transactions", return_value=sale_tx),
-                        patch("app.common.analytics.service.repo.fetch_own_listings", return_value=[]),
-                    ):
-                        result = await service.fetch_dealer_analytics(DEALER)
+
+    async def movements(_token, **kwargs):
+        return sales if kwargs.get("sources") == ["ZARAILINK_ORDER"] else []
+
+    with (
+        patch("app.common.orders.service.repo.fetch_orders_for_user", return_value=[]),
+        patch("app.inventory.repository.fetch_products", return_value=[]),
+        patch("app.inventory.repository.fetch_default_location", return_value=None),
+        patch("app.inventory.repository.fetch_all_movements", side_effect=movements) as fetch,
+        patch("app.inventory.repository.list_rows", return_value=[]),
+        patch("app.common.analytics.service.repo.fetch_own_listings", return_value=[]),
+    ):
+        result = await service.fetch_dealer_analytics(DEALER)
 
     assert result["inventoryMovement"] == [{"month": "2026-01", "value": 6}]
+    assert any(c.kwargs.get("sources") == ["ZARAILINK_ORDER"] for c in fetch.call_args_list)
 
 
 def test_farmer_analytics_route_rejects_non_farmer_role():

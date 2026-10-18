@@ -66,8 +66,8 @@ def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_a
     observed["validation_failed"] = _observe(
         api_client("POST", "/api/v1/orders/checkout", world.buyer.token, json={"cart_items": "nope"})
     )
-    # Its own listing with a fixed quantity: since A4 dispatch draws down the shared listings, so the "Only N left" in
-    # the message would change with the order the tests run in.
+    # Its own listing with a fixed quantity, so the refusal does not depend on the order the tests run in. Since B3 the
+    # message names the listing, never the stock figure (verifier F3).
     short_listing = api_client(
         "POST",
         "/api/v1/marketplace/listings",

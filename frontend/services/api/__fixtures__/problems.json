@@ -76,7 +76,7 @@
       "code": "insufficient_stock",
       "instance": "/api/v1/orders/checkout",
       "status": 422,
-      "title": "Only 5.0 left in stock for listing <uuid>.",
+      "title": "Not enough stock for Contract stock.",
       "type": "about:blank"
     },
     "contentType": "application/problem+json",

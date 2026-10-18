@@ -1,14 +1,18 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { MarketplaceNavigator } from './MarketplaceNavigator';
-import { fetchListingById, fetchListings } from '../../common/marketplace/services/listingsService';
+import {
+  fetchListingById,
+  fetchListings,
+} from '../../common/marketplace/services/listingsService';
 import { fetchReviewsForListing } from '../../common/reviews/services/reviewsService';
 import { checkout } from '../../common/orders/services/ordersService';
 import { useAuthStore } from '../../state/authStore';
 import { useCartStore } from '../../state/cartStore';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ToastProvider } from '../../common/components';
 import { createTestQueryClient } from '../../testUtils/renderWithProviders';
 import type { ListingWithRelations } from '../../common/marketplace/types/marketplace';
 
@@ -59,6 +63,7 @@ const listing: ListingWithRelations = {
   id: 'listing-1',
   owner_id: 'seller-1',
   category_id: null,
+  inventory_product_id: null,
   title: 'Premium Wheat Seeds',
   description: 'Certified high-yield wheat seeds.',
   price: 250,
@@ -77,12 +82,22 @@ const listing: ListingWithRelations = {
   owner: { id: 'seller-1', full_name: 'Green Farms', avatar_url: null },
 };
 
+// The toast sits on the safe area, as App.tsx provides it on a device.
+const METRICS = {
+  frame: { x: 0, y: 0, width: 400, height: 800 },
+  insets: { top: 24, left: 0, right: 0, bottom: 0 },
+};
+
 function renderMarketplace() {
   return render(
     <QueryClientProvider client={createTestQueryClient()}>
-      <NavigationContainer>
-        <MarketplaceNavigator />
-      </NavigationContainer>
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <ToastProvider>
+          <NavigationContainer>
+            <MarketplaceNavigator />
+          </NavigationContainer>
+        </ToastProvider>
+      </SafeAreaProvider>
     </QueryClientProvider>,
   );
 }
@@ -97,7 +112,6 @@ beforeEach(() => {
   mockFetchReviews.mockResolvedValue([]);
   useAuthStore.setState({ user: { id: 'buyer-1' } as never, role: 'buyer' });
   useCartStore.setState({ items: [] });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -117,16 +131,33 @@ describe('Marketplace flow: browse -> listing -> cart -> checkout', () => {
 
     await fireEvent.press(screen.getByText('Add to Cart'));
     expect(useCartStore.getState().items).toEqual([
-      { listingId: 'listing-1', sellerId: 'seller-1', title: 'Premium Wheat Seeds', price: 250, unit: 'kg', image: null, quantity: 1 },
+      {
+        listingId: 'listing-1',
+        sellerId: 'seller-1',
+        title: 'Premium Wheat Seeds',
+        price: 250,
+        unit: 'kg',
+        image: null,
+        quantity: 1,
+      },
     ]);
-    expect(Alert.alert).toHaveBeenCalledWith('Added to cart', 'Premium Wheat Seeds was added to your cart.');
+    // Confirmations are toasts since A8, read on screen like the device shows them.
+    expect(await screen.findByText('Added to cart')).toBeTruthy();
   });
 
   it('completes checkout end to end and returns to Browse with the cart cleared', async () => {
     mockCheckout.mockResolvedValue([{ id: 'order-1' }]);
     useCartStore.setState({
       items: [
-        { listingId: 'listing-1', sellerId: 'seller-1', title: 'Premium Wheat Seeds', price: 250, unit: 'kg', image: null, quantity: 2 },
+        {
+          listingId: 'listing-1',
+          sellerId: 'seller-1',
+          title: 'Premium Wheat Seeds',
+          price: 250,
+          unit: 'kg',
+          image: null,
+          quantity: 2,
+        },
       ],
     });
     await renderMarketplace();
@@ -139,11 +170,21 @@ describe('Marketplace flow: browse -> listing -> cart -> checkout', () => {
     await fireEvent.press(screen.getByText('Place Order'));
 
     expect(mockCheckout).toHaveBeenCalledWith(
-      [{ listingId: 'listing-1', sellerId: 'seller-1', title: 'Premium Wheat Seeds', price: 250, unit: 'kg', image: null, quantity: 2 }],
+      [
+        {
+          listingId: 'listing-1',
+          sellerId: 'seller-1',
+          title: 'Premium Wheat Seeds',
+          price: 250,
+          unit: 'kg',
+          image: null,
+          quantity: 2,
+        },
+      ],
       { 'seller-1': 0 },
     );
     expect(useCartStore.getState().items).toEqual([]);
-    expect(Alert.alert).toHaveBeenCalledWith('Order placed', expect.stringContaining('1 order'));
+    expect(await screen.findByText('Order placed')).toBeTruthy();
 
     // popToTop back on the marketplace stack lands back on Browse.
     expect(await screen.findByText('Premium Wheat Seeds')).toBeTruthy();

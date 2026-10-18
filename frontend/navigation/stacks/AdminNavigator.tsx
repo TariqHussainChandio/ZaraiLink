@@ -3,12 +3,18 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BadgeCheck, Flag, LayoutDashboard, ScrollText, User } from 'lucide-react-native';
 import React from 'react';
+import { AiActivityScreen } from '../../admin/screens/AiActivityScreen';
 import { AdminAnalyticsScreen } from '../../admin/screens/AnalyticsScreen';
 import { ApplicationDetailScreen } from '../../admin/screens/ApplicationDetailScreen';
 import { ApprovalsScreen } from '../../admin/screens/ApprovalsScreen';
+import { AdminOrderDetailScreen } from '../../admin/screens/AdminOrderDetailScreen';
 import { AuditLogScreen } from '../../admin/screens/AuditLogScreen';
 import { CategoryManagementScreen } from '../../admin/screens/CategoryManagementScreen';
+import { ConsultationModerationDetailScreen } from '../../admin/screens/ConsultationModerationDetailScreen';
+import { ConsultationModerationScreen } from '../../admin/screens/ConsultationModerationScreen';
 import { AdminDashboardScreen } from '../../admin/screens/DashboardScreen';
+import { DiseaseKnowledgeEditScreen } from '../../admin/screens/DiseaseKnowledgeEditScreen';
+import { DiseaseKnowledgeScreen } from '../../admin/screens/DiseaseKnowledgeScreen';
 import { DocumentViewerScreen } from '../../admin/screens/DocumentViewerScreen';
 import { ListingModerationScreen } from '../../admin/screens/ListingModerationScreen';
 import { ModerationScreen } from '../../admin/screens/ModerationScreen';
@@ -16,10 +22,10 @@ import { PlatformOrdersScreen } from '../../admin/screens/PlatformOrdersScreen';
 import { ReferenceDataScreen } from '../../admin/screens/ReferenceDataScreen';
 import { ReportsScreen } from '../../admin/screens/ReportsScreen';
 import { RequiredDocumentsScreen } from '../../admin/screens/RequiredDocumentsScreen';
+import { ReviewModerationScreen } from '../../admin/screens/ReviewModerationScreen';
 import { UserManagementScreen } from '../../admin/screens/UserManagementScreen';
 import { ADMIN_HOME_ROUTES, ADMIN_TABS } from '../../common/constants/routes';
 import { NotificationListScreen } from '../../common/notifications/screens/NotificationListScreen';
-import { OrderDetailScreen } from '../../common/orders/screens/OrderDetailScreen';
 import { RoleScopeProvider } from '../../theme';
 import { notificationsAction } from '../headerActions';
 import { stackOptionsWithActions, stackScreenOptions } from '../stackHeader';
@@ -38,19 +44,27 @@ export type AdminStackParamList = {
   [ADMIN_HOME_ROUTES.ModerationHub]: undefined;
   [ADMIN_HOME_ROUTES.UserManagement]: undefined;
   [ADMIN_HOME_ROUTES.ListingModeration]: undefined;
-  [ADMIN_HOME_ROUTES.Orders]: undefined;
+  // A queue tile opens the list filtered to disputed orders (SRDS §14).
+  [ADMIN_HOME_ROUTES.Orders]: { status?: 'disputed' } | undefined;
   [ADMIN_HOME_ROUTES.OrderDetail]: { orderId: string };
   [ADMIN_HOME_ROUTES.Reports]: undefined;
   [ADMIN_HOME_ROUTES.Categories]: undefined;
   [ADMIN_HOME_ROUTES.ReferenceData]: undefined;
   [ADMIN_HOME_ROUTES.AuditLogs]: undefined;
+  [ADMIN_HOME_ROUTES.AiActivity]: undefined;
+  [ADMIN_HOME_ROUTES.DiseaseKnowledge]: undefined;
+  [ADMIN_HOME_ROUTES.DiseaseKnowledgeEdit]: { classLabel: string };
+  // `stale`: only consultations open for over seven days, the Overview's "Stale consultations" queue.
+  [ADMIN_HOME_ROUTES.ConsultationModeration]: { stale?: boolean } | undefined;
+  [ADMIN_HOME_ROUTES.ConsultationModerationDetail]: { consultationId: string };
+  [ADMIN_HOME_ROUTES.ReviewModeration]: undefined;
 };
 
 export type AdminScreenProps<RouteName extends keyof AdminStackParamList> = NativeStackScreenProps<AdminStackParamList, RouteName>;
 
 const Stack = createNativeStackNavigator<AdminStackParamList>();
 
-// Overview: platform figures, analytics and notifications.
+// Overview: platform figures, analytics, notifications and the AI module (A6; SRDS §37).
 const OVERVIEW_STACK_OPTIONS = stackOptionsWithActions({ [ADMIN_HOME_ROUTES.Dashboard]: notificationsAction });
 
 function OverviewNavigator() {
@@ -63,6 +77,9 @@ function OverviewNavigator() {
       />
       <Stack.Screen name={ADMIN_HOME_ROUTES.Analytics} component={AdminAnalyticsScreen} options={{ title: 'Analytics' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.Notifications} component={NotificationListScreen} options={{ title: 'Notifications' }} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.AiActivity} component={AiActivityScreen} options={{ title: 'AI activity' }} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.DiseaseKnowledge} component={DiseaseKnowledgeScreen} options={{ title: 'Disease knowledge' }} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.DiseaseKnowledgeEdit} component={DiseaseKnowledgeEditScreen} options={{ title: 'Edit entry' }} />
     </Stack.Navigator>
   );
 }
@@ -79,7 +96,7 @@ function ApprovalsNavigator() {
   );
 }
 
-// Moderation: users, listings, reports, orders and the admin-managed lists, from one hub.
+// Moderation: users, listings, reports, orders, consultations, reviews and the admin-managed lists, from one hub (SRDS §14).
 function ModerationNavigator() {
   return (
     <Stack.Navigator screenOptions={stackScreenOptions}>
@@ -88,7 +105,14 @@ function ModerationNavigator() {
       <Stack.Screen name={ADMIN_HOME_ROUTES.ListingModeration} component={ListingModerationScreen} options={{ title: 'Listings' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.Reports} component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.Orders} component={PlatformOrdersScreen} options={{ title: 'Orders' }} />
-      <Stack.Screen name={ADMIN_HOME_ROUTES.OrderDetail} component={OrderDetailScreen} options={{ title: 'Order' }} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.OrderDetail} component={AdminOrderDetailScreen} options={{ title: 'Order' }} />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.ConsultationModeration} component={ConsultationModerationScreen} options={{ title: 'Consultations' }} />
+      <Stack.Screen
+        name={ADMIN_HOME_ROUTES.ConsultationModerationDetail}
+        component={ConsultationModerationDetailScreen}
+        options={{ title: 'Consultation' }}
+      />
+      <Stack.Screen name={ADMIN_HOME_ROUTES.ReviewModeration} component={ReviewModerationScreen} options={{ title: 'Reviews' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.Categories} component={CategoryManagementScreen} options={{ title: 'Categories' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.ReferenceData} component={ReferenceDataScreen} options={{ title: 'Reference data' }} />
     </Stack.Navigator>

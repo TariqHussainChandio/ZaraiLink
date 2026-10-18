@@ -2,7 +2,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components';
+import { EmptyState, ScreenState, SkeletonCard } from '../../components';
 import { ConsultationCard } from '../components/ConsultationCard';
 import { CONSULTATIONS_ROUTES } from '../../constants/routes';
 import { useConsultations } from '../hooks/consultations';
@@ -19,9 +19,10 @@ export function ConsultationListScreen() {
   const role = useAuthStore(state => state.role);
   const navigation = useNavigation<any>();
   const isExpert = role === 'expert';
-  const { data: consultations = [], isPending, error, refetch } = useConsultations(isExpert, !!userId);
-  const loading = isPending && !!userId;
-  const load = () => refetch();
+  const query = useConsultations(isExpert, !!userId);
+  const { refetch } = query;
+  // Signed out the query is disabled and stays "pending" for ever; show the empty list instead of a skeleton that never ends.
+  const screenQuery = userId ? query : { ...query, data: query.data ?? [], isPending: false };
 
   useFocusEffect(
     useCallback(() => {
@@ -29,53 +30,48 @@ export function ConsultationListScreen() {
     }, [userId, refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
-  if (error && consultations.length === 0) {
-    return (
-      <EmptyState
-        title="Couldn't load consultations"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <FlashList
-        data={consultations}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <ConsultationCard
-            consultation={item}
-            counterpartyName={
-              (isExpert ? item.user?.full_name : item.expert?.full_name) ||
-              'Unknown'
-            }
-            onPress={() =>
-              navigation.navigate(CONSULTATIONS_ROUTES.ConsultationDetail, { consultationId: item.id })
+      <ScreenState
+        query={screenQuery}
+        errorTitle="Couldn't load consultations"
+        skeleton={
+          <View style={styles.list}>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </View>
+        }
+      >
+        {consultations => (
+          <FlashList
+            data={consultations}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => (
+              <ConsultationCard
+                consultation={item}
+                counterpartyName={(isExpert ? item.user?.full_name : item.expert?.full_name) || 'Unknown'}
+                onPress={() =>
+                  navigation.navigate(CONSULTATIONS_ROUTES.ConsultationDetail, { consultationId: item.id })
+                }
+              />
+            )}
+            ListEmptyComponent={
+              <EmptyState
+                title={isExpert ? 'No consultation requests yet' : 'No consultations yet'}
+                description={
+                  isExpert
+                    ? 'Requests from farmers and buyers will show up here.'
+                    : 'Browse verified experts to request a consultation.'
+                }
+                actionLabel={isExpert ? undefined : 'Find an expert'}
+                onAction={isExpert ? undefined : () => navigation.navigate(CONSULTATIONS_ROUTES.ExpertList)}
+              />
             }
           />
         )}
-        ListEmptyComponent={
-          <EmptyState
-            title={
-              isExpert
-                ? 'No consultation requests yet'
-                : 'No consultations yet'
-            }
-            description={
-              isExpert
-                ? 'Requests from farmers and buyers will show up here.'
-                : 'Browse verified experts to request a consultation.'
-            }
-            actionLabel={isExpert ? undefined : 'Find an expert'}
-            onAction={isExpert ? undefined : () => navigation.navigate(CONSULTATIONS_ROUTES.ExpertList)}
-          />
-        }
-      />
+      </ScreenState>
     </View>
   );
 }

@@ -1,17 +1,31 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useMemo, useRef } from 'react';
+import { Plus, Save, Trash2 } from 'lucide-react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 import { z } from 'zod';
-import { Button, EmptyState, TextField, SelectField, Spinner } from '../../common/components';
-import { useDeleteFarmCrop, useFarmCrop, useSaveFarmCrop } from '../hooks/farmer';
+import {
+  Button,
+  ScreenState,
+  SelectField,
+  Sheet,
+  TextField,
+  useToast,
+} from '../../common/components';
+import {
+  useDeleteFarmCrop,
+  useFarmCrop,
+  useSaveFarmCrop,
+} from '../hooks/farmer';
 import { useCrops } from '../../common/marketplace';
 import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 import { errorMessage } from '../../utils/errorMessage';
 
 const dateField = (message: string) =>
-  z.string().refine(value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value), message);
+  z
+    .string()
+    .refine(value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value), message);
 
 function buildFarmCropSchema(dateMessage: string) {
   return z.object({
@@ -27,16 +41,21 @@ function buildFarmCropSchema(dateMessage: string) {
 
 type FarmCropFormValues = z.infer<ReturnType<typeof buildFarmCropSchema>>;
 
-export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>) {
+export function AddCropScreen({
+  route,
+  navigation,
+}: HomeScreenProps<'AddCrop'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { farmId, cropId } = route.params;
   const isEditing = Boolean(cropId);
   const { data: crops = [] } = useCrops();
-  const { data: farmCrop, isLoading: loading, error, refetch } = useFarmCrop(cropId);
+  const farmCropQuery = useFarmCrop(cropId);
+  const farmCrop = farmCropQuery.data;
   const saveCrop = useSaveFarmCrop(farmId);
   const removeCrop = useDeleteFarmCrop();
-  const load = () => refetch();
+  const toast = useToast();
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const farmCropSchema = useMemo(
     () => buildFarmCropSchema('Use YYYY-MM-DD format'),
@@ -89,52 +108,40 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
         notes: values.notes || null,
       };
       await saveCrop.mutateAsync({ cropId, input });
+      toast.success(isEditing ? 'Crop saved' : 'Crop added');
       navigation.goBack();
     } catch (err) {
-      Alert.alert(
-        'Failed to save crop',
-        errorMessage(err),
-      );
+      toast.error(`Crop not saved. ${errorMessage(err)}`);
     }
   };
 
-  const onDelete = () => {
+  const onDelete = async () => {
     if (!cropId) return;
-    Alert.alert(
-      'Remove crop',
-      'This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeCrop.mutateAsync(cropId);
-              navigation.goBack();
-            } catch (err) {
-              Alert.alert('Failed to remove crop', errorMessage(err));
-            }
-          },
-        },
-      ],
-    );
+    try {
+      await removeCrop.mutateAsync(cropId);
+      setConfirmingRemove(false);
+      toast.success('Crop removed');
+      navigation.goBack();
+    } catch (err) {
+      setConfirmingRemove(false);
+      toast.error(`Crop not removed. ${errorMessage(err)}`);
+    }
   };
 
-  if (loading) return <Spinner fullscreen />;
-  if (error && !farmCrop) {
+  // Editing needs the saved crop first: ScreenState shows the skeleton, or the failure with Retry. A new crop has no
+  // query (it is disabled) and goes straight to the empty form.
+  if (isEditing && farmCrop === undefined) {
     return (
-      <EmptyState
-        title="Couldn't load this crop"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
+      <ScreenState query={farmCropQuery} errorTitle="Couldn't load this crop" />
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Controller
         control={control}
         name="cropId"
@@ -234,11 +241,9 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
       />
 
       <Button
-        label={
-          isEditing
-            ? 'Save Changes'
-            : 'Add Crop'
-        }
+        label={isEditing ? 'Save Changes' : 'Add Crop'}
+        icon={isEditing ? Save : Plus}
+        size="lg"
         loading={saveCrop.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.action}
@@ -246,16 +251,42 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
       {isEditing ? (
         <Button
           label="Remove Crop"
+          icon={Trash2}
           variant="danger"
-          onPress={onDelete}
+          size="lg"
+          onPress={() => setConfirmingRemove(true)}
           style={styles.delete}
         />
       ) : null}
+
+      <Sheet
+        visible={confirmingRemove}
+        onClose={() => setConfirmingRemove(false)}
+        title="Remove this crop?"
+      >
+        <Text style={styles.sheetBody}>You cannot undo this.</Text>
+        <Button
+          label="Remove Crop"
+          icon={Trash2}
+          variant="danger"
+          size="lg"
+          loading={removeCrop.isPending}
+          onPress={onDelete}
+          style={styles.action}
+        />
+        <Button
+          label="Keep Crop"
+          variant="secondary"
+          size="lg"
+          onPress={() => setConfirmingRemove(false)}
+          style={styles.action}
+        />
+      </Sheet>
     </ScrollView>
   );
 }
 
-function makeStyles({ colors, space }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -270,6 +301,10 @@ function makeStyles({ colors, space }: Theme) {
     delete: {
       marginTop: space[3],
       marginBottom: space[8],
+    },
+    sheetBody: {
+      ...typography.body,
+      color: colors.ink2,
     },
   });
 }

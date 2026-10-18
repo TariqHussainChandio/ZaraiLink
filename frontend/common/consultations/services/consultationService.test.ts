@@ -10,7 +10,9 @@ jest.mock('../../../services/supabase/client', () => {
 import { supabase } from '../../../services/supabase/client';
 import { makeSupabaseMock } from '../../../testUtils/supabaseMock';
 import {
+  createConsultationAssessment,
   createConsultationRequest,
+  fetchConsultationAssessments,
   fetchConsultationById,
   fetchConsultationMessages,
   fetchConsultationsForExpert,
@@ -55,6 +57,47 @@ describe('createConsultationRequest', () => {
         images: ['path/a.jpg'],
         priority: 'high',
       },
+    });
+  });
+
+  it('sends disease_case_id only when the request carries an AI case (A6)', async () => {
+    mockApiFetch.mockResolvedValue({});
+    const base = {
+      expertId: 'expert-1',
+      subject: 'Scan result',
+      cropId: null,
+      problemDescription: '',
+      farmId: null,
+      images: [],
+      priority: 'medium' as const,
+    };
+    await createConsultationRequest({ ...base, diseaseCaseId: 'case-1' });
+    expect(mockApiFetch).toHaveBeenLastCalledWith('/api/v1/consultations', {
+      method: 'POST',
+      body: expect.objectContaining({ disease_case_id: 'case-1' }),
+    });
+
+    await createConsultationRequest({ ...base, diseaseCaseId: null });
+    expect(mockApiFetch).toHaveBeenLastCalledWith('/api/v1/consultations', {
+      method: 'POST',
+      body: expect.not.objectContaining({ disease_case_id: expect.anything() }),
+    });
+  });
+});
+
+describe('consultation assessments', () => {
+  it('reads the assessments of one consultation', async () => {
+    mockApiFetch.mockResolvedValue([]);
+    await fetchConsultationAssessments('c-1');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/consultations/c-1/assessments');
+  });
+
+  it('posts the verdict with null for missing text, never an expert id', async () => {
+    mockApiFetch.mockResolvedValue({});
+    await createConsultationAssessment('c-1', { verdict: 'agree' });
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/consultations/c-1/assessments', {
+      method: 'POST',
+      body: { verdict: 'agree', diagnosis: null, recommendations: null },
     });
   });
 });

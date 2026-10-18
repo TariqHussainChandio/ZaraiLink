@@ -1,4 +1,9 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   createListing,
   deleteListing,
@@ -12,6 +17,7 @@ import {
   type FetchListingsParams,
   type ListingInput,
 } from '../services/listingsService';
+import { fetchLinkableInventoryProducts } from '../services/inventoryProductsService';
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { queryKeys } from '../../../hooks/keys';
 
@@ -41,12 +47,16 @@ export function useListings(filters: Omit<FetchListingsParams, 'page'>) {
     queryFn: ({ pageParam }) => fetchListings({ ...filters, page: pageParam }),
     initialPageParam: 0,
     // An empty page is the end of the feed.
-    getNextPageParam: (lastPage, _pages, lastPageParam) => (lastPage.length > 0 ? lastPageParam + 1 : undefined),
+    getNextPageParam: (lastPage, _pages, lastPageParam) =>
+      lastPage.length > 0 ? lastPageParam + 1 : undefined,
   });
 }
 
 export function useListing(id: string) {
-  return useQuery({ queryKey: queryKeys.marketplace.listing(id), queryFn: () => fetchListingById(id) });
+  return useQuery({
+    queryKey: queryKeys.marketplace.listing(id),
+    queryFn: () => fetchListingById(id),
+  });
 }
 
 /** Listings that suit a crop, for the disease result's "related products" (the first few, newest first). */
@@ -62,7 +72,26 @@ export function useRelatedListings(cropName: string | undefined) {
 export function useListingOptions(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.marketplace.listingOptions(),
-    queryFn: async () => (await fetchListings({})).map(listing => ({ id: listing.id, title: listing.title })),
+    queryFn: async () =>
+      (await fetchListings({})).map(listing => ({
+        id: listing.id,
+        title: listing.title,
+      })),
+    enabled,
+  });
+}
+
+/**
+ * The dealer's active inventory products, for linking a listing to one (D8). `enabled` only for an approved dealer:
+ * the API refuses everyone else. The key sits under `marketplace` so a listing change also refreshes it.
+ */
+export function useLinkableInventoryProducts(enabled: boolean) {
+  return useQuery({
+    queryKey: [
+      ...queryKeys.marketplace.all,
+      'linkable-inventory-products',
+    ] as const,
+    queryFn: fetchLinkableInventoryProducts,
     enabled,
   });
 }
@@ -77,7 +106,9 @@ export function useMyListings(ownerId: string | undefined) {
 
 /** Records a view. Fire-and-forget: view counting must never block or fail the listing screen. */
 export function useRecordListingView() {
-  return useMutation({ mutationFn: (listingId: string) => recordListingView(listingId) });
+  return useMutation({
+    mutationFn: (listingId: string) => recordListingView(listingId),
+  });
 }
 
 /**
@@ -103,7 +134,10 @@ export function useCreateListing() {
   const invalidate = useInvalidateMarketplace();
   return useMutation({
     mutationFn: async ({ userId, images, input }: CreateListingVariables) =>
-      createListing({ ...input, images: await uploadListingImages(userId, images) }),
+      createListing({
+        ...input,
+        images: await uploadListingImages(userId, images),
+      }),
     onSuccess: invalidate,
   });
 }
@@ -119,9 +153,21 @@ interface UpdateListingVariables {
 export function useUpdateListing() {
   const invalidate = useInvalidateMarketplace();
   return useMutation({
-    mutationFn: async ({ id, userId, newImages, existingImages, input }: UpdateListingVariables) => {
-      const uploaded = newImages.length > 0 ? await uploadListingImages(userId, newImages) : [];
-      return updateListing(id, { ...input, images: [...existingImages, ...uploaded] });
+    mutationFn: async ({
+      id,
+      userId,
+      newImages,
+      existingImages,
+      input,
+    }: UpdateListingVariables) => {
+      const uploaded =
+        newImages.length > 0
+          ? await uploadListingImages(userId, newImages)
+          : [];
+      return updateListing(id, {
+        ...input,
+        images: [...existingImages, ...uploaded],
+      });
     },
     onSuccess: invalidate,
   });
@@ -129,5 +175,8 @@ export function useUpdateListing() {
 
 export function useDeleteListing() {
   const invalidate = useInvalidateMarketplace();
-  return useMutation({ mutationFn: (id: string) => deleteListing(id), onSuccess: invalidate });
+  return useMutation({
+    mutationFn: (id: string) => deleteListing(id),
+    onSuccess: invalidate,
+  });
 }

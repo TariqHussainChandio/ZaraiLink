@@ -29,6 +29,23 @@ describe('ReviewCard', () => {
     expect(screen.getByText('Unknown buyer')).toBeTruthy();
   });
 
+  it('says nothing about moderation for a visible review', async () => {
+    await render(<ReviewCard review={review({ hidden_at: null, hidden_reason: null })} />);
+    expect(screen.queryByText('Hidden by a moderator')).toBeNull();
+  });
+
+  it('tells the author their review was hidden, and why', async () => {
+    await render(
+      <ReviewCard review={review({ hidden_at: '2026-10-12T09:00:00.000Z', hidden_reason: 'Abusive language' })} />,
+    );
+    expect(screen.getByText('Hidden by a moderator')).toBeTruthy();
+    expect(
+      screen.getByText('Others no longer see this review, and it does not count in ratings. Reason: Abusive language'),
+    ).toBeTruthy();
+    // The review itself still shows to its author.
+    expect(screen.getByText('Great quality seeds, fast delivery.')).toBeTruthy();
+  });
+
   it('omits the comment line when there is no comment', async () => {
     await render(<ReviewCard review={review({ comment: null })} />);
     expect(screen.queryByText('Great quality seeds, fast delivery.')).toBeNull();

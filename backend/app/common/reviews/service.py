@@ -1,7 +1,7 @@
 from fastapi import HTTPException
+from postgrest.exceptions import APIError
 
 from app.auth.dependencies import AuthenticatedUser
-from app.common.audit_log import log_admin_action
 from app.common.reviews import repository as repo
 
 
@@ -56,12 +56,17 @@ async def fetch_review_by_id(review_id: str) -> dict:
     return review
 
 
-async def fetch_review_by_order_id(order_id: str) -> dict | None:
-    return await repo.fetch_review_by_order_id(order_id)
+def _viewer(user: AuthenticatedUser | None) -> tuple[str, str] | None:
+    return (user.access_token, user.id) if user is not None else None
 
 
-async def fetch_review_by_consultation_id(consultation_id: str) -> dict | None:
-    return await repo.fetch_review_by_consultation_id(consultation_id)
+async def fetch_review_by_order_id(order_id: str, user: AuthenticatedUser | None = None) -> dict | None:
+    """Public; a signed-in author also gets their own hidden review, with the reason (SRDS §14, see the repository)."""
+    return await repo.fetch_review_by_order_id(order_id, _viewer(user))
+
+
+async def fetch_review_by_consultation_id(consultation_id: str, user: AuthenticatedUser | None = None) -> dict | None:
+    return await repo.fetch_review_by_consultation_id(consultation_id, _viewer(user))
 
 
 async def fetch_reviews_for_listing(listing_id: str) -> list[dict]:
@@ -76,6 +81,51 @@ async def fetch_reviews_for_expert(expert_id: str) -> list[dict]:
     return await repo.fetch_reviews_for_expert(expert_id)
 
 
-async def delete_review(user: AuthenticatedUser, review_id: str) -> None:
-    await repo.delete_review(user.access_token, review_id)
-    await log_admin_action(user, "delete_review", "reviews", review_id)
+async def fetch_reviews_for_moderation(user: AuthenticatedUser, include_hidden: bool) -> list[dict]:
+    return await repo.fetch_reviews_for_moderation(user.access_token, include_hidden)
+
+
+def _raise_moderation_refusal(exc: APIError) -> None:
+    # guard_reviews_update: 42501 for anyone but an admin with a second factor (or an edit beyond the hidden_* columns),
+    # 23514 for a hide without a reason. Anything else stays the generic database error.
+    if exc.code == "42501":
+        raise HTTPException(status_code=403, detail="Only an admin with a second factor can moderate a review") from exc
+    if exc.code == "23514":
+        raise HTTPException(status_code=422, detail="Hiding a review needs a reason") from exc
+    raise exc
+
+
+async def hide_review(user: AuthenticatedUser, review_id: str, reason: str) -> dict:
+    """
+    SRDS §14 "moderate reviews": an admin hides a review with a reason instead of deleting it, so the review, its
+    rating history and the decision stay on record and the decision can be undone (restore_review). Hiding an already
+    hidden review only replaces the reason; the database keeps the first hide time. BR-15: the database audits it with
+    the state before and after.
+    """
+    previous = await repo.fetch_review_for_moderation(user.access_token, review_id)
+    if previous is None:
+        raise HTTPException(status_code=404, detail="Review not found")
+    try:
+        updated = await repo.set_review_hidden(user.access_token, review_id, reason)
+    except APIError as exc:
+        _raise_moderation_refusal(exc)
+        raise
+    # The audit row is written atomically by the database (20261023080000).
+    return updated
+
+
+async def restore_review(user: AuthenticatedUser, review_id: str) -> dict:
+    """Undoes hide_review: the review is public again and counts in ratings. A visible review has nothing to restore,
+    so that is a conflict rather than a second audit row for a change that did not happen."""
+    previous = await repo.fetch_review_for_moderation(user.access_token, review_id)
+    if previous is None:
+        raise HTTPException(status_code=404, detail="Review not found")
+    if previous.get("hidden_at") is None:
+        raise HTTPException(status_code=409, detail="This review is not hidden")
+    try:
+        updated = await repo.set_review_hidden(user.access_token, review_id, None)
+    except APIError as exc:
+        _raise_moderation_refusal(exc)
+        raise
+    # The audit row is written atomically by the database (20261023080000).
+    return updated

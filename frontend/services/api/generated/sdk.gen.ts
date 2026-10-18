@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AdminChangeUserRoleData, AdminChangeUserRoleErrors, AdminChangeUserRoleResponses, AdminCreateRequiredDocumentData, AdminCreateRequiredDocumentErrors, AdminCreateRequiredDocumentResponses, AdminDecideDealerApplicationData, AdminDecideDealerApplicationErrors, AdminDecideDealerApplicationResponses, AdminDismissReportData, AdminDismissReportErrors, AdminDismissReportResponses, AdminGetDealerApplicationData, AdminGetDealerApplicationErrors, AdminGetDealerApplicationResponses, AdminGetDealerDocumentUrlData, AdminGetDealerDocumentUrlErrors, AdminGetDealerDocumentUrlResponses, AdminGetPlatformStatsData, AdminGetPlatformStatsErrors, AdminGetPlatformStatsResponses, AdminListAllOrdersData, AdminListAllOrdersErrors, AdminListAllOrdersResponses, AdminListAuditLogsData, AdminListAuditLogsErrors, AdminListAuditLogsResponses, AdminListDealerApplicationsData, AdminListDealerApplicationsErrors, AdminListDealerApplicationsResponses, AdminListReportsData, AdminListReportsErrors, AdminListReportsResponses, AdminListRequiredDocumentsData, AdminListRequiredDocumentsErrors, AdminListRequiredDocumentsResponses, AdminListUsersData, AdminListUsersErrors, AdminListUsersResponses, AdminResolveReportData, AdminResolveReportErrors, AdminResolveReportResponses, AdminSuspendUserData, AdminSuspendUserErrors, AdminSuspendUserResponses, AdminUpdateRequiredDocumentData, AdminUpdateRequiredDocumentErrors, AdminUpdateRequiredDocumentResponses, AnalyticsGetAdminAnalyticsData, AnalyticsGetAdminAnalyticsErrors, AnalyticsGetAdminAnalyticsResponses, AnalyticsGetDealerAnalyticsData, AnalyticsGetDealerAnalyticsErrors, AnalyticsGetDealerAnalyticsResponses, AnalyticsGetExpertAnalyticsData, AnalyticsGetExpertAnalyticsErrors, AnalyticsGetExpertAnalyticsResponses, AnalyticsGetFarmerAnalyticsData, AnalyticsGetFarmerAnalyticsErrors, AnalyticsGetFarmerAnalyticsResponses, ConsultationsCreateRequestData, ConsultationsCreateRequestErrors, ConsultationsCreateRequestResponses, ConsultationsGetConsultationData, ConsultationsGetConsultationErrors, ConsultationsGetConsultationResponses, ConsultationsListForExpertData, ConsultationsListForExpertErrors, ConsultationsListForExpertResponses, ConsultationsListForUserData, ConsultationsListForUserErrors, ConsultationsListForUserResponses, ConsultationsListMessagesData, ConsultationsListMessagesErrors, ConsultationsListMessagesResponses, ConsultationsSendMessageData, ConsultationsSendMessageErrors, ConsultationsSendMessageResponses, ConsultationsUpdateImagesData, ConsultationsUpdateImagesErrors, ConsultationsUpdateImagesResponses, ConsultationsUpdateStatusData, ConsultationsUpdateStatusErrors, ConsultationsUpdateStatusResponses, DealerAddMyDocumentData, DealerAddMyDocumentErrors, DealerAddMyDocumentResponses, DealerAdjustStockData, DealerAdjustStockErrors, DealerAdjustStockResponses, DealerCreateInventoryItemData, DealerCreateInventoryItemErrors, DealerCreateInventoryItemResponses, DealerCreateStoreData, DealerCreateStoreErrors, DealerCreateStoreResponses, DealerCreateSupplierData, DealerCreateSupplierErrors, DealerCreateSupplierResponses, DealerDeleteInventoryItemData, DealerDeleteInventoryItemErrors, DealerDeleteInventoryItemResponses, DealerDeleteStoreData, DealerDeleteStoreErrors, DealerDeleteStoreResponses, DealerDeleteSupplierData, DealerDeleteSupplierErrors, DealerDeleteSupplierResponses, DealerGetInventoryItemData, DealerGetInventoryItemErrors, DealerGetInventoryItemResponses, DealerGetMyApplicationData, DealerGetMyApplicationErrors, DealerGetMyApplicationResponses, DealerGetStoreData, DealerGetStoreErrors, DealerGetStoreResponses, DealerGetSupplierData, DealerGetSupplierErrors, DealerGetSupplierResponses, DealerListDealerListingsData, DealerListDealerListingsErrors, DealerListDealerListingsResponses, DealerListInventoryData, DealerListInventoryErrors, DealerListInventoryResponses, DealerListInventoryTransactionsData, DealerListInventoryTransactionsErrors, DealerListInventoryTransactionsResponses, DealerListMyDocumentsData, DealerListMyDocumentsErrors, DealerListMyDocumentsResponses, DealerListStoresData, DealerListStoresErrors, DealerListStoresResponses, DealerListSuppliersData, DealerListSuppliersErrors, DealerListSuppliersResponses, DealerRemoveMyDocumentData, DealerRemoveMyDocumentErrors, DealerRemoveMyDocumentResponses, DealerSaveMyApplicationData, DealerSaveMyApplicationErrors, DealerSaveMyApplicationResponses, DealerUpdateInventoryItemData, DealerUpdateInventoryItemErrors, DealerUpdateInventoryItemResponses, DealerUpdateStoreData, DealerUpdateStoreErrors, DealerUpdateStoreResponses, DealerUpdateSupplierData, DealerUpdateSupplierErrors, DealerUpdateSupplierResponses, DiseaseCreateCaseData, DiseaseCreateCaseErrors, DiseaseCreateCaseResponses, DiseaseGetCaseData, DiseaseGetCaseErrors, DiseaseGetCaseResponses, DiseasePredictDiseaseData, DiseasePredictDiseaseErrors, DiseasePredictDiseaseResponses, ExpertAddMyDocumentData, ExpertAddMyDocumentErrors, ExpertAddMyDocumentResponses, ExpertCreateApplicationData, ExpertCreateApplicationErrors, ExpertCreateApplicationResponses, ExpertGetDocumentUrlData, ExpertGetDocumentUrlErrors, ExpertGetDocumentUrlResponses, ExpertGetExpertData, ExpertGetExpertErrors, ExpertGetExpertForAdminData, ExpertGetExpertForAdminErrors, ExpertGetExpertForAdminResponses, ExpertGetExpertResponses, ExpertGetMyProfileData, ExpertGetMyProfileErrors, ExpertGetMyProfileResponses, ExpertListExpertsData, ExpertListExpertsErrors, ExpertListExpertsForAdminData, ExpertListExpertsForAdminErrors, ExpertListExpertsForAdminResponses, ExpertListExpertsResponses, ExpertListMyDocumentsData, ExpertListMyDocumentsErrors, ExpertListMyDocumentsResponses, ExpertRemoveMyDocumentData, ExpertRemoveMyDocumentErrors, ExpertRemoveMyDocumentResponses, ExpertReviewVerificationData, ExpertReviewVerificationErrors, ExpertReviewVerificationResponses, ExpertUpdateProfileData, ExpertUpdateProfileErrors, ExpertUpdateProfileResponses, FarmerCreateFarmCropData, FarmerCreateFarmCropErrors, FarmerCreateFarmCropResponses, FarmerCreateFarmData, FarmerCreateFarmErrors, FarmerCreateFarmResponses, FarmerDeleteFarmCropData, FarmerDeleteFarmCropErrors, FarmerDeleteFarmCropResponses, FarmerDeleteFarmData, FarmerDeleteFarmErrors, FarmerDeleteFarmResponses, FarmerGetFarmCropData, FarmerGetFarmCropErrors, FarmerGetFarmCropResponses, FarmerGetFarmData, FarmerGetFarmerProfileData, FarmerGetFarmerProfileErrors, FarmerGetFarmerProfileResponses, FarmerGetFarmErrors, FarmerGetFarmResponses, FarmerListFarmCropsData, FarmerListFarmCropsErrors, FarmerListFarmCropsResponses, FarmerListFarmsData, FarmerListFarmsErrors, FarmerListFarmsResponses, FarmerUpdateFarmCropData, FarmerUpdateFarmCropErrors, FarmerUpdateFarmCropResponses, FarmerUpdateFarmData, FarmerUpdateFarmErrors, FarmerUpdateFarmResponses, FarmerUpsertFarmerProfileData, FarmerUpsertFarmerProfileErrors, FarmerUpsertFarmerProfileResponses, MarketplaceCreateCategoryData, MarketplaceCreateCategoryErrors, MarketplaceCreateCategoryResponses, MarketplaceCreateListingData, MarketplaceCreateListingErrors, MarketplaceCreateListingResponses, MarketplaceDeleteCategoryData, MarketplaceDeleteCategoryErrors, MarketplaceDeleteCategoryResponses, MarketplaceDeleteListingData, MarketplaceDeleteListingErrors, MarketplaceDeleteListingResponses, MarketplaceGetListingData, MarketplaceGetListingErrors, MarketplaceGetListingResponses, MarketplaceGetListingViewCountsData, MarketplaceGetListingViewCountsErrors, MarketplaceGetListingViewCountsResponses, MarketplaceListCategoriesData, MarketplaceListCategoriesErrors, MarketplaceListCategoriesResponses, MarketplaceListCropsData, MarketplaceListCropsErrors, MarketplaceListCropsResponses, MarketplaceListListingsData, MarketplaceListListingsErrors, MarketplaceListListingsForModerationData, MarketplaceListListingsForModerationErrors, MarketplaceListListingsForModerationResponses, MarketplaceListListingsResponses, MarketplaceRecordListingViewData, MarketplaceRecordListingViewErrors, MarketplaceRecordListingViewResponses, MarketplaceUpdateCategoryData, MarketplaceUpdateCategoryErrors, MarketplaceUpdateCategoryResponses, MarketplaceUpdateListingData, MarketplaceUpdateListingErrors, MarketplaceUpdateListingResponses, MarketplaceUpdateListingStatusData, MarketplaceUpdateListingStatusErrors, MarketplaceUpdateListingStatusResponses, MessagingFindOrCreateConversationData, MessagingFindOrCreateConversationErrors, MessagingFindOrCreateConversationResponses, MessagingGetMessageData, MessagingGetMessageErrors, MessagingGetMessageResponses, MessagingListConversationsData, MessagingListConversationsErrors, MessagingListConversationsResponses, MessagingListMessagesData, MessagingListMessagesErrors, MessagingListMessagesResponses, MessagingMarkConversationReadData, MessagingMarkConversationReadErrors, MessagingMarkConversationReadResponses, MessagingRedactMessageData, MessagingRedactMessageErrors, MessagingRedactMessageResponses, MessagingSendMessageData, MessagingSendMessageErrors, MessagingSendMessageResponses, NotificationsListNotificationsData, NotificationsListNotificationsErrors, NotificationsListNotificationsResponses, NotificationsMarkAllReadData, NotificationsMarkAllReadErrors, NotificationsMarkAllReadResponses, NotificationsMarkReadData, NotificationsMarkReadErrors, NotificationsMarkReadResponses, NotificationsUnreadCountData, NotificationsUnreadCountErrors, NotificationsUnreadCountResponses, OrdersCheckoutData, OrdersCheckoutErrors, OrdersCheckoutResponses, OrdersGetOrderData, OrdersGetOrderErrors, OrdersGetOrderResponses, OrdersGetStatusHistoryData, OrdersGetStatusHistoryErrors, OrdersGetStatusHistoryResponses, OrdersListOrdersData, OrdersListOrdersErrors, OrdersListOrdersResponses, OrdersUpdateOrderStatusData, OrdersUpdateOrderStatusErrors, OrdersUpdateOrderStatusResponses, PaymentsGetPaymentByOrderData, PaymentsGetPaymentByOrderErrors, PaymentsGetPaymentByOrderResponses, PaymentsGetPaymentData, PaymentsGetPaymentErrors, PaymentsGetPaymentResponses, PaymentsInitiatePaymentData, PaymentsInitiatePaymentErrors, PaymentsInitiatePaymentResponses, PaymentsListPaymentTransactionsData, PaymentsListPaymentTransactionsErrors, PaymentsListPaymentTransactionsResponses, PaymentsMarkFailedData, PaymentsMarkFailedErrors, PaymentsMarkFailedResponses, PaymentsMarkReceivedData, PaymentsMarkReceivedErrors, PaymentsMarkReceivedResponses, ProfileDeleteOwnAccountData, ProfileDeleteOwnAccountErrors, ProfileDeleteOwnAccountResponses, ProfileListRequiredDocumentsData, ProfileListRequiredDocumentsErrors, ProfileListRequiredDocumentsResponses, ProfileSubmitApplicationData, ProfileSubmitApplicationErrors, ProfileSubmitApplicationResponses, ProfileUpdateProfileData, ProfileUpdateProfileErrors, ProfileUpdateProfileResponses, ReferenceDataCreateRowData, ReferenceDataCreateRowErrors, ReferenceDataCreateRowResponses, ReferenceDataDeleteRowData, ReferenceDataDeleteRowErrors, ReferenceDataDeleteRowResponses, ReferenceDataListCurrenciesData, ReferenceDataListCurrenciesErrors, ReferenceDataListCurrenciesResponses, ReferenceDataListRowsData, ReferenceDataListRowsErrors, ReferenceDataListRowsResponses, ReferenceDataListUnitsData, ReferenceDataListUnitsErrors, ReferenceDataListUnitsResponses, ReferenceDataUpdateRowData, ReferenceDataUpdateRowErrors, ReferenceDataUpdateRowResponses, ReviewsCreateConsultationReviewData, ReviewsCreateConsultationReviewErrors, ReviewsCreateConsultationReviewResponses, ReviewsCreateReviewData, ReviewsCreateReviewErrors, ReviewsCreateReviewResponses, ReviewsDeleteReviewData, ReviewsDeleteReviewErrors, ReviewsDeleteReviewResponses, ReviewsGetReviewByConsultationData, ReviewsGetReviewByConsultationErrors, ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByOrderData, ReviewsGetReviewByOrderErrors, ReviewsGetReviewByOrderResponses, ReviewsGetReviewData, ReviewsGetReviewErrors, ReviewsGetReviewResponses, ReviewsListReviewsForExpertData, ReviewsListReviewsForExpertErrors, ReviewsListReviewsForExpertResponses, ReviewsListReviewsForListingData, ReviewsListReviewsForListingErrors, ReviewsListReviewsForListingResponses, ReviewsListReviewsForSellerData, ReviewsListReviewsForSellerErrors, ReviewsListReviewsForSellerResponses, RootHealthData, RootHealthErrors, RootHealthResponses, RootLivenessData, RootLivenessErrors, RootLivenessResponses, RootReadinessData, RootReadinessErrors, RootReadinessResponses, RootVersionData, RootVersionErrors, RootVersionResponses } from './types.gen';
+import type { AdminAdminGetData, AdminAdminGetErrors, AdminAdminGetResponses, AdminAdminListData, AdminAdminListErrors, AdminAdminListResponses, AdminAdminModerateData, AdminAdminModerateErrors, AdminAdminModerateResponses, AdminChangeUserRoleData, AdminChangeUserRoleErrors, AdminChangeUserRoleResponses, AdminCreateRequiredDocumentData, AdminCreateRequiredDocumentErrors, AdminCreateRequiredDocumentResponses, AdminDecideDealerApplicationData, AdminDecideDealerApplicationErrors, AdminDecideDealerApplicationResponses, AdminDismissReportData, AdminDismissReportErrors, AdminDismissReportResponses, AdminGetAdminQueuesData, AdminGetAdminQueuesErrors, AdminGetAdminQueuesResponses, AdminGetAiActivityData, AdminGetAiActivityErrors, AdminGetAiActivityResponses, AdminGetDealerApplicationData, AdminGetDealerApplicationErrors, AdminGetDealerApplicationResponses, AdminGetDealerDocumentUrlData, AdminGetDealerDocumentUrlErrors, AdminGetDealerDocumentUrlResponses, AdminGetDiseaseKnowledgeData, AdminGetDiseaseKnowledgeErrors, AdminGetDiseaseKnowledgeResponses, AdminGetPlatformStatsData, AdminGetPlatformStatsErrors, AdminGetPlatformStatsResponses, AdminListAllOrdersData, AdminListAllOrdersErrors, AdminListAllOrdersResponses, AdminListAuditEventsData, AdminListAuditEventsErrors, AdminListAuditEventsResponses, AdminListAuditLogsData, AdminListAuditLogsErrors, AdminListAuditLogsResponses, AdminListDealerApplicationsData, AdminListDealerApplicationsErrors, AdminListDealerApplicationsResponses, AdminListDiseaseKnowledgeData, AdminListDiseaseKnowledgeErrors, AdminListDiseaseKnowledgeResponses, AdminListReportsData, AdminListReportsErrors, AdminListReportsResponses, AdminListRequiredDocumentsData, AdminListRequiredDocumentsErrors, AdminListRequiredDocumentsResponses, AdminListUsersData, AdminListUsersErrors, AdminListUsersResponses, AdminResolveReportData, AdminResolveReportErrors, AdminResolveReportResponses, AdminReviewDiseaseKnowledgeData, AdminReviewDiseaseKnowledgeErrors, AdminReviewDiseaseKnowledgeResponses, AdminSuspendUserData, AdminSuspendUserErrors, AdminSuspendUserResponses, AdminUpdateDiseaseKnowledgeData, AdminUpdateDiseaseKnowledgeErrors, AdminUpdateDiseaseKnowledgeResponses, AdminUpdateRequiredDocumentData, AdminUpdateRequiredDocumentErrors, AdminUpdateRequiredDocumentResponses, AnalyticsGetAdminAnalyticsData, AnalyticsGetAdminAnalyticsErrors, AnalyticsGetAdminAnalyticsResponses, AnalyticsGetDealerAnalyticsData, AnalyticsGetDealerAnalyticsErrors, AnalyticsGetDealerAnalyticsResponses, AnalyticsGetExpertAnalyticsData, AnalyticsGetExpertAnalyticsErrors, AnalyticsGetExpertAnalyticsResponses, AnalyticsGetFarmerAnalyticsData, AnalyticsGetFarmerAnalyticsErrors, AnalyticsGetFarmerAnalyticsResponses, ConsultationsCreateAssessmentData, ConsultationsCreateAssessmentErrors, ConsultationsCreateAssessmentResponses, ConsultationsCreateRequestData, ConsultationsCreateRequestErrors, ConsultationsCreateRequestResponses, ConsultationsGetConsultationData, ConsultationsGetConsultationErrors, ConsultationsGetConsultationResponses, ConsultationsListAssessmentsData, ConsultationsListAssessmentsErrors, ConsultationsListAssessmentsResponses, ConsultationsListForExpertData, ConsultationsListForExpertErrors, ConsultationsListForExpertResponses, ConsultationsListForUserData, ConsultationsListForUserErrors, ConsultationsListForUserResponses, ConsultationsListMessagesData, ConsultationsListMessagesErrors, ConsultationsListMessagesResponses, ConsultationsSendMessageData, ConsultationsSendMessageErrors, ConsultationsSendMessageResponses, ConsultationsUpdateImagesData, ConsultationsUpdateImagesErrors, ConsultationsUpdateImagesResponses, ConsultationsUpdateStatusData, ConsultationsUpdateStatusErrors, ConsultationsUpdateStatusResponses, DealerAddMyDocumentData, DealerAddMyDocumentErrors, DealerAddMyDocumentResponses, DealerAdjustStockData, DealerAdjustStockErrors, DealerAdjustStockResponses, DealerCreateInventoryItemData, DealerCreateInventoryItemErrors, DealerCreateInventoryItemResponses, DealerCreateStoreData, DealerCreateStoreErrors, DealerCreateStoreResponses, DealerCreateSupplierData, DealerCreateSupplierErrors, DealerCreateSupplierResponses, DealerDeleteInventoryItemData, DealerDeleteInventoryItemErrors, DealerDeleteInventoryItemResponses, DealerDeleteStoreData, DealerDeleteStoreErrors, DealerDeleteStoreResponses, DealerDeleteSupplierData, DealerDeleteSupplierErrors, DealerDeleteSupplierResponses, DealerGetInventoryItemData, DealerGetInventoryItemErrors, DealerGetInventoryItemResponses, DealerGetMyApplicationData, DealerGetMyApplicationErrors, DealerGetMyApplicationResponses, DealerGetStoreData, DealerGetStoreErrors, DealerGetStoreResponses, DealerGetSupplierData, DealerGetSupplierErrors, DealerGetSupplierResponses, DealerListDealerListingsData, DealerListDealerListingsErrors, DealerListDealerListingsResponses, DealerListInventoryData, DealerListInventoryErrors, DealerListInventoryResponses, DealerListInventoryTransactionsData, DealerListInventoryTransactionsErrors, DealerListInventoryTransactionsResponses, DealerListMyDocumentsData, DealerListMyDocumentsErrors, DealerListMyDocumentsResponses, DealerListStoresData, DealerListStoresErrors, DealerListStoresResponses, DealerListSuppliersData, DealerListSuppliersErrors, DealerListSuppliersResponses, DealerRemoveMyDocumentData, DealerRemoveMyDocumentErrors, DealerRemoveMyDocumentResponses, DealerSaveMyApplicationData, DealerSaveMyApplicationErrors, DealerSaveMyApplicationResponses, DealerUpdateInventoryItemData, DealerUpdateInventoryItemErrors, DealerUpdateInventoryItemResponses, DealerUpdateStoreData, DealerUpdateStoreErrors, DealerUpdateStoreResponses, DealerUpdateSupplierData, DealerUpdateSupplierErrors, DealerUpdateSupplierResponses, DiseaseCreateCaseData, DiseaseCreateCaseErrors, DiseaseCreateCaseResponses, DiseaseGetCaseData, DiseaseGetCaseErrors, DiseaseGetCaseResponses, DiseaseListKnowledgeData, DiseaseListKnowledgeErrors, DiseaseListKnowledgeResponses, DiseasePredictDiseaseData, DiseasePredictDiseaseErrors, DiseasePredictDiseaseResponses, ExpertAddMyDocumentData, ExpertAddMyDocumentErrors, ExpertAddMyDocumentResponses, ExpertCreateApplicationData, ExpertCreateApplicationErrors, ExpertCreateApplicationResponses, ExpertGetDocumentUrlData, ExpertGetDocumentUrlErrors, ExpertGetDocumentUrlResponses, ExpertGetExpertData, ExpertGetExpertErrors, ExpertGetExpertForAdminData, ExpertGetExpertForAdminErrors, ExpertGetExpertForAdminResponses, ExpertGetExpertResponses, ExpertGetMyProfileData, ExpertGetMyProfileErrors, ExpertGetMyProfileResponses, ExpertListExpertsData, ExpertListExpertsErrors, ExpertListExpertsForAdminData, ExpertListExpertsForAdminErrors, ExpertListExpertsForAdminResponses, ExpertListExpertsResponses, ExpertListMyDocumentsData, ExpertListMyDocumentsErrors, ExpertListMyDocumentsResponses, ExpertRemoveMyDocumentData, ExpertRemoveMyDocumentErrors, ExpertRemoveMyDocumentResponses, ExpertReviewVerificationData, ExpertReviewVerificationErrors, ExpertReviewVerificationResponses, ExpertUpdateProfileData, ExpertUpdateProfileErrors, ExpertUpdateProfileResponses, FarmerCreateFarmCropData, FarmerCreateFarmCropErrors, FarmerCreateFarmCropResponses, FarmerCreateFarmData, FarmerCreateFarmErrors, FarmerCreateFarmResponses, FarmerDeleteFarmCropData, FarmerDeleteFarmCropErrors, FarmerDeleteFarmCropResponses, FarmerDeleteFarmData, FarmerDeleteFarmErrors, FarmerDeleteFarmResponses, FarmerGetFarmCropData, FarmerGetFarmCropErrors, FarmerGetFarmCropResponses, FarmerGetFarmData, FarmerGetFarmerProfileData, FarmerGetFarmerProfileErrors, FarmerGetFarmerProfileResponses, FarmerGetFarmErrors, FarmerGetFarmResponses, FarmerListFarmCropsData, FarmerListFarmCropsErrors, FarmerListFarmCropsResponses, FarmerListFarmsData, FarmerListFarmsErrors, FarmerListFarmsResponses, FarmerUpdateFarmCropData, FarmerUpdateFarmCropErrors, FarmerUpdateFarmCropResponses, FarmerUpdateFarmData, FarmerUpdateFarmErrors, FarmerUpdateFarmResponses, FarmerUpsertFarmerProfileData, FarmerUpsertFarmerProfileErrors, FarmerUpsertFarmerProfileResponses, InventoryGetAlertsData, InventoryGetAlertsErrors, InventoryGetAlertSettingsData, InventoryGetAlertSettingsErrors, InventoryGetAlertSettingsResponses, InventoryGetAlertsResponses, InventoryGetAnalyticsData, InventoryGetAnalyticsErrors, InventoryGetAnalyticsResponses, InventoryGetDashboardData, InventoryGetDashboardErrors, InventoryGetDashboardResponses, InventoryGetLocationsData, InventoryGetLocationsErrors, InventoryGetLocationsResponses, InventoryGetLowOutOfStockData, InventoryGetLowOutOfStockErrors, InventoryGetLowOutOfStockResponses, InventoryGetLowStockData, InventoryGetLowStockErrors, InventoryGetLowStockResponses, InventoryGetMovementsBySourceData, InventoryGetMovementsBySourceErrors, InventoryGetMovementsBySourceResponses, InventoryGetMovementsData, InventoryGetMovementsErrors, InventoryGetMovementsResponses, InventoryGetOneLocationData, InventoryGetOneLocationErrors, InventoryGetOneLocationResponses, InventoryGetOneMovementData, InventoryGetOneMovementErrors, InventoryGetOneMovementResponses, InventoryGetOneProductData, InventoryGetOneProductErrors, InventoryGetOneProductResponses, InventoryGetOnePurchaseData, InventoryGetOnePurchaseErrors, InventoryGetOnePurchaseResponses, InventoryGetOneSupplierData, InventoryGetOneSupplierErrors, InventoryGetOneSupplierResponses, InventoryGetOutOfStockData, InventoryGetOutOfStockErrors, InventoryGetOutOfStockResponses, InventoryGetProductsData, InventoryGetProductsErrors, InventoryGetProductsResponses, InventoryGetPurchasesData, InventoryGetPurchasesErrors, InventoryGetPurchasesResponses, InventoryGetReconciliationReportData, InventoryGetReconciliationReportErrors, InventoryGetReconciliationReportResponses, InventoryGetSalesSplitData, InventoryGetSalesSplitErrors, InventoryGetSalesSplitResponses, InventoryGetStockData, InventoryGetStockErrors, InventoryGetStockResponses, InventoryGetStockSummaryData, InventoryGetStockSummaryErrors, InventoryGetStockSummaryResponses, InventoryGetSupplierPurchasesData, InventoryGetSupplierPurchasesErrors, InventoryGetSupplierPurchasesResponses, InventoryGetSuppliersData, InventoryGetSuppliersErrors, InventoryGetSuppliersResponses, InventoryGetSyncLogData, InventoryGetSyncLogErrors, InventoryGetSyncLogResponses, InventoryGetValuationData, InventoryGetValuationErrors, InventoryGetValuationResponses, InventoryPatchLocationData, InventoryPatchLocationErrors, InventoryPatchLocationResponses, InventoryPatchProductData, InventoryPatchProductErrors, InventoryPatchProductResponses, InventoryPatchPurchaseData, InventoryPatchPurchaseErrors, InventoryPatchPurchaseResponses, InventoryPatchSupplierData, InventoryPatchSupplierErrors, InventoryPatchSupplierResponses, InventoryPostAdjustmentData, InventoryPostAdjustmentErrors, InventoryPostAdjustmentResponses, InventoryPostCancelPurchaseData, InventoryPostCancelPurchaseErrors, InventoryPostCancelPurchaseResponses, InventoryPostExportData, InventoryPostExportErrors, InventoryPostExportResponses, InventoryPostLocationData, InventoryPostLocationErrors, InventoryPostLocationResponses, InventoryPostProductData, InventoryPostProductErrors, InventoryPostProductListingData, InventoryPostProductListingErrors, InventoryPostProductListingResponses, InventoryPostProductResponses, InventoryPostPurchaseData, InventoryPostPurchaseErrors, InventoryPostPurchaseResponses, InventoryPostReceivePurchaseData, InventoryPostReceivePurchaseErrors, InventoryPostReceivePurchaseResponses, InventoryPostStockInData, InventoryPostStockInErrors, InventoryPostStockInResponses, InventoryPostStockOutData, InventoryPostStockOutErrors, InventoryPostStockOutResponses, InventoryPostSupplierData, InventoryPostSupplierErrors, InventoryPostSupplierResponses, InventoryPostSyncRetryData, InventoryPostSyncRetryErrors, InventoryPostSyncRetryResponses, InventoryPostTransferData, InventoryPostTransferErrors, InventoryPostTransferResponses, InventoryPutAlertSettingsData, InventoryPutAlertSettingsErrors, InventoryPutAlertSettingsResponses, InventoryRemoveLocationData, InventoryRemoveLocationErrors, InventoryRemoveLocationResponses, InventoryRemoveProductData, InventoryRemoveProductErrors, InventoryRemoveProductListingData, InventoryRemoveProductListingErrors, InventoryRemoveProductListingResponses, InventoryRemoveProductResponses, InventoryRemoveSupplierData, InventoryRemoveSupplierErrors, InventoryRemoveSupplierResponses, MarketplaceCreateCategoryData, MarketplaceCreateCategoryErrors, MarketplaceCreateCategoryResponses, MarketplaceCreateListingData, MarketplaceCreateListingErrors, MarketplaceCreateListingResponses, MarketplaceDeleteCategoryData, MarketplaceDeleteCategoryErrors, MarketplaceDeleteCategoryResponses, MarketplaceDeleteListingData, MarketplaceDeleteListingErrors, MarketplaceDeleteListingResponses, MarketplaceGetListingData, MarketplaceGetListingErrors, MarketplaceGetListingResponses, MarketplaceGetListingViewCountsData, MarketplaceGetListingViewCountsErrors, MarketplaceGetListingViewCountsResponses, MarketplaceListCategoriesData, MarketplaceListCategoriesErrors, MarketplaceListCategoriesResponses, MarketplaceListCropsData, MarketplaceListCropsErrors, MarketplaceListCropsResponses, MarketplaceListListingsData, MarketplaceListListingsErrors, MarketplaceListListingsForModerationData, MarketplaceListListingsForModerationErrors, MarketplaceListListingsForModerationResponses, MarketplaceListListingsResponses, MarketplaceRecordListingViewData, MarketplaceRecordListingViewErrors, MarketplaceRecordListingViewResponses, MarketplaceUpdateCategoryData, MarketplaceUpdateCategoryErrors, MarketplaceUpdateCategoryResponses, MarketplaceUpdateListingData, MarketplaceUpdateListingErrors, MarketplaceUpdateListingResponses, MarketplaceUpdateListingStatusData, MarketplaceUpdateListingStatusErrors, MarketplaceUpdateListingStatusResponses, MessagingFindOrCreateConversationData, MessagingFindOrCreateConversationErrors, MessagingFindOrCreateConversationResponses, MessagingGetMessageData, MessagingGetMessageErrors, MessagingGetMessageResponses, MessagingListConversationsData, MessagingListConversationsErrors, MessagingListConversationsResponses, MessagingListMessagesData, MessagingListMessagesErrors, MessagingListMessagesResponses, MessagingMarkConversationReadData, MessagingMarkConversationReadErrors, MessagingMarkConversationReadResponses, MessagingRedactMessageData, MessagingRedactMessageErrors, MessagingRedactMessageResponses, MessagingSendMessageData, MessagingSendMessageErrors, MessagingSendMessageResponses, NotificationsListNotificationsData, NotificationsListNotificationsErrors, NotificationsListNotificationsResponses, NotificationsMarkAllReadData, NotificationsMarkAllReadErrors, NotificationsMarkAllReadResponses, NotificationsMarkReadData, NotificationsMarkReadErrors, NotificationsMarkReadResponses, NotificationsUnreadCountData, NotificationsUnreadCountErrors, NotificationsUnreadCountResponses, OrdersCancelOrderAsAdminData, OrdersCancelOrderAsAdminErrors, OrdersCancelOrderAsAdminResponses, OrdersCheckoutData, OrdersCheckoutErrors, OrdersCheckoutResponses, OrdersGetOrderData, OrdersGetOrderErrors, OrdersGetOrderResponses, OrdersGetStatusHistoryData, OrdersGetStatusHistoryErrors, OrdersGetStatusHistoryResponses, OrdersListOrdersData, OrdersListOrdersErrors, OrdersListOrdersResponses, OrdersUpdateOrderStatusData, OrdersUpdateOrderStatusErrors, OrdersUpdateOrderStatusResponses, PaymentsGetPaymentByOrderData, PaymentsGetPaymentByOrderErrors, PaymentsGetPaymentByOrderResponses, PaymentsGetPaymentData, PaymentsGetPaymentErrors, PaymentsGetPaymentResponses, PaymentsInitiatePaymentData, PaymentsInitiatePaymentErrors, PaymentsInitiatePaymentResponses, PaymentsListPaymentTransactionsData, PaymentsListPaymentTransactionsErrors, PaymentsListPaymentTransactionsResponses, PaymentsMarkFailedData, PaymentsMarkFailedErrors, PaymentsMarkFailedResponses, PaymentsMarkReceivedData, PaymentsMarkReceivedErrors, PaymentsMarkReceivedResponses, ProfileDeleteOwnAccountData, ProfileDeleteOwnAccountErrors, ProfileDeleteOwnAccountResponses, ProfileListRequiredDocumentsData, ProfileListRequiredDocumentsErrors, ProfileListRequiredDocumentsResponses, ProfileSubmitApplicationData, ProfileSubmitApplicationErrors, ProfileSubmitApplicationResponses, ProfileUpdateProfileData, ProfileUpdateProfileErrors, ProfileUpdateProfileResponses, ReferenceDataCreateRowData, ReferenceDataCreateRowErrors, ReferenceDataCreateRowResponses, ReferenceDataDeleteRowData, ReferenceDataDeleteRowErrors, ReferenceDataDeleteRowResponses, ReferenceDataListCurrenciesData, ReferenceDataListCurrenciesErrors, ReferenceDataListCurrenciesResponses, ReferenceDataListRowsData, ReferenceDataListRowsErrors, ReferenceDataListRowsResponses, ReferenceDataListUnitsData, ReferenceDataListUnitsErrors, ReferenceDataListUnitsResponses, ReferenceDataUpdateRowData, ReferenceDataUpdateRowErrors, ReferenceDataUpdateRowResponses, ReviewsCreateConsultationReviewData, ReviewsCreateConsultationReviewErrors, ReviewsCreateConsultationReviewResponses, ReviewsCreateReviewData, ReviewsCreateReviewErrors, ReviewsCreateReviewResponses, ReviewsGetReviewByConsultationData, ReviewsGetReviewByConsultationErrors, ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByOrderData, ReviewsGetReviewByOrderErrors, ReviewsGetReviewByOrderResponses, ReviewsGetReviewData, ReviewsGetReviewErrors, ReviewsGetReviewResponses, ReviewsHideReviewData, ReviewsHideReviewErrors, ReviewsHideReviewResponses, ReviewsListReviewsForExpertData, ReviewsListReviewsForExpertErrors, ReviewsListReviewsForExpertResponses, ReviewsListReviewsForListingData, ReviewsListReviewsForListingErrors, ReviewsListReviewsForListingResponses, ReviewsListReviewsForModerationData, ReviewsListReviewsForModerationErrors, ReviewsListReviewsForModerationResponses, ReviewsListReviewsForSellerData, ReviewsListReviewsForSellerErrors, ReviewsListReviewsForSellerResponses, ReviewsRestoreReviewData, ReviewsRestoreReviewErrors, ReviewsRestoreReviewResponses, RootHealthData, RootHealthErrors, RootHealthResponses, RootLivenessData, RootLivenessErrors, RootLivenessResponses, RootReadinessData, RootReadinessErrors, RootReadinessResponses, RootVersionData, RootVersionErrors, RootVersionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -19,12 +19,67 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 };
 
 /**
+ * Get Ai Activity
+ *
+ * Scans, failures, low-confidence results and expert referrals over the last 30 days (SRDS §37). Counts only.
+ */
+export const adminGetAiActivity = <ThrowOnError extends boolean = false>(options?: Options<AdminGetAiActivityData, ThrowOnError>): RequestResult<AdminGetAiActivityResponses, AdminGetAiActivityErrors, ThrowOnError> => (options?.client ?? client).get<AdminGetAiActivityResponses, AdminGetAiActivityErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/ai-activity',
+    ...options
+});
+
+/**
+ * List Audit Events
+ *
+ * The SRDS §51 audit event names with their labels, for the audit screen's filter. Reference data, so no paging.
+ */
+export const adminListAuditEvents = <ThrowOnError extends boolean = false>(options?: Options<AdminListAuditEventsData, ThrowOnError>): RequestResult<AdminListAuditEventsResponses, AdminListAuditEventsErrors, ThrowOnError> => (options?.client ?? client).get<AdminListAuditEventsResponses, AdminListAuditEventsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/audit-events',
+    ...options
+});
+
+/**
  * List Audit Logs
+ *
+ * The audit log, newest first, each row with its §51 label (BR-15). `action` filters by one event name.
  */
 export const adminListAuditLogs = <ThrowOnError extends boolean = false>(options?: Options<AdminListAuditLogsData, ThrowOnError>): RequestResult<AdminListAuditLogsResponses, AdminListAuditLogsErrors, ThrowOnError> => (options?.client ?? client).get<AdminListAuditLogsResponses, AdminListAuditLogsErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/admin/audit-logs',
     ...options
+});
+
+/**
+ * Admin List
+ */
+export const adminAdminList = <ThrowOnError extends boolean = false>(options?: Options<AdminAdminListData, ThrowOnError>): RequestResult<AdminAdminListResponses, AdminAdminListErrors, ThrowOnError> => (options?.client ?? client).get<AdminAdminListResponses, AdminAdminListErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/consultations',
+    ...options
+});
+
+/**
+ * Admin Get
+ */
+export const adminAdminGet = <ThrowOnError extends boolean = false>(options: Options<AdminAdminGetData, ThrowOnError>): RequestResult<AdminAdminGetResponses, AdminAdminGetErrors, ThrowOnError> => (options.client ?? client).get<AdminAdminGetResponses, AdminAdminGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/consultations/{consultation_id}',
+    ...options
+});
+
+/**
+ * Admin Moderate
+ */
+export const adminAdminModerate = <ThrowOnError extends boolean = false>(options: Options<AdminAdminModerateData, ThrowOnError>): RequestResult<AdminAdminModerateResponses, AdminAdminModerateErrors, ThrowOnError> => (options.client ?? client).patch<AdminAdminModerateResponses, AdminAdminModerateErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/consultations/{consultation_id}/moderate',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
 
 /**
@@ -59,11 +114,81 @@ export const adminGetDealerDocumentUrl = <ThrowOnError extends boolean = false>(
 });
 
 /**
+ * List Disease Knowledge
+ *
+ * The advisory text per model class, with its review state (SRDS §37). One row per class, so no paging.
+ */
+export const adminListDiseaseKnowledge = <ThrowOnError extends boolean = false>(options?: Options<AdminListDiseaseKnowledgeData, ThrowOnError>): RequestResult<AdminListDiseaseKnowledgeResponses, AdminListDiseaseKnowledgeErrors, ThrowOnError> => (options?.client ?? client).get<AdminListDiseaseKnowledgeResponses, AdminListDiseaseKnowledgeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/disease-knowledge',
+    ...options
+});
+
+/**
+ * Get Disease Knowledge
+ */
+export const adminGetDiseaseKnowledge = <ThrowOnError extends boolean = false>(options: Options<AdminGetDiseaseKnowledgeData, ThrowOnError>): RequestResult<AdminGetDiseaseKnowledgeResponses, AdminGetDiseaseKnowledgeErrors, ThrowOnError> => (options.client ?? client).get<AdminGetDiseaseKnowledgeResponses, AdminGetDiseaseKnowledgeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/disease-knowledge/{class_label}',
+    ...options
+});
+
+/**
+ * Update Disease Knowledge
+ *
+ * Edits the text; a reviewed entry goes back to pending review. Audited as AI Configuration Changed (BR-15).
+ */
+export const adminUpdateDiseaseKnowledge = <ThrowOnError extends boolean = false>(options: Options<AdminUpdateDiseaseKnowledgeData, ThrowOnError>): RequestResult<AdminUpdateDiseaseKnowledgeResponses, AdminUpdateDiseaseKnowledgeErrors, ThrowOnError> => (options.client ?? client).patch<AdminUpdateDiseaseKnowledgeResponses, AdminUpdateDiseaseKnowledgeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/disease-knowledge/{class_label}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Review Disease Knowledge
+ *
+ * Signs the entry off as reviewed by this admin. Audited as AI Configuration Changed (BR-15).
+ */
+export const adminReviewDiseaseKnowledge = <ThrowOnError extends boolean = false>(options: Options<AdminReviewDiseaseKnowledgeData, ThrowOnError>): RequestResult<AdminReviewDiseaseKnowledgeResponses, AdminReviewDiseaseKnowledgeErrors, ThrowOnError> => (options.client ?? client).post<AdminReviewDiseaseKnowledgeResponses, AdminReviewDiseaseKnowledgeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/disease-knowledge/{class_label}/review',
+    ...options
+});
+
+/**
  * List All Orders
  */
 export const adminListAllOrders = <ThrowOnError extends boolean = false>(options?: Options<AdminListAllOrdersData, ThrowOnError>): RequestResult<AdminListAllOrdersResponses, AdminListAllOrdersErrors, ThrowOnError> => (options?.client ?? client).get<AdminListAllOrdersResponses, AdminListAllOrdersErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/admin/orders',
+    ...options
+});
+
+/**
+ * Cancel Order As Admin
+ */
+export const ordersCancelOrderAsAdmin = <ThrowOnError extends boolean = false>(options: Options<OrdersCancelOrderAsAdminData, ThrowOnError>): RequestResult<OrdersCancelOrderAsAdminResponses, OrdersCancelOrderAsAdminErrors, ThrowOnError> => (options.client ?? client).post<OrdersCancelOrderAsAdminResponses, OrdersCancelOrderAsAdminErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/orders/{order_id}/cancel',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Admin Queues
+ *
+ * The moderation queue counts for the dashboard (SRDS §14). A read, so no second factor and no audit row.
+ */
+export const adminGetAdminQueues = <ThrowOnError extends boolean = false>(options?: Options<AdminGetAdminQueuesData, ThrowOnError>): RequestResult<AdminGetAdminQueuesResponses, AdminGetAdminQueuesErrors, ThrowOnError> => (options?.client ?? client).get<AdminGetAdminQueuesResponses, AdminGetAdminQueuesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/admin/queues',
     ...options
 });
 
@@ -268,6 +393,28 @@ export const consultationsGetConsultation = <ThrowOnError extends boolean = fals
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/consultations/{consultation_id}',
     ...options
+});
+
+/**
+ * List Assessments
+ */
+export const consultationsListAssessments = <ThrowOnError extends boolean = false>(options: Options<ConsultationsListAssessmentsData, ThrowOnError>): RequestResult<ConsultationsListAssessmentsResponses, ConsultationsListAssessmentsErrors, ThrowOnError> => (options.client ?? client).get<ConsultationsListAssessmentsResponses, ConsultationsListAssessmentsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/consultations/{consultation_id}/assessments',
+    ...options
+});
+
+/**
+ * Create Assessment
+ */
+export const consultationsCreateAssessment = <ThrowOnError extends boolean = false>(options: Options<ConsultationsCreateAssessmentData, ThrowOnError>): RequestResult<ConsultationsCreateAssessmentResponses, ConsultationsCreateAssessmentErrors, ThrowOnError> => (options.client ?? client).post<ConsultationsCreateAssessmentResponses, ConsultationsCreateAssessmentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/consultations/{consultation_id}/assessments',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
 
 /**
@@ -589,6 +736,15 @@ export const diseaseGetCase = <ThrowOnError extends boolean = false>(options: Op
 });
 
 /**
+ * List Knowledge
+ */
+export const diseaseListKnowledge = <ThrowOnError extends boolean = false>(options?: Options<DiseaseListKnowledgeData, ThrowOnError>): RequestResult<DiseaseListKnowledgeResponses, DiseaseListKnowledgeErrors, ThrowOnError> => (options?.client ?? client).get<DiseaseListKnowledgeResponses, DiseaseListKnowledgeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/disease/knowledge',
+    ...options
+});
+
+/**
  * Predict Disease
  */
 export const diseasePredictDisease = <ThrowOnError extends boolean = false>(options: Options<DiseasePredictDiseaseData, ThrowOnError>): RequestResult<DiseasePredictDiseaseResponses, DiseasePredictDiseaseErrors, ThrowOnError> => (options.client ?? client).post<DiseasePredictDiseaseResponses, DiseasePredictDiseaseErrors, ThrowOnError>({
@@ -848,6 +1004,493 @@ export const farmerUpsertFarmerProfile = <ThrowOnError extends boolean = false>(
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Get Alerts
+ */
+export const inventoryGetAlerts = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetAlertsData, ThrowOnError>): RequestResult<InventoryGetAlertsResponses, InventoryGetAlertsErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetAlertsResponses, InventoryGetAlertsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/alerts',
+    ...options
+});
+
+/**
+ * Get Low Stock
+ */
+export const inventoryGetLowStock = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetLowStockData, ThrowOnError>): RequestResult<InventoryGetLowStockResponses, InventoryGetLowStockErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetLowStockResponses, InventoryGetLowStockErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/alerts/low-stock',
+    ...options
+});
+
+/**
+ * Get Out Of Stock
+ */
+export const inventoryGetOutOfStock = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetOutOfStockData, ThrowOnError>): RequestResult<InventoryGetOutOfStockResponses, InventoryGetOutOfStockErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetOutOfStockResponses, InventoryGetOutOfStockErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/alerts/out-of-stock',
+    ...options
+});
+
+/**
+ * Get Alert Settings
+ */
+export const inventoryGetAlertSettings = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetAlertSettingsData, ThrowOnError>): RequestResult<InventoryGetAlertSettingsResponses, InventoryGetAlertSettingsErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetAlertSettingsResponses, InventoryGetAlertSettingsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/alerts/settings',
+    ...options
+});
+
+/**
+ * Put Alert Settings
+ */
+export const inventoryPutAlertSettings = <ThrowOnError extends boolean = false>(options: Options<InventoryPutAlertSettingsData, ThrowOnError>): RequestResult<InventoryPutAlertSettingsResponses, InventoryPutAlertSettingsErrors, ThrowOnError> => (options.client ?? client).put<InventoryPutAlertSettingsResponses, InventoryPutAlertSettingsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/alerts/settings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Dashboard
+ */
+export const inventoryGetDashboard = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetDashboardData, ThrowOnError>): RequestResult<InventoryGetDashboardResponses, InventoryGetDashboardErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetDashboardResponses, InventoryGetDashboardErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/dashboard',
+    ...options
+});
+
+/**
+ * Post Export
+ *
+ * One report as a CSV file; the link in the answer is valid for ten minutes.
+ */
+export const inventoryPostExport = <ThrowOnError extends boolean = false>(options: Options<InventoryPostExportData, ThrowOnError>): RequestResult<InventoryPostExportResponses, InventoryPostExportErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostExportResponses, InventoryPostExportErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/exports',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Locations
+ */
+export const inventoryGetLocations = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetLocationsData, ThrowOnError>): RequestResult<InventoryGetLocationsResponses, InventoryGetLocationsErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetLocationsResponses, InventoryGetLocationsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/locations',
+    ...options
+});
+
+/**
+ * Post Location
+ */
+export const inventoryPostLocation = <ThrowOnError extends boolean = false>(options: Options<InventoryPostLocationData, ThrowOnError>): RequestResult<InventoryPostLocationResponses, InventoryPostLocationErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostLocationResponses, InventoryPostLocationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/locations',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove Location
+ */
+export const inventoryRemoveLocation = <ThrowOnError extends boolean = false>(options: Options<InventoryRemoveLocationData, ThrowOnError>): RequestResult<InventoryRemoveLocationResponses, InventoryRemoveLocationErrors, ThrowOnError> => (options.client ?? client).delete<InventoryRemoveLocationResponses, InventoryRemoveLocationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/locations/{location_id}',
+    ...options
+});
+
+/**
+ * Get One Location
+ */
+export const inventoryGetOneLocation = <ThrowOnError extends boolean = false>(options: Options<InventoryGetOneLocationData, ThrowOnError>): RequestResult<InventoryGetOneLocationResponses, InventoryGetOneLocationErrors, ThrowOnError> => (options.client ?? client).get<InventoryGetOneLocationResponses, InventoryGetOneLocationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/locations/{location_id}',
+    ...options
+});
+
+/**
+ * Patch Location
+ */
+export const inventoryPatchLocation = <ThrowOnError extends boolean = false>(options: Options<InventoryPatchLocationData, ThrowOnError>): RequestResult<InventoryPatchLocationResponses, InventoryPatchLocationErrors, ThrowOnError> => (options.client ?? client).patch<InventoryPatchLocationResponses, InventoryPatchLocationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/locations/{location_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Movements
+ *
+ * The ledger, newest first. `source` may repeat; `from` and `to` are inclusive dates (UTC).
+ */
+export const inventoryGetMovements = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetMovementsData, ThrowOnError>): RequestResult<InventoryGetMovementsResponses, InventoryGetMovementsErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetMovementsResponses, InventoryGetMovementsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/movements',
+    ...options
+});
+
+/**
+ * Post Adjustment
+ */
+export const inventoryPostAdjustment = <ThrowOnError extends boolean = false>(options: Options<InventoryPostAdjustmentData, ThrowOnError>): RequestResult<InventoryPostAdjustmentResponses, InventoryPostAdjustmentErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostAdjustmentResponses, InventoryPostAdjustmentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/movements/adjustment',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Post Stock In
+ */
+export const inventoryPostStockIn = <ThrowOnError extends boolean = false>(options: Options<InventoryPostStockInData, ThrowOnError>): RequestResult<InventoryPostStockInResponses, InventoryPostStockInErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostStockInResponses, InventoryPostStockInErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/movements/stock-in',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Post Stock Out
+ */
+export const inventoryPostStockOut = <ThrowOnError extends boolean = false>(options: Options<InventoryPostStockOutData, ThrowOnError>): RequestResult<InventoryPostStockOutResponses, InventoryPostStockOutErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostStockOutResponses, InventoryPostStockOutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/movements/stock-out',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get One Movement
+ */
+export const inventoryGetOneMovement = <ThrowOnError extends boolean = false>(options: Options<InventoryGetOneMovementData, ThrowOnError>): RequestResult<InventoryGetOneMovementResponses, InventoryGetOneMovementErrors, ThrowOnError> => (options.client ?? client).get<InventoryGetOneMovementResponses, InventoryGetOneMovementErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/movements/{movement_id}',
+    ...options
+});
+
+/**
+ * Get Products
+ */
+export const inventoryGetProducts = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetProductsData, ThrowOnError>): RequestResult<InventoryGetProductsResponses, InventoryGetProductsErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetProductsResponses, InventoryGetProductsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/products',
+    ...options
+});
+
+/**
+ * Post Product
+ */
+export const inventoryPostProduct = <ThrowOnError extends boolean = false>(options: Options<InventoryPostProductData, ThrowOnError>): RequestResult<InventoryPostProductResponses, InventoryPostProductErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostProductResponses, InventoryPostProductErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/products',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove Product
+ */
+export const inventoryRemoveProduct = <ThrowOnError extends boolean = false>(options: Options<InventoryRemoveProductData, ThrowOnError>): RequestResult<InventoryRemoveProductResponses, InventoryRemoveProductErrors, ThrowOnError> => (options.client ?? client).delete<InventoryRemoveProductResponses, InventoryRemoveProductErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/products/{product_id}',
+    ...options
+});
+
+/**
+ * Get One Product
+ */
+export const inventoryGetOneProduct = <ThrowOnError extends boolean = false>(options: Options<InventoryGetOneProductData, ThrowOnError>): RequestResult<InventoryGetOneProductResponses, InventoryGetOneProductErrors, ThrowOnError> => (options.client ?? client).get<InventoryGetOneProductResponses, InventoryGetOneProductErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/products/{product_id}',
+    ...options
+});
+
+/**
+ * Patch Product
+ */
+export const inventoryPatchProduct = <ThrowOnError extends boolean = false>(options: Options<InventoryPatchProductData, ThrowOnError>): RequestResult<InventoryPatchProductResponses, InventoryPatchProductErrors, ThrowOnError> => (options.client ?? client).patch<InventoryPatchProductResponses, InventoryPatchProductErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/products/{product_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Post Product Listing
+ */
+export const inventoryPostProductListing = <ThrowOnError extends boolean = false>(options: Options<InventoryPostProductListingData, ThrowOnError>): RequestResult<InventoryPostProductListingResponses, InventoryPostProductListingErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostProductListingResponses, InventoryPostProductListingErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/products/{product_id}/listings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove Product Listing
+ */
+export const inventoryRemoveProductListing = <ThrowOnError extends boolean = false>(options: Options<InventoryRemoveProductListingData, ThrowOnError>): RequestResult<InventoryRemoveProductListingResponses, InventoryRemoveProductListingErrors, ThrowOnError> => (options.client ?? client).delete<InventoryRemoveProductListingResponses, InventoryRemoveProductListingErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/products/{product_id}/listings/{listing_id}',
+    ...options
+});
+
+/**
+ * Get Purchases
+ */
+export const inventoryGetPurchases = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetPurchasesData, ThrowOnError>): RequestResult<InventoryGetPurchasesResponses, InventoryGetPurchasesErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetPurchasesResponses, InventoryGetPurchasesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/purchases',
+    ...options
+});
+
+/**
+ * Post Purchase
+ */
+export const inventoryPostPurchase = <ThrowOnError extends boolean = false>(options: Options<InventoryPostPurchaseData, ThrowOnError>): RequestResult<InventoryPostPurchaseResponses, InventoryPostPurchaseErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostPurchaseResponses, InventoryPostPurchaseErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/purchases',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get One Purchase
+ */
+export const inventoryGetOnePurchase = <ThrowOnError extends boolean = false>(options: Options<InventoryGetOnePurchaseData, ThrowOnError>): RequestResult<InventoryGetOnePurchaseResponses, InventoryGetOnePurchaseErrors, ThrowOnError> => (options.client ?? client).get<InventoryGetOnePurchaseResponses, InventoryGetOnePurchaseErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/purchases/{purchase_id}',
+    ...options
+});
+
+/**
+ * Patch Purchase
+ */
+export const inventoryPatchPurchase = <ThrowOnError extends boolean = false>(options: Options<InventoryPatchPurchaseData, ThrowOnError>): RequestResult<InventoryPatchPurchaseResponses, InventoryPatchPurchaseErrors, ThrowOnError> => (options.client ?? client).patch<InventoryPatchPurchaseResponses, InventoryPatchPurchaseErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/purchases/{purchase_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Post Cancel Purchase
+ */
+export const inventoryPostCancelPurchase = <ThrowOnError extends boolean = false>(options: Options<InventoryPostCancelPurchaseData, ThrowOnError>): RequestResult<InventoryPostCancelPurchaseResponses, InventoryPostCancelPurchaseErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostCancelPurchaseResponses, InventoryPostCancelPurchaseErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/purchases/{purchase_id}/cancel',
+    ...options
+});
+
+/**
+ * Post Receive Purchase
+ */
+export const inventoryPostReceivePurchase = <ThrowOnError extends boolean = false>(options: Options<InventoryPostReceivePurchaseData, ThrowOnError>): RequestResult<InventoryPostReceivePurchaseResponses, InventoryPostReceivePurchaseErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostReceivePurchaseResponses, InventoryPostReceivePurchaseErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/purchases/{purchase_id}/receive',
+    ...options
+});
+
+/**
+ * Get Analytics
+ */
+export const inventoryGetAnalytics = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetAnalyticsData, ThrowOnError>): RequestResult<InventoryGetAnalyticsResponses, InventoryGetAnalyticsErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetAnalyticsResponses, InventoryGetAnalyticsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/reports/analytics',
+    ...options
+});
+
+/**
+ * Get Low Out Of Stock
+ */
+export const inventoryGetLowOutOfStock = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetLowOutOfStockData, ThrowOnError>): RequestResult<InventoryGetLowOutOfStockResponses, InventoryGetLowOutOfStockErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetLowOutOfStockResponses, InventoryGetLowOutOfStockErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/reports/low-out-of-stock',
+    ...options
+});
+
+/**
+ * Get Movements By Source
+ */
+export const inventoryGetMovementsBySource = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetMovementsBySourceData, ThrowOnError>): RequestResult<InventoryGetMovementsBySourceResponses, InventoryGetMovementsBySourceErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetMovementsBySourceResponses, InventoryGetMovementsBySourceErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/reports/movements-by-source',
+    ...options
+});
+
+/**
+ * Get Reconciliation Report
+ */
+export const inventoryGetReconciliationReport = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetReconciliationReportData, ThrowOnError>): RequestResult<InventoryGetReconciliationReportResponses, InventoryGetReconciliationReportErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetReconciliationReportResponses, InventoryGetReconciliationReportErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/reports/reconciliation',
+    ...options
+});
+
+/**
+ * Get Sales Split
+ */
+export const inventoryGetSalesSplit = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetSalesSplitData, ThrowOnError>): RequestResult<InventoryGetSalesSplitResponses, InventoryGetSalesSplitErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetSalesSplitResponses, InventoryGetSalesSplitErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/reports/sales-split',
+    ...options
+});
+
+/**
+ * Get Stock Summary
+ */
+export const inventoryGetStockSummary = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetStockSummaryData, ThrowOnError>): RequestResult<InventoryGetStockSummaryResponses, InventoryGetStockSummaryErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetStockSummaryResponses, InventoryGetStockSummaryErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/reports/stock-summary',
+    ...options
+});
+
+/**
+ * Get Supplier Purchases
+ */
+export const inventoryGetSupplierPurchases = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetSupplierPurchasesData, ThrowOnError>): RequestResult<InventoryGetSupplierPurchasesResponses, InventoryGetSupplierPurchasesErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetSupplierPurchasesResponses, InventoryGetSupplierPurchasesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/reports/supplier-purchases',
+    ...options
+});
+
+/**
+ * Get Valuation
+ */
+export const inventoryGetValuation = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetValuationData, ThrowOnError>): RequestResult<InventoryGetValuationResponses, InventoryGetValuationErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetValuationResponses, InventoryGetValuationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/reports/valuation',
+    ...options
+});
+
+/**
+ * Get Stock
+ */
+export const inventoryGetStock = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetStockData, ThrowOnError>): RequestResult<InventoryGetStockResponses, InventoryGetStockErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetStockResponses, InventoryGetStockErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/stock',
+    ...options
+});
+
+/**
+ * Post Transfer
+ */
+export const inventoryPostTransfer = <ThrowOnError extends boolean = false>(options: Options<InventoryPostTransferData, ThrowOnError>): RequestResult<InventoryPostTransferResponses, InventoryPostTransferErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostTransferResponses, InventoryPostTransferErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/stock/transfer',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Suppliers
+ */
+export const inventoryGetSuppliers = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetSuppliersData, ThrowOnError>): RequestResult<InventoryGetSuppliersResponses, InventoryGetSuppliersErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetSuppliersResponses, InventoryGetSuppliersErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/suppliers',
+    ...options
+});
+
+/**
+ * Post Supplier
+ */
+export const inventoryPostSupplier = <ThrowOnError extends boolean = false>(options: Options<InventoryPostSupplierData, ThrowOnError>): RequestResult<InventoryPostSupplierResponses, InventoryPostSupplierErrors, ThrowOnError> => (options.client ?? client).post<InventoryPostSupplierResponses, InventoryPostSupplierErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/suppliers',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove Supplier
+ */
+export const inventoryRemoveSupplier = <ThrowOnError extends boolean = false>(options: Options<InventoryRemoveSupplierData, ThrowOnError>): RequestResult<InventoryRemoveSupplierResponses, InventoryRemoveSupplierErrors, ThrowOnError> => (options.client ?? client).delete<InventoryRemoveSupplierResponses, InventoryRemoveSupplierErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/suppliers/{supplier_id}',
+    ...options
+});
+
+/**
+ * Get One Supplier
+ */
+export const inventoryGetOneSupplier = <ThrowOnError extends boolean = false>(options: Options<InventoryGetOneSupplierData, ThrowOnError>): RequestResult<InventoryGetOneSupplierResponses, InventoryGetOneSupplierErrors, ThrowOnError> => (options.client ?? client).get<InventoryGetOneSupplierResponses, InventoryGetOneSupplierErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/suppliers/{supplier_id}',
+    ...options
+});
+
+/**
+ * Patch Supplier
+ */
+export const inventoryPatchSupplier = <ThrowOnError extends boolean = false>(options: Options<InventoryPatchSupplierData, ThrowOnError>): RequestResult<InventoryPatchSupplierResponses, InventoryPatchSupplierErrors, ThrowOnError> => (options.client ?? client).patch<InventoryPatchSupplierResponses, InventoryPatchSupplierErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/suppliers/{supplier_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Sync Log
+ */
+export const inventoryGetSyncLog = <ThrowOnError extends boolean = false>(options?: Options<InventoryGetSyncLogData, ThrowOnError>): RequestResult<InventoryGetSyncLogResponses, InventoryGetSyncLogErrors, ThrowOnError> => (options?.client ?? client).get<InventoryGetSyncLogResponses, InventoryGetSyncLogErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/sync/log',
+    ...options
+});
+
+/**
+ * Post Sync Retry
+ */
+export const inventoryPostSyncRetry = <ThrowOnError extends boolean = false>(options?: Options<InventoryPostSyncRetryData, ThrowOnError>): RequestResult<InventoryPostSyncRetryResponses, InventoryPostSyncRetryErrors, ThrowOnError> => (options?.client ?? client).post<InventoryPostSyncRetryResponses, InventoryPostSyncRetryErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/inventory/sync/retry',
+    ...options
 });
 
 /**
@@ -1329,9 +1972,22 @@ export const reviewsCreateReview = <ThrowOnError extends boolean = false>(option
 });
 
 /**
+ * List Reviews For Moderation
+ */
+export const reviewsListReviewsForModeration = <ThrowOnError extends boolean = false>(options?: Options<ReviewsListReviewsForModerationData, ThrowOnError>): RequestResult<ReviewsListReviewsForModerationResponses, ReviewsListReviewsForModerationErrors, ThrowOnError> => (options?.client ?? client).get<ReviewsListReviewsForModerationResponses, ReviewsListReviewsForModerationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/reviews/admin',
+    ...options
+});
+
+/**
  * Get Review By Consultation
  */
-export const reviewsGetReviewByConsultation = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewByConsultationData, ThrowOnError>): RequestResult<ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByConsultationErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByConsultationErrors, ThrowOnError>({ url: '/api/v1/reviews/by-consultation/{consultation_id}', ...options });
+export const reviewsGetReviewByConsultation = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewByConsultationData, ThrowOnError>): RequestResult<ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByConsultationErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewByConsultationResponses, ReviewsGetReviewByConsultationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/reviews/by-consultation/{consultation_id}',
+    ...options
+});
 
 /**
  * List Reviews For Expert
@@ -1346,7 +2002,11 @@ export const reviewsListReviewsForListing = <ThrowOnError extends boolean = fals
 /**
  * Get Review By Order
  */
-export const reviewsGetReviewByOrder = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewByOrderData, ThrowOnError>): RequestResult<ReviewsGetReviewByOrderResponses, ReviewsGetReviewByOrderErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewByOrderResponses, ReviewsGetReviewByOrderErrors, ThrowOnError>({ url: '/api/v1/reviews/by-order/{order_id}', ...options });
+export const reviewsGetReviewByOrder = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewByOrderData, ThrowOnError>): RequestResult<ReviewsGetReviewByOrderResponses, ReviewsGetReviewByOrderErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewByOrderResponses, ReviewsGetReviewByOrderErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/reviews/by-order/{order_id}',
+    ...options
+});
 
 /**
  * List Reviews For Seller
@@ -1367,18 +2027,31 @@ export const reviewsCreateConsultationReview = <ThrowOnError extends boolean = f
 });
 
 /**
- * Delete Review
- */
-export const reviewsDeleteReview = <ThrowOnError extends boolean = false>(options: Options<ReviewsDeleteReviewData, ThrowOnError>): RequestResult<ReviewsDeleteReviewResponses, ReviewsDeleteReviewErrors, ThrowOnError> => (options.client ?? client).delete<ReviewsDeleteReviewResponses, ReviewsDeleteReviewErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/reviews/{review_id}',
-    ...options
-});
-
-/**
  * Get Review
  */
 export const reviewsGetReview = <ThrowOnError extends boolean = false>(options: Options<ReviewsGetReviewData, ThrowOnError>): RequestResult<ReviewsGetReviewResponses, ReviewsGetReviewErrors, ThrowOnError> => (options.client ?? client).get<ReviewsGetReviewResponses, ReviewsGetReviewErrors, ThrowOnError>({ url: '/api/v1/reviews/{review_id}', ...options });
+
+/**
+ * Hide Review
+ */
+export const reviewsHideReview = <ThrowOnError extends boolean = false>(options: Options<ReviewsHideReviewData, ThrowOnError>): RequestResult<ReviewsHideReviewResponses, ReviewsHideReviewErrors, ThrowOnError> => (options.client ?? client).patch<ReviewsHideReviewResponses, ReviewsHideReviewErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/reviews/{review_id}/hide',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Restore Review
+ */
+export const reviewsRestoreReview = <ThrowOnError extends boolean = false>(options: Options<ReviewsRestoreReviewData, ThrowOnError>): RequestResult<ReviewsRestoreReviewResponses, ReviewsRestoreReviewErrors, ThrowOnError> => (options.client ?? client).patch<ReviewsRestoreReviewResponses, ReviewsRestoreReviewErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/reviews/{review_id}/restore',
+    ...options
+});
 
 /**
  * Health

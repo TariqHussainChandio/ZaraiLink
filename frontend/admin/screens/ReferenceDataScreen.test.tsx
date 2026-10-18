@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
 import { queryKeys } from '../../hooks/keys';
@@ -45,12 +44,19 @@ beforeEach(() => {
   useAuthStore.setState({ user: { id: 'admin-1' } as never });
   queryClient.clear();
   jest.spyOn(queryClient, 'invalidateQueries');
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
   jest.restoreAllMocks();
 });
+
+/** The sheet's button: it renders after the card's button of the same name, so it is the last match. */
+function sheetButton(label: string) {
+  const matches = screen.getAllByText(label);
+  const last = matches[matches.length - 1];
+  if (!last) throw new Error(`No "${label}" button`);
+  return last;
+}
 
 describe('ReferenceDataScreen', () => {
   it('loads currencies by default', async () => {
@@ -89,7 +95,7 @@ describe('ReferenceDataScreen', () => {
     await renderWithQuery(<ReferenceDataScreen />, queryClient);
     await screen.findByText('No currencies yet');
 
-    await fireEvent.press(screen.getByText('+ Add Currencie'));
+    await fireEvent.press(screen.getByText('+ Add Currency'));
     await fireEvent.changeText(screen.getByLabelText('Code'), 'USD');
     await fireEvent.changeText(screen.getByLabelText('Symbol'), '$');
     await fireEvent.changeText(screen.getByLabelText('Name'), 'US Dollar');
@@ -120,17 +126,32 @@ describe('ReferenceDataScreen', () => {
     });
   });
 
-  it('deletes a row after confirming the alert', async () => {
+  it('deletes a row only after confirming in the sheet', async () => {
     mockFetchRows.mockResolvedValue([{ id: 'cur-1', code: 'PKR', symbol: 'Rs.', name: 'Pakistani Rupee' }]);
     mockDeleteRow.mockResolvedValue(undefined);
-    (Alert.alert as jest.Mock).mockImplementation((_title, _msg, buttons) => {
-      buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
-    });
     await renderWithQuery(<ReferenceDataScreen />, queryClient);
     await screen.findByText('PKR — Pakistani Rupee');
 
     await fireEvent.press(screen.getByText('Delete'));
+    // The row's button only opens the confirmation; nothing is deleted yet.
+    expect(await screen.findByText('Delete "PKR — Pakistani Rupee"? This cannot be undone.')).toBeTruthy();
+    expect(mockDeleteRow).not.toHaveBeenCalled();
+
+    await fireEvent.press(sheetButton('Delete'));
 
     expect(mockDeleteRow).toHaveBeenCalledWith('currencies', 'cur-1');
+    expect(await screen.findByText('Entry deleted')).toBeTruthy();
+  });
+
+  it('cancelling the confirmation deletes nothing', async () => {
+    mockFetchRows.mockResolvedValue([{ id: 'cur-1', code: 'PKR', symbol: 'Rs.', name: 'Pakistani Rupee' }]);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
+    await screen.findByText('PKR — Pakistani Rupee');
+
+    await fireEvent.press(screen.getByText('Delete'));
+    await fireEvent.press(await screen.findByText('Cancel'));
+
+    expect(screen.queryByText('Delete "PKR — Pakistani Rupee"? This cannot be undone.')).toBeNull();
+    expect(mockDeleteRow).not.toHaveBeenCalled();
   });
 });
