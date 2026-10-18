@@ -6,6 +6,7 @@ import { Chip, ChipRow, EmptyState, ScreenState, SelectField } from '../../commo
 import { statusMeta } from '../../common/constants/status';
 import { type Theme, useTheme } from '../../theme';
 import { useMovements } from '../hooks/inventory';
+import { useUtcDay } from '../hooks/utcDay';
 import { useLookups } from '../hooks/lookups';
 import { MOVEMENT_SOURCES, type MovementFilters, type MovementSource } from '../types/inventory';
 import { MovementRow } from './MovementRow';
@@ -26,9 +27,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** The UTC day `days` ago as "YYYY-MM-DD": the API's `from` is an inclusive date, not a timestamp (a timestamp was
  * refused with a 422 on the emulator). It stays the same all day, and so does the filter's cache key. */
-function since(period: Period): string | undefined {
+function since(period: Period, today: string): string | undefined {
   if (period === 'all') return undefined;
-  return new Date(Date.now() - Number(period) * DAY_MS).toISOString().slice(0, 10);
+  return new Date(Date.parse(`${today}T00:00:00Z`) - Number(period) * DAY_MS).toISOString().slice(0, 10);
 }
 
 export interface MovementHistoryProps {
@@ -48,13 +49,15 @@ export function MovementHistory({ initialProductId, header }: MovementHistoryPro
   const [period, setPeriod] = useState<Period>('30');
   const { products, productById, locationById } = useLookups();
 
+  // The UTC day the period counts back from; it moves at UTC midnight, so the filter does too.
+  const today = useUtcDay();
   const filters = useMemo<MovementFilters>(
     () => ({
       sources: sources.length > 0 ? [...sources].sort() : undefined,
       productId: productId === ALL_PRODUCTS ? undefined : productId,
-      from: since(period),
+      from: since(period, today),
     }),
-    [sources, productId, period],
+    [sources, productId, period, today],
   );
   const result = useMovements(filters);
   const { data, refetch, isRefetching } = result;

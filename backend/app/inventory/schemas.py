@@ -3,11 +3,12 @@
 They mirror supabase/migrations/20261021080000_inventory_data_model.sql and 20261022090000_inventory_sync.sql.
 """
 
+import re
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 # SRDS §24: every stock change carries one of these sources.
 MovementSource = Literal[
@@ -40,6 +41,32 @@ def _two_decimals_at_most(value: float) -> float:
 
 # A quantity of stock: finite (JSON NaN and Infinity are refused, not passed on), more than zero, two decimals.
 Quantity = Annotated[float, Field(gt=0, lt=NUMERIC_LIMIT, allow_inf_nan=False), AfterValidator(_two_decimals_at_most)]
+
+# The days a report, an export or the ledger filter may name. The ledger starts in 2026, so a year outside this range
+# is a typing slip; the far end also keeps `to` + 1 day, the exclusive bound of every period read, a real date
+# (9999-12-31 would overflow into a 500).
+FIRST_DAY = date(2000, 1, 1)
+LAST_DAY = date(2099, 12, 31)
+_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _calendar_day(value: object) -> object:
+    """A period is whole days written YYYY-MM-DD. Pydantic also reads a timestamp at midnight ('2026-10-01T00:00:00',
+    or 1790812800 seconds) as that day; a client sending one has mixed up its units, so it is refused, not guessed."""
+    if isinstance(value, str) and _ISO_DAY.fullmatch(value):
+        return value
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    raise ValueError("Use a date written YYYY-MM-DD")
+
+
+def _within_range(value: date) -> date:
+    if not FIRST_DAY <= value <= LAST_DAY:
+        raise ValueError(f"Use a date from {FIRST_DAY.isoformat()} to {LAST_DAY.isoformat()}")
+    return value
+
+
+Day = Annotated[date, BeforeValidator(_calendar_day), AfterValidator(_within_range)]
 # A price, cost or threshold: the same, but zero is allowed.
 Amount = Annotated[float, Field(ge=0, lt=NUMERIC_LIMIT, allow_inf_nan=False), AfterValidator(_two_decimals_at_most)]
 
@@ -601,8 +628,8 @@ class ExportInput(BaseModel):
 
     report: ReportName
     # Inclusive UTC days, last 30 days by default; reconciliation covers the whole ledger and ignores them.
-    from_: date | None = Field(default=None, alias="from")
-    to: date | None = None
+    from_: Day | None = Field(default=None, alias="from")
+    to: Day | None = None
 
 
 class ExportResult(BaseModel):

@@ -12,6 +12,9 @@ import { INVENTORY_ROUTES } from '../types/navigation';
 import { DashboardScreen } from './DashboardScreen';
 import { OperationScreen } from './OperationScreen';
 import { ProductListScreen } from './ProductListScreen';
+import { ReportsScreen } from './ReportsScreen';
+import { rangeFor } from '../components/reportRange';
+import { REPORTS } from '../testUtils/reports';
 
 // The B4 rule (maintainer, 2026-10-11): offline, the inventory system shows the copy kept on the phone under the
 // offline banner, and a write fails at once and says so; nothing is queued.
@@ -28,6 +31,7 @@ function cachedClient() {
   client.setQueryData(inventoryKeys.products(), [product()]);
   client.setQueryData(inventoryKeys.locations(), [location(), godown()]);
   client.setQueryData(inventoryKeys.product('prod-urea'), product());
+  client.setQueryData(inventoryKeys.report('stock-summary', rangeFor('30')), REPORTS['stock-summary']);
   return client;
 }
 
@@ -38,6 +42,7 @@ beforeEach(async () => {
   for (const read of [api.fetchDashboard, api.fetchProducts, api.fetchLocations, api.fetchProduct, api.fetchMovements]) {
     read.mockRejectedValue(offline);
   }
+  api.fetchReport.mockRejectedValue(offline);
   useNetworkStore.getState().setOffline(true);
   await signInApprovedDealer();
 });
@@ -81,5 +86,17 @@ describe('the inventory system offline', () => {
     expect(await screen.findByText("You're offline — this change wasn't saved.")).toBeTruthy();
     expect(api.postStockOut).not.toHaveBeenCalled();
     expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('shows the cached report, and refuses an export with a message (B5)', async () => {
+    await renderWithProviders(
+      <ReportsScreen {...screenProps<typeof INVENTORY_ROUTES.Reports>(undefined, { navigate: jest.fn() })} />,
+      cachedClient(),
+    );
+    expect(await screen.findByLabelText('Stock on hand: 32')).toBeTruthy();
+    expect(screen.queryByText("Couldn't load this report")).toBeNull();
+    await fireEvent.press(screen.getByText('Export CSV'));
+    expect(await screen.findByText("You're offline. Connect to the internet to export this report.")).toBeTruthy();
+    expect(api.createExport).not.toHaveBeenCalled();
   });
 });

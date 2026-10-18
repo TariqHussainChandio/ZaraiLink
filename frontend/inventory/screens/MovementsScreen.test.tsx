@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { renderWithProviders } from '../../testUtils/renderWithProviders';
 import * as service from '../services/inventoryService';
@@ -68,6 +68,18 @@ describe('MovementsScreen and MovementHistory (SRDS §22, §25)', () => {
     // Pressing a source again takes it off.
     await fireEvent.press(screen.getByRole('button', { name: 'Damage' }));
     await waitFor(() => expect(lastFilters()?.sources).toEqual(['EXPIRY']));
+  });
+
+  it('counts the period back from the new UTC day once midnight passes (B5 verification)', async () => {
+    jest.useFakeTimers({ now: new Date('2026-10-18T23:59:55Z'), advanceTimers: true });
+    try {
+      await renderMovements();
+      await waitFor(() => expect(lastFilters()?.from).toBe('2026-09-18'));
+      await act(async () => jest.advanceTimersByTime(10_000));
+      await waitFor(() => expect(lastFilters()?.from).toBe('2026-09-19'));
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('opens filtered to one product when reached from a product', async () => {

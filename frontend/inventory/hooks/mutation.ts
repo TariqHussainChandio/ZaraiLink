@@ -13,6 +13,11 @@ class OfflineWriteError extends Error {
   }
 }
 
+/** True for a write refused on the phone because it is offline (nothing was sent). */
+export function isOfflineWrite(error: unknown): boolean {
+  return error instanceof OfflineWriteError;
+}
+
 /**
  * Every inventory write goes through here. The maintainer's rule for the inventory system (2026-10-11): reads come
  * from the device cache when offline, writes fail at once and say so. There is no queue: a stock change replayed

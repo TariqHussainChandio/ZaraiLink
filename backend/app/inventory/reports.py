@@ -28,6 +28,7 @@ from app.inventory.movements import day_start
 from app.inventory.products import product_view
 from app.inventory.schemas import (
     AnalyticsReport,
+    Day,
     LowOutOfStockReport,
     MovementsBySourceReport,
     MovementSource,
@@ -42,6 +43,17 @@ DEFAULT_DAYS = 30
 # A year and a day covers any calendar year; a longer range is refused rather than read row by row.
 MAX_DAYS = 366
 MOVERS = 5
+RECONCILIATION_FIGURES = (
+    "marketplace_sales",
+    "local_sales",
+    "adjustments",
+    "restocks_and_purchases",
+    "losses",
+    "transfers",
+    "other",
+    "ledger_total",
+    "current_stock",
+)
 MARKETPLACE = "ZARAILINK_ORDER"
 LOCAL = "LOCAL_SALE"
 # A transfer moves stock between the dealer's own places, not into or out of the business (as in the dashboard trend).
@@ -62,6 +74,13 @@ def report_period(date_from: date | None, date_to: date | None) -> tuple[date, d
     if (to - start).days + 1 > MAX_DAYS:
         raise AppHTTPException(422, f"A report covers at most {MAX_DAYS} days", "validation_failed")
     return start, to
+
+
+def _q(figure: float) -> float:
+    """A quantity or an amount as the report shows it: two decimals. Every ledger quantity has at most two (B1), so a
+    sum of them does too, but a float sum carries noise (0.1 + 0.2 is 0.30000000000000004) that must not reach a report
+    or its CSV. Adding 0.0 turns a rounded -0.0 into 0.0."""
+    return round(figure, 2) + 0.0
 
 
 def _days(start: date, to: date) -> list[date]:
@@ -132,13 +151,13 @@ async def stock_summary(user: AuthenticatedUser, start: date, to: date) -> dict:
                     "unit": product["unit"],
                     "location_id": stock["location_id"],
                     "location_name": location_names.get(stock["location_id"], ""),
-                    "quantity": stock["quantity"],
-                    "period_in": flow["in"],
-                    "period_out": flow["out"],
+                    "quantity": _q(stock["quantity"]),
+                    "period_in": _q(flow["in"]),
+                    "period_out": _q(flow["out"]),
                 }
             )
     rows.sort(key=lambda r: (r["name"], r["location_name"]))
-    return {**_envelope(start, to), "rows": rows, "total_quantity": sum(r["quantity"] for r in rows)}
+    return {**_envelope(start, to), "rows": rows, "total_quantity": _q(sum(r["quantity"] for r in rows))}
 
 
 async def valuation(user: AuthenticatedUser, start: date, to: date) -> dict:
@@ -147,7 +166,7 @@ async def valuation(user: AuthenticatedUser, start: date, to: date) -> dict:
     flows = _flows(movements, lambda m: m["product_id"], skip_transfers=True)
     rows = []
     for product in products.values():
-        quantity = product["total_quantity"]
+        quantity = _q(product["total_quantity"])
         # An inactive product is listed only while it still holds stock, which still has a value.
         if not product["is_active"] and quantity == 0:
             continue
@@ -160,8 +179,8 @@ async def valuation(user: AuthenticatedUser, start: date, to: date) -> dict:
                 "quantity": quantity,
                 "cost_price": float(cost) if cost is not None else None,
                 "value": round(quantity * float(cost), 2) if cost is not None else None,
-                "period_in": flow["in"],
-                "period_out": flow["out"],
+                "period_in": _q(flow["in"]),
+                "period_out": _q(flow["out"]),
             }
         )
     return {
@@ -182,8 +201,15 @@ async def movements_by_source(user: AuthenticatedUser, start: date, to: date) ->
     rows = []
     for source in get_args(MovementSource):
         flow = flows.get(source, {"in": 0.0, "out": 0.0})
-        net = flow["in"] - flow["out"]
-        rows.append({"source": source, "in": flow["in"], "out": flow["out"], "net": net, "movements": counts[source]})
+        rows.append(
+            {
+                "source": source,
+                "in": _q(flow["in"]),
+                "out": _q(flow["out"]),
+                "net": _q(flow["in"] - flow["out"]),
+                "movements": counts[source],
+            }
+        )
     return {**_envelope(start, to), "rows": rows}
 
 
@@ -198,13 +224,19 @@ async def low_out_of_stock(user: AuthenticatedUser, start: date, to: date) -> di
     for alert in alerts_for(active, default_id):
         period_out = flows.get(alert["product_id"], {"out": 0.0})["out"]
         daily_out = period_out / days
-        if alert["quantity"] <= 0:
-            cover: float | None = 0.0
-        elif daily_out > 0:
-            cover = round(alert["quantity"] / daily_out, 1)
-        else:
-            cover = None
-        rows.append({**alert, "period_out": period_out, "daily_out": round(daily_out, 3), "days_of_cover": cover})
+        # None, a blank cell, when there is no cover to count: out of stock ("0 days" would read as a figure), or
+        # nothing went out in the period (no pace to divide by).
+        cover = round(alert["quantity"] / daily_out, 1) if alert["quantity"] > 0 and daily_out > 0 else None
+        rows.append(
+            {
+                **alert,
+                "quantity": _q(alert["quantity"]),
+                "period_out": _q(period_out),
+                # A rate, not a quantity: three decimals keep a slow product's pace from reading as zero.
+                "daily_out": round(daily_out, 3),
+                "days_of_cover": cover,
+            }
+        )
     return {
         **_envelope(start, to),
         "rows": rows,
@@ -237,7 +269,8 @@ async def supplier_purchases(user: AuthenticatedUser, start: date, to: date) -> 
             # A purchase may have no supplier, or one since deleted (on delete set null).
             "supplier_name": names.get(supplier_id, "") if supplier_id else "No supplier",
             **group,
-            "cost": round(group["cost"], 2),
+            "quantity": _q(group["quantity"]),
+            "cost": _q(group["cost"]),
         }
         for supplier_id, group in groups.items()
     ]
@@ -246,8 +279,8 @@ async def supplier_purchases(user: AuthenticatedUser, start: date, to: date) -> 
         **_envelope(start, to),
         "rows": rows,
         "total_purchases": sum(r["purchases"] for r in rows),
-        "total_quantity": sum(r["quantity"] for r in rows),
-        "total_cost": round(sum(r["cost"] for r in rows), 2),
+        "total_quantity": _q(sum(r["quantity"] for r in rows)),
+        "total_cost": _q(sum(r["cost"] for r in rows)),
     }
 
 
@@ -262,9 +295,17 @@ async def sales_split(user: AuthenticatedUser, start: date, to: date) -> dict:
         channel = "marketplace" if movement["source"] == MARKETPLACE else "local"
         by_day[_day_of(movement)][channel] += _sold(movement)
         by_product[movement["product_id"]][channel] += _sold(movement)
-    days = [{"date": day.isoformat(), **by_day[day.isoformat()]} for day in _days(start, to)]
+    days = [
+        {"date": day.isoformat(), **{channel: _q(units) for channel, units in by_day[day.isoformat()].items()}}
+        for day in _days(start, to)
+    ]
     product_rows = [
-        {**_label(products, product_id), **split, "total": split["marketplace"] + split["local"]}
+        {
+            **_label(products, product_id),
+            "marketplace": _q(split["marketplace"]),
+            "local": _q(split["local"]),
+            "total": _q(split["marketplace"] + split["local"]),
+        }
         for product_id, split in by_product.items()
     ]
     product_rows.sort(key=lambda r: (-r["total"], r["name"]))
@@ -272,8 +313,8 @@ async def sales_split(user: AuthenticatedUser, start: date, to: date) -> dict:
         **_envelope(start, to),
         "by_day": days,
         "by_product": product_rows,
-        "marketplace_total": sum(r["marketplace"] for r in product_rows),
-        "local_total": sum(r["local"] for r in product_rows),
+        "marketplace_total": _q(sum(r["marketplace"] for r in product_rows)),
+        "local_total": _q(sum(r["local"] for r in product_rows)),
     }
 
 
@@ -283,34 +324,40 @@ async def analytics(user: AuthenticatedUser, start: date, to: date) -> dict:
     (products, _), movements = await asyncio.gather(_products(user), _movements(user, start, to))
     days = (to - start).days + 1
     daily = _flows(movements, _day_of, skip_transfers=True)
-    trend = [
-        {"date": day.isoformat(), **daily.get(day.isoformat(), {"in": 0.0, "out": 0.0})} for day in _days(start, to)
-    ]
+    trend = []
+    for day in _days(start, to):
+        flow = daily.get(day.isoformat(), {"in": 0.0, "out": 0.0})
+        trend.append({"date": day.isoformat(), "in": _q(flow["in"]), "out": _q(flow["out"])})
     outflow = _flows(movements, lambda m: m["product_id"], skip_transfers=True)
     movers = [
         {
             **_label(products, view["id"]),
-            "out_quantity": outflow.get(view["id"], {"out": 0.0})["out"],
+            "out_quantity": _q(outflow.get(view["id"], {"out": 0.0})["out"]),
             "daily_out": round(outflow.get(view["id"], {"out": 0.0})["out"] / days, 3),
         }
         for view in products.values()
         if view["is_active"]
     ]
-    # A product that sold nothing is no fast mover; it is exactly what the slow list is for.
-    fast = sorted((m for m in movers if m["out_quantity"] > 0), key=lambda m: (-m["out_quantity"], m["name"]))
-    slow = sorted(movers, key=lambda m: (m["out_quantity"], m["name"]))
+    # The two lists never share a product. The active products are ranked by units out; the faster half (rounded up) may
+    # be fast movers, but only those that moved at all, since a product that sold nothing is what the slow list is for.
+    # Every product not in the fast list is a slow candidate, slowest first. Each list keeps at most MOVERS rows. So two
+    # sellers make one fast and one slow mover, and a single product that sold is fast with no slow list.
+    ranked = sorted(movers, key=lambda m: (-m["out_quantity"], m["name"]))
+    fast = [m for m in ranked[: (len(ranked) + 1) // 2] if m["out_quantity"] > 0][:MOVERS]
+    in_fast = {m["product_id"] for m in fast}
+    slow = sorted((m for m in movers if m["product_id"] not in in_fast), key=lambda m: (m["out_quantity"], m["name"]))
     sold: dict[str, float] = defaultdict(float)
     for movement in movements:
         if movement["source"] in (MARKETPLACE, LOCAL):
             sold[movement["product_id"]] += _sold(movement)
     best = sorted(
-        ({**_label(products, pid), "quantity": qty} for pid, qty in sold.items() if qty > 0),
+        ({**_label(products, pid), "quantity": _q(qty)} for pid, qty in sold.items() if _q(qty) > 0),
         key=lambda r: (-r["quantity"], r["name"]),
     )
     return {
         **_envelope(start, to),
         "trend": trend,
-        "fast_movers": fast[:MOVERS],
+        "fast_movers": fast,
         "slow_movers": slow[:MOVERS],
         "best_sellers": best[:MOVERS],
     }
@@ -320,7 +367,15 @@ async def reconciliation(user: AuthenticatedUser) -> dict:
     """inventory_reconciliation() per product (SRDS §25), named, the unbalanced ones first: those are what the dealer
     has to look into (a sync event still pending, SRDS §53.39, or a stock row changed outside the stock functions)."""
     rows, (products, _) = await asyncio.gather(repo.fetch_reconciliation(user.access_token), _products(user))
-    named = [{**row, **_label(products, row["product_id"])} for row in rows]
+    # PostgREST sends numeric as 0 or -3.0 alike; every figure is a two-decimal float like the other reports', so the
+    # CSV writes 0.0 beside -3.0.
+    named = [
+        {
+            **{key: _q(float(value)) if key in RECONCILIATION_FIGURES else value for key, value in row.items()},
+            **_label(products, row["product_id"]),
+        }
+        for row in rows
+    ]
     named.sort(key=lambda r: (r["balanced"], r["name"]))
     return {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -351,8 +406,8 @@ REPORTS: dict[str, Callable[[AuthenticatedUser, date, date], Awaitable[dict]]] =
 
 
 async def period_query(
-    date_from: date | None = Query(None, alias="from", description="First UTC day, inclusive (default: `to` - 29)"),
-    date_to: date | None = Query(None, alias="to", description="Last UTC day, inclusive (default: today)"),
+    date_from: Day | None = Query(None, alias="from", description="First UTC day, inclusive (default: `to` - 29)"),
+    date_to: Day | None = Query(None, alias="to", description="Last UTC day, inclusive (default: today)"),
 ) -> tuple[date, date]:
     """`from` and `to` of every report route, resolved to the period (report_period)."""
     return report_period(date_from, date_to)

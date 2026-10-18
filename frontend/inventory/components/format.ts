@@ -1,9 +1,12 @@
 import type { StatusOf } from '../../common/constants/status';
-import { formatRs } from '../../utils/money';
 
-// How the inventory system writes numbers and dates. Quantities can be fractional (kg of seed), so up to two decimals;
-// money goes through the app's one rupee formatter.
+// How the inventory system writes numbers and dates. Quantities can be fractional (kg of seed), so up to two decimals.
+// Money too: a cost price is stored to the paisa (numeric(12, 2)), and the app's formatRs rounds to whole rupees, which
+// showed a cost of 3200.55 as "Rs 3,201" and put the valuation out by the sum of the roundings (B5 decision). Whole
+// amounts read exactly as formatRs writes them ("Rs 3,200"); only an amount with paisa shows them ("Rs 3,200.55").
 const QUANTITY = new Intl.NumberFormat('en-PK', { maximumFractionDigits: 2 });
+const RUPEES = new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 });
+const RUPEES_AND_PAISA = new Intl.NumberFormat('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const DATE_TIME = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const DATE = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const DAY = new Intl.DateTimeFormat(undefined, { day: 'numeric', timeZone: 'UTC' });
@@ -27,7 +30,8 @@ export function formatNet(quantity: number): string {
 }
 
 export function formatMoney(amount: number): string {
-  return formatRs(amount);
+  const paisa = Math.round(amount * 100) % 100 !== 0;
+  return `Rs ${(paisa ? RUPEES_AND_PAISA : RUPEES).format(amount)}`;
 }
 
 export function formatDateTime(iso: string): string {

@@ -207,7 +207,10 @@ function lowOutOfStock(report: PeriodReports['low-out-of-stock']): ReportView {
           meta: join(
             row.sku,
             `reorder at ${formatQuantity(row.reorder_threshold)}`,
-            row.days_of_cover != null ? `about ${formatQuantity(row.days_of_cover)} days left` : null,
+            // Cover only means something while there is stock; an empty shelf read "about 0 days left" (B5 walk).
+            row.status === 'low_stock' && row.days_of_cover != null
+              ? `about ${formatQuantity(row.days_of_cover)} days left`
+              : null,
           ),
           figure: formatQuantity(row.quantity, row.unit),
           stock: row.status,

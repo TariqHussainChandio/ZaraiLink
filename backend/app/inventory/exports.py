@@ -10,10 +10,11 @@ a cleanup job, so each export first removes that dealer's files older than a day
 import csv
 import io
 import logging
+import unicodedata
 from datetime import UTC, date, datetime, timedelta
 
 import httpx
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from storage3.utils import StorageException
 
 from app.auth.dependencies import AuthenticatedUser, require_dealer
@@ -21,12 +22,28 @@ from app.common.errors import AppHTTPException
 from app.inventory import repository as repo
 from app.inventory.reports import REPORTS, report_period
 from app.inventory.schemas import ExportInput, ExportResult
+from app.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
+# How long the link in the answer opens the file. The app opens it straight away (a browser download or the share
+# sheet), so ten minutes is ample even on a slow connection, while a link that is forwarded, logged or left in a chat
+# stops opening soon after: it reaches the dealer's stock figures with no sign-in (BR-03/04). A new export makes a new
+# link.
 SIGNED_URL_SECONDS = 600
+# How long a file stays in the bucket before the dealer's next export sweeps it: well past any link's life, so a file is
+# never removed while its link still opens it.
 KEEP_FOR = timedelta(hours=24)
 UNAVAILABLE = "The export could not be saved right now. Try again in a few minutes."
+# Each export reads the whole ledger of the period and writes a file, so it has its own limit under the 200/minute
+# default (B5 verification F4: 40 files in 20 seconds), per session like every limit (middleware/rate_limit.py). Ten a
+# minute is more than a dealer exporting each of the eight reports once.
+EXPORTS_PER_MINUTE = 10
+# How the Storage client fails. Besides its own error and the transport's, storage3 2.x cannot parse an error body that
+# lacks its usual keys (the gateway's 502 when the storage service is down) and raises AttributeError ("'dict' object
+# has no attribute 'text'") or, for a body that is not JSON, ValueError. Caught only around the Storage calls, so a
+# programming error anywhere else is still a 500 with its traceback in the log (B5 verification F3).
+STORAGE_FAILURES = (StorageException, httpx.HTTPError, AttributeError, ValueError)
 
 # The columns of each report's file. A report with several lists (sales-split, analytics) is one table with a
 # `section` column, so every file opens as a single sheet.
@@ -78,8 +95,21 @@ COLUMNS: dict[str, list[str]] = {
 }
 
 # A spreadsheet runs a cell that starts with one of these as a formula (CSV injection), and product, supplier and
-# location names are free text the dealer typed.
-FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+# location names are free text the dealer typed. NFKC maps their fullwidth forms (U+FF1D, U+FF0B, U+FF0D, U+FF20)
+# onto them, and a spreadsheet may skip leading spaces and invisible characters before reading the first one (B5
+# verification F6), so the test is on the first visible character.
+FORMULA_STARTS = ("=", "+", "-", "@")
+# Skipped before the first visible character: every Unicode space and separator, control characters (tab, CR, LF) and
+# format characters (zero-width space, word joiner, byte order mark).
+_INVISIBLE = ("Zs", "Zl", "Zp", "Cc", "Cf")
+
+
+def _runs_as_formula(text: str) -> bool:
+    for char in text:
+        if unicodedata.category(char) in _INVISIBLE:
+            continue
+        return unicodedata.normalize("NFKC", char) in FORMULA_STARTS
+    return False
 
 
 # --- service ----------------------------------------------------------------------------------------------------------
@@ -93,7 +123,7 @@ def _cell(value: object) -> object:
         return "true" if value else "false"
     if isinstance(value, date):
         return value.isoformat()
-    if isinstance(value, str) and value.startswith(FORMULA_PREFIXES):
+    if isinstance(value, str) and _runs_as_formula(value):
         return "'" + value
     return value
 
@@ -120,7 +150,10 @@ def to_csv(report: str, data: dict) -> bytes:
     writer.writeheader()
     for row in table_rows(report, data):
         writer.writerow({key: _cell(value) for key, value in row.items()})
-    return buffer.getvalue().encode("utf-8")
+    # utf-8-sig starts the file with the byte order mark. Without it Excel, which most dealers open a CSV in, reads the
+    # file in the Windows code page and shows Urdu product and supplier names as gibberish; csv readers and browsers
+    # skip the mark.
+    return buffer.getvalue().encode("utf-8-sig")
 
 
 async def _remove_expired(folder: str, now: datetime) -> None:
@@ -136,7 +169,7 @@ async def _remove_expired(folder: str, now: datetime) -> None:
         ]
         if expired:
             await repo.remove_exports(expired)
-    except (StorageException, httpx.HTTPError, ValueError) as exc:
+    except STORAGE_FAILURES as exc:
         logger.warning("old inventory exports not removed: %s", type(exc).__name__)
 
 
@@ -152,7 +185,7 @@ async def create_export(user: AuthenticatedUser, report: str, date_from: date | 
     try:
         await repo.upload_export(path, content)
         url = await repo.sign_export(path, SIGNED_URL_SECONDS)
-    except (StorageException, httpx.HTTPError) as exc:
+    except STORAGE_FAILURES as exc:
         logger.warning("inventory export failed: %s", type(exc).__name__)
         raise AppHTTPException(503, UNAVAILABLE, "service_unavailable") from exc
     if not url:
@@ -166,6 +199,10 @@ router = APIRouter()
 
 
 @router.post("/exports", response_model=ExportResult, status_code=201)
-async def post_export(request: ExportInput, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
+@limiter.limit(f"{EXPORTS_PER_MINUTE}/minute")
+async def post_export(request: Request, body: ExportInput, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     """One report as a CSV file; the link in the answer is valid for ten minutes."""
-    return await create_export(user, request.report, request.from_, request.to)
+    # slowapi's decorator finds the request by this parameter's name to count the call; the handler has no other
+    # use for it.
+    del request
+    return await create_export(user, body.report, body.from_, body.to)

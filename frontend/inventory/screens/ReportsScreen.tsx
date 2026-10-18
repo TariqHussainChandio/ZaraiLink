@@ -5,7 +5,7 @@ import { RefreshControl, Text, View } from 'react-native';
 import {
   BarChart,
   Card,
-  ChipRow,
+  Chip,
   ListGroup,
   ListRow,
   ListRowIcon,
@@ -23,6 +23,7 @@ import { type RangePreset, RANGE_PRESETS, rangeFor } from '../components/reportR
 import { buildReportView, type ChartTone, REPORT_OPTIONS, type ReportChart, type ReportRow } from '../components/reportView';
 import { makeScreenStyles } from '../components/screenStyles';
 import { useReport } from '../hooks/inventory';
+import { useUtcDay } from '../hooks/utcDay';
 import type { PeriodReportName } from '../types/inventory';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
 
@@ -88,8 +89,10 @@ function PeriodReport({ report, preset, onPreset, header }: PeriodReportProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  // Recomputed with the preset only, so the query key (and the cached copy) stays the same through the day.
-  const range = useMemo(() => rangeFor(preset), [preset]);
+  // Recomputed with the preset and the UTC day: the query key (and the cached copy) stays the same through the day, and a
+  // screen left open past UTC midnight moves "to" on to the new day (B5 verification).
+  const today = useUtcDay();
+  const range = useMemo(() => rangeFor(preset, new Date(`${today}T12:00:00Z`)), [preset, today]);
   const result = useReport(report, range);
   const { data, refetch, isRefetching, isPlaceholderData } = result;
   const view = useMemo(() => (data ? buildReportView(report, data) : null), [report, data]);
@@ -167,7 +170,17 @@ function PeriodReport({ report, preset, onPreset, header }: PeriodReportProps) {
           {header}
           <View>
             <Text style={styles.overline}>Period</Text>
-            <ChipRow options={RANGE_PRESETS} value={preset} onChange={onPreset} />
+            {/* Five periods do not fit one row on a phone; a sideways row hid "Last month" off screen (B5 walk). */}
+            <View style={styles.periods}>
+              {RANGE_PRESETS.map(option => (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  selected={option.value === preset}
+                  onPress={() => onPreset(option.value)}
+                />
+              ))}
+            </View>
             <Text style={styles.caption}>
               {isPlaceholderData ? 'Loading the new period…' : formatReportRange(data?.from ?? range.from, data?.to ?? range.to)}
             </Text>
@@ -201,6 +214,7 @@ function makeStyles(theme: Theme) {
     list: { padding: theme.space[4], paddingBottom: theme.space[12] },
     header: { gap: theme.space[3], marginBottom: theme.space[3] },
     card: { gap: theme.space[2] },
+    periods: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: theme.space[2], marginVertical: theme.space[2] },
     sectionTitle: { ...theme.typography.title, color: theme.colors.ink, marginTop: theme.space[3], marginBottom: theme.space[2] },
     tableRow: {
       borderBottomWidth: theme.borders.hairline,

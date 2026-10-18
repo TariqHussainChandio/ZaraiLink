@@ -442,9 +442,11 @@ async def retry_dispatch_events(access_token: str) -> int:
 
 
 async def fetch_reconciliation(access_token: str) -> list[dict]:
+    """inventory_reconciliation() for every product. The function returns a row per product and PostgREST caps a call at
+    max_rows like any read (B5 verification F1: 1201 products came back as 1000), so it is read in pages, ordered by
+    product_id, which is unique per row."""
     client = await get_user_scoped_client(access_token)
-    response = await client.rpc("inventory_reconciliation", {}).execute()
-    return as_rows(response)
+    return await _every_page(lambda: client.rpc("inventory_reconciliation", {}).order("product_id"))
 
 
 # --- reports and exports (B5) -----------------------------------------------------------------------------------------

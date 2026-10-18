@@ -64,6 +64,12 @@ export function ReconciliationScreen({ navigation }: InventoryScreenProps<typeof
           <Text style={[styles.number, !row.balanced && styles.mismatch]}>{formatQuantity(row.current_stock, unit)}</Text>
         </View>
         {row.balanced ? null : (
+          // How far the stock is from what the ledger explains: positive means more on hand than the movements account for.
+          <Text style={[styles.body, styles.mismatch]}>
+            {`Out by ${formatNet(row.current_stock - row.ledger_total)}${unit ? ` ${unit}` : ''}`}
+          </Text>
+        )}
+        {row.balanced ? null : (
           <Button
             label="See movement history"
             variant="quiet"

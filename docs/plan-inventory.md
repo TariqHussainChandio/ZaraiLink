@@ -145,6 +145,8 @@ clearly; an unapproved dealer never sees the tile or reaches a screen.
 
 ### B5 — Reports, analytics and reconciliation
 
+> **Status (2026-10-18): done.** pgTAP `20261024080000_inventory_exports` (74; the whole suite 1823 green; policy mutation 0 survivors); backend unit (557) and real stack (`test_smoke_inventory_reports.py`, a scripted month with real dispatches; every export opened and matched); Jest (244); emulator walk with every report, reconciliation and all eight CSV downloads checked on the device. Testing fixed: timestamps accepted as days and a far date crashing a report, float noise in figures, no UTF-8 BOM (Urdu names garbled in Excel), mixed number styles in the reconciliation file, the same product as a fast and a slow mover, "0 days" of cover for an empty product, a hidden period chip, costs rounded to whole rupees. Fresh-context verifier: VERIFIED WITH FINDINGS (139 attack checks held; every figure and CSV matched its own scripted month). Fixed after it: reconciliation now reads every page (it stopped at 1000 products), a Storage outage answers 503, exports have their own limit (10 a minute), formula characters behind spaces, invisible or fullwidth characters are neutralised, a deleted dealer's exports are swept with the account, and the report range moves to the new day at UTC midnight.
+
 | Lane | Tasks | Needs |
 |---|---|---|
 | `zl-inventory-api` | Reports: stock summary, valuation (cost), movements by source, low and out of stock, supplier purchases, marketplace vs local sales; reconciliation per product (§25); analytics (trends, fast/slow movers, best sellers); CSV export generated server-side and delivered through a signed Storage URL (nothing written to git) | B2, B3 |

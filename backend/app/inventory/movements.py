@@ -15,6 +15,7 @@ from app.inventory.errors import stock_errors
 from app.inventory.idempotent import idempotency_key, run_once
 from app.inventory.schemas import (
     AdjustmentInput,
+    Day,
     Movement,
     MovementDirection,
     MovementSource,
@@ -87,8 +88,9 @@ async def get_movements(
     product_id: str | None = None,
     location_id: str | None = None,
     direction: MovementDirection | None = None,
-    date_from: date | None = Query(None, alias="from"),
-    date_to: date | None = Query(None, alias="to"),
+    # The reports' day type: YYYY-MM-DD only, and within the range where `to` + 1 day (the read's bound) exists.
+    date_from: Day | None = Query(None, alias="from"),
+    date_to: Day | None = Query(None, alias="to"),
     user: AuthenticatedUser = Depends(require_dealer),
     page: Page = Depends(paginate),
 ) -> list[dict]:
