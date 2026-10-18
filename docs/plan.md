@@ -8,9 +8,9 @@
 >   only on a real relationship); A6 `4bc44e1` (AI report with the consultation, expert assessment apart, farmers only);
 >   B2 `573dac2` (inventory API; atomic purchase writes); B3 `ae47437` (dispatch deducts once, an IMS fault never breaks
 >   the marketplace, exact stock server-side only); A7 `235ab02` (every admin action audited by the database under
->   its §51 name; the admin reaches no inventory).
-> - **Next:** B4 (inventory app; it also takes the sync log screen naming its order), A8 (accessibility), B5 (reports,
->   exports, a scripted month); then A9 and B6.
+>   its §51 name; the admin reaches no inventory); B4 `14f626d` (the inventory app, approved dealers only,
+>   readable offline, the device cache and a remembered role wiped on sign-out).
+> - **Next:** A8 (accessibility), B5 (reports, exports, a scripted month); then A9 and B6.
 > - **Waiting on the maintainer:** the hosted `db push` of A4's two migrations and of B1–B3 and A7 (each checked
 >   read-only first; A7's needs a check that no hosted audit row has a non-snake_case action); an agronomist's review
 >   of the 38 disease-knowledge entries; a licence-clear real leaf photo for the real-photo test.
