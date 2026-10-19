@@ -8,12 +8,12 @@ requires-python = ">=3.12"
 # pinned exactly and upgraded deliberately (phases P3 and P5a), never by drift. `uv.lock` records the
 # full resolved tree with hashes, and CI installs from it with `uv sync --frozen`.
 dependencies = [
-  "fastapi==0.141.1",
-  "uvicorn[standard]==0.53.0",
-  "pydantic==2.13.5",
-  "pydantic-settings==2.15.0",
-  "python-dotenv==1.2.3",
-  "supabase==2.31.0",
+  "fastapi==0.143.3",
+  "uvicorn[standard]==0.54.0",
+  "pydantic==2.14.1",
+  "pydantic-settings==2.16.0",
+  "python-dotenv==1.2.4",
+  "supabase==2.33.0",
   "httpx==0.28.1",
   "slowapi==0.1.10",
   # torch>=2.6 closes CVE-2025-32434 (RCE via torch.load, even with weights_only=True, in every
@@ -23,9 +23,9 @@ dependencies = [
   "torch==2.6.0",
   "torchvision==0.21.0",
   "pillow==12.3.0",
-  "pyjwt[crypto]==2.15.0",
+  "pyjwt[crypto]==2.15.1",
   "cachetools==5.5.0",
-  "sentry-sdk[fastapi]==2.70.0",
+  "sentry-sdk[fastapi]==2.72.0",
 ]
 
 # Development-only tools. Kept out of the production image, unlike the old single requirements file.
