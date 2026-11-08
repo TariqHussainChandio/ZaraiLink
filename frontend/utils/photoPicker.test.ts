@@ -79,7 +79,7 @@ describe('pickPhotos', () => {
     mockCamera.mockResolvedValue({ canceled: false, assets: [asset] });
 
     const result = pickPhotos();
-    pressAlertButton('Take Photo');
+    pressAlertButton('Take photo');
 
     await expect(result).resolves.toEqual([photo]);
   });
@@ -88,7 +88,7 @@ describe('pickPhotos', () => {
     mockLibrary.mockResolvedValue({ canceled: false, assets: [asset] });
 
     const result = pickPhotos({ selectionLimit: 3 });
-    pressAlertButton('Choose from Gallery');
+    pressAlertButton('Choose from gallery');
 
     await expect(result).resolves.toEqual([photo]);
     expect(mockLibrary).toHaveBeenCalledWith(expect.objectContaining({ selectionLimit: 3 }));
@@ -107,7 +107,7 @@ describe('pickPhotos', () => {
     mockRequestCamera.mockResolvedValue({ granted: false, canAskAgain: true, status: 'denied' });
 
     const result = pickPhotos();
-    pressAlertButton('Take Photo');
+    pressAlertButton('Take photo');
 
     await expect(result).resolves.toEqual([]);
     expect(mockCamera).not.toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe('pickPhotos', () => {
       mockCamera.mockRejectedValue(Object.assign(new Error('camera unavailable'), { code }));
 
       const result = pickPhotos();
-      pressAlertButton('Take Photo');
+      pressAlertButton('Take photo');
 
       await expect(result).resolves.toEqual([]);
     },
@@ -129,7 +129,7 @@ describe('pickPhotos', () => {
     mockCamera.mockRejectedValue(Object.assign(new Error('disk full'), { code: 'ERR_FAILED_TO_WRITE_FILE' }));
 
     const result = pickPhotos();
-    pressAlertButton('Take Photo');
+    pressAlertButton('Take photo');
 
     await expect(result).rejects.toThrow('disk full');
   });

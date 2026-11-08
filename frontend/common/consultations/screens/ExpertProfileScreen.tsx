@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, EmptyState, Spinner } from '../../components';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Avatar, Button, QueryState, ScreenScaffold } from '../../components';
 import { RatingSummary, ReviewCard } from '../../reviews';
 import { APP_TABS, CONSULTATIONS_ROUTES, MESSAGING_ROUTES } from '../../constants/routes';
 import { useExpertProfile } from '../../../expert';
 import { useOpenConversation } from '../../messaging';
 import { useAuthStore } from '../../../state/authStore';
+import { navigateInTab } from '../../../navigation/navigateInTab';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../../theme';
 import { errorMessage } from '../../../utils/errorMessage';
@@ -18,113 +19,101 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
   const { expertId, prefill } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const tabNavigation = useAppTabNavigation();
-  const { data, isPending: loading, error, refetch } = useExpertProfile(expertId);
+  const query = useExpertProfile(expertId);
+  const { data } = query;
   const openConversation = useOpenConversation();
   const expert = data?.expert;
   const reviews = data?.reviews ?? [];
-  const load = () => refetch();
 
-  if (loading) return <Spinner fullscreen />;
-  if (error || !expert) {
-    return (
-      <EmptyState
-        title="Couldn't load this expert"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
-
-  const specializations = expert.expert_specializations.map(s => SPECIALIZATION_LABELS[s.specialization]);
+  const specializations = expert?.expert_specializations.map(s => SPECIALIZATION_LABELS[s.specialization]) ?? [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={theme.size.avatarLg} />
-        <Text style={styles.name}>{expert.profile?.full_name || 'Expert'}</Text>
-        {expert.degree ? <Text style={styles.degree}>{expert.degree}</Text> : null}
-        <RatingSummary reviews={reviews} />
-      </View>
+    <ScreenScaffold>
+      <QueryState query={query} failureTitle="Couldn't load this expert">
+        {expert ? (
+          <>
+            <View style={styles.header}>
+              <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={theme.size.avatarLg} />
+              <Text style={styles.name}>{expert.profile?.full_name || 'Expert'}</Text>
+              {expert.degree ? <Text style={styles.degree}>{expert.degree}</Text> : null}
+              <RatingSummary reviews={reviews} />
+            </View>
 
-      {specializations.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Specializations</Text>
-          <Text style={styles.sectionText}>{specializations.join(', ')}</Text>
-        </View>
-      ) : null}
+            {specializations.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Specializations</Text>
+                <Text style={styles.sectionText}>{specializations.join(', ')}</Text>
+              </View>
+            ) : null}
 
-      {expert.qualifications ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Qualifications</Text>
-          <Text style={styles.sectionText}>{expert.qualifications}</Text>
-        </View>
-      ) : null}
+            {expert.qualifications ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Qualifications</Text>
+                <Text style={styles.sectionText}>{expert.qualifications}</Text>
+              </View>
+            ) : null}
 
-      {expert.experience ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Experience</Text>
-          <Text style={styles.sectionText}>{expert.experience}</Text>
-        </View>
-      ) : null}
+            {expert.experience ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Experience</Text>
+                <Text style={styles.sectionText}>{expert.experience}</Text>
+              </View>
+            ) : null}
 
-      {expert.professional_description ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.sectionText}>{expert.professional_description}</Text>
-        </View>
-      ) : null}
+            {expert.professional_description ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>About</Text>
+                <Text style={styles.sectionText}>{expert.professional_description}</Text>
+              </View>
+            ) : null}
 
-      <Button
-        label="Request Consultation"
-        onPress={() => navigation.navigate(CONSULTATIONS_ROUTES.RequestConsultation, { expertId, prefill })}
-        style={styles.action}
-      />
-      <Button
-        label="Message Expert"
-        variant="secondary"
-        loading={openConversation.isPending}
-        onPress={async () => {
-          if (!userId) return;
-          try {
-            const conversation = await openConversation.mutateAsync(expertId);
-            // On top of the conversation list (initial: false), so Back and the Messages tab reach it, not a stack whose root is this chat.
-            tabNavigation?.navigate(APP_TABS.Messages, {
-              screen: MESSAGING_ROUTES.Chat,
-              initial: false,
-              params: {
-                conversationId: conversation.id,
-                otherUserName: expert.profile?.full_name || 'Expert',
-              },
-            });
-          } catch (err) {
-            Alert.alert('Could not open the conversation', errorMessage(err));
-          }
-        }}
-        style={styles.action}
-      />
+            <Button
+              label="Ask an expert"
+              onPress={() =>
+                navigation.navigate(CONSULTATIONS_ROUTES.RequestConsultation, {
+                  expertId,
+                  prefill,
+                })
+              }
+              style={styles.action}
+            />
+            <Button
+              label="Message Expert"
+              variant="secondary"
+              loading={openConversation.isPending}
+              onPress={async () => {
+                if (!userId) return;
+                try {
+                  const conversation = await openConversation.mutateAsync(expertId);
+                  // On top of the conversation list, so Back and the Messages tab reach it, not a stack whose root is this chat.
+                  navigateInTab(tabNavigation, APP_TABS.Messages, MESSAGING_ROUTES.Chat, {
+                    conversationId: conversation.id,
+                    otherUserName: expert.profile?.full_name || 'Expert',
+                  });
+                } catch (err) {
+                  Alert.alert('Could not open the conversation', errorMessage(err));
+                }
+              }}
+              style={styles.action}
+            />
 
-      {reviews.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
-          {reviews.map(review => (
-            <ReviewCard key={review.id} review={review} />
-          ))}
-        </View>
-      ) : null}
-    </ScrollView>
+            {reviews.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Reviews</Text>
+                {reviews.map(review => (
+                  <ReviewCard key={review.id} review={review} />
+                ))}
+              </View>
+            ) : null}
+          </>
+        ) : null}
+      </QueryState>
+    </ScreenScaffold>
   );
 }
 
 function makeStyles({ colors, space, typography, fontWeight }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
     header: {
       alignItems: 'center',
       marginBottom: space[4],

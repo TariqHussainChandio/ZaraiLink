@@ -31,7 +31,7 @@ export function StepIndicator({ steps, current }: StepIndicatorProps) {
                 <Text style={[styles.number, now && styles.numberNow]}>{index + 1}</Text>
               )}
             </View>
-            <Text style={[styles.label, now && styles.labelNow]} numberOfLines={1}>
+            <Text style={[styles.label, now && styles.labelNow]} numberOfLines={2}>
               {label}
             </Text>
           </View>
@@ -59,7 +59,7 @@ function makeStyles({ colors, space, size, radius, borders, typography }: Theme)
     discNow: { borderColor: colors.status.info.mark, backgroundColor: colors.status.info.soft },
     number: { ...typography.caption, color: colors.ink3 },
     numberNow: { color: colors.status.info.mark },
-    label: { ...typography.caption, color: colors.ink3 },
+    label: { ...typography.caption, color: colors.ink3, textAlign: 'center' },
     labelNow: { color: colors.ink },
   });
 }

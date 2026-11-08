@@ -1,3 +1,5 @@
+import type { PickedPhoto } from '../../../utils/photoPicker';
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -27,4 +29,23 @@ export interface Conversation {
 export interface ConversationWithPreview extends Conversation {
   otherParticipant: ConversationParticipant | null;
   lastMessage: Message | null;
+}
+
+/**
+ * A message the person has sent that the server has not confirmed yet (FA-03). It is drawn at once, "Sending…", and
+ * becomes "Not sent · Tap to retry" if the request fails; the draft is therefore never lost.
+ */
+export interface OutgoingMessage {
+  /** Local only; never sent to the server. */
+  localId: string;
+  body: string;
+  images: PickedPhoto[];
+  /** The `created_at` it is drawn with, from the phone's clock. */
+  createdAt: string;
+  status: 'sending' | 'failed';
+  /** Storage paths of the photos once uploaded, so a retry does not upload them again. */
+  uploaded: string[] | null;
+  /** Ids of the messages in the conversation when the POST was first tried. A message of ours that appears afterwards with
+   * the same content is this one arriving (the reply was lost, or realtime was faster), and is never sent a second time. */
+  baseline: string[] | null;
 }

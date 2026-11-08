@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { HOME_ROUTES } from '../../common/constants/routes';
+import { HOME_ROUTES, MARKETPLACE_ROUTES } from '../../common/constants/routes';
 import { useAuthStore } from '../../state/authStore';
 import { EmptyState } from '../../common/components';
 import { HomeDashboardScreen } from '../HomeDashboardScreen';
@@ -23,6 +23,8 @@ import { NotificationListScreen } from '../../common/notifications/screens/Notif
 import { DiseaseProcessingScreen } from '../../ai/screens/DiseaseProcessingScreen';
 import { DiseaseResultScreen } from '../../ai/screens/DiseaseResultScreen';
 import { DiseaseUploadScreen } from '../../ai/screens/DiseaseUploadScreen';
+import { EditListingScreen } from '../../common/marketplace/screens/EditListingScreen';
+import { ListingDetailScreen } from '../../common/marketplace/screens/ListingDetailScreen';
 import { MyListingsScreen } from '../../common/marketplace/screens/MyListingsScreen';
 import { homeActions } from '../headerActions';
 import { stackOptionsWithActions } from '../stackHeader';
@@ -37,9 +39,18 @@ export type HomeStackParamList = {
   [HOME_ROUTES.CropList]: { farmId: string };
   [HOME_ROUTES.AddCrop]: { farmId: string; cropId?: string };
   [HOME_ROUTES.DiseaseAdvisory]: undefined;
-  [HOME_ROUTES.DiseaseProcessing]: { imageUri: string; imageFileName: string | null; imageType: string | null; cropId: string | null };
-  [HOME_ROUTES.DiseaseResult]: { diseaseCaseId: string };
-  [HOME_ROUTES.Products]: undefined;
+  [HOME_ROUTES.DiseaseProcessing]: {
+    imageUri: string;
+    imageFileName: string | null;
+    imageType: string | null;
+    cropId: string | null;
+    cropKey: string | null;
+    cropName: string | null;
+  };
+  [HOME_ROUTES.DiseaseResult]: { diseaseCaseId: string; cropMatches?: boolean | null; chosenCropName?: string | null };
+  // A listing opened from My listings stays in Home's stack, so Back returns to the list (audit MK-01).
+  [MARKETPLACE_ROUTES.ListingDetail]: { listingId: string };
+  [MARKETPLACE_ROUTES.EditListing]: { listingId: string };
   [HOME_ROUTES.BusinessDetails]: undefined;
   [HOME_ROUTES.Stores]: undefined;
   [HOME_ROUTES.StoreDetail]: { storeId?: string };
@@ -86,7 +97,7 @@ export function HomeNavigator() {
       <Stack.Screen
         name={HOME_ROUTES.MyListings}
         component={MyListingsScreen}
-        options={{ title: 'My Listings' }}
+        options={{ title: 'My listings' }}
       />
       <Stack.Screen
         name={HOME_ROUTES.FarmList}
@@ -101,7 +112,7 @@ export function HomeNavigator() {
       <Stack.Screen
         name={HOME_ROUTES.CreateFarm}
         component={CreateFarmScreen}
-        options={{ title: 'New Farm' }}
+        options={{ title: 'New farm' }}
       />
       <Stack.Screen
         name={HOME_ROUTES.CropList}
@@ -111,34 +122,31 @@ export function HomeNavigator() {
       <Stack.Screen
         name={HOME_ROUTES.AddCrop}
         component={AddCropScreen}
-        options={({ route }) => ({ title: route.params.cropId ? 'Edit Crop' : 'Add Crop' })}
+        options={({ route }) => ({ title: route.params.cropId ? 'Edit crop' : 'Add crop' })}
       />
       <Stack.Screen
         name={HOME_ROUTES.DiseaseAdvisory}
         component={DiseaseUploadScreen}
-        options={{ title: 'Disease Advisory' }}
+        options={{ title: 'Check a sick plant' }}
       />
       <Stack.Screen
         name={HOME_ROUTES.DiseaseProcessing}
         component={DiseaseProcessingScreen}
-        options={{ title: 'Analyzing', headerBackVisible: false }}
+        options={{ title: 'Checking the photo', headerBackVisible: false }}
       />
       <Stack.Screen
         name={HOME_ROUTES.DiseaseResult}
         component={DiseaseResultScreen}
-        options={{ title: 'Advisory Result' }}
+        options={{ title: 'Scan result' }}
       />
-      <Stack.Screen
-        name={HOME_ROUTES.Products}
-        component={MyListingsScreen}
-        options={{ title: 'Products' }}
-      />
+      <Stack.Screen name={MARKETPLACE_ROUTES.ListingDetail} component={ListingDetailScreen} options={{ title: 'Listing' }} />
+      <Stack.Screen name={MARKETPLACE_ROUTES.EditListing} component={EditListingScreen} options={{ title: 'Edit listing' }} />
       <Stack.Screen name={HOME_ROUTES.BusinessDetails} component={BusinessDetailsScreen} options={{ title: 'Business details' }} />
       <Stack.Screen name={HOME_ROUTES.Stores} component={StoreListScreen} options={{ title: 'Stores' }} />
       <Stack.Screen
         name={HOME_ROUTES.StoreDetail}
         component={StoreDetailScreen}
-        options={({ route }) => ({ title: route.params?.storeId ? 'Edit Store' : 'New Store' })}
+        options={({ route }) => ({ title: route.params?.storeId ? 'Edit store' : 'New store' })}
       />
       <Stack.Screen
         name={HOME_ROUTES.Suppliers}
@@ -148,7 +156,7 @@ export function HomeNavigator() {
       <Stack.Screen
         name={HOME_ROUTES.SupplierDetail}
         component={SupplierDetailScreen}
-        options={({ route }) => ({ title: route.params?.supplierId ? 'Edit Supplier' : 'New Supplier' })}
+        options={({ route }) => ({ title: route.params?.supplierId ? 'Edit supplier' : 'New supplier' })}
       />
       <Stack.Screen
         name={HOME_ROUTES.Inventory}
@@ -158,7 +166,7 @@ export function HomeNavigator() {
       <Stack.Screen
         name={HOME_ROUTES.InventoryTransactions}
         component={InventoryTransactionScreen}
-        options={{ title: 'Stock History' }}
+        options={{ title: 'Stock history' }}
       />
       <Stack.Screen
         name={HOME_ROUTES.Analytics}

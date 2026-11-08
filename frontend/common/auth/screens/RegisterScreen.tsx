@@ -1,16 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { Banner, Button, isValidE164, LocationPicker, PhoneInput, TextField } from '../../components';
+import { COUNTRY } from '../../constants/locations';
+import type { RegistrableRole } from '../../constants/roles';
 import { AUTH_ROUTES } from '../../constants/routes';
+import { newPasswordSchema, PASSWORD_HELPER } from '../../validation/password';
 import { useSignUp } from '../hooks/auth';
+import { AuthScreen } from '../components/AuthScreen';
+import { FormErrorSummary } from '../components/FormErrorSummary';
 import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
-
-import type { RegistrableRole } from '../../constants/roles';
 
 // SRDS §5–§7, §10: who is asked for what. A farmer and a buyer give their location here (a farmer their village too); a
 // dealer's business location and an expert's professional details come in their application, after the email code.
@@ -20,10 +23,6 @@ const TITLES: Record<RegistrableRole, string> = {
   dealer: 'Create a dealer account',
   expert: 'Create an expert account',
 };
-// Supabase's own password rule (supabase/config.toml: minimum_password_length 8, password_requirements
-// letters_digits); checked here first only to answer sooner, Supabase still decides.
-const PASSWORD_RULE = 'Use at least 8 characters, with letters and numbers';
-const PASSWORD_HELP = '8 or more characters, with letters and numbers';
 
 function makeRegisterSchema(role: RegistrableRole) {
   const located = role === 'farmer' || role === 'buyer';
@@ -34,14 +33,9 @@ function makeRegisterSchema(role: RegistrableRole) {
     phone: z
       .string()
       .trim()
-      .refine(isValidE164, 'Enter your number with the country code, like +923001234567'),
-    password: z
-      .string()
-      .min(8, PASSWORD_RULE)
-      .regex(/[A-Za-z]/, PASSWORD_RULE)
-      .regex(/\d/, PASSWORD_RULE),
-    country: place('Enter your country'),
-    province: place('Enter your province'),
+      .refine(isValidE164, 'Enter a phone number like 0300 1234567'),
+    password: newPasswordSchema,
+    province: place('Choose your province'),
     city: place('Enter your city'),
     street: place('Enter your address'),
     village: role === 'farmer' ? z.string().trim().min(2, 'Enter your village') : z.string().trim(),
@@ -61,12 +55,13 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
   const {
     control,
     handleSubmit,
+    setFocus,
     setValue,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, submitCount },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: '', email: '', phone: '', password: '', country: '', province: '', city: '', street: '', village: '' },
+    defaultValues: { fullName: '', email: '', phone: '', password: '', province: '', city: '', street: '', village: '' },
   });
 
   const reviewed = role === 'dealer' || role === 'expert';
@@ -81,7 +76,8 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
         fullName: values.fullName.trim(),
         role,
         phone: values.phone,
-        ...(located ? { country: values.country, province: values.province, city: values.city, street: values.street } : {}),
+        // The country is not a question: ZaraiLink serves Pakistan only.
+        ...(located ? { country: COUNTRY, province: values.province, city: values.city, street: values.street } : {}),
         ...(role === 'farmer' ? { village: values.village } : {}),
       });
       // No session back means the OTP must be confirmed before sign-in; authStore's
@@ -90,33 +86,32 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
         navigation.navigate(AUTH_ROUTES.VerifyOtp, { purpose: 'signup', email });
       }
     } catch (error) {
-      setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to create account'));
+      setSubmitError(mapPasswordFlowErrorMessage(error, 'Could not create the account. Try again.'));
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title} accessibilityRole="header">
-          {TITLES[role]}
-        </Text>
-        <Button
-          label="Choose a different account type"
-          variant="quiet"
-          fullWidth={false}
-          onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)}
-          style={styles.change}
-        />
+    <AuthScreen title={TITLES[role]}>
+      <Button
+        label="Choose a different account type"
+        variant="quiet"
+        fullWidth={false}
+        onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)}
+        style={styles.change}
+      />
 
+      <View>
         <Controller
           control={control}
           name="fullName"
-          render={({ field: { onChange, onBlur, value } }) => (
+          render={({ field: { ref, onChange, onBlur, value } }) => (
             <TextField
+              ref={ref}
               label="Full name"
+              autoComplete="name"
+              textContentType="name"
+              returnKeyType="next"
+              onSubmitEditing={() => setFocus('email')}
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
@@ -128,11 +123,18 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
         <Controller
           control={control}
           name="email"
-          render={({ field: { onChange, onBlur, value } }) => (
+          render={({ field: { ref, onChange, onBlur, value } }) => (
             <TextField
+              ref={ref}
               label="Email"
+              helper="A 6-digit code is emailed here to confirm your account"
               autoCapitalize="none"
+              autoCorrect={false}
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => setFocus('password')}
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
@@ -141,7 +143,28 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
           )}
         />
 
-        <Text style={styles.hint}>We&apos;ll email you a 6-digit code to verify your account.</Text>
+        {/* Typed once, with Show, instead of twice: in sunlight a person sees what they typed, and a second field would
+            only repeat the same slip. */}
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { ref, onChange, onBlur, value } }) => (
+            <TextField
+              ref={ref}
+              label="Password"
+              helper={PASSWORD_HELPER}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="new-password"
+              textContentType="newPassword"
+              returnKeyType="done"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.password?.message}
+            />
+          )}
+        />
 
         <Controller
           control={control}
@@ -151,129 +174,76 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
           )}
         />
 
-        <Controller
-          control={control}
-          name="password"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextField
-              label="Password"
-              helper={PASSWORD_HELP}
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={errors.password?.message}
-            />
-          )}
-        />
-
         {located ? (
           <>
             <LocationPicker
-              country={watch('country') || null}
               province={watch('province') || null}
               city={watch('city') || null}
-              onCountryChange={value => setValue('country', value ?? '')}
-              onProvinceChange={value => setValue('province', value ?? '')}
-              onCityChange={value => setValue('city', value ?? '')}
+              onProvinceChange={value => setValue('province', value ?? '', { shouldValidate: submitCount > 0 })}
+              onCityChange={value => setValue('city', value ?? '', { shouldValidate: submitCount > 0 })}
+              errors={{ province: errors.province?.message, city: errors.city?.message }}
             />
-            {errors.country || errors.province || errors.city ? (
-              <Text style={styles.errorText}>Enter your country, province and city</Text>
-            ) : null}
             {role === 'farmer' ? (
               <Controller
                 control={control}
                 name="village"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextField label="Village" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.village?.message} />
+                render={({ field: { ref, onChange, onBlur, value } }) => (
+                  <TextField
+                    ref={ref}
+                    label="Village"
+                    returnKeyType="next"
+                    onSubmitEditing={() => setFocus('street')}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.village?.message}
+                  />
                 )}
               />
             ) : null}
             <Controller
               control={control}
               name="street"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextField label="Address" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.street?.message} />
+              render={({ field: { ref, onChange, onBlur, value } }) => (
+                <TextField
+                  ref={ref}
+                  label="Address"
+                  autoComplete="street-address"
+                  textContentType="fullStreetAddress"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.street?.message}
+                />
               )}
             />
           </>
         ) : null}
-        {reviewed ? (
-          <Banner tone="info">
-            {`After the email code you will send your ${role === 'dealer' ? 'business' : 'professional'} details and documents. An administrator reviews them before the account can be used.`}
-          </Banner>
-        ) : null}
+      </View>
 
-        {submitError ? (
+      {reviewed ? (
+        <Banner tone="info">
+          {`After the email code you send your ${role === 'dealer' ? 'business' : 'professional'} details and documents. An administrator reviews them before the account can be used.`}
+        </Banner>
+      ) : null}
 
-          <View style={styles.errorBanner}>
+      <FormErrorSummary errors={errors} submitted={submitCount > 0} />
+      {submitError ? <Banner tone="danger" title={submitError} /> : null}
 
-            <Banner tone="danger" title={submitError} />
+      <Button label="Create account" size="lg" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
 
-          </View>
-
-        ) : null}
-
-        <Button
-          label="Create account"
-          loading={isSubmitting}
-          onPress={handleSubmit(onSubmit)}
-          style={styles.submit}
-        />
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account?</Text>
-          <Button label="Sign in" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Already have an account?</Text>
+        <Button label="Sign in" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
+      </View>
+    </AuthScreen>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    flex: { flex: 1 },
-    container: {
-      flexGrow: 1,
-      justifyContent: 'center',
-      padding: space[6],
-    },
-    title: {
-      ...typography.display,
-      color: colors.ink,
-    },
-    change: {
-      alignSelf: 'flex-start',
-      marginBottom: space[4],
-    },
-    hint: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginTop: -space[2],
-      marginBottom: space[3],
-    },
-    errorText: {
-      color: colors.status.danger.mark,
-      ...typography.caption,
-      marginBottom: space[3],
-    },
-    submit: {
-      marginTop: space[2],
-    },
-    errorBanner: {
-      marginBottom: space[3],
-    },
-    footer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: space[1],
-      marginTop: space[4],
-    },
-    footerText: {
-      ...typography.body,
-      color: colors.ink2,
-    },
+    change: { alignSelf: 'flex-start', marginTop: -space[4] },
+    footer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: space[1] },
+    footerText: { ...typography.body, color: colors.ink2 },
   });
 }

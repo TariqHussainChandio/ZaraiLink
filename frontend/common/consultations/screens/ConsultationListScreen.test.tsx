@@ -54,7 +54,10 @@ describe('ConsultationListScreen', () => {
     mockNavigate.mockReset();
     mockFetchForExpert.mockReset();
     mockFetchForUser.mockReset();
-    useAuthStore.setState({ user: { id: 'u1' } as never, role: 'farmer' as never });
+    useAuthStore.setState({
+      user: { id: 'u1' } as never,
+      role: 'farmer' as never,
+    });
   });
 
   it('loads the requester’s own consultations and shows the expert as the counterparty', async () => {
@@ -62,18 +65,21 @@ describe('ConsultationListScreen', () => {
     await renderWithQuery(<ConsultationListScreen />);
 
     expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
-    expect(screen.getByText('Dr. Ahsan')).toBeTruthy();
+    expect(screen.getByText(/^Dr\. Ahsan · /)).toBeTruthy();
     expect(mockFetchForUser).toHaveBeenCalledTimes(1);
     expect(mockFetchForExpert).not.toHaveBeenCalled();
   });
 
   it('loads assigned consultations and shows the requester as the counterparty for an expert', async () => {
-    useAuthStore.setState({ user: { id: 'e1' } as never, role: 'expert' as never });
+    useAuthStore.setState({
+      user: { id: 'e1' } as never,
+      role: 'expert' as never,
+    });
     mockFetchForExpert.mockResolvedValue([consultation]);
     await renderWithQuery(<ConsultationListScreen />);
 
     expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
-    expect(screen.getByText('Ali Raza')).toBeTruthy();
+    expect(screen.getByText(/^Ali Raza · /)).toBeTruthy();
     expect(mockFetchForExpert).toHaveBeenCalledTimes(1);
     expect(mockFetchForUser).not.toHaveBeenCalled();
   });
@@ -100,7 +106,10 @@ describe('ConsultationListScreen', () => {
   });
 
   it('shows the expert empty state when there are no assigned requests', async () => {
-    useAuthStore.setState({ user: { id: 'e1' } as never, role: 'expert' as never });
+    useAuthStore.setState({
+      user: { id: 'e1' } as never,
+      role: 'expert' as never,
+    });
     mockFetchForExpert.mockResolvedValue([]);
     await renderWithQuery(<ConsultationListScreen />);
     expect(await screen.findByText('No consultation requests yet')).toBeTruthy();
@@ -114,7 +123,43 @@ describe('ConsultationListScreen', () => {
     expect(await screen.findByText("Couldn't load consultations")).toBeTruthy();
 
     mockFetchForUser.mockResolvedValue([consultation]);
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
+  });
+
+  it('lists active consultations first and finished ones under Resolved', async () => {
+    mockFetchForUser.mockResolvedValue([
+      consultation,
+      {
+        ...consultation,
+        id: 'c2',
+        subject: 'Rust on barley',
+        status: 'resolved',
+      },
+      {
+        ...consultation,
+        id: 'c3',
+        subject: 'Aphids on cotton',
+        status: 'rejected',
+      },
+    ]);
+    await renderWithQuery(<ConsultationListScreen />);
+
+    expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
+    expect(screen.queryByText('Rust on barley')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Active' }).props.accessibilityState).toMatchObject({ selected: true });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Resolved' }));
+    expect(await screen.findByText('Rust on barley')).toBeTruthy();
+    expect(screen.getByText('Aphids on cotton')).toBeTruthy();
+    expect(screen.queryByText('Yellowing wheat leaves')).toBeNull();
+  });
+
+  it('says so when a filter has nothing, instead of the first-time empty state', async () => {
+    mockFetchForUser.mockResolvedValue([{ ...consultation, status: 'resolved' }]);
+    await renderWithQuery(<ConsultationListScreen />);
+
+    expect(await screen.findByText('Nothing active right now')).toBeTruthy();
+    expect(screen.queryByText('No consultations yet')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 # farmer (app)
 
-The farmer's own screens: dashboard, farms and crops, farmer analytics. Selling goes through `common/marketplace` and disease scans through `ai/`.
+The farmer's own screens: dashboard (crop-health card, "Needs you"), farms with a crops summary, crop forms, farmer analytics. Selling goes through `common/marketplace` and disease scans through `ai/`.
 
 - **Owner lane:** `zl-farmer` (docs/plan.md §3)
 - **SRDS:** §5, §27–§28
@@ -12,4 +12,4 @@ Other modules import only what [`index.ts`](index.ts) exports; the reality gate'
 
 ## Inside
 
-`hooks/` · `screens/` (7) · `services/` · `types/`. Tests sit beside the code they test.
+`components/` (FarmForm, ChoiceField) · `constants/` (form rules) · `hooks/` · `screens/` (7) · `services/` · `types/`. Tests sit beside the code they test.

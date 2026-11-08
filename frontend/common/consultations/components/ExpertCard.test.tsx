@@ -25,7 +25,7 @@ describe('ExpertCard', () => {
     await render(<ExpertCard expert={baseExpert} onPress={() => {}} />);
     expect(screen.getByText('Dr. Ayesha Khan')).toBeTruthy();
     expect(screen.getByText('PhD Agronomy')).toBeTruthy();
-    expect(screen.getByText('Plant Diseases, Irrigation')).toBeTruthy();
+    expect(screen.getByText('Plant diseases, Irrigation')).toBeTruthy();
   });
 
   it('falls back to "Expert" when the profile has no name', async () => {

@@ -40,11 +40,11 @@ function makeStyles({ colors, space, typography }: Theme) {
       gap: space[1],
     },
     text: {
-      ...typography.caption,
+      ...typography.body,
       color: colors.ink2,
     },
     empty: {
-      ...typography.caption,
+      ...typography.body,
       color: colors.ink2,
     },
   });

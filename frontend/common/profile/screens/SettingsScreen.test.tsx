@@ -1,71 +1,43 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { SettingsScreen } from './SettingsScreen';
-import { updateProfile } from '../services/profileService';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../../state/authStore';
 import { useThemeStore } from '../../../state/themeStore';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 import type { Profile } from '../../types/profile';
 
-jest.mock('../services/profileService', () => ({
-  updateProfile: jest.fn(),
-}));
-
-const mockUpdateProfile = updateProfile as jest.Mock;
-
 function makeNavigation() {
   return { navigate: jest.fn() } as unknown as ProfileScreenProps<'Settings'>['navigation'];
 }
 
 beforeEach(() => {
-  mockUpdateProfile.mockReset();
   useAuthStore.setState({
     signOut: jest.fn(),
     refreshProfile: jest.fn().mockResolvedValue(undefined),
     profile: { notifications_enabled: true } as Profile,
+    role: 'farmer',
   });
   useThemeStore.setState({ mode: 'system' });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  useAuthStore.setState({ role: null });
 });
 
 describe('SettingsScreen', () => {
   it('renders the settings sections', async () => {
     await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(screen.getByText('Notifications')).toBeTruthy();
     expect(screen.getByText('Appearance')).toBeTruthy();
     // The app is English only: there is no language setting.
     expect(screen.queryByText('Language')).toBeNull();
   });
 
-  it('toggles notifications and refreshes the profile', async () => {
-    const refreshProfile = jest.fn().mockResolvedValue(undefined);
-    useAuthStore.setState({ refreshProfile });
+  it('has no Notifications switch: the setting is stored but nothing reads it (AU-07, rule 6)', async () => {
     await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
-
-    const notificationsSwitch = screen.getByRole('switch', { name: 'Notifications' });
-    await fireEvent(notificationsSwitch, 'valueChange', false);
-
-    expect(mockUpdateProfile).toHaveBeenCalledWith({ notifications_enabled: false });
-    await waitFor(() => expect(refreshProfile).toHaveBeenCalledTimes(1));
-  });
-
-  it('shows an alert when updating the notification setting fails', async () => {
-    mockUpdateProfile.mockRejectedValue(new Error('offline'));
-    await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
-
-    const notificationsSwitch = screen.getByRole('switch', { name: 'Notifications' });
-    await fireEvent(notificationsSwitch, 'valueChange', false);
-
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Could not update notification setting', 'offline'),
-    );
+    expect(screen.queryByText('Notifications')).toBeNull();
+    expect(screen.queryByRole('switch')).toBeNull();
   });
 
   it('switches the appearance mode', async () => {
@@ -74,10 +46,10 @@ describe('SettingsScreen', () => {
     expect(useThemeStore.getState().mode).toBe('dark');
   });
 
-  it('navigates to Change Password', async () => {
+  it('navigates to Password', async () => {
     const navigation = makeNavigation();
     await renderWithQuery(<SettingsScreen navigation={navigation} route={{} as never} />);
-    await fireEvent.press(screen.getByText('Change Password'));
+    await fireEvent.press(screen.getByText('Password'));
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.ChangePassword);
   });
 
@@ -85,17 +57,25 @@ describe('SettingsScreen', () => {
     useAuthStore.setState({ role: 'admin' });
     const navigation = makeNavigation();
     await renderWithQuery(<SettingsScreen navigation={navigation} route={{} as never} />);
-    expect(screen.queryByText('Change Password')).toBeNull();
+    expect(screen.queryByText('Password')).toBeNull();
     await fireEvent.press(screen.getByText('Account security'));
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.AccountSecurity);
-    useAuthStore.setState({ role: null });
   });
 
-  it('signs out when Sign Out is pressed', async () => {
+  it('signs out with an ordinary secondary button, never the red one (AU-08)', async () => {
     const signOut = jest.fn();
     useAuthStore.setState({ signOut });
     await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
-    await fireEvent.press(screen.getByText('Sign Out'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
     expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts Delete account last, as a quiet entry that opens its own confirmation', async () => {
+    const navigation = makeNavigation();
+    await renderWithQuery(<SettingsScreen navigation={navigation} route={{} as never} />);
+    const buttons = screen.getAllByRole('button').map(button => button.props.accessibilityLabel ?? '');
+    expect(buttons.at(-1)).toBe('Delete account');
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.DeleteAccount);
   });
 });

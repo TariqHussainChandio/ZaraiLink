@@ -69,17 +69,38 @@ describe('StoreListScreen', () => {
     expect(screen.getByText('No address set')).toBeTruthy();
   });
 
-  it('shows an error state with retry when stores fail to load', async () => {
-    mockFetchStores.mockRejectedValue(new Error('network down'));
+  it('shows each store as Active or Inactive from the status vocabulary, not the raw value', async () => {
+    mockFetchStores.mockResolvedValue([store(), store({ id: 'store-2', name: 'Warehouse', status: 'inactive' })]);
     await renderWithQuery(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(await screen.findByText("Couldn't load stores")).toBeTruthy();
+    await screen.findByText('Main Branch');
+    expect(screen.getByText('Active')).toBeTruthy();
+    expect(screen.getByText('Inactive')).toBeTruthy();
+    expect(screen.queryByText('active')).toBeNull();
+  });
+
+  it('finds a store by name', async () => {
+    mockFetchStores.mockResolvedValue([store(), store({ id: 'store-2', name: 'Warehouse' })]);
+    await renderWithQuery(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
+    await screen.findByText('Main Branch');
+    await fireEvent.changeText(screen.getByLabelText('Find a store'), 'ware');
+    expect(screen.getByText('Warehouse')).toBeTruthy();
+    expect(screen.queryByText('Main Branch')).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText('Find a store'), 'zzz');
+    expect(screen.getByText('No stores match')).toBeTruthy();
+  });
+
+  it('shows a failed load as an error with Try again, never as "No stores yet"', async () => {
+    mockFetchStores.mockRejectedValue(new Error('Network request failed'));
+    await renderWithQuery(<StoreListScreen navigation={makeNavigation()} route={{} as never} />);
+    expect(await screen.findByText("Couldn't load your stores")).toBeTruthy();
+    expect(screen.queryByText('No stores yet')).toBeNull();
 
     mockFetchStores.mockResolvedValue([]);
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('No stores yet')).toBeTruthy();
   });
 
-  it('navigates to a store detail on row press and to a new store on FAB press', async () => {
+  it('navigates to a store detail on row press and to a new store from the sticky Add store button', async () => {
     mockFetchStores.mockResolvedValue([store()]);
     const navigation = makeNavigation();
     await renderWithQuery(<StoreListScreen navigation={navigation} route={{} as never} />);
@@ -88,7 +109,7 @@ describe('StoreListScreen', () => {
     await fireEvent.press(screen.getByText('Main Branch'));
     expect(navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.StoreDetail, { storeId: 'store-1' });
 
-    await fireEvent.press(screen.getByText('+ New Store'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add store' }));
     expect(navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.StoreDetail, {});
   });
 });

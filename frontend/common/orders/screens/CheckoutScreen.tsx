@@ -1,183 +1,210 @@
+import { ShoppingCart } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, TextField } from '../../components';
-import { useCheckout } from '../hooks/orders';
+import { StyleSheet, Text, View } from 'react-native';
+import {
+  Banner,
+  Button,
+  Card,
+  EmptyState,
+  ListGroup,
+  ListRow,
+  PriceBreakdown,
+  RatePlate,
+  ScreenScaffold,
+  StatusBadge,
+  StickyActionBar,
+  TextField,
+} from '../../components';
+import { PAYMENT_METHOD_NAMES, PaymentMethodOptions, useInitiatePayment, type PaymentMethod } from '../../payments';
+import { digitsOnly, parseWhole } from '../../marketplace';
+import { APP_TABS, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
+import { useCartListings, useCheckout } from '../hooks/orders';
+import { currentPrice, groupBySeller, productsTotal, sellerLabel } from '../utils/cartGroups';
+import type { Order } from '../types/orders';
 import { useAuthStore } from '../../../state/authStore';
-import { useCartStore, type CartItem } from '../../../state/cartStore';
+import { useCartStore } from '../../../state/cartStore';
+import { navigateInTab } from '../../../navigation/navigateInTab';
+import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../../theme';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
-import { formatRs } from '../../../utils/money';
+import { formatAmount, formatRs } from '../../../utils/money';
 
-function groupBySeller(items: CartItem[]): Map<string, CartItem[]> {
-  const groups = new Map<string, CartItem[]>();
-  for (const item of items) {
-    const group = groups.get(item.sellerId) ?? [];
-    group.push(item);
-    groups.set(item.sellerId, group);
-  }
-  return groups;
+/** One placed order, with the seller's name from the cart (which is cleared once the order exists) and whether its
+ * payment could be started. */
+interface PlacedOrder {
+  order: Order;
+  sellerName: string;
+  method: PaymentMethod;
+  paid: boolean;
 }
 
+/** Checkout: one section per seller, each with its own delivery charge, price breakdown and way to pay, and one total on the
+ * plate. Placing the order also starts each payment, so there is no separate "Pay now" step afterwards (MK-05). BR-09: the
+ * delivery charge is its own line. BR-11: the buyer pays the seller directly; ZaraiLink holds nothing. */
 export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
+  const tabs = useAppTabNavigation();
   const { items, clear } = useCartStore();
   const checkout = useCheckout();
-  const grouped = useMemo(() => groupBySeller(items), [items]);
+  const initiatePayment = useInitiatePayment();
+  const listings = useCartListings(items.map(item => item.listingId));
+  const groups = useMemo(() => groupBySeller(items), [items]);
 
-  // BR-09: delivery is always a separate, explicit charge the buyer proposes per seller here
-  // (Option A leaves it at 0 — product only; Option B is any non-zero amount) — never merged
-  // into the product price. The seller can still reject/cancel from OrderDetailScreen if they
-  // don't agree with the proposed amount; real-time negotiation before order creation is out
-  // of scope for this module.
-  const [deliveryCharges, setDeliveryCharges] = useState<Record<string, string>>({});
+  // BR-09: delivery is a separate, explicit charge the buyer enters per seller (empty means none: the buyer collects).
+  // The seller can still reject or cancel the order if they do not agree with it.
+  const [deliveryText, setDeliveryText] = useState<Record<string, string>>({});
+  const [methods, setMethods] = useState<Record<string, PaymentMethod>>({});
+  const [failure, setFailure] = useState<string | null>(null);
+  const [placed, setPlaced] = useState<PlacedOrder[] | null>(null);
 
-  const grandTotal = useMemo(() => {
-    return Array.from(grouped.entries()).reduce((sum, [sellerId, sellerItems]) => {
-      const subtotal = sellerItems.reduce((s, item) => s + item.price * item.quantity, 0);
-      const delivery = Number(deliveryCharges[sellerId] ?? 0) || 0;
-      return sum + subtotal + delivery;
-    }, 0);
-  }, [grouped, deliveryCharges]);
+  const deliveryOf = (sellerId: string) => parseWhole(deliveryText[sellerId] ?? '') ?? 0;
+  const grandTotal = groups.reduce((sum, group) => sum + productsTotal(group.items, listings) + deliveryOf(group.sellerId), 0);
 
-  const onConfirm = async () => {
+  const onPlace = async () => {
     if (!userId) return;
+    setFailure(null);
     try {
       const deliveryChargeBySeller: Record<string, number> = {};
-      for (const sellerId of grouped.keys()) {
-        deliveryChargeBySeller[sellerId] = Number(deliveryCharges[sellerId] ?? 0) || 0;
-      }
+      for (const group of groups) deliveryChargeBySeller[group.sellerId] = deliveryOf(group.sellerId);
+      const names = new Map(groups.map(group => [group.sellerId, sellerLabel(group, listings).name]));
       const orders = await checkout.mutateAsync({ items, deliveryChargeBySeller });
       clear();
-      Alert.alert(
-        'Order placed',
-        `${orders.length} ${orders.length === 1 ? 'order' : 'orders'} created. Track them from the Orders tab.`,
+      // The payment is started for each order with the method chosen for that seller. If one fails the order still
+      // exists; its row says so and the order screen offers "Choose how to pay".
+      const results = await Promise.all(
+        orders.map(async order => {
+          const method = methods[order.seller_id] ?? 'cod';
+          const paid = await initiatePayment
+            .mutateAsync({ orderId: order.id, method })
+            .then(() => true)
+            .catch(() => false);
+          return { order, sellerName: names.get(order.seller_id) ?? 'Seller', method, paid };
+        }),
       );
-      navigation.popToTop();
+      setPlaced(results);
     } catch (error) {
-      Alert.alert('Checkout failed', errorMessage(error));
+      setFailure(errorMessage(error));
     }
   };
 
+  if (placed) {
+    const count = placed.length;
+    return (
+      <ScreenScaffold
+        footer={
+          <StickyActionBar>
+            <Button label="Continue shopping" size="lg" onPress={() => navigation.popToTop()} />
+          </StickyActionBar>
+        }
+      >
+        <Banner tone="success" title={count === 1 ? 'Order placed' : `${count} orders placed`}>
+          Each seller is told. Track them in Orders.
+        </Banner>
+        <ListGroup>
+          {placed.map(({ order, sellerName, method, paid }) => (
+            <ListRow
+              key={order.id}
+              title={sellerName}
+              meta={paid ? `${formatRs(order.total)} · ${PAYMENT_METHOD_NAMES[method]}` : `${formatRs(order.total)} · Choose how to pay in the order`}
+              status={<StatusBadge kind="order" status={order.status} />}
+              onPress={() => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderDetail, { orderId: order.id })}
+            />
+          ))}
+        </ListGroup>
+      </ScreenScaffold>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <ScreenScaffold>
+        <EmptyState
+          icon={ShoppingCart}
+          title="Your cart is empty"
+          description="Add something from the market to check out."
+          actionLabel="Browse the market"
+          onAction={() => navigation.navigate(MARKETPLACE_ROUTES.Browse)}
+        />
+      </ScreenScaffold>
+    );
+  }
+
+  const busy = checkout.isPending || initiatePayment.isPending;
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {Array.from(grouped.entries()).map(([sellerId, sellerItems]) => {
-          const subtotal = sellerItems.reduce((s, item) => s + item.price * item.quantity, 0);
-          const delivery = Number(deliveryCharges[sellerId] ?? 0) || 0;
-          return (
-            <Card key={sellerId} style={styles.sellerCard}>
-              <Text style={styles.sellerTitle}>
-                {`Order ${sellerItems.length} ${sellerItems.length === 1 ? 'item' : 'items'}`}
-              </Text>
-              {sellerItems.map(item => (
-                <View key={item.listingId} style={styles.itemRow}>
-                  <Text style={styles.itemLabel} numberOfLines={1}>
-                    {`${item.quantity} × ${item.title}`}
-                  </Text>
-                  <Text style={styles.itemPrice}>
-                    {formatRs(item.price * item.quantity)}
-                  </Text>
+    <ScreenScaffold
+      footer={
+        <StickyActionBar leading={<RatePlate amount={grandTotal} unit="Total with delivery" size="md" />}>
+          <Button
+            label={groups.length === 1 ? 'Place order' : `Place ${groups.length} orders`}
+            size="lg"
+            loading={busy}
+            onPress={onPlace}
+          />
+        </StickyActionBar>
+      }
+    >
+      {failure ? (
+        <Banner tone="danger" title="Couldn't place your order">
+          {failure}
+        </Banner>
+      ) : null}
+      {groups.map(group => {
+        const seller = sellerLabel(group, listings);
+        const subtotal = productsTotal(group.items, listings);
+        const method = methods[group.sellerId] ?? 'cod';
+        return (
+          <Card key={group.sellerId} style={styles.seller}>
+            <Text style={styles.sellerName} accessibilityRole="header">
+              {seller.city ? `${seller.name} · ${seller.city}` : seller.name}
+            </Text>
+            <View style={styles.lines}>
+              {group.items.map(item => (
+                <View key={item.listingId} style={styles.line} accessible accessibilityLabel={`${item.quantity} ${item.unit} ${item.title}, ${formatRs(currentPrice(item, listings) * item.quantity)}`}>
+                  <Text style={styles.lineLabel}>{`${formatAmount(item.quantity)} ${item.unit} × ${item.title}`}</Text>
+                  <Text style={styles.lineAmount}>{formatRs(currentPrice(item, listings) * item.quantity)}</Text>
                 </View>
               ))}
-              <TextField
-                label="Delivery charge (optional)"
-                keyboardType="numeric"
-                placeholder="0"
-                value={deliveryCharges[sellerId] ?? ''}
-                onChangeText={text =>
-                  setDeliveryCharges(current => ({ ...current, [sellerId]: text }))
-                }
-              />
-              <View style={styles.sellerSummary}>
-                <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Subtotal</Text>
-                  <Text style={styles.itemPrice}>
-                    {formatRs(subtotal)}
-                  </Text>
-                </View>
-                <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Delivery</Text>
-                  <Text style={styles.itemPrice}>
-                    {formatRs(delivery)}
-                  </Text>
-                </View>
-              </View>
-            </Card>
-          );
-        })}
-      </ScrollView>
-      <View style={styles.footer}>
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>
-            {formatRs(grandTotal)}
-          </Text>
-        </View>
-        <Button label="Place Order" loading={checkout.isPending} onPress={onConfirm} />
-      </View>
-    </View>
+            </View>
+            <TextField
+              label="Delivery charge"
+              optional
+              prefix="Rs"
+              numeric
+              keyboardType="number-pad"
+              placeholder="0"
+              helper={`What you agreed with ${seller.name}. Leave empty if you collect.`}
+              value={deliveryText[group.sellerId] ?? ''}
+              // Digits only, so a pasted "1,500" is 1500 and never 0 (MK-04).
+              onChangeText={text => setDeliveryText(current => ({ ...current, [group.sellerId]: digitsOnly(text) }))}
+            />
+            <PriceBreakdown
+              subtotal={subtotal}
+              delivery={deliveryOf(group.sellerId)}
+              payTo={`You pay ${seller.name} directly. ZaraiLink does not hold your money.`}
+            />
+            <PaymentMethodOptions
+              value={method}
+              onChange={next => setMethods(current => ({ ...current, [group.sellerId]: next }))}
+              sellerName={seller.name}
+              label={`How will you pay ${seller.name}?`}
+            />
+          </Card>
+        );
+      })}
+    </ScreenScaffold>
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    sellerCard: {
-      marginBottom: space[3],
-    },
-    sellerTitle: {
-      ...typography.caption,
-      fontWeight: fontWeight.semibold,
-      color: colors.ink2,
-      marginBottom: space[2],
-    },
-    sellerSummary: {
-      marginTop: space[2],
-      paddingTop: space[2],
-      borderTopWidth: borders.hairline,
-      borderTopColor: colors.line,
-    },
-    itemRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: space[1],
-    },
-    itemLabel: {
-      ...typography.body,
-      flex: 1,
-      marginRight: space[2],
-      color: colors.ink,
-    },
-    itemPrice: {
-      ...typography.figure,
-      color: colors.ink2,
-    },
-    footer: {
-      padding: space[4],
-      borderTopWidth: borders.hairline,
-      borderTopColor: colors.line,
-    },
-    totalRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: space[3],
-    },
-    totalLabel: {
-      ...typography.body,
-      color: colors.ink2,
-    },
-    totalValue: {
-      ...typography.title,
-      color: colors.ink,
-    },
+    seller: { gap: space[4] },
+    sellerName: { ...typography.title, color: colors.ink },
+    lines: { gap: space[2] },
+    line: { flexDirection: 'row', justifyContent: 'space-between', gap: space[3] },
+    lineLabel: { ...typography.body, flex: 1, color: colors.ink },
+    lineAmount: { ...typography.figure, color: colors.ink },
   });
 }

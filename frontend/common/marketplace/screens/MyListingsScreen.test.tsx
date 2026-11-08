@@ -11,14 +11,8 @@ const mockTabNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
-  const { useEffect } = jest.requireActual('react');
   return {
     ...actual,
-    useFocusEffect: (effect: () => void) =>
-      useEffect(() => {
-        effect();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, []),
     useNavigation: () => ({
       getParent: () => ({ navigate: mockTabNavigate }),
     }),
@@ -61,25 +55,43 @@ beforeEach(() => {
 });
 
 describe('MyListingsScreen', () => {
-  it('loads and renders the current user\'s own listings', async () => {
+  it("loads and renders the current user's own listings, with the status as a badge", async () => {
     mockFetchListings.mockResolvedValue([listing()]);
     await renderWithQuery(<MyListingsScreen />);
 
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
     expect(mockFetchListings).toHaveBeenCalledWith({ ownerId: 'user-1' });
+    expect(screen.getByText('Rs 100 per kg · 50 kg available')).toBeTruthy();
     // The status reads through the vocabulary: an active listing is "Listed", never the raw value.
     expect(screen.getByText('Listed')).toBeTruthy();
     expect(screen.queryByText('active')).toBeNull();
-    expect(screen.getByLabelText('Wheat seeds, Rs 100 per kg, Listed')).toBeTruthy();
   });
 
-  it('shows an empty state when there are no listings', async () => {
+  it('says what to do when there are no listings, and the button opens the form in the Market tab', async () => {
     mockFetchListings.mockResolvedValue([]);
     await renderWithQuery(<MyListingsScreen />);
     expect(await screen.findByText('No listings yet')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'New listing' }));
+    // initial: false keeps the Market tab's own first screen underneath (MK-01).
+    expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Marketplace, {
+      screen: MARKETPLACE_ROUTES.CreateListing,
+      params: undefined,
+      initial: false,
+    });
   });
 
-  it('navigates to ListingDetail on the Marketplace tab when a row is pressed', async () => {
+  it('shows a Banner with "Try again" when the load fails, not an empty list (MK-03)', async () => {
+    mockFetchListings.mockRejectedValueOnce(new Error('Server down'));
+    await renderWithQuery(<MyListingsScreen />);
+    expect(await screen.findByText("Couldn't load your listings")).toBeTruthy();
+
+    mockFetchListings.mockResolvedValue([listing()]);
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Wheat seeds')).toBeTruthy();
+  });
+
+  it('opens a listing inside the Market tab under its first screen (MK-01)', async () => {
     mockFetchListings.mockResolvedValue([listing({ id: 'listing-42' })]);
     await renderWithQuery(<MyListingsScreen />);
 
@@ -88,6 +100,7 @@ describe('MyListingsScreen', () => {
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Marketplace, {
       screen: MARKETPLACE_ROUTES.ListingDetail,
       params: { listingId: 'listing-42' },
+      initial: false,
     });
   });
 });

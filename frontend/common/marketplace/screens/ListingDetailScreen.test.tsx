@@ -1,6 +1,5 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ListingDetailScreen } from './ListingDetailScreen';
 import { fetchListingById, recordListingView } from '../services/listingsService';
@@ -91,34 +90,40 @@ beforeEach(() => {
   mockFetchReviewsForListing.mockReset().mockResolvedValue([]);
   mockTabNavigate.mockReset();
   useCartStore.setState({ items: [] });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-});
-
-afterEach(() => {
-  jest.restoreAllMocks();
 });
 
 describe('ListingDetailScreen', () => {
-  it('loads and renders the listing with its seller and reviews', async () => {
+  it('loads and renders the listing with its price plate, seller, town and reviews', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
-    mockFetchListingById.mockResolvedValue(listing());
+    mockFetchListingById.mockResolvedValue(listing({ location: { country: 'Pakistan', province: 'Punjab', city: 'Sargodha' } }));
     mockFetchReviewsForListing.mockResolvedValue([review]);
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
 
-    expect(await screen.findByText('Wheat seeds')).toBeTruthy();
+    expect(await screen.findByRole('header', { name: 'Wheat seeds' })).toBeTruthy();
+    expect(screen.getByLabelText('Rs 100, per kg')).toBeTruthy();
     expect(screen.getByText('Certified high-yield seeds')).toBeTruthy();
     expect(screen.getByText('Green Farms')).toBeTruthy();
+    expect(screen.getAllByText('Sargodha').length).toBeGreaterThan(0);
     expect(screen.getByText('Ali Khan')).toBeTruthy();
     expect(mockRecordListingView).toHaveBeenCalledWith('listing-1');
   });
 
-  it('names a seller whose name is empty as unknown', async () => {
+  it('shows every detail that is filled in: category, brand, condition and the crops it suits (MK-08)', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing({ brand: 'Engro', condition: 'New', crop_compatibility: ['Wheat', 'Rice'] }));
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
+    expect(await screen.findByText('Engro')).toBeTruthy();
+    expect(screen.getByText('New')).toBeTruthy();
+    expect(screen.getByText('Wheat, Rice')).toBeTruthy();
+    expect(screen.getByText('Seeds')).toBeTruthy();
+  });
+
+  it('names a seller whose name is empty as "Seller"', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing({ owner: { id: 'seller-1', full_name: '', avatar_url: null } }));
-    mockFetchReviewsForListing.mockResolvedValue([]);
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
-    expect(await screen.findByText('Unknown seller')).toBeTruthy();
+    expect(await screen.findByText('Seller')).toBeTruthy();
   });
 
   it('does not record a view for the listing owner', async () => {
@@ -131,30 +136,29 @@ describe('ListingDetailScreen', () => {
     expect(mockRecordListingView).not.toHaveBeenCalled();
   });
 
-  it('shows a retry state when loading fails', async () => {
+  it('shows a Banner with the reason and "Try again" when loading fails, and recovers on retry (MK-03)', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockRejectedValue(new Error('Network error'));
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
-    expect(await screen.findByText('Listing not found')).toBeTruthy();
+    expect(await screen.findByText("Couldn't load this listing")).toBeTruthy();
 
     mockFetchListingById.mockResolvedValue(listing());
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
   });
 
-  it('shows Edit Listing for the owner and navigates to EditListing', async () => {
+  it('shows Edit listing in the bar for the owner, with no quantity or cart', async () => {
     useAuthStore.setState({ user: { id: 'seller-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());
     const props = makeProps();
 
     await renderWithQuery(<ListingDetailScreen {...props} />);
-    await fireEvent.press(await screen.findByText('Edit Listing'));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Edit listing' }));
 
-    expect(props.navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.EditListing, {
-      listingId: 'listing-1',
-    });
-    expect(screen.queryByText('Add to Cart')).toBeNull();
+    expect(props.navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.EditListing, { listingId: 'listing-1' });
+    expect(screen.queryByText(/Add to cart/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'One more kg' })).toBeNull();
   });
 
   it('shows the stock word, never the listing quantity as stock (A4, SRDS §15)', async () => {
@@ -164,48 +168,103 @@ describe('ListingDetailScreen', () => {
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
 
     expect(await screen.findByText('Low stock')).toBeTruthy();
-    expect(screen.getByText('Rs 100 / kg')).toBeTruthy();
     expect(screen.queryByText(/50 kg available/)).toBeNull();
-    expect(screen.getByText('Add to Cart')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add to cart · Rs 100' })).toBeTruthy();
   });
 
-  it('offers no Add to Cart for an out-of-stock listing, but still lets the buyer message the seller', async () => {
+  it('offers no Add to cart for an out-of-stock listing, but still lets the buyer message the seller', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing({ availability: 'out_of_stock' }));
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
 
     expect(await screen.findByText('Out of stock')).toBeTruthy();
-    expect(screen.queryByText('Add to Cart')).toBeNull();
-    expect(screen.getByText('Message Seller')).toBeTruthy();
+    expect(screen.queryByText(/Add to cart/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Message seller' })).toBeTruthy();
   });
 
-  it('adds the listing to the cart for a buyer', async () => {
+  it('sets the quantity before adding: the bar shows the total, and the cart gets that many', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
-    await fireEvent.press(await screen.findByText('Add to Cart'));
+    await screen.findByText('Wheat seeds');
+    await fireEvent.press(screen.getByRole('button', { name: 'One more kg' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'One more kg' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add to cart · Rs 300' }));
 
-    expect(useCartStore.getState().items).toEqual([
-      expect.objectContaining({ listingId: 'listing-1', sellerId: 'seller-1', quantity: 1 }),
-    ]);
-    expect(Alert.alert).toHaveBeenCalledWith('Added to cart', expect.stringContaining('Wheat seeds'));
+    expect(useCartStore.getState().items).toEqual([expect.objectContaining({ listingId: 'listing-1', sellerId: 'seller-1', quantity: 3 })]);
   });
 
-  it('starts a conversation with the seller and navigates to Chat', async () => {
+  it('takes a typed quantity: 50 is one entry, not 49 taps (MK-02)', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing());
+
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
+    await screen.findByText('Wheat seeds');
+    await fireEvent.press(screen.getByRole('button', { name: '1 kg' }));
+    const box = screen.getByLabelText('Number of kgs');
+    await fireEvent.changeText(box, '50');
+    await fireEvent(box, 'submitEditing');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add to cart · Rs 5,000' }));
+
+    expect(useCartStore.getState().items[0]).toMatchObject({ quantity: 50 });
+  });
+
+  it('confirms with a snackbar that opens the cart, instead of a blocking alert (MK-15)', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing());
+    const props = makeProps();
+
+    await renderWithQuery(<ListingDetailScreen {...props} />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add to cart · Rs 100' }));
+
+    expect(await screen.findByText('1 × Wheat seeds added to cart')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'View cart' }));
+    expect(props.navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.Cart);
+  });
+
+  it('shows every photo in a pager ("1 of 3") and opens them full screen (MK-07)', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing({ images: ['https://img/1.jpg', 'https://img/2.jpg', 'https://img/3.jpg'] }));
+
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
+
+    expect(await screen.findByText('1 of 3', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByRole('imagebutton', { name: 'Photo 1 of 3' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('imagebutton', { name: 'Photo 1 of 3' }));
+    expect(await screen.findByRole('button', { name: 'Close photos' })).toBeTruthy();
+  });
+
+  it('shows the first three reviews and the rest on request', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never });
+    mockFetchListingById.mockResolvedValue(listing());
+    mockFetchReviewsForListing.mockResolvedValue(
+      Array.from({ length: 5 }, (_, n) => ({ ...review, id: `review-${n}`, buyer: { id: `b${n}`, full_name: `Buyer ${n}`, avatar_url: null } })),
+    );
+
+    await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
+    expect(await screen.findByText('Buyer 2')).toBeTruthy();
+    expect(screen.queryByText('Buyer 3')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Show all 5 reviews' }));
+    expect(screen.getByText('Buyer 4')).toBeTruthy();
+  });
+
+  it('starts a conversation with the seller and opens Chat on top of the conversation list (MK-01)', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing());
     mockFindOrCreateConversation.mockResolvedValue({ id: 'conversation-1' });
 
     await renderWithQuery(<ListingDetailScreen {...makeProps()} />);
-    await fireEvent.press(await screen.findByText('Message Seller'));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Message seller' }));
 
     expect(mockFindOrCreateConversation).toHaveBeenCalledWith('seller-1');
-    expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
-      screen: MESSAGING_ROUTES.Chat,
-      initial: false,
-      params: { conversationId: 'conversation-1', otherUserName: 'Green Farms' },
-    });
+    await waitFor(() =>
+      expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Messages, {
+        screen: MESSAGING_ROUTES.Chat,
+        initial: false,
+        params: { conversationId: 'conversation-1', otherUserName: 'Green Farms' },
+      }),
+    );
   });
 });

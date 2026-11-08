@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { queryKeys } from '../../../hooks/keys';
 import { ApiError } from '../../../services/api/errors';
@@ -63,6 +63,8 @@ function makeNavigation() {
   } as unknown as MarketplaceScreenProps<'Browse'>['navigation'];
 }
 
+const wait = () => ({ timeout: 3000 });
+
 beforeEach(() => {
   mockFetchListings.mockReset();
   mockFetchListings.mockResolvedValue([]);
@@ -74,33 +76,53 @@ beforeEach(() => {
 });
 
 describe('BrowseScreen', () => {
-  it('loads and renders listings on mount', async () => {
-    mockFetchListings.mockResolvedValue([listing()]);
+  it('loads and renders listings on mount, with the price on its plate and who sells it', async () => {
+    mockFetchListings.mockResolvedValue([
+      listing({ owner: { id: 'owner-1', full_name: 'Chaudhry Seeds', avatar_url: null }, location: { country: 'Pakistan', province: 'Punjab', city: 'Sargodha' } }),
+    ]);
     await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
+    expect(screen.getByLabelText('Rs 100, per kg')).toBeTruthy();
+    expect(screen.getByText('Chaudhry Seeds · Sargodha')).toBeTruthy();
     expect(mockFetchListings).toHaveBeenCalledWith(expect.objectContaining({ page: 0 }));
   });
 
-  it('shows an empty state when there are no listings', async () => {
+  it('says nothing is listed yet, without blaming a filter, when the market is empty', async () => {
     await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(await screen.findByText('No listings yet')).toBeTruthy();
+    expect(await screen.findByText('Nothing is listed yet')).toBeTruthy();
+    expect(screen.queryByText('No listings match')).toBeNull();
+    // A buyer is not told to "list produce" (MK-14).
+    expect(screen.queryByText(/List what you sell/)).toBeNull();
   });
 
-  it('shows the "+ List" fab for a farmer and navigates to CreateListing', async () => {
+  it('says "No listings match" with Clear filters when a filter is on, and Clear filters resets them', async () => {
+    useMarketplaceStore.setState({
+      filters: { categoryId: null, search: '', minPrice: null, maxPrice: 500, city: 'Okara', cropName: null },
+    });
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
+
+    expect(await screen.findByText('No listings match')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(useMarketplaceStore.getState().filters.city).toBeNull();
+    expect(useMarketplaceStore.getState().filters.maxPrice).toBeNull();
+  });
+
+  it('offers a seller a "New listing" button that opens the form', async () => {
     useAuthStore.setState({ role: 'farmer' } as never);
     const navigation = makeNavigation();
     await renderWithQuery(<BrowseScreen navigation={navigation} route={{} as never} />);
-    await screen.findByText('No listings yet');
+    await screen.findByText('Nothing is listed yet');
 
-    await fireEvent.press(screen.getByText('+ List'));
+    // The empty state and the screen's own button both offer it; the first is enough to prove the route.
+    await fireEvent.press(screen.getAllByRole('button', { name: 'New listing' })[0]!);
     expect(navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.CreateListing);
   });
 
-  it('hides the fab for a buyer', async () => {
+  it('shows a buyer no way to list anything', async () => {
     await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
-    await screen.findByText('No listings yet');
-    expect(screen.queryByText('+ List')).toBeNull();
+    await screen.findByText('Nothing is listed yet');
+    expect(screen.queryByRole('button', { name: 'New listing' })).toBeNull();
   });
 
   it('navigates to ListingDetail when a listing is pressed', async () => {
@@ -114,18 +136,18 @@ describe('BrowseScreen', () => {
     });
   });
 
-  it('shows an error message with a retry when nothing is cached and the request fails', async () => {
+  it('shows a Banner with the reason and "Try again" when nothing is cached and the request fails', async () => {
     mockFetchListings.mockRejectedValueOnce(
       new ApiError({ status: 0, code: 'network', kind: 'network', message: 'No connection to the server' }),
     );
     await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
 
-    expect(await screen.findByText('Could not load listings')).toBeTruthy();
-    expect(screen.queryByText('No connection to the server')).toBeNull();
+    expect(await screen.findByText("Couldn't load the market")).toBeTruthy();
+    expect(screen.getByText('No connection. Check your internet, then try again.')).toBeTruthy();
 
     mockFetchListings.mockResolvedValue([listing()]);
-    await fireEvent.press(screen.getByText('Retry'));
-    expect(await screen.findByText('Wheat seeds')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Wheat seeds', {}, wait())).toBeTruthy();
   });
 
   it('keeps showing the cached listings when the device is offline (the refetch fails)', async () => {
@@ -139,6 +161,22 @@ describe('BrowseScreen', () => {
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
     await waitFor(() => expect(mockFetchListings).toHaveBeenCalled());
     expect(screen.getByText('Wheat seeds')).toBeTruthy();
-    expect(screen.queryByText('Could not load listings')).toBeNull();
+  });
+
+  it('keeps the old grid on screen while a new search loads, instead of flashing skeletons (MK-13)', async () => {
+    mockFetchListings.mockResolvedValueOnce([listing()]);
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
+    await screen.findByText('Wheat seeds');
+
+    let resolveNext: (value: ListingWithRelations[]) => void = () => undefined;
+    mockFetchListings.mockReturnValueOnce(new Promise<ListingWithRelations[]>(resolve => (resolveNext = resolve)));
+    await act(async () => useMarketplaceStore.getState().setFilters({ search: 'urea' }));
+
+    // The request for "urea" is in flight; the wheat card is still there.
+    await waitFor(() => expect(mockFetchListings).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'urea' })));
+    expect(screen.getByText('Wheat seeds')).toBeTruthy();
+
+    await act(async () => resolveNext([listing({ id: 'listing-2', title: 'Urea 50 kg' })]));
+    expect(await screen.findByText('Urea 50 kg')).toBeTruthy();
   });
 });

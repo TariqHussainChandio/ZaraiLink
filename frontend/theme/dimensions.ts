@@ -1,15 +1,15 @@
-// Fixed sizes (A2, D14). Everything tappable is at least touchMin; a smaller control gets hitSlop to reach it.
+// Fixed sizes (D15, Rate Board). Everything tappable is at least touchMin; a smaller control gets hitSlop to reach it.
 export const size = {
   /** Minimum hit area for anything tappable. */
   touchMin: 48,
   /** Full-width primary action in a sticky bar or at the end of a form. */
-  buttonLg: 52,
-  /** Buttons inside cards and rows. */
-  buttonMd: 44,
-  /** Compact buttons in dense admin and inventory rows. */
-  buttonSm: 36,
-  /** Chips. */
-  chip: 36,
+  buttonLg: 56,
+  /** Buttons inside cards, rows and banners: a full touch target without hitSlop. */
+  buttonMd: 48,
+  /** Dense admin and inventory rows only, with hitSlop to touchMin. */
+  buttonSm: 40,
+  /** Chips, with hitSlop to touchMin. */
+  chip: 40,
   /** Text fields, selects and code cells. */
   input: 52,
   /** Top app bar. */
@@ -42,9 +42,11 @@ export const size = {
   /** A photo in a chat bubble, a document preview, a listing card in a two-column grid. */
   photoLg: 120,
   /** A product photo at the top of a card. */
-  cardImage: 160,
+  cardImage: 148,
   /** The photo at the top of a listing, and the plant photo in the disease advisory. */
-  photoHero: 220,
+  photoHero: 240,
+  /** The bar area of a bar chart (labels sit outside it, so they never overlap a bar at a large font scale). */
+  chartBars: 140,
   /** The tallest a multi-line chat input grows before it scrolls. */
   composerMax: 120,
   /** The tallest a list inside a sheet grows before it scrolls. */

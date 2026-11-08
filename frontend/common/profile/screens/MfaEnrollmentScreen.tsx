@@ -1,7 +1,8 @@
+import { ShieldCheck } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { Banner, Button, TextField } from '../../components';
+import { Banner, Button, CodeField, ConfirmSheet, ScreenScaffold, Skeleton } from '../../components';
 import {
   useEnrollTotp,
   useUnenrollTotp,
@@ -10,7 +11,7 @@ import {
   type TotpEnrollment,
   mapMfaErrorMessage,
 } from '../../auth';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 
 type ScreenState = 'loading' | 'enrolled' | 'not-enrolled' | 'enrolling';
@@ -22,15 +23,16 @@ type ScreenState = 'loading' | 'enrolled' | 'not-enrolled' | 'enrolling';
 // covers.
 export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>) {
   const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   // What the user did on this screen (enrolled, disabled) overrides what was read on load.
   const [stateOverride, setState] = useState<ScreenState | null>(null);
   const [factorOverride, setVerifiedFactorId] = useState<string | null | undefined>(undefined);
   const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmingOff, setConfirmingOff] = useState(false);
 
   const factorQuery = useVerifiedTotpFactor();
   const { mutateAsync: enrollTotp } = useEnrollTotp();
@@ -42,7 +44,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
   const verifiedFactorId = factorOverride !== undefined ? factorOverride : (loadedFactorId ?? null);
   const loadedState: ScreenState = loadingFactor ? 'loading' : loadedFactorId ? 'enrolled' : 'not-enrolled';
   const state = stateOverride ?? loadedState;
-  const loadErrorMessage = loadError ? 'Could not check two-factor authentication status' : null;
+  const loadErrorMessage = loadError ? 'Could not check two-step verification. Try again.' : null;
 
   const onStartEnroll = async () => {
     setError(null);
@@ -52,183 +54,138 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
       setEnrollment(result);
       setState('enrolling');
     } catch (err) {
-      setError(mapMfaErrorMessage(err, 'Could not start two-factor authentication setup'));
+      setError(mapMfaErrorMessage(err, 'Could not start the setup. Try again.'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const onVerify = async () => {
-    if (!enrollment) return;
-    setError(null);
+  const onVerify = async (token: string) => {
+    if (!enrollment || submitting) return;
+    setCodeError(null);
     setSubmitting(true);
     try {
-      await verifyEnrollment({ factorId: enrollment.factorId, code });
+      await verifyEnrollment({ factorId: enrollment.factorId, code: token });
       setVerifiedFactorId(enrollment.factorId);
       setState('enrolled');
     } catch (err) {
-      setError(mapMfaErrorMessage(err, "That code isn't right. Check your app and try again."));
+      setCodeError(mapMfaErrorMessage(err, "That code isn't right. Check your app and try again."));
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Opens the authenticator app with the key already in it: a phone cannot scan a QR code shown on its own screen.
+  const openAuthenticator = async () => {
+    if (!enrollment) return;
+    setError(null);
+    try {
+      await Linking.openURL(enrollment.uri);
+    } catch {
+      setError('No authenticator app was found on this phone. Install one, or type the key into the app you use.');
+    }
+  };
+
+  // Rethrows: the confirm sheet shows a refusal inside itself and stays open.
   const onDisable = async () => {
     if (!verifiedFactorId) return;
-    setError(null);
-    setSubmitting(true);
     try {
       await unenrollTotp(verifiedFactorId);
-      setVerifiedFactorId(null);
-      setEnrollment(null);
-      setCode('');
-      setState('not-enrolled');
     } catch (err) {
-      setError(mapMfaErrorMessage(err, 'Could not turn off two-factor authentication'));
-    } finally {
-      setSubmitting(false);
+      throw new Error(mapMfaErrorMessage(err, 'Could not turn off two-step verification. Try again.'));
     }
+    setVerifiedFactorId(null);
+    setEnrollment(null);
+    setCode('');
+    setState('not-enrolled');
   };
 
   if (state === 'loading') {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={accent.mark} />
-      </View>
+      <ScreenScaffold>
+        <View accessibilityLabel="Checking two-step verification" accessibilityRole="progressbar" style={styles.loading}>
+          <Skeleton style={styles.skeletonLine} />
+          <Skeleton style={styles.skeletonButton} />
+        </View>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Two-factor authentication</Text>
-      <Text style={styles.subtitle}>Admin actions that change data (suspending a user, verifying an expert, and similar) require a verified authenticator app code in addition to your password.</Text>
+    <ScreenScaffold>
+      <Text style={styles.subtitle}>
+        Admin actions that change data, such as suspending a user or verifying an expert, need a code from your authenticator app as well as your password.
+      </Text>
 
-      {error ?? loadErrorMessage ? (
-
-        <View style={styles.errorBanner}>
-
-          <Banner tone="danger" title={error ?? loadErrorMessage ?? undefined} />
-
-        </View>
-
-      ) : null}
+      {error ?? loadErrorMessage ? <Banner tone="danger" title={error ?? loadErrorMessage ?? undefined} /> : null}
 
       {state === 'enrolled' ? (
         <>
-          <Text style={styles.statusEnabled}>Two-factor authentication is enabled.</Text>
-          <Button
-            label="Turn off two-factor authentication"
-            variant="danger"
-            loading={submitting}
-            onPress={onDisable}
-            style={styles.action}
-          />
+          <View style={styles.on}>
+            <ShieldCheck color={theme.colors.status.success.mark} size={theme.size.iconMd} strokeWidth={theme.size.iconStroke} />
+            <Text style={styles.onText}>Two-step verification is on.</Text>
+          </View>
+          <Button label="Turn off two-step verification" variant="dangerQuiet" onPress={() => setConfirmingOff(true)} />
         </>
       ) : null}
 
       {state === 'not-enrolled' ? (
-        <Button
-          label="Set up two-factor authentication"
-          loading={submitting}
-          onPress={onStartEnroll}
-          style={styles.action}
-        />
+        <Button label="Set up two-step verification" size="lg" loading={submitting} onPress={onStartEnroll} />
       ) : null}
 
       {state === 'enrolling' && enrollment ? (
         <>
-          <Text style={styles.stepLabel}>1. Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</Text>
+          <Text style={styles.step}>1. Add this account to your authenticator app</Text>
+          <Button label="Open authenticator app" variant="secondary" onPress={openAuthenticator} />
+          <Text style={styles.body}>On another phone or a computer? Scan this code with an authenticator app such as Google Authenticator or Authy.</Text>
+          {/* A QR code needs a light quiet zone around it to scan, so it sits on chalk, which is the same in the dark theme
+              (the dark `surface` would make it unreadable to the scanner). */}
           <View style={styles.qrContainer}>
             <SvgXml xml={enrollment.qrCodeSvg} width={theme.size.qrCode} height={theme.size.qrCode} />
           </View>
-          <Text style={styles.secretLabel}>{"Can't scan the code? Enter this key manually:"}</Text>
+          <Text style={styles.body}>{"Can't scan or open it? Type this key into the app:"}</Text>
           <Text selectable style={styles.secret}>
             {enrollment.secret}
           </Text>
 
-          <Text style={styles.stepLabel}>2. Enter the 6-digit code from your app</Text>
-          <TextField
-            label="Authentication code"
-            keyboardType="number-pad"
-            maxLength={6}
-            value={code}
-            onChangeText={value => setCode(value.replace(/\D/g, '').slice(0, 6))}
-            textContentType="oneTimeCode"
-            autoComplete="one-time-code"
-          />
-          <Button
-            label="Verify and enable"
-            loading={submitting}
-            disabled={code.length !== 6}
-            onPress={onVerify}
-            style={styles.action}
-          />
+          <Text style={styles.step}>2. Enter the 6-digit code from your app</Text>
+          <CodeField label="Authentication code" value={code} onChange={setCode} onComplete={onVerify} error={codeError ?? undefined} />
+          <Button label="Verify and turn on" size="lg" loading={submitting} disabled={code.length !== 6} onPress={() => onVerify(code)} />
         </>
       ) : null}
-    </ScrollView>
+
+      <ConfirmSheet
+        visible={confirmingOff}
+        onClose={() => setConfirmingOff(false)}
+        title="Turn off two-step verification?"
+        message="Approvals, suspensions and other admin decisions stop working until you set it up again. Anyone with your password could then sign in."
+        confirmLabel="Turn off"
+        keepLabel="Keep it on"
+        destructive
+        onConfirm={onDisable}
+      />
+    </ScreenScaffold>
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight, radius }: Theme, accent: Accent) {
+function makeStyles({ colors, space, size, typography, radius }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    center: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    title: {
-      ...typography.titleLg,
-      color: colors.ink,
-    },
-    subtitle: {
-      ...typography.body,
-      color: colors.ink2,
-      marginTop: space[1],
-      marginBottom: space[4],
-    },
-    statusEnabled: {
-      ...typography.body,
-      color: colors.status.success.mark,
-      marginBottom: space[3],
-    },
-    stepLabel: {
-      ...typography.caption,
-      fontWeight: fontWeight.semibold,
-      color: colors.ink,
-      marginTop: space[4],
-      marginBottom: space[2],
-    },
+    subtitle: { ...typography.body, color: colors.ink2 },
+    body: { ...typography.body, color: colors.ink2 },
+    step: { ...typography.title, color: colors.ink },
+    loading: { gap: space[3] },
+    skeletonLine: { height: size.iconLg },
+    skeletonButton: { height: size.buttonLg },
+    on: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
+    onText: { ...typography.bodyStrong, color: colors.status.success.ink, flexShrink: 1 },
     qrContainer: {
       alignItems: 'center',
       padding: space[3],
-      backgroundColor: colors.surface,
+      backgroundColor: colors.onBoard,
       borderRadius: radius.sm,
       alignSelf: 'flex-start',
     },
-    secretLabel: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginTop: space[2],
-    },
     // The setup key is typed by hand into an authenticator app: the mono face keeps 0/O and 1/l apart.
-    secret: {
-      ...typography.code,
-      color: colors.ink,
-      marginTop: space[1],
-    },
-    errorBanner: {
-      marginBottom: space[3],
-    },
-    action: {
-      marginTop: space[3],
-    },
+    secret: { ...typography.code, color: colors.ink },
   });
 }

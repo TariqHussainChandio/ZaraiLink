@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { StatusBar, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ErrorBoundary, OfflineBanner } from './frontend/common/components';
+import { ErrorBoundary, OfflineFrame, SnackbarProvider } from './frontend/common/components';
 import { connectQueryManagers, persistOptions, queryClient } from './frontend/hooks/queryClient';
 import { linking } from './frontend/navigation/linking';
 import { RootNavigator } from './frontend/navigation/stacks/RootNavigator';
@@ -43,8 +43,10 @@ function AppShell() {
       {/* The status bar's icons follow the app's own light/dark choice (Settings), not the phone's: left to the phone,
           a dark phone showing the light app drew white icons on white. */}
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <OfflineBanner />
-      <RootNavigator />
+      {/* The offline banner is part of the layout, above the navigator, so it never covers an app bar or Back. */}
+      <OfflineFrame>
+        <RootNavigator />
+      </OfflineFrame>
     </NavigationContainer>
   );
 }
@@ -64,9 +66,12 @@ function App() {
       <SafeAreaProvider>
         <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
           <ThemeProvider>
-            <ErrorBoundary name="root">
-              <AppShell />
-            </ErrorBoundary>
+            {/* Above navigation, so one snackbar can confirm an action on whichever screen is open. */}
+            <SnackbarProvider>
+              <ErrorBoundary name="root">
+                <AppShell />
+              </ErrorBoundary>
+            </SnackbarProvider>
           </ThemeProvider>
         </PersistQueryClientProvider>
       </SafeAreaProvider>

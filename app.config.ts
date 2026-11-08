@@ -15,15 +15,16 @@ function resolveVersionCode(): number {
   return value;
 }
 
-// The Atkinson Hyperlegible weights the theme uses (frontend/theme/typography.ts), resolved inside their @expo-google-fonts
-// packages. The expo-font plugin below embeds them as Android font families, so a style's fontWeight picks the file.
+// The weights the theme uses (frontend/theme/typography.ts), resolved inside their @expo-google-fonts packages: Atkinson
+// Hyperlegible Next for everything read, Barlow Semi Condensed for titles and figures (D15, Rate Board). The expo-font
+// plugin below embeds them as Android font families, so a style's fontWeight picks the file.
 const FONT_FILES = {
   next400: require.resolve('@expo-google-fonts/atkinson-hyperlegible-next/400Regular/AtkinsonHyperlegibleNext_400Regular.ttf'),
   next500: require.resolve('@expo-google-fonts/atkinson-hyperlegible-next/500Medium/AtkinsonHyperlegibleNext_500Medium.ttf'),
   next600: require.resolve('@expo-google-fonts/atkinson-hyperlegible-next/600SemiBold/AtkinsonHyperlegibleNext_600SemiBold.ttf'),
   next700: require.resolve('@expo-google-fonts/atkinson-hyperlegible-next/700Bold/AtkinsonHyperlegibleNext_700Bold.ttf'),
-  mono500: require.resolve('@expo-google-fonts/atkinson-hyperlegible-mono/500Medium/AtkinsonHyperlegibleMono_500Medium.ttf'),
-  mono700: require.resolve('@expo-google-fonts/atkinson-hyperlegible-mono/700Bold/AtkinsonHyperlegibleMono_700Bold.ttf'),
+  board600: require.resolve('@expo-google-fonts/barlow-semi-condensed/600SemiBold/BarlowSemiCondensed_600SemiBold.ttf'),
+  board700: require.resolve('@expo-google-fonts/barlow-semi-condensed/700Bold/BarlowSemiCondensed_700Bold.ttf'),
 };
 
 const config: ExpoConfig = {
@@ -57,7 +58,7 @@ const config: ExpoConfig = {
     // Photos come from the system picker and the camera path needs CAMERA. Nothing records audio,
     // and the plugin adds RECORD_AUDIO unless told not to.
     ['expo-image-picker', { microphonePermission: false }],
-    // A2 (D14): the design system's faces, embedded at build time so text never flashes in a fallback font.
+    // D15 (Rate Board): the design system's faces, embedded at build time so text never flashes in a fallback font.
     // Declared as Android font families with one file per weight, so a style's `fontWeight` picks the file
     // natively (frontend/theme/typography.ts names the families).
     [
@@ -75,10 +76,10 @@ const config: ExpoConfig = {
               ],
             },
             {
-              fontFamily: 'AtkinsonHyperlegibleMono',
+              fontFamily: 'BarlowSemiCondensed',
               fontDefinitions: [
-                { path: FONT_FILES.mono500, weight: 500 },
-                { path: FONT_FILES.mono700, weight: 700 },
+                { path: FONT_FILES.board600, weight: 600 },
+                { path: FONT_FILES.board700, weight: 700 },
               ],
             },
           ],

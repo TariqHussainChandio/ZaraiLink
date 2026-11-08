@@ -1,129 +1,55 @@
+import { Trash2 } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import { IconButton, QuantityStepper } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
 import type { CartItem } from '../../../state/cartStore';
 import { formatRs } from '../../../utils/money';
 
 export interface CartItemRowProps {
   item: CartItem;
-  onIncrement: () => void;
-  onDecrement: () => void;
+  /** Today's price per unit. It can differ from `item.price`, which is the price when the item was added; the server
+   * charges the current one, so the cart shows it. */
+  price: number;
+  onQuantityChange: (quantity: number) => void;
   onRemove: () => void;
 }
 
-export function CartItemRow({ item, onIncrement, onDecrement, onRemove }: CartItemRowProps) {
+/** One cart line: photo, name, price per unit, a − / quantity / + control for any amount, and the line total. Removing
+ * is its own button (the screen offers Undo); "−" at 1 stops instead of deleting the line. */
+export function CartItemRow({ item, price, onQuantityChange, onRemove }: CartItemRowProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const changed = price !== item.price;
 
   return (
     <View style={styles.row}>
-      {item.image ? (
-        <Image source={{ uri: item.image }} style={styles.image} />
-      ) : (
-        <View style={styles.image} />
-      )}
+      {item.image ? <Image source={{ uri: item.image }} style={styles.image} accessibilityIgnoresInvertColors /> : <View style={styles.image} />}
       <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.price}>
-          {formatRs(item.price)} / {item.unit}
-        </Text>
-        <View style={styles.stepper}>
-          <TouchableOpacity
-            style={styles.stepperButton}
-            onPress={onDecrement}
-            accessibilityRole="button"
-            accessibilityLabel={`One fewer ${item.title}`}
-            hitSlop={theme.components.hitSlop(theme.size.buttonSm)}
-          >
-            <Text style={styles.stepperLabel}>−</Text>
-          </TouchableOpacity>
-          <Text style={styles.quantity}>{item.quantity}</Text>
-          <TouchableOpacity
-            style={styles.stepperButton}
-            onPress={onIncrement}
-            accessibilityRole="button"
-            accessibilityLabel={`One more ${item.title}`}
-            hitSlop={theme.components.hitSlop(theme.size.buttonSm)}
-          >
-            <Text style={styles.stepperLabel}>+</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.price}>{`${formatRs(price)} per ${item.unit}`}</Text>
+        {changed ? <Text style={styles.changed}>{`Was ${formatRs(item.price)} when you added it`}</Text> : null}
+        <QuantityStepper value={item.quantity} onChange={onQuantityChange} unit={item.unit} />
       </View>
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={onRemove}
-        accessibilityRole="button"
-        accessibilityLabel={`Remove ${item.title} from the cart`}
-      >
-        <Text style={styles.remove}>Remove</Text>
-      </TouchableOpacity>
+      <View style={styles.end}>
+        <IconButton icon={Trash2} label={`Remove ${item.title} from the cart`} onPress={onRemove} />
+        <Text style={styles.lineTotal} accessibilityLabel={`${formatRs(price * item.quantity)} for ${item.quantity} ${item.unit}`}>
+          {formatRs(price * item.quantity)}
+        </Text>
+      </View>
     </View>
   );
 }
 
-function makeStyles({ colors, space, radius, typography, fontWeight, size, borders }: Theme) {
+function makeStyles({ colors, space, radius, size, typography }: Theme) {
   return StyleSheet.create({
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: space[2],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    image: {
-      width: size.thumb,
-      height: size.thumb,
-      borderRadius: radius.sm,
-      backgroundColor: colors.line,
-    },
-    body: {
-      flex: 1,
-      marginLeft: space[3],
-    },
-    title: {
-      ...typography.caption,
-      fontWeight: fontWeight.semibold,
-      color: colors.ink,
-    },
-    price: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginTop: space[1] / 2,
-    },
-    stepper: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: space[1],
-    },
-    stepperButton: {
-      width: size.buttonSm,
-      height: size.buttonSm,
-      borderRadius: radius.xs,
-      borderWidth: borders.hairline,
-      borderColor: colors.line,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stepperLabel: {
-      ...typography.body,
-      color: colors.ink2,
-    },
-    quantity: {
-      marginHorizontal: space[2],
-      ...typography.caption,
-      color: colors.ink,
-    },
-    // The whole 48 dp area is the target, not only the word.
-    removeButton: {
-      minHeight: size.touchMin,
-      justifyContent: 'center',
-      paddingHorizontal: space[2],
-    },
-    remove: {
-      color: colors.status.danger.mark,
-      ...typography.caption,
-    },
+    row: { flexDirection: 'row', alignItems: 'flex-start', gap: space[3], paddingVertical: space[3] },
+    image: { width: size.thumb, height: size.thumb, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken },
+    body: { flex: 1, minWidth: 0, gap: space[1] },
+    title: { ...typography.bodyStrong, color: colors.ink },
+    price: { ...typography.body, color: colors.ink2 },
+    changed: { ...typography.caption, color: colors.status.warning.ink },
+    end: { alignItems: 'flex-end', flexShrink: 0 },
+    lineTotal: { ...typography.figure, color: colors.ink },
   });
 }

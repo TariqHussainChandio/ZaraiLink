@@ -1,8 +1,9 @@
 import { ShoppingBag, Sprout, Stethoscope, Store, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Button, ListGroup, ListRow } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
+import { AuthScreen } from '../components/AuthScreen';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 import { useTheme, type Theme } from '../../../theme';
 import type { RegistrableRole } from '../../constants/roles';
@@ -19,11 +20,7 @@ export function CreateAccountScreen({ navigation }: AuthScreenProps<typeof AUTH_
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title} accessibilityRole="header">
-        Create your account
-      </Text>
-      <Text style={styles.subtitle}>How will you use ZaraiLink?</Text>
+    <AuthScreen title="Create your account" subtitle="How will you use ZaraiLink?">
       <ListGroup>
         {CHOICES.map(choice => {
           const Icon = choice.icon;
@@ -42,23 +39,13 @@ export function CreateAccountScreen({ navigation }: AuthScreenProps<typeof AUTH_
         <Text style={styles.footerText}>Already have an account?</Text>
         <Button label="Sign in" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
       </View>
-    </ScrollView>
+    </AuthScreen>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: { flexGrow: 1, justifyContent: 'center', padding: space[6], backgroundColor: colors.ground },
-    title: { ...typography.display, color: colors.ink },
-    subtitle: { ...typography.body, color: colors.ink2, marginTop: space[1], marginBottom: space[6] },
-    footer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: space[1],
-      marginTop: space[4],
-    },
+    footer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: space[1] },
     footerText: { ...typography.body, color: colors.ink2 },
   });
 }

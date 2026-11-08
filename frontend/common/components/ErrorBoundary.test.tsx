@@ -35,7 +35,7 @@ describe('ErrorBoundary', () => {
   it('shows a retry screen instead of a blank app when a screen throws while rendering', async () => {
     await renderBoundary();
 
-    expect(screen.getByText('Something went wrong')).toBeTruthy();
+    expect(screen.getByText('This screen stopped working')).toBeTruthy();
     expect(screen.queryByText('recovered')).toBeNull();
   });
 
@@ -49,7 +49,7 @@ describe('ErrorBoundary', () => {
     await renderBoundary();
     shouldThrow = false;
 
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
 
     expect(screen.getByText('recovered')).toBeTruthy();
   });
@@ -57,9 +57,9 @@ describe('ErrorBoundary', () => {
   it('shows the retry screen again when the problem is still there', async () => {
     await renderBoundary();
 
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
 
-    expect(screen.getByText('Something went wrong')).toBeTruthy();
+    expect(screen.getByText('This screen stopped working')).toBeTruthy();
   });
 
   it('renders its children untouched when nothing throws', async () => {

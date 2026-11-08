@@ -1,24 +1,21 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import React from 'react';
 import { DealerBusinessStep } from '../../common/auth';
-import { useTheme, type Theme } from '../../theme';
+import { ScreenScaffold, useSnackbar } from '../../common/components';
 
 /** An approved dealer's business details (SRDS §7), the same form as the application's business step. */
 export function BusinessDetailsScreen() {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation();
+  const snackbar = useSnackbar();
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <DealerBusinessStep submitLabel="Save" onDone={() => navigation.goBack()} />
-    </ScrollView>
+    <ScreenScaffold>
+      <DealerBusinessStep
+        submitLabel="Save details"
+        onDone={() => {
+          snackbar.show('Business details saved');
+          navigation.goBack();
+        }}
+      />
+    </ScreenScaffold>
   );
-}
-
-function makeStyles({ colors, space }: Theme) {
-  return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: colors.surface },
-    content: { padding: space[4] },
-  });
 }

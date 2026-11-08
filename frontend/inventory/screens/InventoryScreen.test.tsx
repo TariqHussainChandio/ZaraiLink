@@ -1,16 +1,8 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { InventoryScreen } from './InventoryScreen';
-import {
-  createInventoryItem,
-  deleteInventoryItem,
-  fetchDealerListings,
-  fetchInventory,
-  updateInventoryItem,
-  adjustStock,
-} from '../services/inventoryService';
+import { deleteInventoryItem, fetchDealerListings, fetchInventory } from '../services/inventoryService';
 import { useAuthStore } from '../../state/authStore';
 import { HOME_ROUTES } from '../../common/constants/routes';
 import type { InventoryItemWithListing } from '../types/dealer';
@@ -29,8 +21,7 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-// Covers both InventoryScreen's own calls and the calls made by the StockAdjustModal it
-// mounts (adjustStock) — same module, one mock factory.
+// One mock factory covers the screen's own calls and the ones made by the sheets it opens.
 jest.mock('../services/inventoryService', () => ({
   fetchInventory: jest.fn(),
   fetchDealerListings: jest.fn(),
@@ -42,10 +33,7 @@ jest.mock('../services/inventoryService', () => ({
 
 const mockFetchInventory = fetchInventory as jest.Mock;
 const mockFetchDealerListings = fetchDealerListings as jest.Mock;
-const mockCreateInventoryItem = createInventoryItem as jest.Mock;
-const mockUpdateInventoryItem = updateInventoryItem as jest.Mock;
 const mockDeleteInventoryItem = deleteInventoryItem as jest.Mock;
-const mockAdjustStock = adjustStock as jest.Mock;
 
 const item = (overrides: Partial<InventoryItemWithListing> = {}): InventoryItemWithListing => ({
   id: 'inv-1',
@@ -66,16 +54,15 @@ function makeNavigation() {
   return { navigate: jest.fn() } as unknown as HomeScreenProps<'Inventory'>['navigation'];
 }
 
+const renderScreen = (navigation = makeNavigation()) =>
+  renderWithQuery(<InventoryScreen navigation={navigation} route={{} as never} />);
+
 beforeEach(() => {
   mockFetchInventory.mockReset();
   mockFetchDealerListings.mockReset();
-  mockCreateInventoryItem.mockReset();
-  mockUpdateInventoryItem.mockReset();
   mockDeleteInventoryItem.mockReset();
-  mockAdjustStock.mockReset();
   mockFetchDealerListings.mockResolvedValue([{ id: 'l1', title: 'DAP Fertilizer' }]);
   useAuthStore.setState({ user: { id: 'dealer-1' } as never });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -85,102 +72,120 @@ afterEach(() => {
 describe('InventoryScreen', () => {
   it('shows an empty state when there are no stock items', async () => {
     mockFetchInventory.mockResolvedValue([]);
-    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderScreen();
     expect(await screen.findByText('No stock items yet')).toBeTruthy();
   });
 
-  it('lists stock items with their quantity and a low-stock badge', async () => {
+  it('lists stock items with their quantity and where they stand', async () => {
     mockFetchInventory.mockResolvedValue([item({ stock_quantity: 2 })]);
-    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderScreen();
     expect(await screen.findByText('DAP Fertilizer')).toBeTruthy();
-    expect(screen.getByText('2 bag in stock')).toBeTruthy();
+    expect(screen.getByText('2 bags')).toBeTruthy();
     expect(screen.getByText('Low stock')).toBeTruthy();
   });
 
-  it('shows an error state with retry when inventory fails to load', async () => {
-    mockFetchInventory.mockRejectedValue(new Error('network down'));
-    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(await screen.findByText("Couldn't load inventory")).toBeTruthy();
+  it('shows a failed load as an error with Try again, never as an empty list', async () => {
+    mockFetchInventory.mockRejectedValue(new Error('Network request failed'));
+    await renderScreen();
+    expect(await screen.findByText("Couldn't load your stock")).toBeTruthy();
+    expect(screen.queryByText('No stock items yet')).toBeNull();
 
     mockFetchInventory.mockResolvedValue([]);
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('No stock items yet')).toBeTruthy();
   });
 
-  it('creates a new stock item through the sheet', async () => {
-    mockFetchInventory.mockResolvedValueOnce([]).mockResolvedValueOnce([item()]);
-    mockCreateInventoryItem.mockResolvedValue(item());
-    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
-    await screen.findByText('No stock items yet');
-
-    await fireEvent.press(screen.getByText('+ Add Item'));
-    expect(screen.getByText('New Stock Item')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Save'));
-
-    expect(mockCreateInventoryItem).toHaveBeenCalledWith({
-      listingId: null,
-      unit: 'unit',
-      purchaseCost: null,
-      sellingPrice: null,
-      minStockThreshold: 0,
-      stockQuantity: 0,
-    });
-    expect(await screen.findByText('DAP Fertilizer')).toBeTruthy();
-  });
-
-  it('edits an existing item, prefilling the sheet', async () => {
-    mockFetchInventory.mockResolvedValue([item()]);
-    mockUpdateInventoryItem.mockResolvedValue(item());
-    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+  it('counts All, Low and Out, and narrows the list by chip and by search', async () => {
+    mockFetchInventory.mockResolvedValue([
+      item({ id: 'a', stock_quantity: 20, listing: { id: 'l1', title: 'DAP Fertilizer' } }),
+      item({ id: 'b', stock_quantity: 3, listing: { id: 'l2', title: 'Urea' } }),
+      item({ id: 'c', stock_quantity: 4, listing: { id: 'l3', title: 'Potash' } }),
+      item({ id: 'd', stock_quantity: 0, listing: { id: 'l4', title: 'Glyphosate' } }),
+    ]);
+    await renderScreen();
     await screen.findByText('DAP Fertilizer');
+    expect(screen.getByText('4')).toBeTruthy();
+    expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.getByText('1')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('DAP Fertilizer'));
-    expect(screen.getByText('Edit Stock Item')).toBeTruthy();
-    expect(screen.getByLabelText('Unit').props.value).toBe('bag');
+    await fireEvent.press(screen.getByText('Out'));
+    expect(screen.getByText('Glyphosate')).toBeTruthy();
+    expect(screen.queryByText('Urea')).toBeNull();
 
-    await fireEvent.press(screen.getByText('Save'));
-    expect(mockUpdateInventoryItem).toHaveBeenCalledWith('inv-1', {
-      listingId: 'l1',
-      unit: 'bag',
-      purchaseCost: 400,
-      sellingPrice: 500,
-      minStockThreshold: 5,
-    });
+    await fireEvent.press(screen.getByText('Low'));
+    expect(screen.getByText('Urea')).toBeTruthy();
+    expect(screen.getByText('Potash')).toBeTruthy();
+    expect(screen.queryByText('Glyphosate')).toBeNull();
+
+    await fireEvent.press(screen.getByText('All'));
+    await fireEvent.changeText(screen.getByLabelText('Find an item'), 'pot');
+    expect(screen.getByText('Potash')).toBeTruthy();
+    expect(screen.queryByText('Urea')).toBeNull();
+
+    await fireEvent.changeText(screen.getByLabelText('Find an item'), 'zzz');
+    expect(screen.getByText('No items match')).toBeTruthy();
   });
 
-  it('deletes an item after confirming the alert', async () => {
+  it('opens an empty sheet from the sticky Add item button', async () => {
+    mockFetchInventory.mockResolvedValue([]);
+    await renderScreen();
+    await screen.findByText('No stock items yet');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add item' }));
+    expect(await screen.findByText('Add stock item')).toBeTruthy();
+  });
+
+  it('opens an item to edit it', async () => {
+    mockFetchInventory.mockResolvedValue([item()]);
+    await renderScreen();
+    await screen.findByText('DAP Fertilizer');
+    await fireEvent.press(screen.getByText('DAP Fertilizer'));
+    expect(await screen.findByText('Edit DAP Fertilizer')).toBeTruthy();
+  });
+
+  it('asks before removing an item, then removes it', async () => {
     mockFetchInventory.mockResolvedValue([item()]);
     mockDeleteInventoryItem.mockResolvedValue(undefined);
-    (Alert.alert as jest.Mock).mockImplementation((_title, _msg, buttons) => {
-      buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
-    });
-    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderScreen();
     await screen.findByText('DAP Fertilizer');
 
     await fireEvent.press(screen.getByText('DAP Fertilizer'));
-    await fireEvent.press(screen.getByText('Remove Item'));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Remove item' }));
+    expect(await screen.findByText('Remove DAP Fertilizer?')).toBeTruthy();
+    expect(mockDeleteInventoryItem).not.toHaveBeenCalled();
 
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove item' }));
     expect(mockDeleteInventoryItem).toHaveBeenCalledWith('inv-1');
+    expect(await screen.findByText('Item removed')).toBeTruthy();
   });
 
-  it('opens the stock adjust modal from a row', async () => {
+  it('keeps the item when the person goes back from the confirmation', async () => {
     mockFetchInventory.mockResolvedValue([item()]);
-    await renderWithQuery(<InventoryScreen navigation={makeNavigation()} route={{} as never} />);
+    await renderScreen();
+    await screen.findByText('DAP Fertilizer');
+    await fireEvent.press(screen.getByText('DAP Fertilizer'));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Remove item' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Keep item' }));
+    expect(mockDeleteInventoryItem).not.toHaveBeenCalled();
+  });
+
+  it('opens Record stock from a row, naming the item', async () => {
+    mockFetchInventory.mockResolvedValue([item()]);
+    await renderScreen();
     await screen.findByText('DAP Fertilizer');
 
-    await fireEvent.press(screen.getByText('Adjust Stock'));
-    expect(screen.getByTestId('stock-adjust-quantity')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Record stock for DAP Fertilizer' }));
+    expect(await screen.findByText('Record stock · DAP Fertilizer')).toBeTruthy();
+    // Once on the row behind the sheet, once as "In stock now".
+    expect(screen.getAllByText('20 bags')).toHaveLength(2);
   });
 
   it('navigates to stock history from a row', async () => {
     mockFetchInventory.mockResolvedValue([item()]);
     const navigation = makeNavigation();
-    await renderWithQuery(<InventoryScreen navigation={navigation} route={{} as never} />);
+    await renderScreen(navigation);
     await screen.findByText('DAP Fertilizer');
 
-    await fireEvent.press(screen.getByText('History'));
-    expect(navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.InventoryTransactions, {
-      inventoryId: 'inv-1',
-    });
+    await fireEvent.press(screen.getByRole('button', { name: 'See stock history for DAP Fertilizer' }));
+    expect(navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.InventoryTransactions, { inventoryId: 'inv-1' });
   });
 });

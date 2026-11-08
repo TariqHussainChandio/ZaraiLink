@@ -17,7 +17,7 @@ export type ConsultationsStackParamList = {
   [CONSULTATIONS_ROUTES.ExpertList]: { specialization?: ExpertSpecialization; prefill?: DiseasePrefill } | undefined;
   [CONSULTATIONS_ROUTES.ExpertProfile]: { expertId: string; prefill?: DiseasePrefill };
   [CONSULTATIONS_ROUTES.RequestConsultation]: { expertId: string; prefill?: DiseasePrefill };
-  [CONSULTATIONS_ROUTES.ConsultationDetail]: { consultationId: string };
+  [CONSULTATIONS_ROUTES.ConsultationDetail]: { consultationId: string; aiSuggestion?: { label: string; confidence: number } };
 };
 
 export type ConsultationsScreenProps<RouteName extends keyof ConsultationsStackParamList> =
@@ -40,22 +40,23 @@ export function ConsultationsNavigator() {
       <Stack.Screen
         name={CONSULTATIONS_ROUTES.ExpertList}
         component={ExpertListScreen}
-        options={{ title: 'Find an Expert' }}
+        options={{ title: 'Find an expert' }}
       />
       <Stack.Screen
         name={CONSULTATIONS_ROUTES.ExpertProfile}
         component={ExpertProfileScreen}
-        options={{ title: 'Expert Profile' }}
+        options={{ title: 'Expert profile' }}
       />
       <Stack.Screen
         name={CONSULTATIONS_ROUTES.RequestConsultation}
         component={RequestConsultationScreen}
-        options={{ title: 'Request Consultation' }}
+        options={{ title: 'Ask an expert' }}
       />
       <Stack.Screen
         name={CONSULTATIONS_ROUTES.ConsultationDetail}
         component={ConsultationDetailScreen}
-        options={{ title: 'Consultation' }}
+        // The case is named by its AI suggestion when it came from a plant scan; otherwise it is simply a case.
+        options={({ route }) => ({ title: route.params.aiSuggestion?.label ?? 'Case' })}
       />
     </Stack.Navigator>
   );

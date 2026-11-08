@@ -1,123 +1,15 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
-import { Button, Chip } from '../../components';
-import { PROFILE_ROUTES } from '../../constants/routes';
-import { useUpdateProfile } from '../hooks/profile';
-import { useAuthStore } from '../../../state/authStore';
-import { useThemeStore, type ThemeMode } from '../../../state/themeStore';
-import { type Theme, useRoleAccent, useTheme } from '../../../theme';
+import React from 'react';
+import { ScreenScaffold } from '../../components';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
-import { errorMessage } from '../../../utils/errorMessage';
+import { AccountSections } from '../components/AccountSections';
 
-const THEME_MODES: ThemeMode[] = ['light', 'dark', 'system'];
-const THEME_MODE_LABELS: Record<ThemeMode, string> = { light: 'Light', dark: 'Dark', system: 'System' };
-
+/** The Account tab's own settings, kept as a route of its own for anything that still links here (the tab itself now
+ * shows the same sections under the profile, D3). There is no Notifications switch: the setting is stored but nothing
+ * reads it yet (push notifications are not built), and a switch that changes nothing is a dead control. */
 export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
-  const signOut = useAuthStore(state => state.signOut);
-  const profile = useAuthStore(state => state.profile);
-  const role = useAuthStore(state => state.role);
-  const refreshProfile = useAuthStore(state => state.refreshProfile);
-  const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { mutateAsync: updateProfile } = useUpdateProfile();
-  const themeMode = useThemeStore(state => state.mode);
-  const setThemeMode = useThemeStore(state => state.setMode);
-  const [savingNotifications, setSavingNotifications] = useState(false);
-
-  const onToggleNotifications = async (value: boolean) => {
-    setSavingNotifications(true);
-    try {
-      await updateProfile({ notifications_enabled: value });
-      await refreshProfile();
-    } catch (error) {
-      Alert.alert(
-        'Could not update notification setting',
-        errorMessage(error),
-      );
-    } finally {
-      setSavingNotifications(false);
-    }
-  };
-
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>Notifications</Text>
-        {/* `accessible` and the label are explicit: TalkBack needs a name for the switch, and
-            Testing Library only recognizes iOS's RCTSwitch as accessible by default, not the
-            AndroidSwitch this app renders. */}
-        <Switch
-          accessible
-          accessibilityLabel="Notifications"
-          value={profile?.notifications_enabled ?? true}
-          onValueChange={onToggleNotifications}
-          disabled={savingNotifications}
-          trackColor={{ true: accent.mark }}
-        />
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>Appearance</Text>
-        <View style={styles.chipRow}>
-          {THEME_MODES.map(value => (
-            <Chip key={value} label={THEME_MODE_LABELS[value]} selected={themeMode === value} onPress={() => setThemeMode(value)} />
-          ))}
-        </View>
-      </View>
-
-      {/* An admin keeps email, password and the second factor (every admin write needs aal2) in Account Security
-          (A3b); everyone else changes the password here. */}
-      {role === 'admin' ? (
-        <Button
-          label="Account security"
-          variant="secondary"
-          onPress={() => navigation.navigate(PROFILE_ROUTES.AccountSecurity)}
-          style={styles.action}
-        />
-      ) : (
-        <Button
-          label="Change Password"
-          variant="secondary"
-          onPress={() => navigation.navigate(PROFILE_ROUTES.ChangePassword)}
-          style={styles.action}
-        />
-      )}
-      <Button
-        label="Delete Account"
-        variant="secondary"
-        onPress={() => navigation.navigate(PROFILE_ROUTES.DeleteAccount)}
-        style={styles.action}
-      />
-      <Button label="Sign Out" variant="danger" onPress={signOut} style={styles.action} />
-    </View>
+    <ScreenScaffold>
+      <AccountSections navigate={route => navigation.navigate(route)} />
+    </ScreenScaffold>
   );
-}
-
-function makeStyles({ colors, space, typography, borders }: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      padding: space[4],
-    },
-    row: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: space[3],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    rowLabel: {
-      ...typography.body,
-      color: colors.ink,
-    },
-    chipRow: {
-      flexDirection: 'row',
-      gap: space[1],
-    },
-    action: {
-      marginTop: space[6],
-    },
-  });
 }

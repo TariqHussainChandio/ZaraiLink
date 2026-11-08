@@ -1,90 +1,74 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { PROVINCES } from '../constants/locations';
 import { LocationPicker } from './LocationPicker';
 
+const noop = () => undefined;
+
 describe('LocationPicker', () => {
-  it('renders default labels', async () => {
-    await render(
-      <LocationPicker
-        country={null}
-        province={null}
-        city={null}
-        onCountryChange={() => {}}
-        onProvinceChange={() => {}}
-        onCityChange={() => {}}
-      />,
-    );
-    expect(screen.getByText('Country')).toBeTruthy();
+  it('has a province and a city, and no country field, because the country is Pakistan', async () => {
+    await render(<LocationPicker province={null} city={null} onProvinceChange={noop} onCityChange={noop} />);
     expect(screen.getByText('Province')).toBeTruthy();
     expect(screen.getByText('City')).toBeTruthy();
+    expect(screen.queryByText('Country')).toBeNull();
   });
 
   it('renders custom labels when given', async () => {
-    await render(
-      <LocationPicker
-        country={null}
-        province={null}
-        city={null}
-        onCountryChange={() => {}}
-        onProvinceChange={() => {}}
-        onCityChange={() => {}}
-        labels={{ country: 'Mulk', province: 'Suba', city: 'Shehar' }}
-      />,
-    );
-    expect(screen.getByText('Mulk')).toBeTruthy();
+    await render(<LocationPicker province={null} city={null} onProvinceChange={noop} onCityChange={noop} labels={{ province: 'Suba', city: 'Shehar' }} />);
     expect(screen.getByText('Suba')).toBeTruthy();
     expect(screen.getByText('Shehar')).toBeTruthy();
   });
 
-  it('renders the current values', async () => {
-    await render(
-      <LocationPicker
-        country="Pakistan"
-        province="Punjab"
-        city="Lahore"
-        onCountryChange={() => {}}
-        onProvinceChange={() => {}}
-        onCityChange={() => {}}
-      />,
-    );
-    expect(screen.getByDisplayValue('Pakistan')).toBeTruthy();
-    expect(screen.getByDisplayValue('Punjab')).toBeTruthy();
+  it('shows the current province and city', async () => {
+    await render(<LocationPicker province="Punjab" city="Lahore" onProvinceChange={noop} onCityChange={noop} />);
+    expect(screen.getByRole('button', { name: 'Province, Punjab' })).toBeTruthy();
     expect(screen.getByDisplayValue('Lahore')).toBeTruthy();
   });
 
-  it('converts an emptied field to null rather than an empty string', async () => {
-    const onCountryChange = jest.fn();
-    await render(
-      <LocationPicker
-        country="Pakistan"
-        province={null}
-        city={null}
-        onCountryChange={onCountryChange}
-        onProvinceChange={() => {}}
-        onCityChange={() => {}}
-      />,
+  it('offers the seven provinces and territories from a list, never free text', async () => {
+    await render(<LocationPicker province={null} city={null} onProvinceChange={noop} onCityChange={noop} />);
+    await fireEvent.press(screen.getByRole('button', { name: /^Province/ }));
+    for (const name of PROVINCES) expect(await screen.findByText(name)).toBeTruthy();
+    expect(PROVINCES).toHaveLength(7);
+    expect(PROVINCES).toEqual(
+      expect.arrayContaining(['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad Capital Territory', 'Gilgit-Baltistan', 'Azad Jammu and Kashmir']),
     );
-    fireEvent.changeText(screen.getByDisplayValue('Pakistan'), '');
-    expect(onCountryChange).toHaveBeenCalledWith(null);
   });
 
-  it('passes through a non-empty edit as text', async () => {
+  it('reports the chosen province, and the country with it for a form that stores one', async () => {
+    const onProvinceChange = jest.fn();
+    const onCountryChange = jest.fn();
+    await render(<LocationPicker province={null} city={null} onProvinceChange={onProvinceChange} onCityChange={noop} onCountryChange={onCountryChange} />);
+    await fireEvent.press(screen.getByRole('button', { name: /^Province/ }));
+    await fireEvent.press(await screen.findByText('Sindh'));
+    expect(onProvinceChange).toHaveBeenCalledWith('Sindh');
+    expect(onCountryChange).toHaveBeenCalledWith('Pakistan');
+  });
+
+  it('converts an emptied city to null rather than an empty string', async () => {
     const onCityChange = jest.fn();
-    await render(
-      <LocationPicker
-        country={null}
-        province={null}
-        city={null}
-        onCountryChange={() => {}}
-        onProvinceChange={() => {}}
-        onCityChange={onCityChange}
-      />,
-    );
-    // Country, province, city render in that fixed order — the third empty field is the city input.
-    const fields = screen.getAllByDisplayValue('');
-    const cityField = fields[2];
-    if (!cityField) throw new Error('the city input was not rendered');
-    fireEvent.changeText(cityField, 'Multan');
+    await render(<LocationPicker province={null} city="Multan" onProvinceChange={noop} onCityChange={onCityChange} />);
+    await fireEvent.changeText(screen.getByDisplayValue('Multan'), '');
+    expect(onCityChange).toHaveBeenCalledWith(null);
+  });
+
+  it('passes through a non-empty city as text', async () => {
+    const onCityChange = jest.fn();
+    await render(<LocationPicker province={null} city={null} onProvinceChange={noop} onCityChange={onCityChange} />);
+    await fireEvent.changeText(screen.getByLabelText('City'), 'Multan');
     expect(onCityChange).toHaveBeenCalledWith('Multan');
+  });
+
+  it('shows an error under each field', async () => {
+    await render(
+      <LocationPicker province={null} city={null} onProvinceChange={noop} onCityChange={noop} errors={{ province: 'Province is required', city: 'Enter the city' }} />,
+    );
+    expect(screen.getByText('Province is required')).toBeTruthy();
+    expect(screen.getByText('Enter the city')).toBeTruthy();
+  });
+
+  it('still shows a province saved before the list existed, instead of reading as nothing chosen', async () => {
+    await render(<LocationPicker province="Sind" city={null} onProvinceChange={noop} onCityChange={noop} />);
+    expect(screen.getByRole('button', { name: 'Province, Sind' })).toBeTruthy();
   });
 });

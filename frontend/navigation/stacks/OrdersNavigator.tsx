@@ -40,7 +40,7 @@ export function OrdersNavigator() {
       <Stack.Screen
         name={ORDERS_ROUTES.PaymentMethod}
         component={PaymentMethodScreen}
-        options={{ title: 'Payment Method' }}
+        options={{ title: 'Payment method' }}
       />
       <Stack.Screen
         name={ORDERS_ROUTES.PaymentProcessing}
@@ -50,12 +50,12 @@ export function OrdersNavigator() {
       <Stack.Screen
         name={ORDERS_ROUTES.PaymentResult}
         component={PaymentResultScreen}
-        options={{ title: 'Payment Result', headerBackVisible: false }}
+        options={{ title: 'Payment result', headerBackVisible: false }}
       />
       <Stack.Screen
         name={ORDERS_ROUTES.WriteReview}
         component={WriteReviewScreen}
-        options={{ title: 'Write a Review' }}
+        options={{ title: 'Write a review' }}
       />
     </Stack.Navigator>
   );

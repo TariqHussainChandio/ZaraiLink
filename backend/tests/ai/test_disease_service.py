@@ -14,8 +14,10 @@ predict()/get_case_for_user() control flow.
 """
 
 import asyncio
+import json
 import time
 from contextlib import contextmanager
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -26,7 +28,7 @@ from storage3.exceptions import StorageApiError
 
 from app.ai import service as disease_service
 from app.ai.engine import ModelUnavailableError
-from app.ai.service import DEFAULT_DESCRIPTION, DESCRIPTIONS, _humanize_class_name
+from app.ai.service import DEFAULT_DESCRIPTION, DESCRIPTIONS, _humanize_class_name, supported_crops
 from app.auth.dependencies import AuthenticatedUser
 from app.config.settings import settings
 
@@ -91,7 +93,8 @@ async def test_predict_allows_owner_and_returns_inserted_prediction():
     ):
         result = await disease_service.predict(OWNER, CASE["id"])
 
-    assert result == inserted
+    assert {k: result[k] for k in inserted} == inserted
+    assert result["crop_matches"] is None  # no crop was chosen, so there is nothing to match
     mock_insert.assert_called_once()
 
 
@@ -343,3 +346,72 @@ async def test_inference_does_not_block_the_event_loop():
     finally:
         watcher.cancel()
     assert ticks >= 10, f"the event loop was blocked during inference (only {ticks} ticks in 0.4 s)"
+
+
+# --- D16: the scan offers only the crops the model knows; a photo of another crop gets no report ---
+_EXPECTED_CROPS = [
+    "Apple", "Bell pepper", "Blueberry", "Cherry", "Grape", "Maize", "Orange", "Peach",
+    "Potato", "Raspberry", "Soybean", "Squash", "Strawberry", "Tomato",
+]  # fmt: skip
+
+
+def test_supported_crops_are_the_fourteen_crops_of_the_model():
+    crops = supported_crops()
+    assert [c["name"] for c in crops] == _EXPECTED_CROPS
+    assert {c["key"] for c in crops} >= {"maize", "bell-pepper", "tomato"}
+
+
+def test_class_names_json_and_the_model_metadata_list_the_same_classes():
+    # Two files describe the model's classes; the crop offer is derived from the one the engine uses.
+    checkpoint_dir = Path(__file__).resolve().parents[2] / "app" / "ai" / "checkpoints"
+    names = json.loads((checkpoint_dir / "class_names.json").read_text(encoding="utf-8"))
+    assert [names[str(i)] for i in range(len(names))] == settings.model_classes
+
+
+async def _predict_as(raw_class: str, chosen_crop: str | None):
+    with (
+        patch("app.ai.service.disease_repository.get_disease_case", return_value=CASE),
+        _mock_image_download(),
+        _mock_classifier(return_value=(raw_class, 0.91)),
+        patch(
+            "app.ai.service.disease_repository.insert_prediction",
+            side_effect=lambda **kwargs: {"id": "pred-1", "created_at": "now", **kwargs},
+        ),
+    ):
+        return await disease_service.predict(OWNER, CASE["id"], chosen_crop)
+
+
+@pytest.mark.asyncio
+async def test_predict_reports_a_matching_crop_with_its_report_text():
+    result = await _predict_as("Tomato___Late_blight", "tomato")
+    assert result["crop_matches"] is True
+    assert result["predicted_crop"] == {"key": "tomato", "name": "Tomato"}
+    assert result["description"] == DESCRIPTIONS["Tomato___Late_blight"][0]
+    assert result["recommended_actions"]
+
+
+@pytest.mark.asyncio
+async def test_predict_flags_a_different_crop_and_withholds_the_report_text():
+    # The farmer said potato, the model reads a tomato leaf: no description or actions go back (BR-13).
+    result = await _predict_as("Tomato___Late_blight", "potato")
+    assert result["crop_matches"] is False
+    assert result["predicted_crop"]["name"] == "Tomato"
+    assert result["description"] is None
+    assert result["recommended_actions"] == []
+
+
+@pytest.mark.asyncio
+async def test_predict_matches_the_curated_names_maize_and_bell_pepper():
+    assert (await _predict_as("Corn_(maize)___healthy", "maize"))["crop_matches"] is True
+    assert (await _predict_as("Pepper,_bell___healthy", "bell-pepper"))["crop_matches"] is True
+
+
+@pytest.mark.asyncio
+async def test_predict_rejects_a_crop_the_model_does_not_know_before_any_work():
+    with (
+        patch("app.ai.service.disease_repository.get_disease_case") as get_case,
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await disease_service.predict(OWNER, CASE["id"], "wheat")
+    assert exc_info.value.status_code == 422
+    get_case.assert_not_called()

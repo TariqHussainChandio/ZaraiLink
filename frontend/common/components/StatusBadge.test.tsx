@@ -48,6 +48,20 @@ describe('StatusBadge', () => {
     expect(screen.getByText('Constructor')).toBeTruthy();
   });
 
+  it('shows an application document as needed, added or optional, and a store or supplier as active or inactive', async () => {
+    await render(<StatusBadge kind="document" status="needed" />);
+    expect(screen.getByText('Needed')).toBeTruthy();
+    expect(colourOf(screen.getByText('Needed'))).toBe(lightColors.status.warning.ink);
+    await render(<StatusBadge kind="document" status="added" />);
+    expect(colourOf(screen.getByText('Added'))).toBe(lightColors.status.success.ink);
+    await render(<StatusBadge kind="document" status="optional" />);
+    expect(screen.getByText('Optional')).toBeTruthy();
+    await render(<StatusBadge kind="storeSupplier" status="active" />);
+    expect(screen.getByText('Active')).toBeTruthy();
+    await render(<StatusBadge kind="storeSupplier" status="inactive" />);
+    expect(colourOf(screen.getByText('Inactive'))).toBe(lightColors.status.neutral.ink);
+  });
+
   it('gives every status in every kind an icon and a word', () => {
     for (const table of Object.values(STATUS)) {
       for (const meta of Object.values(table)) {

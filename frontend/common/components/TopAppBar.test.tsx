@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Bell } from 'lucide-react-native';
+import { rippleOf } from '../../testUtils/ripple';
 import { lightTheme } from '../../theme';
 import { IconButton, TopAppBar } from './TopAppBar';
 
@@ -42,6 +43,25 @@ describe('TopAppBar', () => {
     expect(screen.getByText('Inventory system')).toBeTruthy();
   });
 
+  it("sets an inner screen's title in the board face at title-bar size, and a tab root's in the large headline", async () => {
+    await renderInsets(<TopAppBar title="Order ZL-24817" onBack={() => undefined} />);
+    const inner = StyleSheet.flatten(screen.getByRole('header', { name: 'Order ZL-24817' }).props.style);
+    expect(inner.fontFamily).toBe(lightTheme.typography.titleBar.fontFamily);
+    expect(inner.fontSize).toBe(lightTheme.typography.titleBar.fontSize);
+    await renderInsets(<TopAppBar title="Market" variant="large" />);
+    const large = StyleSheet.flatten(screen.getByRole('header', { name: 'Market' }).props.style);
+    expect(large.fontFamily).toBe(lightTheme.typography.headline.fontFamily);
+    expect(large.fontSize).toBe(lightTheme.typography.headline.fontSize);
+  });
+
+  it('writes the inventory kicker in sentence case, bold, in the dealer ink', async () => {
+    await renderInsets(<TopAppBar title="Stock" variant="inventory" onBack={() => undefined} />);
+    const kicker = StyleSheet.flatten(screen.getByText('Inventory system').props.style);
+    expect(kicker.color).toBe(lightTheme.colors.accent.dealer.ink);
+    expect(kicker.fontWeight).toBe(lightTheme.fontWeight.bold);
+    expect(kicker.textTransform).toBeUndefined();
+  });
+
   it('shows the actions and the element a screen supplies', async () => {
     const onPress = jest.fn();
     await renderInsets(<TopAppBar title="Home" actions={[{ icon: Bell, label: 'Notifications', onPress }]} right={<IconButton icon={Bell} label="Messages" onPress={() => undefined} />} />);
@@ -57,6 +77,13 @@ describe('IconButton', () => {
     const style = StyleSheet.flatten(screen.getByRole('button', { name: 'Notifications' }).props.style);
     expect(style.width).toBe(lightTheme.size.touchMin);
     expect(style.height).toBe(lightTheme.size.touchMin);
+  });
+
+  it('ripples as a round disc when pressed, which it did not before', async () => {
+    await render(<IconButton icon={Bell} label="Notifications" onPress={() => undefined} />);
+    expect(screen.getByRole('button', { name: 'Notifications' }).props.nativeBackgroundAndroid).toEqual(
+      rippleOf(lightTheme.colors.ripple, { borderless: true, rippleRadius: lightTheme.size.touchMin / 2 }),
+    );
   });
 
   it('speaks and shows its count, capped at 99+', async () => {

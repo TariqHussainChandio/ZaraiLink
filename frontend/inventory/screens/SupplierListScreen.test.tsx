@@ -68,17 +68,38 @@ describe('SupplierListScreen', () => {
     expect(screen.getByText('No products listed')).toBeTruthy();
   });
 
-  it('shows an error state with retry when suppliers fail to load', async () => {
-    mockFetchSuppliers.mockRejectedValue(new Error('network down'));
+  it('shows each supplier as Active or Inactive from the status vocabulary, not the raw value', async () => {
+    mockFetchSuppliers.mockResolvedValue([supplier(), supplier({ id: 'sup-2', name: 'Green Fields', status: 'inactive' })]);
     await renderWithQuery(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(await screen.findByText("Couldn't load suppliers")).toBeTruthy();
+    await screen.findByText('AgriChem Traders');
+    expect(screen.getByText('Active')).toBeTruthy();
+    expect(screen.getByText('Inactive')).toBeTruthy();
+    expect(screen.queryByText('active')).toBeNull();
+  });
+
+  it('finds a supplier by name', async () => {
+    mockFetchSuppliers.mockResolvedValue([supplier(), supplier({ id: 'sup-2', name: 'Green Fields' })]);
+    await renderWithQuery(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
+    await screen.findByText('AgriChem Traders');
+    await fireEvent.changeText(screen.getByLabelText('Find a supplier'), 'green');
+    expect(screen.getByText('Green Fields')).toBeTruthy();
+    expect(screen.queryByText('AgriChem Traders')).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText('Find a supplier'), 'zzz');
+    expect(screen.getByText('No suppliers match')).toBeTruthy();
+  });
+
+  it('shows a failed load as an error with Try again, never as "No suppliers yet"', async () => {
+    mockFetchSuppliers.mockRejectedValue(new Error('Network request failed'));
+    await renderWithQuery(<SupplierListScreen navigation={makeNavigation()} route={{} as never} />);
+    expect(await screen.findByText("Couldn't load your suppliers")).toBeTruthy();
+    expect(screen.queryByText('No suppliers yet')).toBeNull();
 
     mockFetchSuppliers.mockResolvedValue([]);
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('No suppliers yet')).toBeTruthy();
   });
 
-  it('navigates to a supplier detail on row press and to a new supplier on FAB press', async () => {
+  it('navigates to a supplier detail on row press and to a new supplier from the sticky Add supplier button', async () => {
     mockFetchSuppliers.mockResolvedValue([supplier()]);
     const navigation = makeNavigation();
     await renderWithQuery(<SupplierListScreen navigation={navigation} route={{} as never} />);
@@ -87,7 +108,7 @@ describe('SupplierListScreen', () => {
     await fireEvent.press(screen.getByText('AgriChem Traders'));
     expect(navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.SupplierDetail, { supplierId: 'sup-1' });
 
-    await fireEvent.press(screen.getByText('+ New Supplier'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add supplier' }));
     expect(navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.SupplierDetail, {});
   });
 });

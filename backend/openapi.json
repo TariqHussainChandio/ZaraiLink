@@ -4840,6 +4840,17 @@
       },
       "PredictRequest": {
         "properties": {
+          "chosen_crop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chosen Crop"
+          },
           "disease_case_id": {
             "title": "Disease Case Id",
             "type": "string"
@@ -4860,6 +4871,17 @@
           "created_at": {
             "title": "Created At",
             "type": "string"
+          },
+          "crop_matches": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Matches"
           },
           "description": {
             "anyOf": [
@@ -4890,6 +4912,16 @@
               }
             ],
             "title": "Model Version"
+          },
+          "predicted_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupportedCrop"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "predicted_disease": {
             "title": "Predicted Disease",
@@ -6302,6 +6334,40 @@
           }
         },
         "title": "SupplierUpdateInput",
+        "type": "object"
+      },
+      "SupportedCrop": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name"
+        ],
+        "title": "SupportedCrop",
+        "type": "object"
+      },
+      "SupportedCropsResponse": {
+        "properties": {
+          "crops": {
+            "items": {
+              "$ref": "#/components/schemas/SupportedCrop"
+            },
+            "title": "Crops",
+            "type": "array"
+          }
+        },
+        "required": [
+          "crops"
+        ],
+        "title": "SupportedCropsResponse",
         "type": "object"
       },
       "SuspendUserRequest": {
@@ -10359,6 +10425,61 @@
           }
         ],
         "summary": "Get Case",
+        "tags": [
+          "disease"
+        ]
+      }
+    },
+    "/api/v1/disease/crops": {
+      "get": {
+        "operationId": "disease_list_supported_crops",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportedCropsResponse"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Echo of, or the generated, request id",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Error (application/problem+json)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Supported Crops",
         "tags": [
           "disease"
         ]

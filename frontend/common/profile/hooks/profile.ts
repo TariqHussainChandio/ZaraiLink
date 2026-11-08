@@ -51,12 +51,30 @@ export function useRequestEmailChange() {
   return useMutation({ mutationFn: (newEmail: string) => requestEmailChange(newEmail) });
 }
 
+/** Which of the two codes was refused, so the screen can show the error under that code's field and not the other. */
+export class EmailCodeError extends Error {
+  constructor(
+    readonly which: 'current' | 'new',
+    readonly original: unknown,
+  ) {
+    super(`The ${which} email's code was refused`);
+    this.name = 'EmailCodeError';
+  }
+}
+
 /** Both codes, the current address's first; the email changes when the second is accepted. */
 export function useConfirmEmailChange() {
   return useMutation({
-    mutationFn: async ({ currentEmail, currentCode, newEmail, newCode }: { currentEmail: string; currentCode: string; newEmail: string; newCode: string }) => {
-      await confirmEmailChangeCode(currentEmail, currentCode);
-      await confirmEmailChangeCode(newEmail, newCode);
+    // `skipCurrent`: the first code was accepted on an earlier try and a code can be used once, so only the second is retried.
+    mutationFn: async ({ currentEmail, currentCode, newEmail, newCode, skipCurrent = false }: { currentEmail: string; currentCode: string; newEmail: string; newCode: string; skipCurrent?: boolean }) => {
+      if (!skipCurrent) {
+        await confirmEmailChangeCode(currentEmail, currentCode).catch(error => {
+          throw new EmailCodeError('current', error);
+        });
+      }
+      await confirmEmailChangeCode(newEmail, newCode).catch(error => {
+        throw new EmailCodeError('new', error);
+      });
     },
   });
 }

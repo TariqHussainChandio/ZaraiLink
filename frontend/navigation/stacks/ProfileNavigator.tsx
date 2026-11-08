@@ -46,7 +46,7 @@ export function ProfileNavigator() {
       <Stack.Screen
         name={PROFILE_ROUTES.EditProfile}
         component={EditProfileScreen}
-        options={{ title: 'Edit Profile' }}
+        options={{ title: 'Edit profile' }}
       />
       <Stack.Screen
         name={PROFILE_ROUTES.Settings}
@@ -56,12 +56,12 @@ export function ProfileNavigator() {
       <Stack.Screen
         name={PROFILE_ROUTES.ChangePassword}
         component={ChangePasswordScreen}
-        options={{ title: 'Change Password' }}
+        options={{ title: 'Change password' }}
       />
       <Stack.Screen
         name={PROFILE_ROUTES.MfaEnrollment}
         component={MfaEnrollmentScreen}
-        options={{ title: 'Two-Factor Authentication' }}
+        options={{ title: 'Two-step verification' }}
       />
       <Stack.Screen
         name={PROFILE_ROUTES.AccountSecurity}
@@ -81,7 +81,7 @@ export function ProfileNavigator() {
       <Stack.Screen
         name={PROFILE_ROUTES.DeleteAccount}
         component={DeleteAccountScreen}
-        options={{ title: 'Delete Account' }}
+        options={{ title: 'Delete account' }}
       />
       {__DEV__ ? (
         <Stack.Screen name={PROFILE_ROUTES.DesignCatalogue} component={DesignCatalogueScreen} options={{ title: 'Design catalogue' }} />

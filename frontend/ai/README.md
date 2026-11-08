@@ -8,7 +8,9 @@ The disease advisory screens: photo upload, processing and the result. The resul
 
 ## Public API
 
-Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `DiseasePrefill`.
+Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `DiseasePrefill`. The scan hands off to an expert through `prefill.diseaseCaseId` and never writes the AI's text into the farmer's problem (FA-09).
+
+The scan offers only the crops the model knows (D16, `GET /api/v1/disease/crops`); a photo the model reads as another crop gets the advisory and the expert action, not a report.
 
 ## Inside
 

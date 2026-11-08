@@ -7,11 +7,19 @@ from app.ai.schemas import (
     DiseaseCaseWithPredictionResponse,
     PredictRequest,
     PredictResponse,
+    SupportedCrop,
+    SupportedCropsResponse,
 )
 from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
 from app.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/api/v1/disease", tags=["disease"])
+
+
+# Any signed-in user may read the list (it is reference data); the dependency only keeps it off the open internet.
+@router.get("/crops", response_model=SupportedCropsResponse, dependencies=[Depends(require_authenticated_user)])
+async def list_supported_crops() -> SupportedCropsResponse:
+    return SupportedCropsResponse(crops=[SupportedCrop(**crop) for crop in disease_service.supported_crops()])
 
 
 @router.post("/cases", response_model=DiseaseCaseResponse)
@@ -39,5 +47,5 @@ async def predict_disease(
     body: PredictRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> PredictResponse:
-    prediction = await disease_service.predict(user, body.disease_case_id)
+    prediction = await disease_service.predict(user, body.disease_case_id, body.chosen_crop)
     return PredictResponse(**prediction)

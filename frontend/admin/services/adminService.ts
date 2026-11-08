@@ -1,4 +1,5 @@
-import { apiFetch } from '../../services/api/client';
+import { apiFetch, apiFetchPage, type Page } from '../../services/api/client';
+import type { ListingWithRelations } from '../../common/marketplace';
 import type { Profile } from '../../common/types/profile';
 import type { Role } from '../../common/constants/roles';
 import type { ReportStatus, ReportWithReporter } from '../types/reports';
@@ -31,9 +32,23 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
   };
 }
 
-/** The user list, filtered on the server (a pending-dealer queue filtered in the app lost everyone past one page). */
-export async function fetchAllProfiles(filter: { role?: Role; accountStatus?: Profile['account_status'] } = {}): Promise<Profile[]> {
-  return apiFetch('/api/v1/admin/users', { query: { role: filter.role, account_status: filter.accountStatus } });
+/** How many rows one request asks for; the API's own ceiling is 100. Every list pages past it with "Load more". */
+export const ADMIN_PAGE_SIZE = 50;
+
+/** One page of a list: the rows and where the next page starts (null on the last page). */
+export type AdminPage<T> = Page<T[]>;
+
+const pageQuery = (offset: number) => ({ limit: ADMIN_PAGE_SIZE, offset });
+
+/** One page of users, filtered on the server by role and account status (a queue filtered in the app lost everyone past
+ * the first page). The API has no name search, so the screen searches the pages it has loaded. */
+export function fetchProfilesPage(
+  filter: { role?: Role; accountStatus?: Profile['account_status'] },
+  offset: number,
+): Promise<AdminPage<Profile>> {
+  return apiFetchPage('/api/v1/admin/users', {
+    query: { role: filter.role, account_status: filter.accountStatus, ...pageQuery(offset) },
+  });
 }
 
 // logAdminAction moved server-side entirely (backend/app/common/audit_log.py) — every
@@ -67,8 +82,8 @@ export async function decideDealerApplication(
   });
 }
 
-export async function fetchReports(status?: ReportStatus): Promise<ReportWithReporter[]> {
-  return apiFetch('/api/v1/admin/reports', { query: { status } });
+export function fetchReportsPage(status: ReportStatus | undefined, offset: number): Promise<AdminPage<ReportWithReporter>> {
+  return apiFetchPage('/api/v1/admin/reports', { query: { status, ...pageQuery(offset) } });
 }
 
 export async function resolveReport(reportId: string, notes: string | null): Promise<void> {
@@ -84,15 +99,24 @@ export interface FetchAuditLogsParams {
   actorId?: string;
 }
 
-export async function fetchAuditLogs({ targetEntity, actorId }: FetchAuditLogsParams = {}): Promise<
-  AuditLogEntryWithActor[]
-> {
-  return apiFetch('/api/v1/admin/audit-logs', { query: { target_entity: targetEntity, actor_id: actorId } });
+/** Newest first. The API filters by one `target_entity` or one actor, nothing else. */
+export function fetchAuditLogsPage(
+  { targetEntity, actorId }: FetchAuditLogsParams,
+  offset: number,
+): Promise<AdminPage<AuditLogEntryWithActor>> {
+  return apiFetchPage('/api/v1/admin/audit-logs', {
+    query: { target_entity: targetEntity, actor_id: actorId, ...pageQuery(offset) },
+  });
 }
 
-/** Platform-wide order overview — every order, not scoped to the caller. Admin-only. */
-export async function fetchAllOrders(): Promise<OrderWithItems[]> {
-  return apiFetch('/api/v1/admin/orders');
+/** Platform-wide order overview: every order, not scoped to the caller. Admin-only. */
+export function fetchOrdersPage(offset: number): Promise<AdminPage<OrderWithItems>> {
+  return apiFetchPage('/api/v1/admin/orders', { query: pageQuery(offset) });
+}
+
+/** Every listing for moderation, hidden and sold ones too. The route belongs to the marketplace API (admin-only there). */
+export function fetchModerationListingsPage(offset: number): Promise<AdminPage<ListingWithRelations>> {
+  return apiFetchPage('/api/v1/marketplace/listings/moderation', { query: pageQuery(offset) });
 }
 
 // ---- dealer applications (A3b; SRDS §12)

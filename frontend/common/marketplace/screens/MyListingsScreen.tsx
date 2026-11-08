@@ -1,106 +1,64 @@
+import { Package } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner, StatusBadge } from '../../components';
+import { Image, StyleSheet, View } from 'react-native';
+import { Button, ListGroup, ListRow, QueryState, ScreenScaffold, StatusBadge } from '../../components';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useMyListings } from '../hooks/marketplace';
+import { navigateInTab } from '../../../navigation/navigateInTab';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
-import { errorMessage } from '../../../utils/errorMessage';
-import { formatRs } from '../../../utils/money';
-import { statusMeta } from '../../constants/status';
+import { formatAmount, formatRs } from '../../../utils/money';
 
-/** Shared by Farmer's "My Listings" and Dealer's "Products" — both are the same underlying
- * need (view my own marketplace listings), just reached from different role dashboards. */
+/** Shared by the farmer's "My listings" and the dealer's "Products": both are the same need, the seller's own listings,
+ * reached from different home screens. A row opens the listing inside the Market tab, under that tab's own first
+ * screen (MK-01), so Back and the tab both work. */
 export function MyListingsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const tabNavigation = useAppTabNavigation();
-  const { data: listings = [], isPending, error, refetch } = useMyListings(userId);
-
-  if (isPending) return <Spinner fullscreen />;
-  if (error && listings.length === 0) {
-    return (
-      <EmptyState
-        title="Could not load your listings"
-        description={errorMessage(error)}
-        actionLabel="Retry"
-        onAction={() => refetch()}
-      />
-    );
-  }
+  const tabs = useAppTabNavigation();
+  const query = useMyListings(userId);
+  const listings = query.data ?? [];
+  const newListing = () => navigateInTab(tabs, APP_TABS.Marketplace, MARKETPLACE_ROUTES.CreateListing);
 
   return (
-    <FlashList
-      style={styles.container}
-      contentContainerStyle={styles.list}
-      data={listings}
-      keyExtractor={item => item.id}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.row}
-          activeOpacity={0.7}
-          onPress={() =>
-            tabNavigation?.navigate(APP_TABS.Marketplace, {
-              screen: MARKETPLACE_ROUTES.ListingDetail,
-              params: { listingId: item.id },
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel={`${item.title}, ${formatRs(item.price)} per ${item.unit}, ${statusMeta('listing', item.status).label}`}
-        >
-          <View style={styles.info}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <Text style={styles.meta} numberOfLines={1}>
-              {`${formatRs(item.price)}/${item.unit} · Qty ${item.quantity}`}
-            </Text>
-          </View>
-          <StatusBadge kind="listing" status={item.status} />
-        </TouchableOpacity>
-      )}
-      ListEmptyComponent={
-        <EmptyState
-          title="No listings yet"
-          description="Listings you create will show up here."
-        />
-      }
-    />
+    <ScreenScaffold onRefresh={() => query.refetch()} refreshing={query.isRefetching}>
+      <QueryState
+        query={query}
+        failureTitle="Couldn't load your listings"
+        isEmpty={listings.length === 0}
+        empty={{ title: 'No listings yet', description: 'List what you sell and buyers will find it in the market.', icon: Package, actionLabel: 'New listing', onAction: newListing }}
+      >
+        <View style={styles.add}>
+          <Button label="New listing" variant="secondary" size="sm" fullWidth={false} onPress={newListing} />
+        </View>
+        <ListGroup>
+          {listings.map(item => (
+            <ListRow
+              key={item.id}
+              title={item.title}
+              meta={`${formatRs(item.price)} per ${item.unit} · ${formatAmount(item.quantity)} ${item.unit} available`}
+              status={<StatusBadge kind="listing" status={item.status} />}
+              leading={
+                item.images[0] ? (
+                  <Image source={{ uri: item.images[0] }} style={styles.thumb} accessibilityIgnoresInvertColors />
+                ) : (
+                  <View style={styles.thumb} />
+                )
+              }
+              onPress={() => navigateInTab(tabs, APP_TABS.Marketplace, MARKETPLACE_ROUTES.ListingDetail, { listingId: item.id })}
+            />
+          ))}
+        </ListGroup>
+      </QueryState>
+    </ScreenScaffold>
   );
 }
 
-function makeStyles({ colors, space, typography, borders }: Theme) {
+function makeStyles({ colors, radius, size }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    list: {
-      padding: space[4],
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: space[3],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    info: {
-      flex: 1,
-      marginRight: space[3],
-    },
-    title: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-    },
-    meta: {
-      marginTop: space[1] / 2,
-      ...typography.caption,
-      color: colors.ink2,
-    },
+    add: { alignItems: 'flex-start' },
+    thumb: { width: size.thumb, height: size.thumb, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken },
   });
 }

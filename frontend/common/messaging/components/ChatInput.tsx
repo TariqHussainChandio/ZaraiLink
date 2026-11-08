@@ -1,98 +1,119 @@
 import { ImagePlus, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Button, IconButton } from '../../components';
+import { useTheme, type Theme } from '../../../theme';
 import { hapticTap } from '../../../utils/haptics';
 import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
 
 export interface ChatInputProps {
-  onSend: (body: string, images: PickedPhoto[]) => void;
+  /** Sends the message. The composer is cleared only once this resolves; if it rejects, the words and photos stay where
+   * they were and the person is told (FA-03). A screen that shows the message itself as "Sending…" may resolve at once. */
+  onSend: (body: string, images: PickedPhoto[]) => void | Promise<void>;
+  /** A send is in flight elsewhere (a mutation the screen owns): holds the Send button. */
   sending?: boolean;
 }
 
+const MAX_PHOTOS = 4;
+
 export function ChatInput({ onSend, sending = false }: ChatInputProps) {
   const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [value, setValue] = useState('');
   const [images, setImages] = useState<PickedPhoto[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const busy = sending || submitting;
+  const empty = !value.trim() && images.length === 0;
 
   const pickImages = async () => {
-    const assets = await pickPhotos({ selectionLimit: 4 });
-    if (assets.length > 0) setImages(current => [...current, ...assets].slice(0, 4));
+    const assets = await pickPhotos({ selectionLimit: MAX_PHOTOS });
+    if (assets.length > 0) setImages(current => [...current, ...assets].slice(0, MAX_PHOTOS));
   };
 
   const removeImage = (uri: string | undefined) => {
     setImages(current => current.filter(image => image.uri !== uri));
   };
 
-  const submit = () => {
+  const submit = async () => {
     const trimmed = value.trim();
     if (!trimmed && images.length === 0) return;
-    onSend(trimmed, images);
     hapticTap();
-    setValue('');
-    setImages([]);
+    setFailed(false);
+    setSubmitting(true);
+    try {
+      await onSend(trimmed, images);
+      setValue('');
+      setImages([]);
+    } catch {
+      // The draft is untouched, so the person can press Send again.
+      setFailed(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <View style={styles.container}>
+      {failed ? (
+        <Text style={styles.failure} accessibilityRole="alert">
+          {"Couldn't send. Your message is still here, so you can try again."}
+        </Text>
+      ) : null}
       {images.length > 0 ? (
-        <ScrollView horizontal style={styles.previewRow} showsHorizontalScrollIndicator={false}>
-          {images.map(image => (
+        <ScrollView horizontal style={styles.previewRow} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {images.map((image, index) => (
             <View key={image.uri} style={styles.previewWrap}>
-              <Image source={{ uri: image.uri }} style={styles.previewImage} />
-              <TouchableOpacity
+              <Image
+                source={{ uri: image.uri }}
+                style={styles.previewImage}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel={`Photo ${index + 1} of ${images.length} to send`}
+              />
+              <Pressable
                 style={styles.removeButton}
                 onPress={() => removeImage(image.uri)}
                 hitSlop={theme.components.hitSlop(theme.size.countBadge)}
                 accessibilityRole="button"
-                accessibilityLabel="Remove photo"
+                accessibilityLabel={`Remove photo ${index + 1}`}
               >
                 <X size={theme.size.iconSm} color={theme.colors.onAccent} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           ))}
         </ScrollView>
       ) : null}
       <View style={styles.row}>
-        <TouchableOpacity
-          style={styles.attachButton}
-          onPress={pickImages}
-          disabled={sending}
-          accessibilityRole="button"
-          accessibilityLabel="Add photo"
-        >
-          <ImagePlus size={theme.size.iconMd} color={theme.colors.ink2} />
-        </TouchableOpacity>
+        {images.length < MAX_PHOTOS ? <IconButton icon={ImagePlus} label="Add photo" onPress={pickImages} /> : null}
         <TextInput
           style={styles.input}
-          placeholder="Type a message..."
-          placeholderTextColor={theme.colors.ink2}
+          placeholder="Write a message"
+          placeholderTextColor={theme.colors.ink3}
+          accessibilityLabel="Message"
           value={value}
           onChangeText={setValue}
+          editable={!busy}
           multiline
         />
-        <TouchableOpacity
-          style={[styles.sendButton, !value.trim() && images.length === 0 && styles.sendButtonDisabled]}
-          onPress={submit}
-          disabled={(!value.trim() && images.length === 0) || sending}
-          accessibilityRole="button"
-          accessibilityLabel="Send message"
-        >
-          <Text style={styles.sendLabel}>Send</Text>
-        </TouchableOpacity>
+        <Button label="Send" size="md" fullWidth={false} loading={busy} disabled={empty || busy} onPress={submit} accessibilityLabel="Send message" />
       </View>
     </View>
   );
 }
 
-function makeStyles({ colors, space, radius, size, borders, typography }: Theme, accent: Accent) {
+function makeStyles({ colors, space, size, borders, components, typography }: Theme) {
   return StyleSheet.create({
     container: {
       borderTopWidth: borders.hairline,
       borderTopColor: colors.line,
       backgroundColor: colors.surface,
+    },
+    failure: {
+      ...typography.body,
+      color: colors.status.danger.ink,
+      paddingHorizontal: space[3],
+      paddingTop: space[2],
     },
     previewRow: {
       paddingHorizontal: space[3],
@@ -104,15 +125,15 @@ function makeStyles({ colors, space, radius, size, borders, typography }: Theme,
     previewImage: {
       width: size.thumb,
       height: size.thumb,
-      borderRadius: radius.sm,
-      backgroundColor: colors.line,
+      borderRadius: components.input.radius,
+      backgroundColor: colors.surfaceSunken,
     },
     removeButton: {
       position: 'absolute',
       top: -space[1],
       right: -space[1],
       backgroundColor: colors.ink2,
-      borderRadius: radius.pill,
+      borderRadius: size.countBadge / 2,
       width: size.countBadge,
       height: size.countBadge,
       alignItems: 'center',
@@ -121,40 +142,22 @@ function makeStyles({ colors, space, radius, size, borders, typography }: Theme,
     row: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      padding: space[3],
-    },
-    attachButton: {
-      minWidth: size.touchMin,
-      minHeight: size.touchMin,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: space[1],
+      gap: space[2],
+      paddingHorizontal: space[2],
+      paddingVertical: space[2],
     },
     input: {
       flex: 1,
+      minHeight: size.input,
       maxHeight: size.composerMax,
-      borderWidth: borders.hairline,
-      borderColor: colors.line,
-      borderRadius: radius.md,
+      borderWidth: borders.control,
+      borderColor: colors.lineStrong,
+      borderRadius: components.input.radius,
+      backgroundColor: colors.surface,
       paddingHorizontal: space[3],
       paddingVertical: space[2],
       ...typography.bodyLg,
       color: colors.ink,
-      marginRight: space[2],
-    },
-    sendButton: {
-      backgroundColor: accent.fill,
-      borderRadius: radius.md,
-      paddingHorizontal: space[4],
-      minHeight: size.touchMin,
-      justifyContent: 'center',
-    },
-    sendButtonDisabled: {
-      opacity: 0.5,
-    },
-    sendLabel: {
-      ...typography.label,
-      color: colors.onAccent,
     },
   });
 }

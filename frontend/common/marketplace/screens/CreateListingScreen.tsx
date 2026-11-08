@@ -1,135 +1,122 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useMemo, useState } from 'react';
+import type { NavigationAction } from '@react-navigation/native';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button } from '../../components';
-import {
-  ListingFormFields,
-  listingFormDefaults,
-  listingSchema,
-  type ListingFormInput,
-  type ListingFormValues,
-} from '../components/ListingFormFields';
+import { Alert } from 'react-native';
+import { Button, ConfirmSheet, ScreenScaffold, StickyActionBar, useSnackbar } from '../../components';
+import { ListingFormFields, listingFormDefaults, listingSchema, type ListingFormInput, type ListingFormValues } from '../components/ListingFormFields';
+import { ListingPhotos, MAX_LISTING_PHOTOS } from '../components/ListingPhotos';
+import { MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useCreateListing } from '../hooks/marketplace';
 import { useAuthStore } from '../../../state/authStore';
-import { useTheme, type Theme } from '../../../theme';
 import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
 
+const NO_PHOTO = 'Add at least one photo so buyers can see what you sell';
+
+/** A new listing: photos first, then what it is, its price and quantity, where it is. Back from a half-filled form asks
+ * before throwing it away; Publish ends on the new listing with "Listing published". */
 export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'CreateListing'>) {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
+  const profile = useAuthStore(state => state.profile);
+  const snackbar = useSnackbar();
   const [images, setImages] = useState<PickedPhoto[]>([]);
+  const [photoError, setPhotoError] = useState<string | undefined>();
+  const [discarding, setDiscarding] = useState<NavigationAction | null>(null);
   const createListing = useCreateListing();
+  // Set once the listing is saved, so leaving the screen after Publish is not mistaken for abandoning the form.
+  const done = useRef(false);
 
   const {
     control,
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ListingFormInput, any, ListingFormValues>({
     resolver: zodResolver(listingSchema),
-    defaultValues: listingFormDefaults,
+    // The seller's own place is the likeliest place of the goods, so the form starts with it.
+    defaultValues: { ...listingFormDefaults, country: profile?.country ?? null, province: profile?.province ?? null, city: profile?.city ?? null },
   });
 
+  const unsaved = isDirty || images.length > 0;
+  useEffect(
+    () =>
+      navigation.addListener('beforeRemove', event => {
+        if (done.current || !unsaved) return;
+        event.preventDefault();
+        setDiscarding(event.data.action);
+      }),
+    [navigation, unsaved],
+  );
+
   const pickImages = async () => {
-    const assets = await pickPhotos({ selectionLimit: 5 });
-    if (assets.length > 0) setImages(assets);
+    const assets = await pickPhotos({ selectionLimit: MAX_LISTING_PHOTOS - images.length });
+    if (assets.length === 0) return;
+    // Added to the photos already chosen, never instead of them: a camera adds one at a time.
+    setImages(current => [...current, ...assets].slice(0, MAX_LISTING_PHOTOS));
+    setPhotoError(undefined);
   };
 
   const onSubmit = async (values: ListingFormValues) => {
     if (!userId) return;
     if (images.length === 0) {
-      Alert.alert('Add a photo', 'Please add at least one image of your produce.');
+      setPhotoError(NO_PHOTO);
       return;
     }
-
     try {
-      await createListing.mutateAsync({
+      const listing = await createListing.mutateAsync({
         userId,
         images,
-        input: {
-          ...values,
-          description: values.description ?? '',
-          brand: values.brand || null,
-          condition: values.condition || null,
-        },
+        input: { ...values, description: values.description ?? '', brand: values.brand || null, condition: values.condition || null },
       });
-      navigation.goBack();
+      done.current = true;
+      snackbar.show('Listing published');
+      navigation.replace(MARKETPLACE_ROUTES.ListingDetail, { listingId: listing.id });
     } catch (error) {
-      Alert.alert('Failed to create listing', errorMessage(error));
+      Alert.alert("Couldn't publish the listing", errorMessage(error));
     }
   };
 
+  // An invalid form still reports a missing photo, so every problem is on screen at once.
+  const submit = () =>
+    handleSubmit(onSubmit, () => {
+      if (images.length === 0) setPhotoError(NO_PHOTO);
+    })();
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
-
-      <Text style={styles.label}>Photos</Text>
-      <View style={styles.imageRow}>
-        {images.map((image, index) => (
-          <Image key={image.uri ?? index} source={{ uri: image.uri }} style={styles.thumbnail} />
-        ))}
-        <TouchableOpacity style={styles.addImage} onPress={pickImages}>
-          <Text style={styles.addImageLabel}>+ Add</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Button
-        label="Publish Listing"
-        loading={createListing.isPending}
-        onPress={handleSubmit(onSubmit)}
-        style={styles.submit}
+    <>
+      <ScreenScaffold
+        footer={
+          <StickyActionBar>
+            <Button label="Publish listing" size="lg" loading={createListing.isPending} onPress={submit} />
+          </StickyActionBar>
+        }
+      >
+        <ListingPhotos
+          uris={images.map(image => image.uri)}
+          onAdd={pickImages}
+          onRemove={index => setImages(current => current.filter((_, i) => i !== index))}
+          error={photoError}
+          disabled={createListing.isPending}
+        />
+        <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
+      </ScreenScaffold>
+      <ConfirmSheet
+        visible={discarding !== null}
+        onClose={() => setDiscarding(null)}
+        title="Discard this listing?"
+        message="What you have entered and the photos you chose will be lost."
+        confirmLabel="Discard listing"
+        keepLabel="Keep editing"
+        destructive
+        onConfirm={() => {
+          const action = discarding;
+          done.current = true;
+          if (action) navigation.dispatch(action);
+        }}
       />
-    </ScrollView>
+    </>
   );
-}
-
-function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    label: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginBottom: space[1],
-    },
-    imageRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space[2],
-      marginBottom: space[6],
-    },
-    thumbnail: {
-      width: size.photoMd,
-      height: size.photoMd,
-      borderRadius: radius.sm,
-      backgroundColor: colors.line,
-    },
-    addImage: {
-      width: size.photoMd,
-      height: size.photoMd,
-      borderRadius: radius.sm,
-      borderWidth: borders.hairline,
-      borderColor: colors.line,
-      borderStyle: 'dashed',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    addImageLabel: {
-      color: colors.ink2,
-      ...typography.caption,
-    },
-    submit: {
-      marginBottom: space[8],
-    },
-  });
 }

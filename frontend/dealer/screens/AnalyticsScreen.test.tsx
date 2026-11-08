@@ -53,7 +53,17 @@ describe('DealerAnalyticsScreen', () => {
     expect(screen.getByText('3')).toBeTruthy();
     expect(screen.getByText('DAP Fertilizer')).toBeTruthy();
     expect(screen.getByText('Rs 8,000 revenue')).toBeTruthy();
-    expect(screen.getByText('20 units')).toBeTruthy();
+    expect(screen.getByText('20 sold')).toBeTruthy();
+  });
+
+  it('names the month and the unit of the chart, and speaks a summary of it', async () => {
+    mockFetchDealerAnalytics.mockResolvedValue(analytics);
+    await renderWithQuery(<DealerAnalyticsScreen />);
+
+    expect(await screen.findByText('Units sold from stock, by month')).toBeTruthy();
+    expect(screen.getByText('Jan')).toBeTruthy();
+    expect(screen.queryByText('01')).toBeNull();
+    expect(screen.getByLabelText('Units sold from stock, by month: Jan 40')).toBeTruthy();
   });
 
   it('shows an error state with retry when analytics fail to load', async () => {

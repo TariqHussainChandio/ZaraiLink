@@ -1,84 +1,82 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Badge, Card } from '../../common/components';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Button, Card, StatusBadge } from '../../common/components';
+import { statusMeta } from '../../common/constants/status';
+import { useTheme, type Theme } from '../../theme';
 import type { InventoryItemWithListing } from '../types/dealer';
 import { formatRs } from '../../utils/money';
+import { formatQuantity, itemName, stockLevel } from './stock';
 
 export interface InventoryRowProps {
   item: InventoryItemWithListing;
+  /** Opens the item to edit it. */
   onPress: () => void;
+  /** Opens "Record stock". */
   onAdjust: () => void;
   onHistory: () => void;
 }
 
+/** One stock item: its name and quantity (the figure people scan), where it stands, and the two things a dealer does
+ * with it. The item's own area and each button are separate targets, so a screen reader names the item on every button. */
 export function InventoryRow({ item, onPress, onAdjust, onHistory }: InventoryRowProps) {
   const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
-  const lowStock = item.stock_quantity <= item.min_stock_threshold;
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const name = itemName(item);
+  const level = stockLevel(item);
+  const quantity = formatQuantity(item.stock_quantity, item.unit);
 
   return (
     <Card style={styles.card}>
-      <TouchableOpacity onPress={onPress}>
+      {/* Not Card's own onPress: that would make the whole card one accessible node and hide the buttons below from TalkBack. */}
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Edit ${name}, ${quantity}, ${statusMeta('stock', level).label}`}
+        android_ripple={{ color: theme.colors.ripple }}
+        style={styles.main}
+      >
         <View style={styles.row}>
-          <Text style={styles.title} numberOfLines={1}>
-            {item.listing?.title ?? 'Unlinked stock item'}
-          </Text>
-          {lowStock ? <Badge label="Low stock" tone="warning" /> : null}
+          <Text style={styles.title}>{name}</Text>
+          <Text style={styles.quantity}>{quantity}</Text>
         </View>
-        <Text style={styles.meta}>
-          {item.stock_quantity} {item.unit} in stock
-        </Text>
+        <StatusBadge kind="stock" status={level} size="sm" />
         {item.selling_price !== null ? (
-          <Text style={styles.meta}>Selling price: {formatRs(item.selling_price)}</Text>
+          <Text style={styles.meta}>{`${formatRs(item.selling_price)} per ${item.unit}`}</Text>
         ) : null}
-      </TouchableOpacity>
+      </Pressable>
       <View style={styles.actions}>
-        <TouchableOpacity onPress={onAdjust} style={styles.actionButton}>
-          <Text style={styles.actionLabel}>Adjust Stock</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onHistory} style={styles.actionButton}>
-          <Text style={styles.actionLabel}>History</Text>
-        </TouchableOpacity>
+        <Button
+          label="Record stock"
+          accessibilityLabel={`Record stock for ${name}`}
+          variant="secondary"
+          size="sm"
+          fullWidth={false}
+          onPress={onAdjust}
+          style={styles.action}
+        />
+        <Button
+          label="See history"
+          accessibilityLabel={`See stock history for ${name}`}
+          variant="quiet"
+          size="sm"
+          fullWidth={false}
+          onPress={onHistory}
+          style={styles.action}
+        />
       </View>
     </Card>
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight }: Theme, accent: Accent) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    card: {
-      marginBottom: space[3],
-    },
-    row: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    title: {
-      flex: 1,
-      ...typography.bodyStrong,
-      color: colors.ink,
-      marginRight: space[2],
-    },
-    meta: {
-      marginTop: space[1] / 2,
-      ...typography.caption,
-      color: colors.ink2,
-    },
-    actions: {
-      flexDirection: 'row',
-      gap: space[4],
-      marginTop: space[2],
-    },
-    actionButton: {
-      paddingVertical: space[1],
-    },
-    actionLabel: {
-      ...typography.caption,
-      fontWeight: fontWeight.semibold,
-      color: accent.ink,
-    },
+    card: { gap: space[3] },
+    main: { gap: space[2], alignItems: 'flex-start' },
+    row: { flexDirection: 'row', alignItems: 'baseline', gap: space[3], alignSelf: 'stretch' },
+    title: { ...typography.bodyStrong, flex: 1, color: colors.ink },
+    quantity: { ...typography.figure, color: colors.ink },
+    meta: { ...typography.caption, color: colors.ink2 },
+    actions: { flexDirection: 'row', gap: space[2] },
+    action: { flex: 1 },
   });
 }

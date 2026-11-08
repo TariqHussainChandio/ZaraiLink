@@ -1,7 +1,7 @@
 import { ArrowLeft, Warehouse, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useInsets } from '../../hooks/useInsets';
 import { type Theme, useTheme } from '../../theme';
 
 export interface AppBarAction {
@@ -28,15 +28,23 @@ export interface TopAppBarProps {
   variant?: 'default' | 'large' | 'inventory';
 }
 
-/** A 48 dp icon button with a spoken label, and the amber count badge when `count` is set. */
 const unread = (count: number) => `${count} unread`;
 
-export function IconButton({ icon: Icon, label, onPress, count, countLabel = unread }: AppBarAction) {
+/** A 48 dp icon button with a spoken label, and the amber count badge when `count` is set. `color` is for the rare dark
+ * ground (the photo viewer); everywhere else the icon is `ink`. */
+export function IconButton({ icon: Icon, label, onPress, count, countLabel = unread, color }: AppBarAction & { color?: string }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={count ? `${label}, ${countLabel(count)}` : label} style={styles.iconButton}>
-      <Icon color={theme.colors.ink} size={theme.size.iconMd} />
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={count ? `${label}, ${countLabel(count)}` : label}
+      // A round disc of ripple, as wide as the target: it spills past the icon but not past the 48 dp square.
+      android_ripple={{ color: theme.colors.ripple, borderless: true, radius: theme.size.touchMin / 2 }}
+      style={styles.iconButton}
+    >
+      <Icon color={color ?? theme.colors.ink} size={theme.size.iconMd} />
       {count ? (
         <View style={styles.count}>
           <Text style={styles.countText}>{count > 99 ? '99+' : count}</Text>
@@ -51,7 +59,7 @@ export function IconButton({ icon: Icon, label, onPress, count, countLabel = unr
 export function TopAppBar({ title, subtitle, onBack, actions = [], right, variant = 'default' }: TopAppBarProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
+  const insets = useInsets();
   const large = variant === 'large';
 
   return (
@@ -90,7 +98,7 @@ export function TopAppBar({ title, subtitle, onBack, actions = [], right, varian
   );
 }
 
-function makeStyles({ colors, space, size, radius, borders, typography }: Theme) {
+function makeStyles({ colors, space, size, radius, borders, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     bar: { backgroundColor: colors.surface, borderBottomWidth: borders.hairline, borderBottomColor: colors.line },
     // A strip in the dealer mark across the top of every inventory-system screen.
@@ -98,9 +106,11 @@ function makeStyles({ colors, space, size, radius, borders, typography }: Theme)
     row: { flexDirection: 'row', alignItems: 'center', minHeight: size.appBar, paddingHorizontal: space[1] },
     inset: { width: space[3] },
     titleBox: { flex: 1, minWidth: 0, paddingHorizontal: space[2] },
-    title: { ...typography.title, color: colors.ink },
+    // The board face (D15): an inner screen's title is `titleBar`, a tab's first screen has the large `headline`.
+    title: { ...typography.titleBar, color: colors.ink },
     system: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
-    systemText: { ...typography.overline, color: colors.accent.dealer.ink },
+    // The kicker names the system in sentence case, in the dealer's ink; the retired uppercase `overline` is gone.
+    systemText: { ...typography.caption, fontWeight: fontWeight.bold, color: colors.accent.dealer.ink },
     largeTitle: { paddingHorizontal: space[4], paddingBottom: space[3] },
     headline: { ...typography.headline, color: colors.ink },
     subtitle: { ...typography.caption, color: colors.ink2 },

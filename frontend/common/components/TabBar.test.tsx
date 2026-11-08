@@ -4,6 +4,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { type BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { House, Receipt } from 'lucide-react-native';
+import { rippleOf } from '../../testUtils/ripple';
+import { lightTheme } from '../../theme';
 import { TabBar } from './TabBar';
 
 type Tabs = { Home: undefined; Orders: undefined };
@@ -48,6 +50,11 @@ describe('TabBar', () => {
     await fireEvent.press(screen.getByRole('tab', { name: 'Orders' }));
     expect(await screen.findByText('Orders screen')).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Orders' })).toBeSelected();
+  });
+
+  it('ripples when a tab is pressed', async () => {
+    await renderTabs();
+    expect(screen.getByRole('tab', { name: 'Orders' }).props.nativeBackgroundAndroid).toEqual(rippleOf(lightTheme.colors.ripple));
   });
 
   it('says a tab has something new when it carries a badge', async () => {

@@ -16,12 +16,6 @@ const rows = [
   { id: 'e1', role: 'expert', code: 'degree', label: 'Degree certificate', description: null, is_required: true, active: true, sort_order: 10 },
 ];
 
-function first<T>(items: T[]): T {
-  const [item] = items;
-  if (!item) throw new Error('nothing found');
-  return item;
-}
-
 beforeEach(() => {
   jest.clearAllMocks();
   (fetchAllRequiredDocuments as jest.Mock).mockResolvedValue(rows);
@@ -39,15 +33,24 @@ describe('RequiredDocumentsScreen (SRDS §7: configurable)', () => {
     expect(screen.getByText('Degree certificate')).toBeTruthy();
   });
 
+  it('says the load failed, and retries, instead of an empty list (AD-11)', async () => {
+    (fetchAllRequiredDocuments as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    await renderWithQuery(<RequiredDocumentsScreen />);
+    expect(await screen.findByText("Couldn't load the document list")).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(await screen.findByText('Business licence')).toBeTruthy();
+  });
+
   it('adds a document with a stable code made from its name', async () => {
     await renderWithQuery(<RequiredDocumentsScreen />);
-    await fireEvent.press(await screen.findByText('Add a document'));
-    await fireEvent.press(screen.getByText('Save'));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add a document' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save document' }));
     expect(screen.getByText('Name the document')).toBeTruthy();
 
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Tax (NTN) certificate');
     await fireEvent.press(screen.getByRole('button', { name: 'Optional' }));
-    await fireEvent.press(screen.getByText('Save'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save document' }));
     await waitFor(() =>
       expect(createRequiredDocument).toHaveBeenCalledWith({
         role: 'dealer',
@@ -60,19 +63,36 @@ describe('RequiredDocumentsScreen (SRDS §7: configurable)', () => {
     );
   });
 
-  it('retires a document and brings a retired one back, never deleting', async () => {
+  it('retires a document only after the consequence is stated, and offers Undo (AD-04)', async () => {
     await renderWithQuery(<RequiredDocumentsScreen />);
-    await fireEvent.press(await screen.findByText('Retire'));
+    await fireEvent.press(await screen.findByText('Business licence'));
+    await fireEvent.press(await screen.findByText('Retire Business licence'));
+    expect(await screen.findByText('Retire Business licence?')).toBeTruthy();
+    expect(screen.getByText(/Documents already sent stay on their applications/)).toBeTruthy();
+    expect(updateRequiredDocument).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Retire Business licence' }));
     expect(updateRequiredDocument).toHaveBeenCalledWith('d1', { active: false });
-    await fireEvent.press(screen.getByText('Use again'));
+    expect(await screen.findByText('Business licence retired')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Undo' }));
+    expect(updateRequiredDocument).toHaveBeenLastCalledWith('d1', { active: true });
+  });
+
+  it('brings a retired document back, never deleting', async () => {
+    await renderWithQuery(<RequiredDocumentsScreen />);
+    await fireEvent.press(await screen.findByText('Old certificate'));
+    await fireEvent.press(await screen.findByText('Ask for Old certificate again'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ask for Old certificate again' }));
     expect(updateRequiredDocument).toHaveBeenCalledWith('d2', { active: true });
   });
 
   it('edits a label', async () => {
     await renderWithQuery(<RequiredDocumentsScreen />);
-    await fireEvent.press(first(await screen.findAllByText('Edit')));
+    await fireEvent.press(await screen.findByText('Business licence'));
+    await fireEvent.press(await screen.findByText('Edit document'));
     await fireEvent.changeText(screen.getByLabelText('Name'), 'Trade licence');
-    await fireEvent.press(screen.getByText('Save'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save document' }));
     await waitFor(() =>
       expect(updateRequiredDocument).toHaveBeenCalledWith('d1', { label: 'Trade licence', description: 'Your trade licence.', is_required: true }),
     );

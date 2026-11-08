@@ -15,45 +15,65 @@ const item: CartItem = {
   quantity: 2,
 };
 
+const base = { item, price: 100, onQuantityChange: () => {}, onRemove: () => {} };
+
 describe('CartItemRow', () => {
-  it('renders the title, price, and quantity', async () => {
-    await render(<CartItemRow item={item} onIncrement={() => {}} onDecrement={() => {}} onRemove={() => {}} />);
+  it('renders the title, price per unit, quantity and the line total', async () => {
+    await render(<CartItemRow {...base} />);
     expect(screen.getByText('Wheat seeds')).toBeTruthy();
-    expect(screen.getByText('Rs 100 / kg')).toBeTruthy();
+    expect(screen.getByText('Rs 100 per kg')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.getByText('Rs 200')).toBeTruthy();
   });
 
-  it('names the steppers and Remove for TalkBack', async () => {
-    await render(<CartItemRow item={item} onIncrement={() => {}} onDecrement={() => {}} onRemove={() => {}} />);
-    expect(screen.getByRole('button', { name: 'One more Wheat seeds' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'One fewer Wheat seeds' })).toBeTruthy();
+  it("shows today's price, and what it was when the item was added", async () => {
+    await render(<CartItemRow {...base} price={120} />);
+    expect(screen.getByText('Rs 120 per kg')).toBeTruthy();
+    expect(screen.getByText('Was Rs 100 when you added it')).toBeTruthy();
+    expect(screen.getByText('Rs 240')).toBeTruthy();
+  });
+
+  it('says nothing about a price that did not change', async () => {
+    await render(<CartItemRow {...base} />);
+    expect(screen.queryByText(/when you added it/)).toBeNull();
+  });
+
+  it('names the stepper buttons and Remove for TalkBack', async () => {
+    await render(<CartItemRow {...base} />);
+    expect(screen.getByRole('button', { name: 'One more kg' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'One fewer kg' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Remove Wheat seeds from the cart' })).toBeTruthy();
   });
 
-  it('gives Remove a full 48 dp target, not only the word', async () => {
-    await render(<CartItemRow item={item} onIncrement={() => {}} onDecrement={() => {}} onRemove={() => {}} />);
+  it('gives Remove a full 48 dp target', async () => {
+    await render(<CartItemRow {...base} />);
     const remove = screen.getByRole('button', { name: 'Remove Wheat seeds from the cart' });
-    expect(StyleSheet.flatten(remove.props.style).minHeight).toBe(lightTheme.size.touchMin);
+    expect(StyleSheet.flatten(remove.props.style).width).toBe(lightTheme.size.touchMin);
   });
 
-  it('calls onIncrement when + is pressed', async () => {
-    const onIncrement = jest.fn();
-    await render(<CartItemRow item={item} onIncrement={onIncrement} onDecrement={() => {}} onRemove={() => {}} />);
-    fireEvent.press(screen.getByText('+'));
-    expect(onIncrement).toHaveBeenCalledTimes(1);
+  it('sets any quantity: + adds one, and a typed 50 is 50 (MK-02)', async () => {
+    const onQuantityChange = jest.fn();
+    await render(<CartItemRow {...base} onQuantityChange={onQuantityChange} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'One more kg' }));
+    expect(onQuantityChange).toHaveBeenLastCalledWith(3);
+    await fireEvent.press(screen.getByRole('button', { name: '2 kgs' }));
+    const box = screen.getByLabelText('Number of kgs');
+    await fireEvent.changeText(box, '50');
+    await fireEvent(box, 'submitEditing');
+    expect(onQuantityChange).toHaveBeenLastCalledWith(50);
   });
 
-  it('calls onDecrement when − is pressed', async () => {
-    const onDecrement = jest.fn();
-    await render(<CartItemRow item={item} onIncrement={() => {}} onDecrement={onDecrement} onRemove={() => {}} />);
-    fireEvent.press(screen.getByText('−'));
-    expect(onDecrement).toHaveBeenCalledTimes(1);
+  it('stops at 1 instead of deleting the line', async () => {
+    const onQuantityChange = jest.fn();
+    await render(<CartItemRow {...base} item={{ ...item, quantity: 1 }} onQuantityChange={onQuantityChange} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'One fewer kg' }));
+    expect(onQuantityChange).not.toHaveBeenCalled();
   });
 
   it('calls onRemove when Remove is pressed', async () => {
     const onRemove = jest.fn();
-    await render(<CartItemRow item={item} onIncrement={() => {}} onDecrement={() => {}} onRemove={onRemove} />);
-    fireEvent.press(screen.getByText('Remove'));
+    await render(<CartItemRow {...base} onRemove={onRemove} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove Wheat seeds from the cart' }));
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
 });

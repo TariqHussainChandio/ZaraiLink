@@ -24,9 +24,14 @@ describe('ReviewCard', () => {
     expect(screen.getByText('Great quality seeds, fast delivery.')).toBeTruthy();
   });
 
-  it('falls back to "Unknown buyer" when the buyer is missing', async () => {
+  it('shows the date in the app format, not the phone locale', async () => {
+    await render(<ReviewCard review={review({ created_at: '2020-01-05T10:00:00.000Z' })} />);
+    expect(screen.getByText('5 Jan 2020')).toBeTruthy();
+  });
+
+  it('falls back to "A buyer" when the buyer is missing', async () => {
     await render(<ReviewCard review={review({ buyer: undefined })} />);
-    expect(screen.getByText('Unknown buyer')).toBeTruthy();
+    expect(screen.getByText('A buyer')).toBeTruthy();
   });
 
   it('omits the comment line when there is no comment', async () => {

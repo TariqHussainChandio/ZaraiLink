@@ -1,20 +1,31 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../common/components';
-import { OrderCard } from '../../common/orders';
+import React, { useCallback, useState } from 'react';
+import { ChipRow, QueryState, ScreenScaffold, TextField, type ChipOption } from '../../common/components';
+import { OrderCard, type OrderStatus } from '../../common/orders';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
-import { useAllOrders } from '../hooks/admin';
+import { statusMeta } from '../../common/constants/status';
 import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
-import { useTheme, type Theme } from '../../theme';
+import { LoadMore } from '../components/LoadMore';
+import { useOrderPages } from '../hooks/admin';
 
-/** Platform-wide order overview — every order, not scoped to a buyer/seller segment. */
+type Filter = OrderStatus | 'all';
+
+const FILTER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'dispatched', 'completed', 'disputed', 'cancelled'];
+const FILTERS: ChipOption<Filter>[] = [
+  { value: 'all', label: 'All' },
+  ...FILTER_STATUSES.map(status => ({ value: status, label: statusMeta('order', status).label })),
+];
+
+/** Platform-wide order overview: every order, not scoped to a buyer or seller. The API pages it and offers no filter, so the
+ * search and the status chips look through the pages already loaded. */
 export function PlatformOrdersScreen() {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation<AdminScreenProps<'Orders'>['navigation']>();
-  const { data: orders = [], isPending: loading, refetch } = useAllOrders();
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+
+  const needle = search.trim().toLowerCase();
+  const query = useOrderPages(needle.length > 0 || filter !== 'all');
+  const { rows, refetch } = query;
 
   useFocusEffect(
     useCallback(() => {
@@ -22,41 +33,43 @@ export function PlatformOrdersScreen() {
     }, [refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
+  const shown = rows.filter(order => {
+    if (filter !== 'all' && order.status !== filter) return false;
+    if (!needle) return true;
+    const haystack = [order.buyer?.full_name, order.seller?.full_name, ...order.order_items.map(item => item.listing?.title)].join(' ').toLowerCase();
+    return haystack.includes(needle);
+  });
 
   return (
-    <View style={styles.container}>
-      <FlashList
-        data={orders}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <OrderCard
-            order={item}
-            counterpartyName={`${item.buyer?.full_name || 'Unknown buyer'} → ${item.seller?.full_name || 'Unknown seller'}`}
-            onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.OrderDetail, { orderId: item.id })}
-          />
-        )}
-        ListEmptyComponent={
-          <EmptyState
-            title="No orders yet"
-            description="Platform orders will show up here once placed."
-          />
+    <ScreenScaffold onRefresh={() => refetch()} refreshing={query.isRefetching && !query.isFetchingNextPage}>
+      <TextField label="Find an order" placeholder="Buyer, seller or item" value={search} onChangeText={setSearch} autoCorrect={false} />
+      <ChipRow options={FILTERS} value={filter} onChange={setFilter} />
+      <QueryState
+        query={query}
+        failureTitle="Couldn't load orders"
+        isEmpty={shown.length === 0 && !query.hasNextPage && !query.isFetching}
+        empty={
+          needle || filter !== 'all'
+            ? { title: 'No order matches', description: 'Try a different name, item or status.' }
+            : { title: 'No orders yet', description: 'Platform orders show up here once they are placed.' }
         }
-      />
-    </View>
+      >
+        {shown.map(order => (
+          <OrderCard
+            key={order.id}
+            order={order}
+            counterpartyName={`${order.buyer?.full_name || 'Unknown buyer'} → ${order.seller?.full_name || 'Unknown seller'}`}
+            onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.OrderDetail, { orderId: order.id })}
+          />
+        ))}
+        <LoadMore
+          hasMore={!!query.hasNextPage}
+          loading={query.isFetchingNextPage}
+          onLoadMore={() => query.fetchNextPage()}
+          noun="orders"
+        />
+      </QueryState>
+    </ScreenScaffold>
   );
 }
 
-function makeStyles({ colors, space }: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    list: {
-      paddingHorizontal: space[4],
-      paddingTop: space[4],
-    },
-  });
-}

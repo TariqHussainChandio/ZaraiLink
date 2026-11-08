@@ -26,11 +26,28 @@ const baseListing: ListingWithRelations = {
 };
 
 describe('ListingCard', () => {
-  it('renders title, price, and category', async () => {
-    await render(<ListingCard listing={baseListing} onPress={() => {}} />);
+  it('leads with the rate plate (price and unit), then the name and who sells it', async () => {
+    await render(<ListingCard listing={{ ...baseListing, location: { country: 'Pakistan', province: 'Punjab', city: 'Sargodha' } }} onPress={() => {}} />);
+    expect(screen.getByLabelText('Rs 4,500, per bag')).toBeTruthy();
     expect(screen.getByText('DAP Fertilizer 50kg')).toBeTruthy();
-    expect(screen.getByText('Rs 4,500 / bag')).toBeTruthy();
-    expect(screen.getByText('Fertilizers')).toBeTruthy();
+    expect(screen.getByText('AgriMart · Sargodha')).toBeTruthy();
+  });
+
+  it('shows the seller alone when there is no town, and neither when the owner is unknown', async () => {
+    const { rerender } = await render(<ListingCard listing={baseListing} onPress={() => {}} />);
+    expect(screen.getByText('AgriMart')).toBeTruthy();
+    await rerender(<ListingCard listing={{ ...baseListing, owner: null }} onPress={() => {}} />);
+    expect(screen.queryByText('AgriMart')).toBeNull();
+  });
+
+  it('is one button whose spoken label carries the name, price, seller and stock', async () => {
+    await render(
+      <ListingCard
+        listing={{ ...baseListing, availability: 'low_stock', location: { country: null, province: null, city: 'Sargodha' } }}
+        onPress={() => {}}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'DAP Fertilizer 50kg, Rs 4,500 per bag, AgriMart · Sargodha, Low stock' })).toBeTruthy();
   });
 
   it.each([

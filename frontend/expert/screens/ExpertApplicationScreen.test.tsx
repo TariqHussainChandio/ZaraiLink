@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertApplicationScreen } from './ExpertApplicationScreen';
@@ -34,16 +33,12 @@ const existingProfile: ExpertWithProfile = {
   expert_specializations: [{ specialization: 'plant_diseases' }],
 };
 
-// Since A3b this is the expert's profile editor; the application itself (with documents) is ApplicationWizardScreen.
+// Since A3b this is the expert's profile editor; the application itself (with documents) is ApplicationWizardScreen. Since
+// the Rate Board redesign (AU-18) it is the application's own professional-details form, so the two cannot drift apart.
 describe('ExpertApplicationScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useAuthStore.setState({ user: { id: 'expert1' } as never });
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
   });
 
   it('pre-fills the form with the saved profile, the years and the institution included', async () => {
@@ -51,21 +46,26 @@ describe('ExpertApplicationScreen', () => {
     await renderWithQuery(<ExpertApplicationScreen />);
 
     expect(await screen.findByLabelText('Qualifications')).toBeTruthy();
-    expect(screen.getByLabelText('Qualifications').props.value).toBe('PhD Agronomy');
+    await screen.findByDisplayValue('PhD Agronomy');
     expect(screen.getByLabelText('Years of experience').props.value).toBe('10');
     expect(screen.getByLabelText('Institution affiliation').props.value).toBe('University of Agriculture Faisalabad');
-    expect(screen.getByText('Save changes')).toBeTruthy();
-    expect(screen.queryByText(/Add a photo/)).toBeNull();
+    // The same labels as the application, and the optional ones are marked.
+    expect(screen.getByLabelText('Highest degree or certification')).toBeTruthy();
+    expect(screen.queryByLabelText('Degree / Certification')).toBeNull();
+    expect(screen.getAllByText('Optional').length).toBeGreaterThan(0);
+    expect(screen.getByText('Save profile')).toBeTruthy();
   });
 
-  it('shows a retryable error state when loading fails', async () => {
-    mockFetchExpertProfile.mockRejectedValue(new Error('network down'));
+  it('shows a retryable error when loading fails, never an empty form that would start a second application', async () => {
+    mockFetchExpertProfile.mockRejectedValue(new TypeError('Network request failed'));
     await renderWithQuery(<ExpertApplicationScreen />);
 
-    expect(await screen.findByText("Couldn't load your application")).toBeTruthy();
+    expect(await screen.findByText("Couldn't load your saved details")).toBeTruthy();
+    expect(screen.getByText('No connection. Check your internet, then try again.')).toBeTruthy();
+    expect(screen.queryByLabelText('Qualifications')).toBeNull();
 
     mockFetchExpertProfile.mockResolvedValue(null);
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByLabelText('Qualifications')).toBeTruthy();
   });
 
@@ -74,18 +74,21 @@ describe('ExpertApplicationScreen', () => {
     await renderWithQuery(<ExpertApplicationScreen />);
     await screen.findByLabelText('Qualifications');
 
-    await fireEvent.press(screen.getByText('Save changes'));
-    expect(await screen.findByText('Enter your qualifications')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Save profile'));
+    expect((await screen.findAllByText('Enter your qualifications')).length).toBeGreaterThan(0);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('requires at least one specialization', async () => {
+  it('requires at least one specialization, and says so under the chips', async () => {
     mockFetchExpertProfile.mockResolvedValue(null);
     await renderWithQuery(<ExpertApplicationScreen />);
     await fireEvent.changeText(await screen.findByLabelText('Qualifications'), 'PhD Agronomy, extension work');
+    await fireEvent.changeText(screen.getByLabelText('Highest degree or certification'), 'PhD');
+    await fireEvent.changeText(screen.getByLabelText('Years of experience'), '10');
+    await fireEvent.changeText(screen.getByLabelText('Institution affiliation'), 'University of Agriculture');
 
-    await fireEvent.press(screen.getByText('Save changes'));
-    expect(Alert.alert).toHaveBeenCalledWith('Select at least one specialization');
+    await fireEvent.press(screen.getByText('Save profile'));
+    expect((await screen.findAllByText('Choose at least one specialization')).length).toBeGreaterThan(0);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
@@ -94,21 +97,27 @@ describe('ExpertApplicationScreen', () => {
     mockCreate.mockResolvedValue({ id: 'expert1' });
     await renderWithQuery(<ExpertApplicationScreen />);
     await fireEvent.changeText(await screen.findByLabelText('Qualifications'), 'PhD Agronomy, extension work');
-    await fireEvent.press(screen.getByText('Crop Management'));
+    await fireEvent.changeText(screen.getByLabelText('Highest degree or certification'), 'PhD');
+    await fireEvent.changeText(screen.getByLabelText('Years of experience'), '10');
+    await fireEvent.changeText(screen.getByLabelText('Institution affiliation'), 'University of Agriculture');
+    await fireEvent.press(screen.getByText('Crop management'));
 
-    await fireEvent.press(screen.getByText('Save changes'));
+    await fireEvent.press(screen.getByText('Save profile'));
 
     expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ qualifications: 'PhD Agronomy, extension work', specializations: ['crop_management'] }),
+      expect.objectContaining({
+        qualifications: 'PhD Agronomy, extension work',
+        specializations: ['crop_management'],
+      }),
     );
   });
 
-  it('updates an existing profile, keeping the years and the institution', async () => {
+  it('updates an existing profile, keeping the years and the institution, and confirms with a snackbar', async () => {
     mockFetchExpertProfile.mockResolvedValue(existingProfile);
     mockUpdateExpertProfile.mockResolvedValue(existingProfile);
     await renderWithQuery(<ExpertApplicationScreen />);
 
-    await fireEvent.press(await screen.findByText('Save changes'));
+    await fireEvent.press(await screen.findByText('Save profile'));
 
     expect(mockUpdateExpertProfile).toHaveBeenCalledWith({
       qualifications: 'PhD Agronomy',
@@ -123,15 +132,16 @@ describe('ExpertApplicationScreen', () => {
       yearsExperience: 10,
       institutionAffiliation: 'University of Agriculture Faisalabad',
     });
-    expect(Alert.alert).toHaveBeenCalledWith('Profile updated');
+    expect(await screen.findByText('Professional profile saved')).toBeTruthy();
   });
 
-  it('shows an error alert when saving fails', async () => {
+  it('shows a failed save as a banner, not an alert', async () => {
     mockFetchExpertProfile.mockResolvedValue(existingProfile);
     mockUpdateExpertProfile.mockRejectedValue(new Error('Server unavailable'));
     await renderWithQuery(<ExpertApplicationScreen />);
 
-    await fireEvent.press(await screen.findByText('Save changes'));
-    expect(Alert.alert).toHaveBeenCalledWith('Could not save', 'Server unavailable');
+    await fireEvent.press(await screen.findByText('Save profile'));
+    expect(await screen.findByText('Server unavailable')).toBeTruthy();
+    expect(screen.queryByText('Professional profile saved')).toBeNull();
   });
 });

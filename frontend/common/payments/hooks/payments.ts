@@ -26,12 +26,13 @@ export function useInitiatePayment() {
   });
 }
 
-/** The seller's decision on a payment: received, or failed. */
+/** The seller's decision on a payment: received, or failed. A failure can carry the reason the buyer is told (the API
+ * accepts it for `failed` only). */
 export function useResolvePayment() {
   const invalidate = useInvalidateOrders();
   return useMutation({
-    mutationFn: ({ paymentId, action }: { paymentId: string; action: 'received' | 'failed' }) =>
-      action === 'received' ? markPaymentReceived(paymentId) : markPaymentFailed(paymentId, null),
+    mutationFn: ({ paymentId, action, reason }: { paymentId: string; action: 'received' | 'failed'; reason?: string }) =>
+      action === 'received' ? markPaymentReceived(paymentId) : markPaymentFailed(paymentId, reason || null),
     onSuccess: invalidate,
   });
 }

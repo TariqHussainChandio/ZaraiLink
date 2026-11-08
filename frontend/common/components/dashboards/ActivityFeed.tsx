@@ -18,6 +18,10 @@ export interface ActivityFeedProps {
   emptyMessage: string;
 }
 
+/**
+ * @deprecated Retired by D15 (Rate Board): use `ListGroup` and `ListRow` (one fact per row, the status under the meta).
+ * Kept only until the dashboards have stopped using it.
+ */
 export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);

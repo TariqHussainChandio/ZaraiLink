@@ -83,7 +83,7 @@ describe('stack header', () => {
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
 
     await fireEvent.press(await screen.findByText('Open Receipt'));
-    expect(await screen.findByRole('header', { name: 'Receipt' })).toHaveStyle({ fontSize: typography.title.fontSize });
+    expect(await screen.findByRole('header', { name: 'Receipt' })).toHaveStyle({ fontSize: typography.titleBar.fontSize });
     expect(screen.getAllByRole('button', { name: 'Back' }).length).toBeGreaterThan(0);
   });
 });

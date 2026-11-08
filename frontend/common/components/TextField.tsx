@@ -1,7 +1,8 @@
-import { CircleAlert } from 'lucide-react-native';
+import { CircleAlert, Eye, EyeOff } from 'lucide-react-native';
 import React, { forwardRef, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
 import { type Theme, useTheme } from '../../theme';
+import { IconButton } from './TopAppBar';
 
 export interface TextFieldProps extends TextInputProps {
   /** Always visible above the box; never replaced by the placeholder. */
@@ -16,15 +17,19 @@ export interface TextFieldProps extends TextInputProps {
   suffix?: string;
   /** Marks a field that can be left empty; required is the default and is not marked. */
   optional?: boolean;
-  /** Sets the value in the mono face, for prices and quantities. */
+  /** Sets the value in the board face with tabular figures, for prices and quantities. */
   numeric?: boolean;
 }
 
+/** A labelled input: the label stays above the box, the helper or error below. Autofill hints (`autoComplete`,
+ * `textContentType`) and the ref pass straight to the input, so a password manager and react-hook-form's focus work. A
+ * `secureTextEntry` field gets a Show/Hide toggle. */
 export const TextField = forwardRef<TextInput, TextFieldProps>(
-  ({ label, helper, error, prefix, suffix, optional, numeric, editable = true, style, onFocus, onBlur, ...rest }, ref) => {
+  ({ label, helper, error, prefix, suffix, optional, numeric, editable = true, secureTextEntry, style, onFocus, onBlur, ...rest }, ref) => {
     const theme = useTheme();
     const styles = useMemo(() => makeStyles(theme), [theme]);
     const [focused, setFocused] = useState(false);
+    const [revealed, setRevealed] = useState(false);
 
     return (
       <View style={styles.container}>
@@ -48,6 +53,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(
             accessibilityLabel={label}
             accessibilityHint={error ?? helper}
             editable={editable}
+            secureTextEntry={secureTextEntry && !revealed}
             placeholderTextColor={theme.colors.ink3}
             onFocus={e => {
               setFocused(true);
@@ -61,6 +67,15 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(
             {...rest}
           />
           {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
+          {secureTextEntry ? (
+            <View style={styles.toggle}>
+              <IconButton
+                icon={revealed ? EyeOff : Eye}
+                label={revealed ? 'Hide password' : 'Show password'}
+                onPress={() => setRevealed(shown => !shown)}
+              />
+            </View>
+          ) : null}
         </View>
         {error ? (
           <View style={styles.errorRow} accessibilityLiveRegion="polite">
@@ -103,6 +118,8 @@ function makeStyles({ colors, space, borders, components, typography }: Theme) {
     inputDisabled: { color: colors.inkDisabled },
     affix: { ...typography.figure, color: colors.ink2 },
     suffix: { ...typography.caption, color: colors.ink2 },
+    // The toggle is a full 48 dp target; it sits flush to the box's edge instead of inside its padding.
+    toggle: { marginRight: -components.input.paddingX },
     errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space[1] },
     error: { ...typography.caption, flex: 1, color: colors.status.danger.mark },
     helper: { ...typography.caption, color: colors.ink3 },

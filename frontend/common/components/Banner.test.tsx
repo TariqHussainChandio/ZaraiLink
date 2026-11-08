@@ -1,5 +1,7 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { lightTheme } from '../../theme';
 import { Banner } from './Banner';
 
 describe('Banner', () => {
@@ -34,5 +36,27 @@ describe('Banner', () => {
     );
     expect(screen.getByRole('button', { name: 'Talk to an expert' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /close|dismiss/i })).toBeNull();
+  });
+
+  it('sets the message in body (16), because people act on it, not in caption', async () => {
+    await render(<Banner tone="info" title="Prices are per 40 kg">Check the unit before you order.</Banner>);
+    const message = StyleSheet.flatten(screen.getByText('Check the unit before you order.').props.style);
+    expect(message.fontSize).toBe(lightTheme.typography.body.fontSize);
+  });
+
+  it('keeps the action a stop of its own: the text is one stop and the button is outside it', async () => {
+    await render(
+      <Banner tone="danger" title="Could not load" actionLabel="Try again" onAction={() => undefined}>
+        Check your connection.
+      </Banner>,
+    );
+    const alert = screen.getByRole('alert');
+    // The title and message are read together as one stop...
+    expect(alert.props.accessible).toBe(true);
+    expect(within(alert).getByText('Could not load')).toBeTruthy();
+    expect(within(alert).getByText('Check your connection.')).toBeTruthy();
+    // ...and the button is not swallowed by it.
+    expect(within(alert).queryByRole('button')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
   });
 });

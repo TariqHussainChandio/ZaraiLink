@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
 import { queryKeys } from '../../hooks/keys';
@@ -10,7 +9,6 @@ import {
   fetchRefDataRows,
   updateRefDataRow,
 } from '../../common/reference-data/services/referenceDataService';
-import { useAuthStore } from '../../state/authStore';
 
 const queryClient = createTestQueryClient();
 
@@ -37,15 +35,15 @@ const mockCreateRow = createRefDataRow as jest.Mock;
 const mockUpdateRow = updateRefDataRow as jest.Mock;
 const mockDeleteRow = deleteRefDataRow as jest.Mock;
 
+const PKR = { id: 'cur-1', code: 'PKR', symbol: 'Rs', name: 'Pakistani rupee' };
+
 beforeEach(() => {
   mockFetchRows.mockReset();
   mockCreateRow.mockReset();
   mockUpdateRow.mockReset();
   mockDeleteRow.mockReset();
-  useAuthStore.setState({ user: { id: 'admin-1' } as never });
   queryClient.clear();
   jest.spyOn(queryClient, 'invalidateQueries');
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -54,10 +52,10 @@ afterEach(() => {
 
 describe('ReferenceDataScreen', () => {
   it('loads currencies by default', async () => {
-    mockFetchRows.mockResolvedValue([{ id: 'cur-1', code: 'PKR', symbol: 'Rs.', name: 'Pakistani Rupee' }]);
+    mockFetchRows.mockResolvedValue([PKR]);
     await renderWithQuery(<ReferenceDataScreen />, queryClient);
 
-    expect(await screen.findByText('PKR — Pakistani Rupee')).toBeTruthy();
+    expect(await screen.findByText('PKR — Pakistani rupee')).toBeTruthy();
     expect(mockFetchRows).toHaveBeenCalledWith('currencies');
   });
 
@@ -67,20 +65,40 @@ describe('ReferenceDataScreen', () => {
     expect(await screen.findByText('No currencies yet')).toBeTruthy();
   });
 
+  it('says the load failed, and retries, instead of an empty list (AD-11)', async () => {
+    mockFetchRows.mockRejectedValueOnce(new Error('boom'));
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
+    expect(await screen.findByText("Couldn't load currencies")).toBeTruthy();
+    expect(screen.queryByText('No currencies yet')).toBeNull();
+
+    mockFetchRows.mockResolvedValueOnce([PKR]);
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(await screen.findByText('PKR — Pakistani rupee')).toBeTruthy();
+  });
+
   it('switches to the units table and reloads', async () => {
     mockFetchRows.mockImplementation((table: string) =>
-      Promise.resolve(
-        table === 'units' ? [{ id: 'unit-1', code: 'kg', label: 'Kilogram', applies_to: 'weight' }] : [],
-      ),
+      Promise.resolve(table === 'units' ? [{ id: 'unit-1', code: 'kg', label: 'Kilogram', applies_to: 'weight' }] : []),
     );
     await renderWithQuery(<ReferenceDataScreen />, queryClient);
     await screen.findByText('No currencies yet');
 
-    await fireEvent.press(screen.getByText('Units'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Units' }));
 
     expect(mockFetchRows).toHaveBeenLastCalledWith('units');
     expect(await screen.findByText('Kilogram')).toBeTruthy();
     expect(screen.getByText('weight')).toBeTruthy();
+  });
+
+  it('names the entry in the singular: "Add a currency", never "Currencie" (AD-15)', async () => {
+    mockFetchRows.mockResolvedValue([]);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
+    await screen.findByText('No currencies yet');
+
+    expect(screen.getByRole('button', { name: 'Add a currency' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Add a currency' }));
+    expect(await screen.findByText('New currency')).toBeTruthy();
+    expect(screen.queryByText(/Currencie\b/)).toBeNull();
   });
 
   it('creates a new currency row through the sheet', async () => {
@@ -89,47 +107,58 @@ describe('ReferenceDataScreen', () => {
     await renderWithQuery(<ReferenceDataScreen />, queryClient);
     await screen.findByText('No currencies yet');
 
-    await fireEvent.press(screen.getByText('+ Add Currencie'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add a currency' }));
     await fireEvent.changeText(screen.getByLabelText('Code'), 'USD');
     await fireEvent.changeText(screen.getByLabelText('Symbol'), '$');
-    await fireEvent.changeText(screen.getByLabelText('Name'), 'US Dollar');
-    mockFetchRows.mockResolvedValue([{ id: 'cur-2', code: 'USD', symbol: '$', name: 'US Dollar' }]);
-    await fireEvent.press(screen.getByText('Create'));
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'US dollar');
+    mockFetchRows.mockResolvedValue([{ id: 'cur-2', code: 'USD', symbol: '$', name: 'US dollar' }]);
+    await fireEvent.press(screen.getByRole('button', { name: 'Add currency' }));
 
-    expect(mockCreateRow).toHaveBeenCalledWith('currencies', { code: 'USD', symbol: '$', name: 'US Dollar' });
+    expect(mockCreateRow).toHaveBeenCalledWith('currencies', { code: 'USD', symbol: '$', name: 'US dollar' });
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeys.referenceData.all });
-    expect(await screen.findByText('USD — US Dollar')).toBeTruthy();
+    expect(await screen.findByText('USD — US dollar')).toBeTruthy();
+  });
+
+  it('says which field is empty beside it, and does not save', async () => {
+    mockFetchRows.mockResolvedValue([]);
+    await renderWithQuery(<ReferenceDataScreen />, queryClient);
+    await screen.findByText('No currencies yet');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Add a currency' }));
+    await fireEvent.changeText(screen.getByLabelText('Code'), 'USD');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add currency' }));
+
+    expect(await screen.findByText('Enter the symbol')).toBeTruthy();
+    expect(screen.getByText('Enter the name')).toBeTruthy();
+    expect(mockCreateRow).not.toHaveBeenCalled();
   });
 
   it('edits an existing row', async () => {
-    mockFetchRows.mockResolvedValue([{ id: 'cur-1', code: 'PKR', symbol: 'Rs.', name: 'Pakistani Rupee' }]);
+    mockFetchRows.mockResolvedValue([PKR]);
     mockUpdateRow.mockResolvedValue(undefined);
     await renderWithQuery(<ReferenceDataScreen />, queryClient);
-    await screen.findByText('PKR — Pakistani Rupee');
 
-    await fireEvent.press(screen.getByText('Edit'));
+    await fireEvent.press(await screen.findByText('PKR — Pakistani rupee'));
+    await fireEvent.press(await screen.findByText('Edit currency'));
     expect(screen.getByLabelText('Code').props.value).toBe('PKR');
 
     await fireEvent.changeText(screen.getByLabelText('Symbol'), 'PKR');
-    await fireEvent.press(screen.getByText('Save Changes'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save currency' }));
 
-    expect(mockUpdateRow).toHaveBeenCalledWith('currencies', 'cur-1', {
-      code: 'PKR',
-      symbol: 'PKR',
-      name: 'Pakistani Rupee',
-    });
+    expect(mockUpdateRow).toHaveBeenCalledWith('currencies', 'cur-1', { code: 'PKR', symbol: 'PKR', name: 'Pakistani rupee' });
   });
 
-  it('deletes a row after confirming the alert', async () => {
-    mockFetchRows.mockResolvedValue([{ id: 'cur-1', code: 'PKR', symbol: 'Rs.', name: 'Pakistani Rupee' }]);
+  it('deletes a row only after a confirmation that names it', async () => {
+    mockFetchRows.mockResolvedValue([PKR]);
     mockDeleteRow.mockResolvedValue(undefined);
-    (Alert.alert as jest.Mock).mockImplementation((_title, _msg, buttons) => {
-      buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
-    });
     await renderWithQuery(<ReferenceDataScreen />, queryClient);
-    await screen.findByText('PKR — Pakistani Rupee');
 
-    await fireEvent.press(screen.getByText('Delete'));
+    await fireEvent.press(await screen.findByText('PKR — Pakistani rupee'));
+    await fireEvent.press(await screen.findByText('Delete currency'));
+    expect(await screen.findByText('Delete PKR — Pakistani rupee?')).toBeTruthy();
+    expect(mockDeleteRow).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete currency' }));
 
     expect(mockDeleteRow).toHaveBeenCalledWith('currencies', 'cur-1');
   });

@@ -1,20 +1,21 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EmptyState, Spinner } from '../../common/components';
+import { StyleSheet, Text, View } from 'react-native';
+import { QueryState, ScreenScaffold } from '../../common/components';
 import { BarChart } from '../../common/components/dashboards/BarChart';
 import { StatTile } from '../../common/components/dashboards/StatTile';
 import { useExpertAnalytics } from '../../common/analytics';
+import { withEmptyMonths } from '../utils/months';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { formatMonth } from '../../utils/dates';
 
 export function ExpertAnalyticsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const { data: analytics, isPending, error, refetch } = useExpertAnalytics(!!userId);
-  const loading = isPending && !!userId;
-  const load = () => refetch();
+  const query = useExpertAnalytics(!!userId);
+  const { data: analytics, refetch } = query;
 
   useFocusEffect(
     useCallback(() => {
@@ -22,67 +23,58 @@ export function ExpertAnalyticsScreen() {
     }, [userId, refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
-  if (error || !analytics) {
-    return (
-      <EmptyState
-        title="Couldn't load analytics"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
+  // Month names, with the months that had nothing drawn as 0: "Sep 4, Oct 0, Nov 2" reads as a run of months.
+  const months = useMemo(
+    () =>
+      withEmptyMonths(analytics?.consultationsByMonth ?? []).map(m => ({
+        label: formatMonth(m.month),
+        value: m.value,
+      })),
+    [analytics],
+  );
+  const spoken = `Consultations by month: ${months.map(m => `${m.label} ${m.value}`).join(', ')}`;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.statsRow}>
-        <StatTile
-          label="Total Consultations"
-          value={analytics.totalConsultations}
-          accent={theme.colors.module.expert}
-        />
-        <StatTile
-          label="Completed"
-          value={analytics.completedConsultations}
-          accent={theme.colors.module.expert}
-        />
-        <StatTile
-          label={`Avg Rating (${analytics.reviewCount})`}
-          value={analytics.reviewCount ? analytics.averageRating.toFixed(1) : '—'}
-          accent={theme.colors.module.expert}
-        />
-      </View>
+    <ScreenScaffold onRefresh={refetch} refreshing={query.isRefetching && !query.isPending} testID="expert-analytics">
+      <QueryState query={query} failureTitle="Couldn't load analytics">
+        {analytics ? (
+          <>
+            <View style={styles.statsRow}>
+              <View style={styles.stat}>
+                <StatTile label="Total consultations" value={analytics.totalConsultations} />
+              </View>
+              <View style={styles.stat}>
+                <StatTile label="Completed" value={analytics.completedConsultations} />
+              </View>
+              <View style={styles.stat}>
+                <StatTile
+                  label="Average rating"
+                  value={analytics.reviewCount ? analytics.averageRating.toFixed(1) : null}
+                  unit={analytics.reviewCount ? 'out of 5' : undefined}
+                  note={
+                    analytics.reviewCount
+                      ? `from ${analytics.reviewCount} ${analytics.reviewCount === 1 ? 'review' : 'reviews'}`
+                      : 'No reviews yet'
+                  }
+                />
+              </View>
+            </View>
 
-      <Text style={styles.sectionTitle}>Consultations by Month</Text>
-      <BarChart
-        data={analytics.consultationsByMonth.map(m => ({ label: m.month.slice(5), value: m.value }))}
-        color={theme.colors.accent.expert.mark}
-        emptyMessage="No consultations yet"
-      />
-    </ScrollView>
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              Consultations by month
+            </Text>
+            <BarChart data={months} accessibilityLabel={spoken} emptyMessage="No consultations yet" />
+          </>
+        ) : null}
+      </QueryState>
+    </ScreenScaffold>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    statsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space[3],
-      marginBottom: space[6],
-    },
-    sectionTitle: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-      marginBottom: space[2],
-    },
+    statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },
+    stat: { flexGrow: 1, flexBasis: '45%' },
+    sectionTitle: { ...typography.title, color: colors.ink },
   });
 }

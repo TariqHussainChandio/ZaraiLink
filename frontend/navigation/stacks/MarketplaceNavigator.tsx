@@ -8,7 +8,7 @@ import { CheckoutScreen } from '../../common/orders/screens/CheckoutScreen';
 import { CreateListingScreen } from '../../common/marketplace/screens/CreateListingScreen';
 import { EditListingScreen } from '../../common/marketplace/screens/EditListingScreen';
 import { ListingDetailScreen } from '../../common/marketplace/screens/ListingDetailScreen';
-import { cartAction } from '../headerActions';
+import { browseActions, cartAction } from '../headerActions';
 import { stackOptionsWithActions } from '../stackHeader';
 
 export type MarketplaceStackParamList = {
@@ -24,7 +24,10 @@ export type MarketplaceScreenProps<RouteName extends keyof MarketplaceStackParam
   NativeStackScreenProps<MarketplaceStackParamList, RouteName>;
 
 const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
-const MARKET_STACK_OPTIONS = stackOptionsWithActions({ [MARKETPLACE_ROUTES.Browse]: cartAction });
+const MARKET_STACK_OPTIONS = stackOptionsWithActions({
+  [MARKETPLACE_ROUTES.Browse]: browseActions,
+  [MARKETPLACE_ROUTES.ListingDetail]: cartAction,
+});
 
 export function MarketplaceNavigator() {
   return (
@@ -32,7 +35,7 @@ export function MarketplaceNavigator() {
       <Stack.Screen
         name={MARKETPLACE_ROUTES.Browse}
         component={BrowseScreen}
-        options={{ title: 'Marketplace' }}
+        options={{ title: 'Market' }}
       />
       <Stack.Screen
         name={MARKETPLACE_ROUTES.ListingDetail}
@@ -42,12 +45,12 @@ export function MarketplaceNavigator() {
       <Stack.Screen
         name={MARKETPLACE_ROUTES.CreateListing}
         component={CreateListingScreen}
-        options={{ title: 'New Listing' }}
+        options={{ title: 'New listing' }}
       />
       <Stack.Screen
         name={MARKETPLACE_ROUTES.EditListing}
         component={EditListingScreen}
-        options={{ title: 'Edit Listing' }}
+        options={{ title: 'Edit listing' }}
       />
       <Stack.Screen name={MARKETPLACE_ROUTES.Cart} component={CartScreen} options={{ title: 'Cart' }} />
       <Stack.Screen

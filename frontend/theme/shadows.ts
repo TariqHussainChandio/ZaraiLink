@@ -1,6 +1,6 @@
 import type { ViewStyle } from 'react-native';
 
-// Elevation (A2, D14). Surfaces are separated by the ground colour and a 1px line, not shadows; elevation marks only
+// Elevation (D15, Rate Board). Surfaces are separated by the ground colour and a 1px line, not shadows; elevation marks only
 // what floats over content. Android draws `elevation`; the shadow* keys are its iOS/web equivalent.
 type Shadow = Pick<ViewStyle, 'shadowColor' | 'shadowOffset' | 'shadowOpacity' | 'shadowRadius' | 'elevation'>;
 

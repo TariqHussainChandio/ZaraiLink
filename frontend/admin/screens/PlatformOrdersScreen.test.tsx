@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { PlatformOrdersScreen } from './PlatformOrdersScreen';
-import { fetchAllOrders } from '../services/adminService';
+import { fetchOrdersPage } from '../services/adminService';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
 import type { OrderWithItems } from '../../common/orders/types/orders';
 
@@ -23,10 +23,10 @@ jest.mock('@react-navigation/native', () => {
 });
 
 jest.mock('../services/adminService', () => ({
-  fetchAllOrders: jest.fn(),
+  fetchOrdersPage: jest.fn(),
 }));
 
-const mockFetchAllOrders = fetchAllOrders as jest.Mock;
+const mockFetchPage = fetchOrdersPage as jest.Mock;
 
 const order = (overrides: Partial<OrderWithItems> = {}): OrderWithItems => ({
   id: 'order-1',
@@ -44,32 +44,72 @@ const order = (overrides: Partial<OrderWithItems> = {}): OrderWithItems => ({
   ...overrides,
 });
 
+const page = (rows: OrderWithItems[], next: { limit: number; offset: number } | null = null) => ({ data: rows, next });
+
 beforeEach(() => {
-  mockFetchAllOrders.mockReset();
+  mockFetchPage.mockReset();
   mockNavigate.mockReset();
 });
 
 describe('PlatformOrdersScreen', () => {
   it('shows an empty state when there are no orders', async () => {
-    mockFetchAllOrders.mockResolvedValue([]);
+    mockFetchPage.mockResolvedValue(page([]));
     await renderWithQuery(<PlatformOrdersScreen />);
     expect(await screen.findByText('No orders yet')).toBeTruthy();
   });
 
-  it('lists orders with buyer and seller names', async () => {
-    mockFetchAllOrders.mockResolvedValue([order()]);
+  it('says the load failed instead of "No orders yet" (AD-11)', async () => {
+    mockFetchPage.mockRejectedValueOnce(new Error('boom'));
     await renderWithQuery(<PlatformOrdersScreen />);
-    expect(await screen.findByText(/Buyer Bilal/)).toBeTruthy();
-    expect(screen.getByText(/Seller Sana/)).toBeTruthy();
+    expect(await screen.findByText("Couldn't load orders")).toBeTruthy();
+    expect(screen.queryByText('No orders yet')).toBeNull();
+  });
+
+  it('lists orders with buyer, seller, items, total and status', async () => {
+    mockFetchPage.mockResolvedValue(page([order()]));
+    await renderWithQuery(<PlatformOrdersScreen />);
+    expect(await screen.findByText('Buyer Bilal → Seller Sana')).toBeTruthy();
+    expect(screen.getByText(/2 × Wheat seeds/)).toBeTruthy();
+    expect(screen.getByText('Rs 500')).toBeTruthy();
+    // The filter chip and the row's badge use the same word.
+    expect(screen.getAllByText('Pending')).toHaveLength(2);
   });
 
   it('navigates to the order detail screen on press', async () => {
-    mockFetchAllOrders.mockResolvedValue([order()]);
+    mockFetchPage.mockResolvedValue(page([order()]));
     await renderWithQuery(<PlatformOrdersScreen />);
-    await screen.findByText(/Buyer Bilal/);
 
-    await fireEvent.press(screen.getByText(/Buyer Bilal/));
+    await fireEvent.press(await screen.findByText('Buyer Bilal → Seller Sana'));
 
     expect(mockNavigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.OrderDetail, { orderId: 'order-1' });
+  });
+
+  it('filters by status and by a name', async () => {
+    mockFetchPage.mockResolvedValue(
+      page([order(), order({ id: 'order-2', status: 'completed', buyer: { id: 'b2', full_name: 'Buyer Ali' } })]),
+    );
+    await renderWithQuery(<PlatformOrdersScreen />);
+    await screen.findByText('Buyer Bilal → Seller Sana');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Completed' }));
+    expect(screen.queryByText('Buyer Bilal → Seller Sana')).toBeNull();
+    expect(screen.getByText('Buyer Ali → Seller Sana')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'All' }));
+    await fireEvent.changeText(screen.getByLabelText('Find an order'), 'bilal');
+    expect(screen.getByText('Buyer Bilal → Seller Sana')).toBeTruthy();
+    expect(screen.queryByText('Buyer Ali → Seller Sana')).toBeNull();
+  });
+
+  it('loads older orders past the first page (AD-02)', async () => {
+    mockFetchPage.mockResolvedValueOnce(page([order()], { limit: 50, offset: 50 }));
+    mockFetchPage.mockResolvedValueOnce(page([order({ id: 'order-101', buyer: { id: 'b9', full_name: 'Buyer 101' } })]));
+    await renderWithQuery(<PlatformOrdersScreen />);
+    await screen.findByText('Buyer Bilal → Seller Sana');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Load more orders' }));
+
+    expect(await screen.findByText('Buyer 101 → Seller Sana')).toBeTruthy();
+    expect(mockFetchPage).toHaveBeenLastCalledWith(50);
   });
 });

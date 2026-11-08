@@ -14,7 +14,6 @@ import {
   createListing,
   deleteCategory,
   deleteListing,
-  fetchAllListingsForModeration,
   fetchCategories,
   fetchCrops,
   fetchListingById,
@@ -102,12 +101,6 @@ describe('reads', () => {
     mockApiFetch.mockResolvedValue([]);
     await fetchCrops();
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/crops');
-  });
-
-  it('fetchAllListingsForModeration fetches the moderation queue', async () => {
-    mockApiFetch.mockResolvedValue([]);
-    await fetchAllListingsForModeration();
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/marketplace/listings/moderation');
   });
 });
 

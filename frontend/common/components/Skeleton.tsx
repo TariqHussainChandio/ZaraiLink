@@ -89,7 +89,7 @@ function makeStyles({ colors, space, size, radius, borders, components, typograp
       overflow: 'hidden',
       backgroundColor: colors.surface,
     },
-    cardImage: { width: '100%', height: size.cardImage, borderRadius: 0 },
+    cardImage: { width: '100%', height: size.photoLg, borderRadius: 0 },
     cardBody: { padding: space[3], gap: space[2] },
     row: { flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: size.row, paddingVertical: space[3], paddingHorizontal: space[4] },
     rowIcon: { width: size.avatarMd, height: size.avatarMd, borderRadius: radius.sm },

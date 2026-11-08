@@ -1,20 +1,23 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import {
   Badge,
   Banner,
   Button,
-  Card,
   type ChipOption,
   ChipRow,
-  EmptyState,
+  ListGroup,
+  ListRow,
+  QueryState,
+  ScreenScaffold,
   Sheet,
-  Spinner,
+  StickyActionBar,
   TextField,
 } from '../../common/components';
 import type { RequiredDocument } from '../../common/auth';
 import { useTheme, type Theme } from '../../theme';
 import { errorMessage } from '../../utils/errorMessage';
+import { AdminActionSheet, type AdminAction } from '../components/AdminActionSheet';
 import { useAllRequiredDocuments, useSaveRequiredDocument } from '../hooks/admin';
 
 type Role = 'dealer' | 'expert';
@@ -40,20 +43,24 @@ function codeFrom(label: string): string {
 /**
  * The documents dealers and experts are asked for (SRDS §7: "the exact required documents should be configurable").
  * An entry is never deleted, only retired, because sent documents point at it; every change is audited by the database
- * (BR-15) and needs the second factor.
+ * (BR-15) and needs the second factor. The API stores no reason for a change, so none is asked.
  */
 export function RequiredDocumentsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { data = [], isPending, error, refetch } = useAllRequiredDocuments();
+  const query = useAllRequiredDocuments();
+  const { data = [], refetch } = query;
   const save = useSaveRequiredDocument();
   const [role, setRole] = useState<Role>('dealer');
+  const [selected, setSelected] = useState<RequiredDocument | null>(null);
   const [editing, setEditing] = useState<RequiredDocument | 'new' | null>(null);
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
   const [need, setNeed] = useState<'required' | 'optional'>('required');
   const [labelError, setLabelError] = useState<string | undefined>(undefined);
   const [failure, setFailure] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [action, setAction] = useState<AdminAction | null>(null);
 
   // Active entries first, in the order applicants see them; retired ones after, kept for the documents that use them.
   const shown = data
@@ -61,20 +68,13 @@ export function RequiredDocumentsScreen() {
     .sort((a, b) => Number(b.active) - Number(a.active) || a.sort_order - b.sort_order);
 
   const openEditor = (document: RequiredDocument | 'new') => {
+    setSelected(null);
     setLabel(document === 'new' ? '' : document.label);
     setDescription(document === 'new' ? '' : document.description ?? '');
     setNeed(document === 'new' || document.is_required ? 'required' : 'optional');
     setLabelError(undefined);
-    setEditing(document);
-  };
-
-  const run = async (action: () => Promise<unknown>) => {
     setFailure(null);
-    try {
-      await action();
-    } catch (err) {
-      setFailure(errorMessage(err));
-    }
+    setEditing(document);
   };
 
   const submitEditor = async () => {
@@ -84,77 +84,126 @@ export function RequiredDocumentsScreen() {
       return;
     }
     const target = editing;
-    setEditing(null);
     const common = { label: trimmed, description: description.trim() || null, is_required: need === 'required' };
-    await run(() =>
-      target === 'new'
+    setSaving(true);
+    setFailure(null);
+    try {
+      await (target === 'new'
         ? save.mutateAsync({
             input: { ...common, role, code: codeFrom(trimmed), sort_order: Math.max(0, ...shown.map(d => d.sort_order)) + 10 },
           })
-        : save.mutateAsync({ id: target?.id, changes: common }),
+        : save.mutateAsync({ id: target?.id, changes: common }));
+      setEditing(null);
+    } catch (err) {
+      setFailure(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const askRetire = (document: RequiredDocument) => {
+    const retiring = document.active;
+    setSelected(null);
+    setAction(
+      retiring
+        ? {
+            title: `Retire ${document.label}?`,
+            message: `Applicants are no longer asked for "${document.label}". Documents already sent stay on their applications.`,
+            confirmLabel: `Retire ${document.label}`,
+            destructive: true,
+            run: () => save.mutateAsync({ id: document.id, changes: { active: false } }),
+            done: `${document.label} retired`,
+            undo: () => save.mutateAsync({ id: document.id, changes: { active: true } }),
+          }
+        : {
+            title: `Ask for ${document.label} again?`,
+            message: `Applicants are asked for "${document.label}" again, from the next application.`,
+            confirmLabel: `Ask for ${document.label} again`,
+            run: () => save.mutateAsync({ id: document.id, changes: { active: true } }),
+            done: `${document.label} is asked for again`,
+            undo: () => save.mutateAsync({ id: document.id, changes: { active: false } }),
+          },
     );
   };
 
-  if (isPending) return <Spinner fullscreen />;
-  if (error) {
-    return <EmptyState title="Could not load the list" description={errorMessage(error)} actionLabel="Try again" onAction={() => refetch()} />;
-  }
-
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ChipRow options={ROLES} value={role} onChange={setRole} />
-      <Text style={styles.intro}>
-        Applicants must attach every active required document before they can submit. Changes apply to applications sent
-        from now on.
-      </Text>
-      {shown.map(document => (
-        <Card key={document.id}>
-          <View style={styles.header}>
-            <Text style={[styles.title, !document.active && styles.retired]}>{document.label}</Text>
-            <Badge
-              label={!document.active ? 'Retired' : document.is_required ? 'Required' : 'Optional'}
-              tone={!document.active ? 'neutral' : document.is_required ? 'info' : 'neutral'}
-              size="sm"
-            />
-          </View>
-          {document.description ? <Text style={styles.description}>{document.description}</Text> : null}
-          <View style={styles.actions}>
-            <Button label="Edit" variant="secondary" size="sm" fullWidth={false} onPress={() => openEditor(document)} />
-            <Button
-              label={document.active ? 'Retire' : 'Use again'}
-              variant="quiet"
-              size="sm"
-              fullWidth={false}
-              onPress={() => run(() => save.mutateAsync({ id: document.id, changes: { active: !document.active } }))}
-            />
-          </View>
-        </Card>
-      ))}
-      {failure ? <Banner tone="danger">{failure}</Banner> : null}
-      <Button label="Add a document" variant="secondary" onPress={() => openEditor('new')} loading={save.isPending} />
+    <>
+      <ScreenScaffold
+        onRefresh={() => refetch()}
+        refreshing={query.isRefetching}
+        footer={
+          <StickyActionBar>
+            <Button label="Add a document" size="lg" onPress={() => openEditor('new')} />
+          </StickyActionBar>
+        }
+      >
+        <ChipRow options={ROLES} value={role} onChange={setRole} />
+        <Text style={styles.intro}>
+          Applicants must attach every active required document before they can submit. Changes apply to applications sent
+          from now on.
+        </Text>
+        <QueryState
+          query={query}
+          failureTitle="Couldn't load the document list"
+          isEmpty={shown.length === 0}
+          empty={{ title: 'No documents yet', description: 'Add the first document applicants should send.' }}
+        >
+          <ListGroup>
+            {shown.map(document => (
+              <ListRow
+                key={document.id}
+                title={document.label}
+                meta={document.description ?? undefined}
+                status={
+                  <Badge
+                    label={!document.active ? 'Retired' : document.is_required ? 'Required' : 'Optional'}
+                    tone={!document.active ? 'neutral' : document.is_required ? 'info' : 'neutral'}
+                    size="sm"
+                  />
+                }
+                onPress={() => setSelected(document)}
+              />
+            ))}
+          </ListGroup>
+        </QueryState>
+      </ScreenScaffold>
 
-      <Sheet visible={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? 'Add a document' : 'Edit document'}>
+      <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selected?.label ?? 'Document'}>
+        <ListGroup>
+          <ListRow title="Edit document" onPress={() => selected && openEditor(selected)} />
+          <ListRow
+            title={selected?.active ? `Retire ${selected.label}` : `Ask for ${selected?.label ?? 'it'} again`}
+            onPress={() => selected && askRetire(selected)}
+          />
+        </ListGroup>
+      </Sheet>
+
+      <Sheet
+        visible={editing !== null}
+        onClose={() => !saving && setEditing(null)}
+        title={editing === 'new' ? 'Add a document' : 'Edit document'}
+        footer={<Button label="Save document" size="lg" loading={saving} onPress={submitEditor} />}
+      >
         <View style={styles.sheet}>
-          <TextField label="Name" value={label} onChangeText={setLabel} error={labelError} />
-          <TextField label="What to send" optional value={description} onChangeText={setDescription} multiline />
+          <TextField label="Name" value={label} onChangeText={setLabel} error={labelError} editable={!saving} />
+          <TextField label="What to send" optional value={description} onChangeText={setDescription} multiline editable={!saving} />
           <ChipRow options={NEED} value={need} onChange={setNeed} />
-          <Button label="Save" onPress={submitEditor} />
+          {failure ? (
+            <Banner tone="danger" title="Couldn't save the document">
+              {failure}
+            </Banner>
+          ) : null}
         </View>
       </Sheet>
-    </ScrollView>
+
+      <AdminActionSheet action={action} onClose={() => setAction(null)} />
+    </>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: colors.ground },
-    content: { padding: space[4], gap: space[3] },
-    intro: { ...typography.caption, color: colors.ink2 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] },
-    title: { ...typography.bodyStrong, color: colors.ink, flexShrink: 1 },
-    retired: { color: colors.ink3 },
-    description: { ...typography.caption, color: colors.ink2, marginTop: space[1] },
-    actions: { flexDirection: 'row', gap: space[2], marginTop: space[2] },
+    intro: { ...typography.body, color: colors.ink2, marginBottom: space[3] },
     sheet: { gap: space[3] },
   });
 }

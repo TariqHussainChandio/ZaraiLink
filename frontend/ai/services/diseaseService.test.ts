@@ -10,7 +10,13 @@ jest.mock('../../services/supabase/client', () => {
 
 import { supabase } from '../../services/supabase/client';
 import { makeSupabaseMock } from '../../testUtils/supabaseMock';
-import { createDiseaseCase, fetchDiseaseCaseWithPrediction, predictDisease, uploadDiseaseImage } from './diseaseService';
+import {
+  createDiseaseCase,
+  fetchDiseaseCaseWithPrediction,
+  fetchSupportedCrops,
+  predictDisease,
+  uploadDiseaseImage,
+} from './diseaseService';
 
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
 const mockedSupabase = supabase as unknown as ReturnType<typeof makeSupabaseMock>;
@@ -92,12 +98,21 @@ describe('createDiseaseCase', () => {
 });
 
 describe('predictDisease', () => {
-  it('POSTs the disease case id', async () => {
+  it('POSTs the disease case id and the chosen crop key', async () => {
+    mockApiFetch.mockResolvedValue({});
+    await predictDisease('case-1', 'tomato');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/disease/predict', {
+      method: 'POST',
+      body: { disease_case_id: 'case-1', chosen_crop: 'tomato' },
+    });
+  });
+
+  it('sends no crop when none was chosen', async () => {
     mockApiFetch.mockResolvedValue({});
     await predictDisease('case-1');
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/disease/predict', {
       method: 'POST',
-      body: { disease_case_id: 'case-1' },
+      body: { disease_case_id: 'case-1', chosen_crop: null },
     });
   });
 
@@ -112,5 +127,13 @@ describe('fetchDiseaseCaseWithPrediction', () => {
     mockApiFetch.mockResolvedValue({});
     await fetchDiseaseCaseWithPrediction('case-1');
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/disease/cases/case-1');
+  });
+});
+
+describe('fetchSupportedCrops', () => {
+  it('returns the crops the model knows', async () => {
+    mockApiFetch.mockResolvedValue({ crops: [{ key: 'tomato', name: 'Tomato' }] });
+    await expect(fetchSupportedCrops()).resolves.toEqual([{ key: 'tomato', name: 'Tomato' }]);
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/disease/crops');
   });
 });

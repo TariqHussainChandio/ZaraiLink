@@ -1,5 +1,8 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { lightTheme } from '../../theme';
+import { TextField } from './TextField';
 import { SelectField, type SelectOption } from './SelectField';
 
 const options: SelectOption[] = [
@@ -38,6 +41,24 @@ describe('SelectField — closed state', () => {
   it('shows "Loading…" while loading', async () => {
     await render(<SelectField value={null} options={options} onSelect={() => {}} loading />);
     expect(screen.getByText('Loading…')).toBeTruthy();
+  });
+});
+
+describe('SelectField — look', () => {
+  it('has the same label as a text field, so a select and a text field in one form read alike', async () => {
+    await render(
+      <>
+        <SelectField label="Unit" value={null} options={options} onSelect={() => {}} />
+        <TextField label="Price" />
+      </>,
+    );
+    expect(StyleSheet.flatten(screen.getByText('Unit').props.style)).toEqual(StyleSheet.flatten(screen.getByText('Price').props.style));
+    expect(StyleSheet.flatten(screen.getByText('Unit').props.style).color).toBe(lightTheme.colors.ink);
+  });
+
+  it('says the error in words under the field', async () => {
+    await render(<SelectField label="Unit" value={null} options={options} onSelect={() => {}} error="Choose a unit" />);
+    expect(screen.getByText('Choose a unit')).toBeTruthy();
   });
 });
 

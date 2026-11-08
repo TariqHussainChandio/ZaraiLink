@@ -1,6 +1,6 @@
-import { Check } from 'lucide-react-native';
+import { Check, ChevronDown, CircleAlert } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
 import { EmptyState } from './EmptyState';
@@ -24,6 +24,8 @@ export interface SelectFieldProps {
   searchable?: boolean;
 }
 
+/** Units, categories, provinces and cities always come from a select, never free text. It shares TextField's label and
+ * box, and a chevron says it opens a list. */
 export function SelectField({
   label,
   placeholder = 'Select...',
@@ -57,26 +59,35 @@ export function SelectField({
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <TouchableOpacity
+      <Pressable
         style={[styles.field, error && styles.fieldError, disabled && styles.fieldDisabled]}
         disabled={disabled || loading}
         onPress={() => setOpen(true)}
+        android_ripple={{ color: theme.colors.ripple }}
         accessibilityRole="button"
         accessibilityLabel={[label, selectedLabel ?? placeholder].filter(Boolean).join(', ')}
+        accessibilityHint={error}
         accessibilityState={{ disabled: disabled || loading }}
       >
         <Text style={selectedLabel ? styles.value : styles.placeholder} numberOfLines={1}>
           {loading ? 'Loading…' : (selectedLabel ?? placeholder)}
         </Text>
-      </TouchableOpacity>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        <ChevronDown color={disabled ? theme.colors.inkDisabled : theme.colors.ink2} size={theme.size.iconMd} />
+      </Pressable>
+      {error ? (
+        <View style={styles.errorRow} accessibilityLiveRegion="polite">
+          <CircleAlert color={theme.colors.status.danger.mark} size={theme.size.iconSm} />
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      ) : null}
 
-      <Sheet visible={open} onClose={close} title={label}>
+      {/* The list scrolls itself (FlashList), so the sheet's own scrolling body is switched off. */}
+      <Sheet visible={open} onClose={close} title={label ?? 'Choose an option'} scroll={false}>
         {searchable ? (
           <TextInput
             style={styles.search}
             placeholder="Search"
-            placeholderTextColor={theme.colors.ink2}
+            placeholderTextColor={theme.colors.ink3}
             value={query}
             onChangeText={setQuery}
             autoFocus
@@ -92,12 +103,13 @@ export function SelectField({
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<EmptyState title="No results" />}
             renderItem={({ item }) => (
-              <TouchableOpacity
+              <Pressable
                 style={styles.option}
                 onPress={() => {
                   onSelect(item.id);
                   close();
                 }}
+                android_ripple={{ color: theme.colors.ripple }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: item.id === value }}
               >
@@ -105,7 +117,7 @@ export function SelectField({
                   {item.label}
                 </Text>
                 {item.id === value ? <Check color={accent.ink} size={theme.size.iconButton} /> : null}
-              </TouchableOpacity>
+              </Pressable>
             )}
           />
         )}
@@ -117,49 +129,58 @@ export function SelectField({
 function makeStyles({ colors, space, radius, typography, size, borders, components }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
-      marginBottom: space[3],
+      marginBottom: space[4],
+      gap: space[2],
     },
+    // The same label as TextField's, so a select and a text field in one form read alike.
     label: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginBottom: space[1],
+      ...typography.label,
+      color: colors.ink,
     },
     // The same box as TextField, so a select and a text field in one form look alike.
     field: {
-      justifyContent: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: components.input.gap,
       minHeight: components.input.height,
       paddingHorizontal: components.input.paddingX,
       borderWidth: borders.control,
       borderColor: colors.lineStrong,
       borderRadius: components.input.radius,
       backgroundColor: colors.surface,
+      overflow: 'hidden',
     },
     fieldError: {
       borderColor: colors.status.danger.mark,
+      borderWidth: borders.focus,
     },
     fieldDisabled: {
-      backgroundColor: colors.ground,
+      backgroundColor: colors.surfaceSunken,
+      borderColor: colors.line,
     },
     value: {
-      ...typography.body,
+      ...typography.bodyLg,
+      flex: 1,
       color: colors.ink,
     },
     placeholder: {
-      ...typography.body,
-      color: colors.ink2,
+      ...typography.bodyLg,
+      flex: 1,
+      color: colors.ink3,
     },
+    errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space[1] },
     error: {
-      marginTop: space[1],
       ...typography.caption,
+      flex: 1,
       color: colors.status.danger.mark,
     },
     search: {
-      borderWidth: borders.hairline,
-      borderColor: colors.line,
+      minHeight: components.input.height,
+      borderWidth: borders.control,
+      borderColor: colors.lineStrong,
       borderRadius: radius.sm,
       paddingHorizontal: space[3],
-      paddingVertical: space[2],
-      ...typography.body,
+      ...typography.bodyLg,
       color: colors.ink,
       marginBottom: space[3],
     },

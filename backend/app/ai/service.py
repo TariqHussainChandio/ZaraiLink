@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import httpx
 from fastapi import HTTPException
@@ -322,6 +323,29 @@ DEFAULT_DESCRIPTION: tuple[str, list[str]] = (
 )
 
 
+# D16: the scan offers only the crops the model was trained on. The list is derived from the model's own
+# class list (model_metadata.json via settings.model_classes, which checkpoints/class_names.json mirrors; a test
+# keeps the two equal), so a retrained model changes the offer with no code edit. Only the farmer-facing names
+# of three taxonomy strings are curated; every other crop uses its taxonomy name as is.
+_CROP_DISPLAY_NAMES = {
+    "Corn_(maize)": "Maize",
+    "Pepper,_bell": "Bell pepper",
+    "Cherry_(including_sour)": "Cherry",
+}
+
+
+def _crop_of_class(raw_class: str) -> dict[str, str]:
+    crop_part = raw_class.partition("___")[0]
+    name = _CROP_DISPLAY_NAMES.get(crop_part) or crop_part.replace("_", " ").strip()
+    return {"key": re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-"), "name": name}
+
+
+def supported_crops() -> list[dict[str, str]]:
+    """The crops the model knows, as `{key, name}` sorted by name (the scan screen's only crop choices)."""
+    unique = {crop["key"]: crop for crop in map(_crop_of_class, settings.model_classes)}
+    return sorted(unique.values(), key=lambda crop: crop["name"])
+
+
 def _humanize_class_name(raw: str) -> str:
     """Turns a raw PlantVillage taxonomy label (e.g. "Tomato___Late_blight",
     "Corn_(maize)___Common_rust_") into a farmer-facing display string
@@ -381,7 +405,12 @@ async def get_case_for_user(user: AuthenticatedUser, disease_case_id: str) -> di
     return await _with_signed_url(case)
 
 
-async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
+async def predict(user: AuthenticatedUser, disease_case_id: str, chosen_crop: str | None = None) -> dict:
+    """Runs the model on the case photo. `chosen_crop` is a `supported_crops()` key the farmer picked; when the model
+    reads the photo as a different crop the response says `crop_matches: false` and carries no description or
+    actions, because a report for the wrong crop would be a confident answer about the wrong plant (BR-13, D16)."""
+    if chosen_crop is not None and chosen_crop not in {crop["key"] for crop in supported_crops()}:
+        raise HTTPException(status_code=422, detail="chosen_crop is not a crop the AI advisory supports.")
     case = _assert_owner_or_admin(user, await disease_repository.get_disease_case(disease_case_id))
 
     try:
@@ -416,7 +445,10 @@ async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
     # humanized string below is presentation-only and must not be used for this lookup.
     description, recommended_actions = DESCRIPTIONS.get(raw_predicted_disease, DEFAULT_DESCRIPTION)
 
-    return await disease_repository.insert_prediction(
+    predicted_crop = _crop_of_class(raw_predicted_disease)
+    crop_matches = None if chosen_crop is None else predicted_crop["key"] == chosen_crop
+
+    stored = await disease_repository.insert_prediction(
         disease_case_id=case["id"],
         predicted_disease=_humanize_class_name(raw_predicted_disease),
         confidence_score=confidence,
@@ -424,3 +456,9 @@ async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
         recommended_actions=recommended_actions,
         model_version=settings.model_version,
     )
+    # The row keeps the model's full output so an expert can read it as the AI's suggestion; the farmer's response
+    # drops the report text when the crop does not match.
+    response = {**stored, "predicted_crop": predicted_crop, "crop_matches": crop_matches}
+    if crop_matches is False:
+        response.update(description=None, recommended_actions=[])
+    return response

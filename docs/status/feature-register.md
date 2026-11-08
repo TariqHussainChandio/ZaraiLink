@@ -190,3 +190,21 @@ proves it on the real stack.
 | Dark mode, edge-to-edge on Android 16 | Works (emulator) | A2, Pixel 8 emulator on Android 16: Settings → Appearance switches light, dark and system; app bars and the tab bar take the safe-area insets edge to edge, and the chat composer in the full-screen Messages clears the gesture area (`useComposerInsets`); the status bar's icons follow the app's own theme (`App.tsx`). Not checked: the soft keyboard over a composer (the emulator draws none) and a physical phone | A2, A8 |
 | Release build signing | Not ready | Signed with the debug keystore (H3) | P2, P12 |
 | CI | Works (GitHub) | Green on PR #11 and on `main` at its merge (run 36273648403, 2026-09-26): change detection, reality gate, lint, typecheck, Jest, backend unit and real-stack tests with the 85% combined-coverage gate, pgTAP, advisors, schema docs, OSV, gitleaks, Semgrep, actionlint and zizmor, and debug and release Android builds. The `ci-required` job now also writes a table of every required job and names the skipped ones (added in A0; runs on GitHub from the next push). Not in CI yet: the app's real-stack Jest tests (local only) and any end-to-end test | A9 |
+
+## UI/UX rollout (A8, brought forward: Rate Board, D15)
+
+Everything in this section is proven by Jest, tsc, eslint and the reality gate only. No row has run on an emulator, a
+device or the real stack (FastAPI plus local Supabase), so none is `Works` for users yet. The audit that drove it is
+103 findings across 78 screens (2026-11-08); the design system is the Rate Board artifact named in plan decision D15.
+
+| Capability | Status | Evidence and cause | Fix phase |
+|---|---|---|---|
+| New theme, fonts and shared components (rate plate, quantity stepper, snackbar, confirm sheet, code field, photo viewer, screen scaffold, query state) | Unverified | Jest and contrast tests pass; not run on a device: ripple clipping, keyboard handling in sheets, Barlow loading from the expo-font plugin, pinch zoom, TalkBack, 130% font | A8 |
+| Screens rebuilt on the new components (all roles) | Unverified | Jest only. Needs the emulator pass for each role in light and dark | A8 |
+| Disease scan limited to the 14 crops the model knows (D16) | Works (API unit tests); screens Unverified | `GET /api/v1/disease/crops`, `chosen_crop` on predict, `crop_matches` in the response; 47 backend tests. A crop mismatch is not stored (needs a column from `zl-db`). The model still cannot reject a non-leaf photo (H8) | A6, A8 |
+| Admin role change confirmed with its consequence, no Admin option (D17) | Unverified | Jest only. The role-change API stores no reason, so the audit row carries none | A8 |
+| Bank transfer | Blocked | Shown disabled "Not offered by this seller yet" until sellers have account details (needs a migration) | Stage 3 |
+| Profile "Notifications" switch | Hidden | It saved `profiles.notifications_enabled`, which nothing reads; push notifications are Not started | P10 |
+| Reasons for reject, cancel and dispute of an order; for a role change, suspension or hiding a listing; for declining a consultation | Not started | The APIs accept none; the sheets state the consequence only | Stage 3 |
+| Order numbers, seller bank details, product names in stock alerts, reply-in-consultation notification, message idempotency key, AI suggestion linked to a consultation, applicant's own document viewer | Not started | Each needs a migration and an API change, to be validated on local Supabase (Docker is not installed on this machine) | Stage 3 |
+| Pending-payment signal on the order list | Not started | The buyer home treats `pending` and `confirmed` orders as awaiting payment, because the list carries no payment status | Stage 3 |

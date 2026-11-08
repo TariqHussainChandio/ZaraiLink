@@ -1,5 +1,7 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { lightTheme } from '../../theme';
 import { EmptyState } from './EmptyState';
 
 describe('EmptyState', () => {
@@ -33,5 +35,13 @@ describe('EmptyState', () => {
   it('does not render the action button when only one of actionLabel/onAction is given', async () => {
     await render(<EmptyState title="Couldn't load" actionLabel="Retry" />);
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('puts its icon on a square tile with the md corner, not a disc', async () => {
+    await render(<EmptyState title="No listings yet" />);
+    const tile = screen.getByRole('header', { name: 'No listings yet' }).parent?.children[0];
+    const style = StyleSheet.flatten(typeof tile === 'string' || !tile ? undefined : tile.props.style);
+    expect(style.borderRadius).toBe(lightTheme.radius.md);
+    expect(style.width).toBe(style.height);
   });
 });

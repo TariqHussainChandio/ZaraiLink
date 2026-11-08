@@ -20,6 +20,12 @@
 >   npm advisories that newly failed the dependency scan.
 > - An early build of A3's account status, email-only sign-in and Application Status screen is parked, unmerged, on
 >   branch `wip/a3-account-status` (its migration is not pushed); A3 ports it by hand with `scripts/a1/moves.json`.
+> - **A8, UI/UX rollout, brought forward (started 2026-11-08):** a read-only audit of all 78 screens found 103
+>   problems, and the maintainer chose a new look, Rate Board (D15), with D16 and D17 settling the scan scope and admin
+>   role changes. Stage 1 (theme and shared components) comes first; the screens then follow lane by lane. Audit
+>   findings that need the API or the database (order numbers; reasons for order and admin actions; seller bank
+>   details; reply notifications) are separate tasks, waiting for a local Supabase stack, which needs Docker on this
+>   machine.
 >
 > D2–D4 decided. The requirements are [`docs/srds.md`](srds.md),
 > traced requirement by requirement in [`docs/status/srds-traceability.md`](status/srds-traceability.md); this
@@ -175,7 +181,10 @@ Agreed before the phase that needs them. Each has a contract test, so a lane can
 | D11 | AI report text comes from a curated, expert-reviewed disease knowledge base (no LLM) | Recommended |
 | D12 | Conversations start only from a listing, an order or a consultation | Recommended |
 | D13 | Model weights live in the private Supabase bucket `ml-models`, fetched by signed URL | **Done** 2026-09-26 |
-| D14 | A2's design source is a new ZaraiLink design system built from the SRDS (§43–§44, the business rules and the status vocabulary); the earlier Cowork design system and prototype are not used | **Decided** 2026-09-28 (maintainer); design approved 2026-09-28 |
+| D14 | A2's design source is a new ZaraiLink design system built from the SRDS (§43–§44, the business rules and the status vocabulary); the earlier Cowork design system and prototype are not used | **Decided** 2026-09-28 (maintainer); design approved 2026-09-28; its look replaced by D15 |
+| D15 | The design source is the Rate Board design system (https://claude.ai/artifact/TszKUgaoe99eChm1KYw5TD). Field, paper, board, chalk and ink; Barlow Semi Condensed for titles and figures, Atkinson Hyperlegible Next for text; crisp corners; the board green is the brand; ripples, no entrance animations. It replaces D14's visual design; the SRDS §44 role and module colours are unchanged | **Decided** 2026-11-08 (maintainer) |
+| D16 | The disease scan offers only the crops the model knows (`backend/app/ai/checkpoints/class_names.json`); any other crop goes to an expert with the photo, and a photo predicted as another crop gets the advisory and the expert action, not a report (BR-13) | **Decided** 2026-11-08 (maintainer) |
+| D17 | An admin role change is confirmed in a sheet that states its consequence (an approved dealer or expert returns to pending); the app does not offer making someone an admin | **Decided** 2026-11-08 (maintainer) |
 
 ## 7. Outside services and gates
 

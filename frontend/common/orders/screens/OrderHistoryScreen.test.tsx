@@ -1,10 +1,9 @@
 import React from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import { OrderHistoryScreen } from './OrderHistoryScreen';
 import { fetchOrdersForUser } from '../services/ordersService';
 import { useAuthStore } from '../../../state/authStore';
-import { createTestQueryClient } from '../../../testUtils/renderWithProviders';
+import { renderWithProviders } from '../../../testUtils/renderWithProviders';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import type { OrderWithItems } from '../types/orders';
 import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
@@ -37,28 +36,18 @@ const order = (overrides: Partial<OrderWithItems> = {}): OrderWithItems =>
     product_subtotal: 500,
     delivery_charge: 0,
     total: 500,
-    created_at: '2026-01-01T00:00:00.000Z',
-    updated_at: '2026-01-01T00:00:00.000Z',
+    created_at: '2026-01-01T12:00:00.000Z',
+    updated_at: '2026-01-01T12:00:00.000Z',
     order_items: [
-      { id: 'item-1', order_id: 'order-1', listing_id: 'listing-1', quantity: 2, unit_price: 250, created_at: '2026-01-01T00:00:00.000Z', listing: { title: 'Wheat seeds', unit: 'kg' } },
+      { id: 'item-1', order_id: 'order-1', listing_id: 'listing-1', quantity: 2, unit_price: 250, created_at: '2026-01-01T12:00:00.000Z', listing: { title: 'Wheat seeds', unit: 'kg' } },
     ],
     buyer: { id: 'buyer-1', full_name: 'Ali Khan' },
     seller: { id: 'seller-1', full_name: 'Green Farms' },
     ...overrides,
   }) as OrderWithItems;
 
-function renderScreen(navigation = { navigate: jest.fn() }) {
-  const queryClient = createTestQueryClient();
-  const props = { navigation, route: {} } as unknown as OrdersScreenProps<'OrderHistory'>;
-  return {
-    navigation,
-    render: () =>
-      render(
-        <QueryClientProvider client={queryClient}>
-          <OrderHistoryScreen {...props} />
-        </QueryClientProvider>,
-      ),
-  };
+function props(navigation = { navigate: jest.fn() }) {
+  return { navigation, props: { navigation, route: {} } as unknown as OrdersScreenProps<'OrderHistory'> };
 }
 
 beforeEach(() => {
@@ -68,50 +57,80 @@ beforeEach(() => {
 });
 
 describe('OrderHistoryScreen', () => {
-  it('defaults to the Purchases segment for a buyer and lists orders', async () => {
+  it('lists a buyer\'s open orders, with what was bought, and offers no Sales choice (MK-20)', async () => {
     mockFetchOrdersForUser.mockResolvedValue([order()]);
-    const { render: doRender } = renderScreen();
-    await doRender();
+    await renderWithProviders(<OrderHistoryScreen {...props().props} />);
 
+    expect(await screen.findByText('Green Farms')).toBeTruthy();
+    expect(screen.getByText(/^2 × Wheat seeds/)).toBeTruthy();
+    expect(mockFetchOrdersForUser).toHaveBeenCalledWith('buyer');
+    expect(screen.queryByText('Sales')).toBeNull();
+    expect(screen.queryByText('Purchases')).toBeNull();
+  });
+
+  it('starts a farmer on Sales and lets them switch to Purchases, refetching for the other side', async () => {
+    useAuthStore.setState({ user: { id: 'seller-1' } as never, role: 'farmer' as never });
+    mockFetchOrdersForUser.mockResolvedValue([order()]);
+    await renderWithProviders(<OrderHistoryScreen {...props().props} />);
+
+    expect(await screen.findByText('Ali Khan')).toBeTruthy();
+    expect(mockFetchOrdersForUser).toHaveBeenCalledWith('seller');
+
+    mockFetchOrdersForUser.mockClear();
+    await fireEvent.press(screen.getByText('Purchases'));
     expect(await screen.findByText('Green Farms')).toBeTruthy();
     expect(mockFetchOrdersForUser).toHaveBeenCalledWith('buyer');
   });
 
-  it('defaults to the Sales segment for a farmer', async () => {
-    useAuthStore.setState({ user: { id: 'seller-1' } as never, role: 'farmer' as never });
-    mockFetchOrdersForUser.mockResolvedValue([]);
-    const { render: doRender } = renderScreen();
-    await doRender();
+  it('separates open orders from completed and cancelled ones', async () => {
+    mockFetchOrdersForUser.mockResolvedValue([
+      order({ id: 'o-open', status: 'dispatched', seller: { id: 's', full_name: 'Open Seller' } }),
+      order({ id: 'o-done', status: 'completed', seller: { id: 's', full_name: 'Done Seller' } }),
+      order({ id: 'o-gone', status: 'rejected', seller: { id: 's', full_name: 'Gone Seller' } }),
+    ]);
+    await renderWithProviders(<OrderHistoryScreen {...props().props} />);
 
-    expect(await screen.findByText('No sales yet')).toBeTruthy();
-    expect(mockFetchOrdersForUser).toHaveBeenCalledWith('seller');
+    expect(await screen.findByText('Open Seller')).toBeTruthy();
+    expect(screen.queryByText('Done Seller')).toBeNull();
+    expect(screen.queryByText('Gone Seller')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Completed'));
+    expect(screen.getByText('Done Seller')).toBeTruthy();
+    expect(screen.queryByText('Open Seller')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Cancelled'));
+    expect(screen.getByText('Gone Seller')).toBeTruthy();
   });
 
-  it('switches segments and refetches for the other side', async () => {
-    mockFetchOrdersForUser.mockResolvedValue([]);
-    const { render: doRender } = renderScreen();
-    await doRender();
-    await screen.findByText('No purchases yet');
+  it('tells a buyer with no open orders where to find something (MK-14)', async () => {
+    await renderWithProviders(<OrderHistoryScreen {...props().props} />);
+    expect(await screen.findByText('No open orders')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Browse the market' })).toBeTruthy();
+  });
 
-    mockFetchOrdersForUser.mockClear();
+  it('says "No open sales" to a seller, with no shopping button', async () => {
+    useAuthStore.setState({ user: { id: 'seller-1' } as never, role: 'dealer' as never });
+    await renderWithProviders(<OrderHistoryScreen {...props().props} />);
+    expect(await screen.findByText('No open sales')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Browse the market' })).toBeNull();
+  });
+
+  it('shows a Banner with "Try again" when the load fails, never "No purchases yet" (MK-03)', async () => {
+    mockFetchOrdersForUser.mockRejectedValueOnce(new Error('Server down'));
+    await renderWithProviders(<OrderHistoryScreen {...props().props} />);
+
+    expect(await screen.findByText("Couldn't load your orders")).toBeTruthy();
+    expect(screen.queryByText('No open orders')).toBeNull();
+
     mockFetchOrdersForUser.mockResolvedValue([order()]);
-    await fireEvent.press(screen.getByText('Sales'));
-
-    expect(await screen.findByText('Ali Khan')).toBeTruthy();
-    expect(mockFetchOrdersForUser).toHaveBeenCalledWith('seller');
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Green Farms')).toBeTruthy();
   });
 
-  it('shows an empty state with no orders', async () => {
-    mockFetchOrdersForUser.mockResolvedValue([]);
-    const { render: doRender } = renderScreen();
-    await doRender();
-    expect(await screen.findByText('No purchases yet')).toBeTruthy();
-  });
-
-  it('navigates to OrderDetail when an order card is pressed', async () => {
+  it('navigates to OrderDetail when an order is pressed', async () => {
     mockFetchOrdersForUser.mockResolvedValue([order({ id: 'order-99' })]);
-    const { navigation, render: doRender } = renderScreen();
-    await doRender();
+    const { navigation, props: screenProps } = props();
+    await renderWithProviders(<OrderHistoryScreen {...screenProps} />);
 
     await fireEvent.press(await screen.findByText('Green Farms'));
     expect(navigation.navigate).toHaveBeenCalledWith(ORDERS_ROUTES.OrderDetail, { orderId: 'order-99' });

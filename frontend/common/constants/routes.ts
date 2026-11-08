@@ -89,8 +89,8 @@ export const MESSAGING_ROUTES = {
 } as const;
 
 // Shared Home stack for buyer/farmer/dealer. Farms/Crops (Module 7), Stores/Suppliers/
-// Inventory (Module 8), and Disease Advisory (Module 15) are real screens; My Listings/
-// Products remain placeholders owned by later modules. Every route here is reachable via Quick
+// Inventory (Module 8), and Disease Advisory (Module 15) are real screens; My Listings
+// is a real screen. Every route here is reachable via Quick
 // Actions on the dashboard, but not every role gets every action — Disease Advisory is
 // farmer-only (like Inventory is dealer-only), gated purely at the Quick Actions level, same as
 // Farms/Crops already are.
@@ -105,7 +105,6 @@ export const HOME_ROUTES = {
   DiseaseAdvisory: 'DiseaseAdvisory',
   DiseaseProcessing: 'DiseaseProcessing',
   DiseaseResult: 'DiseaseResult',
-  Products: 'Products',
   // A3b: an approved dealer's business details.
   BusinessDetails: 'BusinessDetails',
   Stores: 'Stores',
@@ -126,7 +125,6 @@ export const ADMIN_HOME_ROUTES = {
   // A3b: the dealer and expert review queue, one application, a photographed document, the required-document list.
   Approvals: 'ApprovalQueue',
   ApplicationDetail: 'ApplicationDetail',
-  DocumentViewer: 'DocumentViewer',
   RequiredDocuments: 'RequiredDocuments',
   ModerationHub: 'ModerationHub',
   UserManagement: 'UserManagement',

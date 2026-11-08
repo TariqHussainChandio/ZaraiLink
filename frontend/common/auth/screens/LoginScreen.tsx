@@ -1,66 +1,109 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 import { Banner, Button, TextField } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
-import { useSignIn } from '../hooks/auth';
+import { useResendSignupOtp, useSignIn } from '../hooks/auth';
+import { AuthScreen } from '../components/AuthScreen';
+import { useLoginNotice } from '../state/loginNotice';
 import { useTheme, type Theme } from '../../../theme';
-import { mapPasswordFlowErrorMessage } from './mapAuthError';
+import { isEmailNotConfirmed, isSendRateLimited, mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
 // Sign-in checks only that a password was given: an account may predate today's rules, and Supabase decides.
-function makeLoginSchema() {
-  return z.object({
-    email: z.string().trim().email('Enter a valid email'),
-    password: z.string().min(1, 'Enter your password'),
-  });
-}
+const loginSchema = z.object({
+  email: z.string().trim().email('Enter a valid email'),
+  password: z.string().min(1, 'Enter your password'),
+});
 
-type LoginFormValues = z.infer<ReturnType<typeof makeLoginSchema>>;
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { mutateAsync: signIn } = useSignIn();
-  const loginSchema = useMemo(() => makeLoginSchema(), []);
+  const { mutateAsync: resendSignupOtp } = useResendSignupOtp();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // The email whose account is waiting for its code (AU-01): sign-in is refused until it is entered.
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [sendingCode, setSendingCode] = useState(false);
+  const notice = useLoginNotice(state => state.notice);
+  const clearNotice = useLoginNotice(state => state.clear);
   const {
     control,
     handleSubmit,
+    setFocus,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
 
+  // An approved dealer or expert signing in again arrives with their email already in the box.
+  useEffect(() => {
+    if (notice?.email) setValue('email', notice.email);
+  }, [notice, setValue]);
+
   const onSubmit = async (values: LoginFormValues) => {
     setSubmitError(null);
+    setUnconfirmedEmail(null);
+    clearNotice();
+    const email = values.email.trim();
     try {
-      await signIn({ email: values.email.trim(), password: values.password });
+      await signIn({ email, password: values.password });
     } catch (error) {
-      setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to sign in'));
+      if (isEmailNotConfirmed(error)) {
+        setUnconfirmedEmail(email);
+        return;
+      }
+      setSubmitError(mapPasswordFlowErrorMessage(error, 'Could not sign in. Try again.'));
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Sign in to your ZaraiLink account</Text>
+  // The sign-up code may be long gone (the phone closed the app while the person fetched it from their mail), so a new one
+  // is sent and the code screen opens. A send refused as too soon is fine: the code from a minute ago still works.
+  const enterCode = async () => {
+    if (!unconfirmedEmail || sendingCode) return;
+    setSendingCode(true);
+    setSubmitError(null);
+    try {
+      await resendSignupOtp(unconfirmedEmail);
+    } catch (error) {
+      if (!isSendRateLimited(error)) {
+        setSubmitError(mapPasswordFlowErrorMessage(error, 'Could not send the code. Try again.'));
+        setSendingCode(false);
+        return;
+      }
+    }
+    setSendingCode(false);
+    navigation.navigate(AUTH_ROUTES.VerifyOtp, { purpose: 'signup', email: unconfirmedEmail });
+  };
 
+  return (
+    <AuthScreen brand title="Sign in">
+      {notice ? (
+        <Banner tone={notice.tone} title={notice.title}>
+          {notice.message}
+        </Banner>
+      ) : null}
+      <View>
         <Controller
           control={control}
           name="email"
-          render={({ field: { onChange, onBlur, value } }) => (
+          render={({ field: { ref, onChange, onBlur, value } }) => (
             <TextField
+              ref={ref}
               label="Email"
               autoCapitalize="none"
+              autoCorrect={false}
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => setFocus('password')}
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
@@ -68,14 +111,19 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
             />
           )}
         />
-
         <Controller
           control={control}
           name="password"
-          render={({ field: { onChange, onBlur, value } }) => (
+          render={({ field: { ref, onChange, onBlur, value } }) => (
             <TextField
+              ref={ref}
               label="Password"
               secureTextEntry
+              autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit(onSubmit)}
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
@@ -83,75 +131,32 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
             />
           )}
         />
+      </View>
 
-        {submitError ? (
+      {unconfirmedEmail ? (
+        <Banner
+          tone="info"
+          title="Confirm your email first"
+          actionLabel="Enter your code"
+          onAction={enterCode}
+        >
+          {`Enter the code we emailed to ${unconfirmedEmail}.`}
+        </Banner>
+      ) : null}
+      {submitError ? <Banner tone="danger" title={submitError} /> : null}
 
-          <View style={styles.errorBanner}>
+      <Button label="Sign in" size="lg" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
 
-            <Banner tone="danger" title={submitError} />
-
-          </View>
-
-        ) : null}
-
-        <Button
-          label="Sign In"
-          loading={isSubmitting}
-          onPress={handleSubmit(onSubmit)}
-          style={styles.submit}
-        />
-
-        <View style={styles.links}>
-          <Button label="Forgot your password?" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)} />
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>{"Don't have an account?"}</Text>
-            <Button label="Sign up" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)} />
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <View style={styles.links}>
+        <Button label="Forgot password?" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)} />
+        <Button label="Create account" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)} />
+      </View>
+    </AuthScreen>
   );
 }
 
-function makeStyles({ colors, space, typography }: Theme) {
+function makeStyles({ space }: Theme) {
   return StyleSheet.create({
-    flex: { flex: 1 },
-    container: {
-      flexGrow: 1,
-      justifyContent: 'center',
-      padding: space[6],
-    },
-    title: {
-      ...typography.display,
-      color: colors.ink,
-    },
-    subtitle: {
-      ...typography.body,
-      color: colors.ink2,
-      marginTop: space[1],
-      marginBottom: space[6],
-    },
-    submit: {
-      marginTop: space[2],
-    },
-    errorBanner: {
-      marginBottom: space[3],
-    },
-    links: {
-      alignItems: 'center',
-      marginTop: space[4],
-      gap: space[2],
-    },
-    footer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: space[1],
-    },
-    footerText: {
-      ...typography.body,
-      color: colors.ink2,
-    },
+    links: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: space[2] },
   });
 }

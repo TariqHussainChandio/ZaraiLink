@@ -1,42 +1,49 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { z } from 'zod';
-import { Button, EmptyState, TextField, SelectField, Spinner } from '../../common/components';
+import {
+  Banner,
+  Button,
+  ConfirmSheet,
+  isValidE164,
+  PhoneInput,
+  QueryState,
+  ScreenScaffold,
+  SelectField,
+  StickyActionBar,
+  TextField,
+  useSnackbar,
+} from '../../common/components';
 import { useDeleteSupplier, useSaveSupplier, useSupplier } from '../hooks/dealer';
 import { useAuthStore } from '../../state/authStore';
-import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 import { errorMessage } from '../../utils/errorMessage';
 
-function makeSupplierSchema() {
-  return z.object({
-    name: z.string().min(2, 'Enter a supplier name'),
-    contact: z.string(),
-    productsSupplied: z.string(),
-    notes: z.string(),
-    status: z.enum(['active', 'inactive']),
-  });
-}
+const supplierSchema = z.object({
+  name: z.string().trim().min(2, 'Enter a supplier name'),
+  // PhoneInput sends E.164, or the text as typed while it is not yet a number: the latter fails here, inline.
+  contact: z.string().refine(value => value === '' || isValidE164(value), 'Enter a phone number like 0300 1234567'),
+  productsSupplied: z.string(),
+  notes: z.string(),
+  status: z.enum(['active', 'inactive']),
+});
 
-type SupplierFormValues = z.infer<ReturnType<typeof makeSupplierSchema>>;
+type SupplierFormValues = z.infer<typeof supplierSchema>;
+
+const STATUS_OPTIONS = [
+  { id: 'active', label: 'Active' },
+  { id: 'inactive', label: 'Inactive' },
+];
 
 export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'SupplierDetail'>) {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
   const supplierId = route.params?.supplierId;
-  const supplierSchema = useMemo(() => makeSupplierSchema(), []);
-  const STATUS_OPTIONS = useMemo(
-    () => [
-      { id: 'active', label: 'Active' },
-      { id: 'inactive', label: 'Inactive' },
-    ],
-    [],
-  );
   const userId = useAuthStore(state => state.user?.id);
+  const snackbar = useSnackbar();
   const saveSupplier = useSaveSupplier();
   const removeSupplier = useDeleteSupplier();
+  const [failure, setFailure] = useState<unknown>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const {
     control,
     handleSubmit,
@@ -44,17 +51,11 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
     formState: { errors },
   } = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
-    defaultValues: {
-      name: '',
-      contact: '',
-      productsSupplied: '',
-      notes: '',
-      status: 'active',
-    },
+    defaultValues: { name: '', contact: '', productsSupplied: '', notes: '', status: 'active' },
   });
 
-  const { data: supplier, isLoading: loading, error, refetch } = useSupplier(supplierId);
-  const load = () => refetch();
+  const query = useSupplier(supplierId);
+  const supplier = query.data;
 
   // Fill the form once, from the first copy of the supplier; a later background refetch must not overwrite edits.
   const filled = useRef(false);
@@ -72,79 +73,46 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
 
   const onSubmit = async (values: SupplierFormValues) => {
     if (!userId) return;
+    setFailure(null);
     try {
-      const input = {
-        name: values.name,
-        contact: values.contact || null,
-        productsSupplied: values.productsSupplied || null,
-        notes: values.notes || null,
-        status: values.status,
-      };
-      await saveSupplier.mutateAsync({ id: supplierId, input });
+      await saveSupplier.mutateAsync({
+        id: supplierId,
+        input: {
+          name: values.name,
+          contact: values.contact || null,
+          productsSupplied: values.productsSupplied || null,
+          notes: values.notes || null,
+          status: values.status,
+        },
+      });
+      snackbar.show(supplierId ? 'Changes saved' : 'Supplier added');
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Failed to save supplier', errorMessage(err));
+      setFailure(err);
     }
   };
 
-  const onDelete = () => {
-    if (!supplierId) return;
-    Alert.alert('Delete supplier', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await removeSupplier.mutateAsync(supplierId);
-            navigation.goBack();
-          } catch (err) {
-            Alert.alert('Could not delete the supplier', errorMessage(err));
-          }
-        },
-      },
-    ]);
-  };
+  const form = (
+    <>
+      {failure ? (
+        <Banner tone="danger" title="Couldn't save the supplier">
+          {errorMessage(failure)}
+        </Banner>
+      ) : null}
 
-  if (loading) return <Spinner fullscreen />;
-  if (error && !supplier) {
-    return (
-      <EmptyState
-        title="Couldn't load this supplier"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
-
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Controller
         control={control}
         name="name"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Supplier name"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.name?.message}
-          />
+          <TextField label="Supplier name" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.name?.message} />
         )}
       />
 
       <Controller
         control={control}
         name="contact"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Contact"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            keyboardType="phone-pad"
-          />
+        render={({ field: { onChange, value } }) => (
+          <PhoneInput label="Contact number" value={value || null} onChange={next => onChange(next ?? '')} error={errors.contact?.message} />
         )}
       />
 
@@ -152,14 +120,7 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
         control={control}
         name="productsSupplied"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Products supplied"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            multiline
-            numberOfLines={2}
-          />
+          <TextField label="Products supplied" optional value={value} onChangeText={onChange} onBlur={onBlur} multiline numberOfLines={2} />
         )}
       />
 
@@ -167,14 +128,7 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
         control={control}
         name="notes"
         render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Notes"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            multiline
-            numberOfLines={3}
-          />
+          <TextField label="Notes" optional value={value} onChangeText={onChange} onBlur={onBlur} multiline numberOfLines={3} />
         )}
       />
 
@@ -182,39 +136,51 @@ export function SupplierDetailScreen({ route, navigation }: HomeScreenProps<'Sup
         control={control}
         name="status"
         render={({ field: { onChange, value } }) => (
-          <SelectField
-            label="Status"
-            value={value}
-            options={STATUS_OPTIONS}
-            onSelect={onChange}
-            searchable={false}
-          />
+          <SelectField label="Status" value={value} options={STATUS_OPTIONS} onSelect={onChange} searchable={false} />
         )}
       />
 
-      <Button label="Save Supplier" loading={saveSupplier.isPending} onPress={handleSubmit(onSubmit)} style={styles.action} />
-      {supplierId ? (
-        <Button label="Delete Supplier" variant="danger" onPress={onDelete} style={styles.delete} />
-      ) : null}
-    </ScrollView>
+      {supplierId ? <Button label="Remove supplier" variant="dangerQuiet" onPress={() => setConfirmRemove(true)} /> : null}
+    </>
   );
-}
 
-function makeStyles({ colors, space }: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    action: {
-      marginTop: space[3],
-    },
-    delete: {
-      marginTop: space[3],
-      marginBottom: space[8],
-    },
-  });
+  return (
+    <ScreenScaffold
+      footer={
+        <StickyActionBar>
+          <Button
+            label={supplierId ? 'Save changes' : 'Add supplier'}
+            size="lg"
+            loading={saveSupplier.isPending}
+            disabled={!!supplierId && !supplier}
+            onPress={handleSubmit(onSubmit)}
+          />
+        </StickyActionBar>
+      }
+    >
+      {supplierId ? (
+        <QueryState query={query} failureTitle="Couldn't load this supplier">
+          {form}
+        </QueryState>
+      ) : (
+        form
+      )}
+
+      <ConfirmSheet
+        visible={confirmRemove}
+        onClose={() => setConfirmRemove(false)}
+        title={`Remove ${supplier?.name ?? 'this supplier'}?`}
+        message="They leave your list of suppliers. This cannot be undone."
+        confirmLabel="Remove supplier"
+        keepLabel="Keep supplier"
+        destructive
+        onConfirm={async () => {
+          if (!supplierId) return;
+          await removeSupplier.mutateAsync(supplierId);
+          snackbar.show('Supplier removed');
+          navigation.goBack();
+        }}
+      />
+    </ScreenScaffold>
+  );
 }

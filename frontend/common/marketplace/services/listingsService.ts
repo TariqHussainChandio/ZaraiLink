@@ -138,10 +138,6 @@ export async function updateListingStatus(id: string, status: ListingStatus): Pr
   await apiFetch(`/api/v1/marketplace/listings/${id}/status`, { method: 'PATCH', body: { status } });
 }
 
-export async function fetchAllListingsForModeration(): Promise<ListingWithRelations[]> {
-  return apiFetch('/api/v1/marketplace/listings/moderation');
-}
-
 /** Records a view of a listing. Callers should skip this for the listing's own owner. No
  * `viewerId` param — always the caller's own id. */
 export async function recordListingView(listingId: string): Promise<void> {

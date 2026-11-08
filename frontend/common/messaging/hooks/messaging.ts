@@ -9,7 +9,7 @@ import {
   sendMessage,
   uploadMessageAttachments,
 } from '../services/messagingService';
-import type { Message } from '../types/messaging';
+import type { ConversationWithPreview, Message } from '../types/messaging';
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { useRealtimeMessages } from '../../../hooks/realtime/useRealtimeMessages';
 import { queryKeys } from '../../../hooks/keys';
@@ -58,14 +58,14 @@ export function useConversationMessages(conversationId: string, userId: string |
   return query;
 }
 
-/** Uploads any photos, then posts the message and appends it to the open conversation. */
+/** Uploads any photos, then posts the message and appends it to the open conversation. `attachments` are photos already
+ * uploaded (a retry), which are posted as they are. */
 export function useSendMessage(conversationId: string, userId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ body, images }: { body: string; images: PickedPhoto[] }) => {
-      const attachments =
-        images.length > 0 && userId ? await uploadMessageAttachments(conversationId, userId, images) : [];
-      return sendMessage(conversationId, body, attachments);
+    mutationFn: async ({ body, images, attachments }: { body: string; images: PickedPhoto[]; attachments?: string[] }) => {
+      const paths = attachments ?? (images.length > 0 && userId ? await uploadMessageAttachments(conversationId, userId, images) : []);
+      return sendMessage(conversationId, body, paths);
     },
     onSuccess: message => {
       queryClient.setQueryData<Message[]>(queryKeys.messaging.messages(conversationId), previous =>
@@ -74,6 +74,12 @@ export function useSendMessage(conversationId: string, userId: string | undefine
       queryClient.invalidateQueries({ queryKey: queryKeys.messaging.conversations() });
     },
   });
+}
+
+/** The conversation ends with a message from the other person that has not been read: the unread dot and bold name. */
+export function isUnread(conversation: ConversationWithPreview, userId: string | undefined): boolean {
+  const last = conversation.lastMessage;
+  return !!last && !!userId && last.sender_id !== userId && last.read_at === null;
 }
 
 /** Signed URLs for attachment paths. They expire after an hour, so they are refreshed well before that. */

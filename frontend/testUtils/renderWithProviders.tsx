@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { render, type RenderResult } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SnackbarProvider } from '../common/components/Snackbar';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,11 +38,13 @@ export function renderWithProviders(
   return render(
     <SafeAreaProvider initialMetrics={PHONE}>
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="__UnderTest__">{() => ui}</Stack.Screen>
-          </Stack.Navigator>
-        </NavigationContainer>
+        <SnackbarProvider>
+          <NavigationContainer>
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="__UnderTest__">{() => ui}</Stack.Screen>
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SnackbarProvider>
       </QueryClientProvider>
     </SafeAreaProvider>,
   );
@@ -51,7 +54,9 @@ export function renderWithProviders(
 export function renderWithQuery(ui: React.ReactElement, queryClient: QueryClient = createTestQueryClient()) {
   return render(
     <SafeAreaProvider initialMetrics={PHONE}>
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <SnackbarProvider>{ui}</SnackbarProvider>
+      </QueryClientProvider>
     </SafeAreaProvider>,
   );
 }

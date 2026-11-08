@@ -17,7 +17,7 @@ const baseMessage: ConsultationMessageWithListing = {
 describe('ConsultationMessageBubble', () => {
   it('renders the message body', async () => {
     await render(
-      <ConsultationMessageBubble message={baseMessage} isOwn={false} attachmentUrls={{}} />,
+      <ConsultationMessageBubble message={baseMessage} isOwn={false} senderName="Dr Ahsan" attachmentUrls={{}} />,
     );
     expect(screen.getByText('How do I treat leaf blight?')).toBeTruthy();
   });
@@ -27,12 +27,18 @@ describe('ConsultationMessageBubble', () => {
     const message: ConsultationMessageWithListing = {
       ...baseMessage,
       recommended_listing_id: 'l1',
-      recommended_listing: { id: 'l1', title: 'Copper Fungicide', price: 850, unit: 'bottle' },
+      recommended_listing: {
+        id: 'l1',
+        title: 'Copper Fungicide',
+        price: 850,
+        unit: 'bottle',
+      },
     };
     await render(
       <ConsultationMessageBubble
         message={message}
         isOwn={false}
+        senderName="Dr Ahsan"
         attachmentUrls={{}}
         onPressRecommendation={onPressRecommendation}
       />,
@@ -44,16 +50,51 @@ describe('ConsultationMessageBubble', () => {
   });
 
   it('renders an attachment image when a signed URL is available', async () => {
-    const message: ConsultationMessageWithListing = { ...baseMessage, body: '', attachments: ['path/to/img.jpg'] };
+    const message: ConsultationMessageWithListing = {
+      ...baseMessage,
+      body: '',
+      attachments: ['path/to/img.jpg'],
+    };
     await render(
       <ConsultationMessageBubble
         message={message}
         isOwn={true}
+        senderName="You"
         attachmentUrls={{ 'path/to/img.jpg': 'https://example.com/img.jpg' }}
       />,
     );
-    expect(screen.getByTestId('attachment-image-path/to/img.jpg').props.source.uri).toBe(
-      'https://example.com/img.jpg',
+    expect(screen.getByTestId('attachment-image-path/to/img.jpg').props.source.uri).toBe('https://example.com/img.jpg');
+  });
+
+  it('says who wrote it, in words, as one stop with the time and the text', async () => {
+    await render(
+      <ConsultationMessageBubble message={baseMessage} isOwn={false} senderName="Dr Ahsan" attachmentUrls={{}} />,
     );
+    expect(screen.getByLabelText(/^Dr Ahsan, .*: How do I treat leaf blight\?$/)).toBeTruthy();
+    expect(screen.getByText('Dr Ahsan')).toBeTruthy();
+  });
+
+  it('labels each photo with its place and sender, and opens the one tapped', async () => {
+    const onPressPhoto = jest.fn();
+    const message: ConsultationMessageWithListing = {
+      ...baseMessage,
+      body: '',
+      attachments: ['a.jpg', 'b.jpg'],
+    };
+    await render(
+      <ConsultationMessageBubble
+        message={message}
+        isOwn={false}
+        senderName="Ali Raza"
+        attachmentUrls={{
+          'a.jpg': 'https://example.com/a.jpg',
+          'b.jpg': 'https://example.com/b.jpg',
+        }}
+        onPressPhoto={onPressPhoto}
+      />,
+    );
+    await fireEvent.press(screen.getByLabelText('Photo 2 of 2 from Ali Raza'));
+    expect(onPressPhoto).toHaveBeenCalledWith(1);
+    expect(screen.getByLabelText(/^Ali Raza, .*, 2 photos$/)).toBeTruthy();
   });
 });

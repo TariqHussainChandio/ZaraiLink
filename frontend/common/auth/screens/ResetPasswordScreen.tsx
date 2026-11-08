@@ -1,46 +1,36 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 import { Banner, Button, TextField } from '../../components';
 import { useUpdatePassword } from '../../profile';
-import { useTheme, type Theme } from '../../../theme';
+import { newPasswordSchema, PASSWORD_HELPER } from '../../validation/password';
+import { useAuthStore } from '../../../state/authStore';
+import { AuthScreen } from '../components/AuthScreen';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
 
-function makeResetPasswordSchema() {
-  return z
-    .object({
-      password: z.string().min(6, 'Password must be at least 6 characters'),
-      confirmPassword: z.string(),
-    })
-    .refine(data => data.password === data.confirmPassword, {
-      message: "Passwords don't match",
-      path: ['confirmPassword'],
-    });
-}
+// Typed once, with Show: a second field would repeat nothing the person cannot already see.
+const resetPasswordSchema = z.object({ password: newPasswordSchema });
 
-type ResetPasswordFormValues = z.infer<ReturnType<typeof makeResetPasswordSchema>>;
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
-// Rendered directly by RootNavigator when authStore's status is 'passwordRecovery' (a
-// password-reset email link was just exchanged for a session) — no navigation props, no route
-// params, unlike ChangePasswordScreen (its already-authenticated, Settings-reached counterpart).
-// On success, `updatePassword` triggers a USER_UPDATED auth event that authStore's existing
-// applySession path picks up automatically, flipping status to 'authenticated' — RootNavigator
-// then swaps to the normal app shell with no further action needed here.
+// Rendered directly by RootNavigator when authStore's status is 'passwordRecovery' (the reset code was just entered and
+// exchanged for a session): no navigation props and no route params, unlike ChangePasswordScreen, its signed-in
+// counterpart. On success, `updatePassword` triggers a USER_UPDATED auth event that authStore's existing applySession
+// path picks up, flipping status to 'authenticated'; RootNavigator then swaps to the app shell with nothing more to do
+// here.
 export function ResetPasswordScreen() {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  const resetPasswordSchema = useMemo(() => makeResetPasswordSchema(), []);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const updatePassword = useUpdatePassword();
+  // The recovery session is a real session and this screen has nothing behind it, so Cancel ends the session.
+  const signOut = useAuthStore(state => state.signOut);
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { password: '', confirmPassword: '' },
+    defaultValues: { password: '' },
   });
 
   const onSubmit = async (values: ResetPasswordFormValues) => {
@@ -48,22 +38,26 @@ export function ResetPasswordScreen() {
     try {
       await updatePassword.mutateAsync(values.password);
     } catch (error) {
-      setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to update password'));
+      setSubmitError(mapPasswordFlowErrorMessage(error, 'Could not update the password. Try again.'));
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Set a new password</Text>
-      <Text style={styles.subtitle}>Choose a new password for your ZaraiLink account.</Text>
-
+    <AuthScreen title="Set a new password" subtitle="Choose a new password for your ZaraiLink account.">
       <Controller
         control={control}
         name="password"
-        render={({ field: { onChange, onBlur, value } }) => (
+        render={({ field: { ref, onChange, onBlur, value } }) => (
           <TextField
+            ref={ref}
             label="New password"
+            helper={PASSWORD_HELPER}
             secureTextEntry
+            autoCapitalize="none"
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit(onSubmit)}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -71,64 +65,11 @@ export function ResetPasswordScreen() {
           />
         )}
       />
-      <Controller
-        control={control}
-        name="confirmPassword"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Confirm password"
-            secureTextEntry
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.confirmPassword?.message}
-          />
-        )}
-      />
 
-      {submitError ? (
+      {submitError ? <Banner tone="danger" title={submitError} /> : null}
 
-        <View style={styles.errorBanner}>
-
-          <Banner tone="danger" title={submitError} />
-
-        </View>
-
-      ) : null}
-
-      <Button
-        label="Update password"
-        loading={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
-        style={styles.submit}
-      />
-    </View>
+      <Button label="Update password" size="lg" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+      <Button label="Cancel" variant="quiet" fullWidth={false} onPress={signOut} />
+    </AuthScreen>
   );
-}
-
-function makeStyles({ colors, space, typography }: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      justifyContent: 'center',
-      backgroundColor: colors.surface,
-      padding: space[4],
-    },
-    title: {
-      ...typography.headline,
-      color: colors.ink,
-      marginBottom: space[2],
-    },
-    subtitle: {
-      ...typography.body,
-      color: colors.ink2,
-      marginBottom: space[6],
-    },
-    errorBanner: {
-      marginBottom: space[3],
-    },
-    submit: {
-      marginTop: space[2],
-    },
-  });
 }

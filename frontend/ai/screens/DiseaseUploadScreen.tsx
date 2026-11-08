@@ -1,114 +1,151 @@
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, Focus, Leaf, Sun } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { Button, SelectField } from '../../common/components';
-import { useTheme, type Theme } from '../../theme';
+import { Image, Linking, StyleSheet, Text, View } from 'react-native';
+import { Banner, Button, ListGroup, ListRow, ListRowIcon, ScreenScaffold, SelectField, StickyActionBar, useSnackbar } from '../../common/components';
 import { useCrops } from '../../common/marketplace';
-import { pickPhotos, type PickedPhoto } from '../../utils/photoPicker';
+import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
+import { RoleScopeProvider, useTheme, type Theme } from '../../theme';
+import { errorMessage } from '../../utils/errorMessage';
+import { pickFromLibrary, takePhoto, type PickedPhoto } from '../../utils/photoPicker';
+import { useSupportedCrops } from '../hooks/disease';
+import { navigateToConsultExpert } from './expertHandoff';
+
+/** "tomato, potato and maize": the crops the scan checks, in a sentence. */
+function sentenceList(names: string[]): string {
+  const lower = names.map(name => name.toLowerCase());
+  return lower.length < 2 ? lower.join('') : `${lower.slice(0, -1).join(', ')} and ${lower[lower.length - 1]}`;
+}
 
 // Registered in the shared `HomeNavigator` (Buyer/Farmer/Dealer's Home stack), but farmer-only
-// in practice — only `SellerDashboard.tsx`'s farmer branch has a Quick Action leading here,
-// the same pattern that already makes Farms/Crops farmer-only and Inventory dealer-only within
-// this same shared stack. Untyped navigation, matching that stack's own conventions.
+// in practice — reached from the farmer's home and the Advisory tab's scan action. The app bar
+// already says "Check a sick plant", so the body does not repeat it (FA-08).
 export function DiseaseUploadScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation<any>();
+  const tabs = useAppTabNavigation();
+  const snackbar = useSnackbar();
+  const { data: supported = [], isPending: loadingCrops, isError: cropsFailed, refetch } = useSupportedCrops();
   const { data: crops = [] } = useCrops();
-  const [cropId, setCropId] = useState<string | null>(null);
+  const [cropKey, setCropKey] = useState<string | null>(null);
   const [image, setImage] = useState<PickedPhoto | null>(null);
+  const [cameraRefused, setCameraRefused] = useState(false);
 
-  const pickImage = async () => {
-    const assets = await pickPhotos({ selectionLimit: 1 });
-    if (assets[0]) setImage(assets[0]);
+  const chosen = supported.find(crop => crop.key === cropKey) ?? null;
+  // The shared crops table has a row for a few of the model's crops (tomato, potato, maize); the case links to it when it does.
+  const matchedCropId = chosen ? (crops.find(crop => crop.name.toLowerCase() === chosen.name.toLowerCase())?.id ?? null) : null;
+
+  const onTakePhoto = async () => {
+    try {
+      const photos = await takePhoto();
+      if (photos[0]) {
+        setImage(photos[0]);
+        setCameraRefused(false);
+        return;
+      }
+      // An empty result is either backing out or a refusal; only a refusal needs the guidance below.
+      const permission = await ImagePicker.getCameraPermissionsAsync();
+      setCameraRefused(!permission.granted);
+    } catch (error) {
+      snackbar.show(errorMessage(error));
+    }
   };
 
-  const onAnalyze = () => {
-    if (!image?.uri) return;
+  const onChooseFromGallery = async () => {
+    try {
+      const photos = await pickFromLibrary({ selectionLimit: 1 });
+      if (photos[0]) setImage(photos[0]);
+    } catch (error) {
+      snackbar.show(errorMessage(error));
+    }
+  };
+
+  const askExpert = () => navigateToConsultExpert(tabs, { cropId: null, imageUrl: image?.uri ?? null });
+
+  const check = () => {
+    if (!image?.uri || !chosen) return;
     navigation.navigate('DiseaseProcessing', {
       imageUri: image.uri,
       imageFileName: image.fileName ?? null,
       imageType: image.mimeType ?? null,
-      cropId,
+      cropId: matchedCropId,
+      cropKey: chosen.key,
+      cropName: chosen.name,
     });
   };
 
+  const footer = (
+    <StickyActionBar>
+      <View style={styles.actions}>
+        {image ? (
+          <>
+            <Button label="Check this photo" size="lg" onPress={check} disabled={!chosen} />
+            <Button label="Take a different photo" variant="quiet" onPress={() => setImage(null)} />
+          </>
+        ) : (
+          <>
+            <Button label="Take photo" size="lg" icon={Camera} onPress={onTakePhoto} />
+            <Button label="Choose from gallery" variant="secondary" onPress={onChooseFromGallery} />
+          </>
+        )}
+      </View>
+    </StickyActionBar>
+  );
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Identify a Crop Disease</Text>
-      <Text style={styles.subtitle}>Upload a clear photo of the affected leaf or plant. This is an AI advisory only — not a replacement for professional consultation.</Text>
+    <RoleScopeProvider scope="ai">
+      <ScreenScaffold footer={footer}>
+        {cropsFailed ? (
+          <Banner tone="warning" title="We couldn't load the crops we can check" actionLabel="Try again" onAction={() => refetch()}>
+            Check your connection. You can still ask an expert about any crop.
+          </Banner>
+        ) : (
+          <Banner tone="advisory" title="A suggestion, not a diagnosis" actionLabel="Other crops: Ask an expert" onAction={askExpert}>
+            {supported.length > 0
+              ? `We can check ${sentenceList(supported.map(crop => crop.name))}. For any other crop, ask an expert.`
+              : 'We can check only some crops. For any other crop, ask an expert.'}
+          </Banner>
+        )}
 
-      <SelectField
-        label="Crop (optional)"
-        value={cropId}
-        options={crops.map(c => ({ id: c.id, label: c.name }))}
-        onSelect={setCropId}
-      />
+        {cameraRefused ? (
+          <Banner tone="warning" title="The camera is turned off" actionLabel="Open settings" onAction={() => Linking.openSettings()}>
+            Allow the camera for ZaraiLink in settings, or choose a photo from your gallery.
+          </Banner>
+        ) : null}
 
-      <Text style={styles.label}>Photo</Text>
-      {image?.uri ? (
-        <TouchableOpacity onPress={pickImage}>
-          <Image source={{ uri: image.uri }} style={styles.preview} />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.addImage} onPress={pickImage}>
-          <Text style={styles.addImageLabel}>+ Add Photo</Text>
-        </TouchableOpacity>
-      )}
+        <SelectField
+          label="Which crop is it?"
+          placeholder="Choose the crop"
+          value={cropKey}
+          options={supported.map(crop => ({ id: crop.key, label: crop.name }))}
+          onSelect={setCropKey}
+          loading={loadingCrops}
+        />
 
-      <Button label="Analyze" onPress={onAnalyze} disabled={!image?.uri} style={styles.submit} />
-    </ScrollView>
+        {image?.uri ? (
+          <View style={styles.previewBlock}>
+            <Image source={{ uri: image.uri }} style={styles.preview} accessibilityLabel="Your leaf photo" accessibilityIgnoresInvertColors />
+            {!chosen ? <Text style={styles.hint}>Choose the crop above to check this photo.</Text> : null}
+          </View>
+        ) : (
+          <ListGroup>
+            <ListRow leading={<ListRowIcon icon={Sun} />} title="Daylight" meta="No shadow on the leaf" />
+            <ListRow leading={<ListRowIcon icon={Leaf} />} title="One leaf fills the frame" meta="Get close to the spots" />
+            <ListRow leading={<ListRowIcon icon={Focus} />} title="Hold still" meta="Wait until it is sharp" />
+          </ListGroup>
+        )}
+      </ScreenScaffold>
+    </RoleScopeProvider>
   );
 }
 
-function makeStyles({ colors, space, radius, typography, size, borders }: Theme) {
+function makeStyles({ colors, space, radius, typography, size }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    title: {
-      ...typography.title,
-      color: colors.ink,
-      marginBottom: space[1],
-    },
-    subtitle: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginBottom: space[4],
-    },
-    label: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginBottom: space[2],
-    },
-    preview: {
-      width: '100%',
-      height: size.photoHero,
-      borderRadius: radius.sm,
-      backgroundColor: colors.line,
-      marginBottom: space[3],
-    },
-    addImage: {
-      height: size.cardImage,
-      borderRadius: radius.sm,
-      borderWidth: borders.hairline,
-      borderColor: colors.line,
-      borderStyle: 'dashed',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: space[3],
-    },
-    addImageLabel: {
-      ...typography.caption,
-      color: colors.ink2,
-    },
-    submit: {
-      marginTop: space[3],
-      marginBottom: space[8],
-    },
+    actions: { gap: space[2] },
+    previewBlock: { gap: space[2] },
+    preview: { width: '100%', height: size.photoHero, borderRadius: radius.md, backgroundColor: colors.surfaceSunken },
+    hint: { ...typography.body, color: colors.ink2 },
   });
 }

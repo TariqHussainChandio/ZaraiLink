@@ -4,6 +4,7 @@ import { Avatar, Card } from '../../components';
 import { RatingStars } from './RatingStars';
 import { useTheme, type Theme } from '../../../theme';
 import type { ReviewWithBuyer } from '../types/reviews';
+import { formatDay } from '../../../utils/dates';
 
 export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   const theme = useTheme();
@@ -14,8 +15,8 @@ export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
       <View style={styles.header}>
         <Avatar name={review.buyer?.full_name} uri={review.buyer?.avatar_url} size={theme.size.avatarSm} />
         <View style={styles.headerText}>
-          <Text style={styles.name}>{review.buyer?.full_name || 'Unknown buyer'}</Text>
-          <Text style={styles.date}>{new Date(review.created_at).toLocaleDateString()}</Text>
+          <Text style={styles.name}>{review.buyer?.full_name || 'A buyer'}</Text>
+          <Text style={styles.date}>{formatDay(review.created_at)}</Text>
         </View>
         <RatingStars value={review.rating} />
       </View>
@@ -24,7 +25,7 @@ export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: {
       marginBottom: space[3],
@@ -38,8 +39,7 @@ function makeStyles({ colors, space, typography, fontWeight }: Theme) {
       flex: 1,
     },
     name: {
-      ...typography.caption,
-      fontWeight: fontWeight.semibold,
+      ...typography.bodyStrong,
       color: colors.ink,
     },
     date: {
@@ -48,8 +48,8 @@ function makeStyles({ colors, space, typography, fontWeight }: Theme) {
     },
     comment: {
       marginTop: space[2],
-      ...typography.caption,
-      color: colors.ink2,
+      ...typography.body,
+      color: colors.ink,
     },
   });
 }

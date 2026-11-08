@@ -1,22 +1,19 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { Badge, Card, EmptyState, Spinner } from '../../common/components';
+import { Plus } from 'lucide-react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Button, EmptyState, ListGroup, ListRow, QueryState, ScreenScaffold, StatusBadge, StickyActionBar, TextField } from '../../common/components';
 import { HOME_ROUTES } from '../../common/constants/routes';
 import { useSuppliers } from '../hooks/dealer';
 import { useAuthStore } from '../../state/authStore';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
 
+/** The dealer's suppliers: find one, open it, add another. */
 export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>) {
-  const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const userId = useAuthStore(state => state.user?.id);
-  const { data: suppliers = [], isPending, error, refetch } = useSuppliers(!!userId);
-  const loading = isPending && !!userId;
-  const load = () => refetch();
+  const query = useSuppliers(!!userId);
+  const { refetch } = query;
+  const suppliers = useMemo(() => query.data ?? [], [query.data]);
+  const [search, setSearch] = useState('');
 
   // Coming back to the list shows what was added or changed elsewhere.
   useFocusEffect(
@@ -25,95 +22,46 @@ export function SupplierListScreen({ navigation }: HomeScreenProps<'Suppliers'>)
     }, [userId, refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
-  if (error && suppliers.length === 0) {
-    return (
-      <EmptyState
-        title="Couldn't load suppliers"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
+  const shown = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return needle === '' ? suppliers : suppliers.filter(supplier => supplier.name.toLowerCase().includes(needle));
+  }, [suppliers, search]);
 
   return (
-    <View style={styles.container}>
-      <FlashList
-        data={suppliers}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => navigation.navigate(HOME_ROUTES.SupplierDetail, { supplierId: item.id })}
-          >
-            <Card style={styles.card}>
-              <View style={styles.row}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Badge label={item.status} tone={item.status === 'active' ? 'success' : 'neutral'} />
-              </View>
-              <Text style={styles.meta}>{item.products_supplied ?? 'No products listed'}</Text>
-            </Card>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <EmptyState
-            title="No suppliers yet"
-            description="Add your first supplier to get started."
-          />
-        }
-      />
-      <TouchableOpacity
-        accessibilityRole="button"
-        style={styles.fab}
-        onPress={() => navigation.navigate(HOME_ROUTES.SupplierDetail, {})}
+    <ScreenScaffold
+      onRefresh={() => {
+        refetch();
+      }}
+      refreshing={query.isRefetching}
+      footer={
+        <StickyActionBar>
+          <Button label="Add supplier" size="lg" icon={Plus} disabled={!userId} onPress={() => navigation.navigate(HOME_ROUTES.SupplierDetail, {})} />
+        </StickyActionBar>
+      }
+    >
+      <QueryState
+        query={query}
+        isEmpty={suppliers.length === 0}
+        failureTitle="Couldn't load your suppliers"
+        empty={{ title: 'No suppliers yet', description: 'Use Add supplier below to add the people you buy stock from.' }}
       >
-        <Text style={styles.fabLabel}>+ New Supplier</Text>
-      </TouchableOpacity>
-    </View>
+        <TextField accessibilityLabel="Find a supplier" placeholder="Find a supplier" value={search} onChangeText={setSearch} autoCorrect={false} returnKeyType="search" />
+        {shown.length === 0 ? (
+          <EmptyState title="No suppliers match" description="Check the spelling, or clear the search." />
+        ) : (
+          <ListGroup>
+            {shown.map(supplier => (
+              <ListRow
+                key={supplier.id}
+                title={supplier.name}
+                meta={supplier.products_supplied ?? 'No products listed'}
+                status={<StatusBadge kind="storeSupplier" status={supplier.status} size="sm" />}
+                onPress={() => navigation.navigate(HOME_ROUTES.SupplierDetail, { supplierId: supplier.id })}
+              />
+            ))}
+          </ListGroup>
+        )}
+      </QueryState>
+    </ScreenScaffold>
   );
-}
-
-function makeStyles({ colors, space, radius, typography, shadows }: Theme, accent: Accent) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    list: {
-      padding: space[4],
-      paddingBottom: space[12],
-    },
-    card: {
-      marginBottom: space[3],
-    },
-    row: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    name: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-    },
-    meta: {
-      marginTop: space[1] / 2,
-      ...typography.caption,
-      color: colors.ink2,
-    },
-    fab: {
-      position: 'absolute',
-      right: space[4],
-      bottom: space[4],
-      backgroundColor: accent.fill,
-      paddingHorizontal: space[4],
-      paddingVertical: space[3],
-      borderRadius: radius.pill,
-      ...shadows.elev2,
-    },
-    fabLabel: {
-      ...typography.label,
-      color: colors.onAccent,
-    },
-  });
 }

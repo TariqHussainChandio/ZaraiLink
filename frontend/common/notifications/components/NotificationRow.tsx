@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Bell,
+  ChevronRight,
   CreditCard,
   MessageCircle,
   Package,
@@ -11,8 +12,9 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme, type Theme, type ThemeColors, useRoleAccent, type Accent } from '../../../theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTheme, type Theme, type ThemeColors } from '../../../theme';
+import { formatAgo } from '../../../utils/dates';
 import type { Notification } from '../types/notifications';
 import { statusMeta } from '../../constants/status';
 
@@ -28,9 +30,9 @@ const TYPE_META: Record<string, TypeMeta> = {
   payment_status_changed: { icon: CreditCard, tint: c => ({ mark: c.module.payments, soft: c.status.success.soft }), label: 'Payment update' },
   new_message: { icon: MessageCircle, tint: c => c.accent.buyer, label: 'New message' },
   consultation_new: { icon: Stethoscope, tint: c => c.accent.expert, label: 'New consultation request' },
-  consultation_status_changed: { icon: Stethoscope, tint: c => c.accent.expert, label: 'Consultation updated' },
+  consultation_status_changed: { icon: Stethoscope, tint: c => c.accent.expert, label: 'Consultation update' },
   listing_status_changed: { icon: ShoppingBag, tint: c => c.accent.brand, label: 'Listing status changed' },
-  inventory_low_stock: { icon: AlertTriangle, tint: c => c.accent.dealer, label: 'Low stock warning' },
+  inventory_low_stock: { icon: AlertTriangle, tint: c => c.accent.dealer, label: 'Low stock' },
   expert_verification_changed: { icon: ShieldCheck, tint: c => c.accent.expert, label: 'Verification update' },
   account_suspension_changed: { icon: ShieldAlert, tint: c => c.accent.admin, label: 'Account status changed' },
   account_status_changed: { icon: ShieldCheck, tint: c => c.accent.brand, label: 'Application update' },
@@ -44,94 +46,118 @@ function metaFor(type: string): TypeMeta {
   return known ?? DEFAULT_META;
 }
 
+/** What the notification says, naming the change ("Low stock: 5 left", "Order status updated: Confirmed"). */
 function describe(notification: Notification): string {
   const meta = metaFor(notification.type);
-  if (notification.type === 'new_message' && notification.payload?.sender_name) {
-    return `New message from ${notification.payload.sender_name}`;
+  const payload = notification.payload ?? {};
+  if (notification.type === 'new_message' && payload.sender_name) {
+    return `New message from ${payload.sender_name}`;
   }
-  if (notification.type === 'order_status_changed' && notification.payload?.status) {
-    return `${meta.label}: ${statusMeta('order', notification.payload.status).label}`;
+  if (notification.type === 'order_status_changed' && payload.status) {
+    return `${meta.label}: ${statusMeta('order', payload.status).label}`;
   }
-  if (notification.type === 'payment_status_changed' && notification.payload?.status) {
-    return `${meta.label}: ${statusMeta('payment', notification.payload.status).label}`;
+  if (notification.type === 'payment_status_changed' && payload.status) {
+    return `${meta.label}: ${statusMeta('payment', payload.status).label}`;
   }
-  if (notification.type === 'listing_status_changed' && notification.payload?.status) {
-    return `${meta.label}: ${statusMeta('listing', notification.payload.status).label}`;
+  if (notification.type === 'listing_status_changed' && payload.status) {
+    return `${meta.label}: ${statusMeta('listing', payload.status).label}`;
+  }
+  if (notification.type === 'consultation_status_changed' && payload.status) {
+    return `${meta.label}: ${statusMeta('consultation', payload.status).label}`;
   }
   if (notification.type === 'inventory_low_stock') {
-    return `Stock down to ${notification.payload?.stock_quantity ?? '?'} (threshold ${notification.payload?.min_stock_threshold ?? '?'})`;
+    // The payload carries no product name yet (a database task); until it does, the quantity is what can be said.
+    const left = payload.stock_quantity;
+    const alertAt = payload.min_stock_threshold;
+    if (left === undefined || left === null) return meta.label;
+    return alertAt === undefined || alertAt === null ? `${meta.label}: ${left} left` : `${meta.label}: ${left} left (alert at ${alertAt})`;
   }
-  if (notification.type === 'expert_verification_changed' && notification.payload?.status) {
-    return `${meta.label}: ${statusMeta('application', notification.payload.status).label}`;
+  if (notification.type === 'expert_verification_changed' && payload.status) {
+    return `${meta.label}: ${statusMeta('application', payload.status).label}`;
   }
-  if (notification.type === 'account_status_changed' && notification.payload?.status) {
-    return `${meta.label}: ${statusMeta('application', notification.payload.status).label}`;
+  if (notification.type === 'account_status_changed' && payload.status) {
+    return `${meta.label}: ${statusMeta('application', payload.status).label}`;
   }
   if (notification.type === 'account_suspension_changed') {
-    return notification.payload?.is_suspended ? 'Your account was suspended' : 'Your account was reactivated';
+    return payload.is_suspended ? 'Your account was suspended' : 'Your account was reactivated';
   }
   return meta.label;
 }
 
-export function NotificationRow({ notification, onPress }: { notification: Notification; onPress: () => void }) {
+export interface NotificationRowProps {
+  notification: Notification;
+  onPress: () => void;
+  /** It leads somewhere: a chevron says so. A row with nowhere to go still clears its dot when pressed. */
+  opens?: boolean;
+  /** "Now" for the relative time; the current time by default. */
+  now?: Date;
+}
+
+/** One notification: an icon tile in its module's tint, what changed, when. Unread ones carry the amber notification dot
+ * (the colour of the bell's count) and `bodyStrong`; read ones are `body` (FA-20). */
+export function NotificationRow({ notification, onPress, opens = false, now }: NotificationRowProps) {
   const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const meta = metaFor(notification.type);
   const Icon = meta.icon;
   const tint = meta.tint(theme.colors);
+  const unread = !notification.read;
+  const what = describe(notification);
+  const when = formatAgo(notification.created_at, { now });
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
-      style={[styles.row, !notification.read && styles.rowUnread]}
+      style={styles.row}
       accessibilityRole="button"
-      accessibilityLabel={`${describe(notification)}${notification.read ? '' : ', unread'}`}
+      accessibilityLabel={`${what}, ${when}${unread ? ', unread' : ''}`}
+      android_ripple={{ color: theme.colors.ripple }}
     >
       <View style={[styles.iconWrap, { backgroundColor: tint.soft }]}>
-        <Icon size={theme.size.iconSm} color={tint.mark} />
+        <Icon size={theme.size.iconMd} color={tint.mark} />
       </View>
       <View style={styles.textWrap}>
-        <Text style={styles.label} numberOfLines={2}>
-          {describe(notification)}
-        </Text>
-        <Text style={styles.time}>{new Date(notification.created_at).toLocaleString()}</Text>
+        <Text style={unread ? styles.labelUnread : styles.label}>{what}</Text>
+        <Text style={styles.time}>{when}</Text>
       </View>
-      {!notification.read ? <View style={styles.unreadDot} /> : null}
-    </TouchableOpacity>
+      {unread ? <View testID="unread-dot" style={styles.unreadDot} /> : null}
+      {opens ? <ChevronRight color={theme.colors.ink3} size={theme.size.iconButton} /> : null}
+    </Pressable>
   );
 }
 
-function makeStyles({ colors, space, radius, typography, size, borders }: Theme, accent: Accent) {
+function makeStyles({ colors, space, radius, typography, size, components }: Theme) {
+  const { row } = components;
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: space[3],
-      paddingHorizontal: space[4],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    rowUnread: {
-      backgroundColor: accent.soft,
+      gap: row.gap,
+      minHeight: row.minHeight,
+      paddingHorizontal: row.paddingX,
+      paddingVertical: row.paddingY,
+      backgroundColor: colors.surface,
     },
     iconWrap: {
       width: size.avatarMd,
       height: size.avatarMd,
-      borderRadius: radius.pill,
+      borderRadius: radius.sm,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: space[3],
     },
     textWrap: {
       flex: 1,
+      minWidth: 0,
     },
     label: {
-      ...typography.caption,
+      ...typography.body,
+      color: colors.ink,
+    },
+    labelUnread: {
+      ...typography.bodyStrong,
       color: colors.ink,
     },
     time: {
-      marginTop: space[1] / 2,
       ...typography.caption,
       color: colors.ink2,
     },
@@ -139,8 +165,8 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme,
       width: size.dot,
       height: size.dot,
       borderRadius: radius.pill,
-      backgroundColor: accent.fill,
-      marginLeft: space[2],
+      backgroundColor: colors.module.notifications,
+      marginRight: space[1],
     },
   });
 }
