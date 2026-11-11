@@ -22,7 +22,7 @@ dependencies = [
   # matrix pairs with 2.6.0.
   "torch==2.6.0",
   "torchvision==0.21.0",
-  "pillow==12.3.0",
+  "pillow==13.0.0",
   "pyjwt[crypto]==2.15.0",
   "cachetools==5.5.0",
   "sentry-sdk[fastapi]==2.70.0",
