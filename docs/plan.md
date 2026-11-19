@@ -15,7 +15,12 @@
 >   first run's 7 failures were tests left behind by B3, A6 and A7 renames, plus 5 operations no test called, among them
 >   the merged `/disease/crops`; tests updated, no assertion weakened); fresh debug and release builds walked on the
 >   Pixel 8 emulator (guest to placed order).
-> - **Not done:** hosted deployment of the API and the hosted `db push` (A4–B5 migrations), release signing and EAS,
+> - **Hosted database (2026-11-20, maintainer's request):** restarted (it had stopped answering; now Postgres 17.11) and
+>   the 11 A4–B5 migrations pushed with `npx supabase db push` (69 in step, latest `20261025090000`), after a dry run
+>   and a read-only check that its audit log held no row the A7 rename would touch. Its only account is the
+>   maintainer's admin; there are no listings or orders. Advisors: only the documented expected findings, plus
+>   leaked-password protection (an Auth dashboard toggle) still off.
+> - **Not done:** hosted deployment of the API, release signing and EAS,
 >   Sentry and backups (G5, G3), the per-role TalkBack and dark-mode pass, usability testing with real users, B6's
 >   fresh-context attack, the agronomist's review of the disease texts.
 
