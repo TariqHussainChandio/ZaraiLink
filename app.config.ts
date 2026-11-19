@@ -26,6 +26,18 @@ const FONT_FILES = {
   mono700: require.resolve('@expo-google-fonts/atkinson-hyperlegible-mono/700Bold/AtkinsonHyperlegibleMono_700Bold.ttf'),
 };
 
+// A release build blocks plain HTTP (Android 9+), so out of the box it cannot reach the local stack at
+// http://10.0.2.2, which only the debug manifest allows (B6 release check). ZL_LOCAL_RELEASE=1 at prebuild time
+// allows cleartext in a release build made to test against the local stack on the emulator. It is never set in CI,
+// and it refuses a production build: a shipped release talks HTTPS only.
+function allowCleartextForLocalRelease(): boolean {
+  if (process.env.ZL_LOCAL_RELEASE !== '1') return false;
+  if (process.env.EXPO_PUBLIC_APP_ENV === 'production') {
+    throw new Error('ZL_LOCAL_RELEASE=1 allows plain HTTP and cannot be used for a production build');
+  }
+  return true;
+}
+
 const config: ExpoConfig = {
   name: 'ZaraiLink',
   slug: 'zarailink',
@@ -102,6 +114,7 @@ const config: ExpoConfig = {
           // turns the code into something like ERR_X and breaks any JavaScript that checks for it
           // (see frontend/utils/photoPicker.ts). This keeps the names.
           extraProguardRules: '-keepnames class * extends expo.modules.kotlin.exception.CodedException',
+          ...(allowCleartextForLocalRelease() ? { usesCleartextTraffic: true } : {}),
         },
       },
     ],
