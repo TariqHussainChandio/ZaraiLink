@@ -1,9 +1,4 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createListing,
   deleteListing,
@@ -46,6 +41,9 @@ export function useListings(filters: Omit<FetchListingsParams, 'page'>) {
     queryKey: queryKeys.marketplace.listings(filters),
     queryFn: ({ pageParam }) => fetchListings({ ...filters, page: pageParam }),
     initialPageParam: 0,
+    // A new search or filter keeps the old grid on screen until the new one arrives, instead of flashing skeletons on
+    // every change (MK-13).
+    placeholderData: keepPreviousData,
     // An empty page is the end of the feed.
     getNextPageParam: (lastPage, _pages, lastPageParam) =>
       lastPage.length > 0 ? lastPageParam + 1 : undefined,
@@ -56,15 +54,6 @@ export function useListing(id: string) {
   return useQuery({
     queryKey: queryKeys.marketplace.listing(id),
     queryFn: () => fetchListingById(id),
-  });
-}
-
-/** Listings that suit a crop, for the disease result's "related products" (the first few, newest first). */
-export function useRelatedListings(cropName: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.marketplace.listings({ cropName }),
-    queryFn: async () => (await fetchListings({ cropName })).slice(0, 5),
-    enabled: !!cropName,
   });
 }
 

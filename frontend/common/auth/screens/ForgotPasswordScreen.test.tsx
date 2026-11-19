@@ -25,7 +25,7 @@ describe('ForgotPasswordScreen', () => {
     const navigation = makeNavigation();
     await renderWithQuery(<ForgotPasswordScreen navigation={navigation} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'farmer@example.com');
-    await fireEvent.press(screen.getByText('Send code'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Send code' }));
 
     expect(mockResetPassword).toHaveBeenCalledWith('farmer@example.com');
     expect(navigation.navigate).toHaveBeenCalledWith('VerifyOtp', {
@@ -39,10 +39,10 @@ describe('ForgotPasswordScreen', () => {
     const navigation = makeNavigation();
     await renderWithQuery(<ForgotPasswordScreen navigation={navigation} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'missing@example.com');
-    await fireEvent.press(screen.getByText('Send code'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Send code' }));
 
     // An error the app does not recognise shows the screen's own message, never the raw text.
-    expect(await screen.findByText('Failed to send reset email')).toBeTruthy();
+    expect(await screen.findByText('Could not send the code. Try again.')).toBeTruthy();
     expect(screen.queryByText('no such user')).toBeNull();
     expect(navigation.navigate).not.toHaveBeenCalled();
   });
@@ -53,7 +53,7 @@ describe('ForgotPasswordScreen', () => {
     // field error (fixed by upgrading @hookform/resolvers to v5, which supports zod v4).
     await renderWithQuery(<ForgotPasswordScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'not-an-email');
-    await fireEvent.press(screen.getByText('Send code'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Send code' }));
 
     expect(await screen.findByText('Enter a valid email')).toBeTruthy();
     expect(mockResetPassword).not.toHaveBeenCalled();
@@ -64,5 +64,21 @@ describe('ForgotPasswordScreen', () => {
     await renderWithQuery(<ForgotPasswordScreen navigation={navigation} route={{} as never} />);
     await fireEvent.press(screen.getByText('Back to sign in'));
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('trims the email, so a space after a pasted address is not an error', async () => {
+    mockResetPassword.mockResolvedValue(undefined);
+    const navigation = makeNavigation();
+    await renderWithQuery(<ForgotPasswordScreen navigation={navigation} route={{} as never} />);
+    await fireEvent.changeText(screen.getByLabelText('Email'), '  farmer@example.com ');
+    await fireEvent.press(screen.getByRole('button', { name: 'Send code' }));
+
+    expect(mockResetPassword).toHaveBeenCalledWith('farmer@example.com');
+    expect(navigation.navigate).toHaveBeenCalledWith('VerifyOtp', { purpose: 'recovery', email: 'farmer@example.com' });
+  });
+
+  it('does not claim a code was sent to whatever address was typed', async () => {
+    await renderWithQuery(<ForgotPasswordScreen navigation={makeNavigation()} route={{} as never} />);
+    expect(screen.getByText(/If it has an account, a reset code is sent to it/)).toBeTruthy();
   });
 });

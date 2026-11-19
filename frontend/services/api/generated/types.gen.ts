@@ -3616,6 +3616,10 @@ export type PopularProduct = {
  */
 export type PredictRequest = {
     /**
+     * Chosen Crop
+     */
+    chosen_crop?: string | null;
+    /**
      * Disease Case Id
      */
     disease_case_id: string;
@@ -3634,6 +3638,10 @@ export type PredictResponse = {
      */
     created_at: string;
     /**
+     * Crop Matches
+     */
+    crop_matches?: boolean | null;
+    /**
      * Description
      */
     description?: string | null;
@@ -3649,6 +3657,7 @@ export type PredictResponse = {
      * Model Version
      */
     model_version?: string | null;
+    predicted_crop?: SupportedCrop | null;
     /**
      * Predicted Disease
      */
@@ -3675,6 +3684,10 @@ export type PredictionRecord = {
      */
     created_at: string;
     /**
+     * Crop Matches
+     */
+    crop_matches?: boolean | null;
+    /**
      * Description
      */
     description?: string | null;
@@ -3690,6 +3703,7 @@ export type PredictionRecord = {
      * Model Version
      */
     model_version?: string | null;
+    predicted_crop?: SupportedCrop | null;
     /**
      * Predicted Disease
      */
@@ -5056,6 +5070,30 @@ export type SupplierPurchasesReport = {
      * Total Quantity
      */
     total_quantity: number;
+};
+
+/**
+ * SupportedCrop
+ */
+export type SupportedCrop = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * SupportedCropsResponse
+ */
+export type SupportedCropsResponse = {
+    /**
+     * Crops
+     */
+    crops: Array<SupportedCrop>;
 };
 
 /**
@@ -7869,6 +7907,35 @@ export type DiseaseGetCaseResponses = {
 };
 
 export type DiseaseGetCaseResponse = DiseaseGetCaseResponses[keyof DiseaseGetCaseResponses];
+
+export type DiseaseListSupportedCropsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/disease/crops';
+};
+
+export type DiseaseListSupportedCropsErrors = {
+    /**
+     * Request validation failed
+     */
+    422: ProblemDetail;
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type DiseaseListSupportedCropsError = DiseaseListSupportedCropsErrors[keyof DiseaseListSupportedCropsErrors];
+
+export type DiseaseListSupportedCropsResponses = {
+    /**
+     * Successful Response
+     */
+    200: SupportedCropsResponse;
+};
+
+export type DiseaseListSupportedCropsResponse = DiseaseListSupportedCropsResponses[keyof DiseaseListSupportedCropsResponses];
 
 export type DiseaseListKnowledgeData = {
     body?: never;

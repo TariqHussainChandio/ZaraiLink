@@ -54,7 +54,7 @@ describe('ScreenState', () => {
 
     expect(screen.getByText("Couldn't load your products")).toBeTruthy();
     // The stable code's message, never the server's English title.
-    expect(screen.getByText('We could not find what you were looking for.')).toBeTruthy();
+    expect(screen.getByText('That could not be found. It may have been removed.')).toBeTruthy();
     expect(screen.queryByText('Not Found')).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Retry' }));
     expect(refetch).toHaveBeenCalledTimes(1);

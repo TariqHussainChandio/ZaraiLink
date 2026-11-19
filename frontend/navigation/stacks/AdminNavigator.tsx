@@ -15,7 +15,6 @@ import { ConsultationModerationScreen } from '../../admin/screens/ConsultationMo
 import { AdminDashboardScreen } from '../../admin/screens/DashboardScreen';
 import { DiseaseKnowledgeEditScreen } from '../../admin/screens/DiseaseKnowledgeEditScreen';
 import { DiseaseKnowledgeScreen } from '../../admin/screens/DiseaseKnowledgeScreen';
-import { DocumentViewerScreen } from '../../admin/screens/DocumentViewerScreen';
 import { ListingModerationScreen } from '../../admin/screens/ListingModerationScreen';
 import { ModerationScreen } from '../../admin/screens/ModerationScreen';
 import { PlatformOrdersScreen } from '../../admin/screens/PlatformOrdersScreen';
@@ -39,7 +38,6 @@ type AdminStackParamList = {
   [ADMIN_HOME_ROUTES.Notifications]: undefined;
   [ADMIN_HOME_ROUTES.Approvals]: undefined;
   [ADMIN_HOME_ROUTES.ApplicationDetail]: { role: 'dealer' | 'expert'; id: string };
-  [ADMIN_HOME_ROUTES.DocumentViewer]: { url: string; title: string };
   [ADMIN_HOME_ROUTES.RequiredDocuments]: undefined;
   [ADMIN_HOME_ROUTES.ModerationHub]: undefined;
   [ADMIN_HOME_ROUTES.UserManagement]: undefined;
@@ -90,7 +88,6 @@ function ApprovalsNavigator() {
     <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen name={ADMIN_HOME_ROUTES.Approvals} component={ApprovalsScreen} options={{ title: 'Approvals' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.ApplicationDetail} component={ApplicationDetailScreen} options={{ title: 'Application' }} />
-      <Stack.Screen name={ADMIN_HOME_ROUTES.DocumentViewer} component={DocumentViewerScreen} options={({ route }) => ({ title: route.params.title })} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.RequiredDocuments} component={RequiredDocumentsScreen} options={{ title: 'Required documents' }} />
     </Stack.Navigator>
   );

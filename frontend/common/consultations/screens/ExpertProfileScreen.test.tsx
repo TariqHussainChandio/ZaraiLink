@@ -90,7 +90,7 @@ describe('ExpertProfileScreen', () => {
 
     expect(await screen.findByText('Dr. Ahsan')).toBeTruthy();
     expect(screen.getByText('PhD Agronomy')).toBeTruthy();
-    expect(screen.getByText('Plant Diseases, Irrigation')).toBeTruthy();
+    expect(screen.getByText('Plant diseases, Irrigation')).toBeTruthy();
     expect(screen.getByText('Focused on cereal crop diseases.')).toBeTruthy();
     expect(screen.getByText('Very helpful advice.')).toBeTruthy();
     expect(screen.getByText('5.0 (1 review)')).toBeTruthy();
@@ -111,18 +111,23 @@ describe('ExpertProfileScreen', () => {
     expect(await screen.findByText("Couldn't load this expert")).toBeTruthy();
 
     mockFetchExpertById.mockResolvedValue(expert);
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('Dr. Ahsan')).toBeTruthy();
   });
 
   it('navigates to RequestConsultation with the expert id and prefill', async () => {
     mockFetchExpertById.mockResolvedValue(expert);
     mockFetchReviewsForExpert.mockResolvedValue([]);
-    const prefill = { subject: 'Yellow leaves', cropId: null, imageUrl: null };
+    const prefill = {
+      subject: 'Yellow leaves',
+      problemDescription: '',
+      cropId: null,
+      imageUrl: null,
+    };
     const props = makeProps(prefill);
     await renderWithQuery(<ExpertProfileScreen {...props} />);
 
-    await fireEvent.press(await screen.findByText('Request Consultation'));
+    await fireEvent.press(await screen.findByText('Ask an expert'));
     expect(props.navigation.navigate).toHaveBeenCalledWith(CONSULTATIONS_ROUTES.RequestConsultation, {
       expertId: 'e1',
       prefill,
@@ -135,7 +140,7 @@ describe('ExpertProfileScreen', () => {
     mockFetchReviewsForExpert.mockResolvedValue([]);
     await renderWithQuery(<ExpertProfileScreen {...makeProps()} />);
 
-    expect(await screen.findByText('Request Consultation')).toBeTruthy();
+    expect(await screen.findByText('Ask an expert')).toBeTruthy();
     expect(screen.queryByText('Message Expert')).toBeNull();
     expect(screen.queryByText(/^Message/)).toBeNull();
     expect(mockFindOrCreateConversation).not.toHaveBeenCalled();

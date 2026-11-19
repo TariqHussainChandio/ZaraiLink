@@ -1,9 +1,6 @@
 import React from 'react';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import {
-  createTestQueryClient,
-  renderWithQuery,
-} from '../../../testUtils/renderWithProviders';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { queryKeys } from '../../../hooks/keys';
 import { ApiError } from '../../../services/api/errors';
 import { BrowseScreen } from './BrowseScreen';
@@ -11,7 +8,6 @@ import { fetchListings } from '../services/listingsService';
 import { useAuthStore } from '../../../state/authStore';
 import { useCartStore } from '../../../state/cartStore';
 import { useMarketplaceStore } from '../../../state/marketplaceStore';
-import { useNetworkStore } from '../../../state/networkStore';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
 import type { ListingWithRelations } from '../types/marketplace';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
@@ -37,11 +33,10 @@ jest.mock('../services/listingsService', () => ({
 
 const mockFetchListings = fetchListings as jest.Mock;
 
-const listing = (
-  overrides: Partial<ListingWithRelations> = {},
-): ListingWithRelations => ({
+const listing = (overrides: Partial<ListingWithRelations> = {}): ListingWithRelations => ({
   id: 'listing-1',
   owner_id: 'owner-1',
+  inventory_product_id: null,
   category_id: null,
   title: 'Wheat seeds',
   description: null,
@@ -55,7 +50,6 @@ const listing = (
   condition: null,
   location: null,
   seller_role: 'farmer',
-  inventory_product_id: null,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
   category: null,
@@ -70,178 +64,146 @@ function makeNavigation() {
   } as unknown as MarketplaceScreenProps<'Browse'>['navigation'];
 }
 
+const wait = () => ({ timeout: 3000 });
+
 beforeEach(() => {
   mockFetchListings.mockReset();
   mockFetchListings.mockResolvedValue([]);
   useAuthStore.setState({ role: 'buyer' } as never);
   useCartStore.setState({ items: [] });
-  useNetworkStore.setState({ isOffline: false });
   useMarketplaceStore.setState({
-    filters: {
-      categoryId: null,
-      search: '',
-      minPrice: null,
-      maxPrice: null,
-      city: null,
-      cropName: null,
-    },
+    filters: { categoryId: null, search: '', minPrice: null, maxPrice: null, city: null, cropName: null },
   });
 });
 
 describe('BrowseScreen', () => {
-  it('loads and renders listings on mount', async () => {
-    // One page, then the empty page that ends the feed (beforeEach), as the API does. A page that never ends kept
-    // FlashList asking for the next one after the test was over (Jest lays the list out at zero height).
-    mockFetchListings.mockResolvedValueOnce([listing()]);
-    await renderWithQuery(
-      <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
-    );
+  it('loads and renders listings on mount, with the price on its plate and who sells it', async () => {
+    mockFetchListings.mockResolvedValue([
+      listing({ owner: { id: 'owner-1', full_name: 'Chaudhry Seeds', avatar_url: null }, location: { country: 'Pakistan', province: 'Punjab', city: 'Sargodha' } }),
+    ]);
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
-    expect(mockFetchListings).toHaveBeenCalledWith(
-      expect.objectContaining({ page: 0 }),
-    );
+    expect(screen.getByLabelText('Rs 100, per kg')).toBeTruthy();
+    expect(screen.getByText('Chaudhry Seeds · Sargodha')).toBeTruthy();
+    expect(mockFetchListings).toHaveBeenCalledWith(expect.objectContaining({ page: 0 }));
   });
 
-  it('shows an empty state when there are no listings', async () => {
-    await renderWithQuery(
-      <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
-    );
-    expect(await screen.findByText('No listings yet')).toBeTruthy();
+  it('says nothing is listed yet, without blaming a filter, when the market is empty', async () => {
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
+    expect(await screen.findByText('Nothing is listed yet')).toBeTruthy();
+    expect(screen.queryByText('No listings match')).toBeNull();
+    // A buyer is not told to "list produce" (MK-14).
+    expect(screen.queryByText(/List what you sell/)).toBeNull();
   });
 
-  it('shows the List button for a farmer and navigates to CreateListing', async () => {
+  it('says "No listings match" with Clear filters when a filter is on, and Clear filters resets them', async () => {
+    useMarketplaceStore.setState({
+      filters: { categoryId: null, search: '', minPrice: null, maxPrice: 500, city: 'Okara', cropName: null },
+    });
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
+
+    expect(await screen.findByText('No listings match')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(useMarketplaceStore.getState().filters.city).toBeNull();
+    expect(useMarketplaceStore.getState().filters.maxPrice).toBeNull();
+  });
+
+  it('offers a seller a "New listing" button that opens the form', async () => {
     useAuthStore.setState({ role: 'farmer' } as never);
     const navigation = makeNavigation();
-    await renderWithQuery(
-      <BrowseScreen navigation={navigation} route={{} as never} />,
-    );
-    await screen.findByText('No listings yet');
+    await renderWithQuery(<BrowseScreen navigation={navigation} route={{} as never} />);
+    await screen.findByText('Nothing is listed yet');
 
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'List produce for sale' }),
-    );
-    expect(navigation.navigate).toHaveBeenCalledWith(
-      MARKETPLACE_ROUTES.CreateListing,
-    );
+    // The empty state and the screen's own button both offer it; the first is enough to prove the route.
+    await fireEvent.press(screen.getAllByRole('button', { name: 'New listing' })[0]!);
+    expect(navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.CreateListing);
   });
 
-  it('hides the fab for a buyer', async () => {
-    await renderWithQuery(
-      <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
-    );
-    await screen.findByText('No listings yet');
-    expect(
-      screen.queryByRole('button', { name: 'List produce for sale' }),
-    ).toBeNull();
+  it('shows a buyer no way to list anything', async () => {
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
+    await screen.findByText('Nothing is listed yet');
+    expect(screen.queryByRole('button', { name: 'New listing' })).toBeNull();
   });
 
   it('navigates to ListingDetail when a listing is pressed', async () => {
-    mockFetchListings.mockResolvedValueOnce([listing({ id: 'listing-42' })]);
+    mockFetchListings.mockResolvedValue([listing({ id: 'listing-42' })]);
     const navigation = makeNavigation();
-    await renderWithQuery(
-      <BrowseScreen navigation={navigation} route={{} as never} />,
-    );
+    await renderWithQuery(<BrowseScreen navigation={navigation} route={{} as never} />);
 
     await fireEvent.press(await screen.findByText('Wheat seeds'));
-    expect(navigation.navigate).toHaveBeenCalledWith(
-      MARKETPLACE_ROUTES.ListingDetail,
-      {
-        listingId: 'listing-42',
-      },
-    );
+    expect(navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.ListingDetail, {
+      listingId: 'listing-42',
+    });
   });
 
-  it('shows an error message with a retry when nothing is cached and the request fails', async () => {
+  it('shows a Banner with the reason and "Try again" when nothing is cached and the request fails', async () => {
     mockFetchListings.mockRejectedValueOnce(
-      new ApiError({
-        status: 0,
-        code: 'network',
-        kind: 'network',
-        message: 'No connection to the server',
-      }),
+      new ApiError({ status: 0, code: 'network', kind: 'network', message: 'No connection to the server' }),
     );
-    await renderWithQuery(
-      <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
-    );
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
 
-    expect(await screen.findByText("Couldn't load listings")).toBeTruthy();
-    expect(screen.queryByText('No connection to the server')).toBeNull();
+    expect(await screen.findByText("Couldn't load the market")).toBeTruthy();
+    expect(screen.getByText('No connection. Check your internet, then try again.')).toBeTruthy();
 
-    mockFetchListings.mockResolvedValueOnce([listing()]);
-    await fireEvent.press(screen.getByText('Retry'));
-    expect(await screen.findByText('Wheat seeds')).toBeTruthy();
+    mockFetchListings.mockResolvedValue([listing()]);
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Wheat seeds', {}, wait())).toBeTruthy();
   });
 
   it('keeps showing the cached listings when the device is offline (the refetch fails)', async () => {
-    // Offline, the global OfflineBanner says why the copy is old, so the screen adds no banner of its own (ScreenState).
-    useNetworkStore.setState({ isOffline: true });
     const queryClient = createTestQueryClient();
-    queryClient.setQueryData(queryKeys.marketplace.listings({}), {
-      pages: [[listing()]],
-      pageParams: [0],
-    });
+    queryClient.setQueryData(queryKeys.marketplace.listings({}), { pages: [[listing()]], pageParams: [0] });
     mockFetchListings.mockRejectedValue(
-      new ApiError({
-        status: 0,
-        code: 'network',
-        kind: 'network',
-        message: 'No connection to the server',
-      }),
+      new ApiError({ status: 0, code: 'network', kind: 'network', message: 'No connection to the server' }),
     );
-    await renderWithQuery(
-      <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
-      queryClient,
-    );
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />, queryClient);
 
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
     await waitFor(() => expect(mockFetchListings).toHaveBeenCalled());
     expect(screen.getByText('Wheat seeds')).toBeTruthy();
-    expect(screen.queryByText("Couldn't load listings")).toBeNull();
   });
 
-  it('keeps the cached listings under a Retry banner when the refetch fails online', async () => {
-    const queryClient = createTestQueryClient();
-    queryClient.setQueryData(queryKeys.marketplace.listings({}), {
-      pages: [[listing()]],
-      pageParams: [0],
-    });
-    mockFetchListings.mockRejectedValue(
-      new ApiError({
-        status: 500,
-        code: 'unknown',
-        kind: 'server',
-        message: 'Boom',
-      }),
-    );
-    await renderWithQuery(
-      <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
-      queryClient,
-    );
+  it('keeps the old grid on screen while a new search loads, instead of flashing skeletons (MK-13)', async () => {
+    mockFetchListings.mockResolvedValueOnce([listing()]);
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
+    await screen.findByText('Wheat seeds');
 
-    expect(await screen.findByText("Couldn't load listings")).toBeTruthy();
-    expect(
-      screen.getByText('Showing the last copy saved on this phone.'),
-    ).toBeTruthy();
+    let resolveNext: (value: ListingWithRelations[]) => void = () => undefined;
+    mockFetchListings.mockReturnValueOnce(new Promise<ListingWithRelations[]>(resolve => (resolveNext = resolve)));
+    await act(async () => useMarketplaceStore.getState().setFilters({ search: 'urea' }));
+
+    // The request for "urea" is in flight; the wheat card is still there.
+    await waitFor(() => expect(mockFetchListings).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'urea' })));
+    expect(screen.getByText('Wheat seeds')).toBeTruthy();
+
+    await act(async () => resolveNext([listing({ id: 'listing-2', title: 'Urea 50 kg' })]));
+    expect(await screen.findByText('Urea 50 kg')).toBeTruthy();
+  });
+  it('keeps the cached listings under a "Try again" banner when the refetch fails online', async () => {
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.marketplace.listings({}), { pages: [[listing()]], pageParams: [0] });
+    mockFetchListings.mockRejectedValue(new ApiError({ status: 500, code: 'unknown', kind: 'server', message: 'Boom' }));
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />, queryClient);
+
+    expect(await screen.findByText("Couldn't load the market", {}, wait())).toBeTruthy();
     expect(screen.getByText('Wheat seeds')).toBeTruthy();
   });
 
   it('does not keep requesting the next page after a page fails', async () => {
-    // The first page is full, so there may be a next one; asking for it fails. The list must not ask again and again.
+    // The first page may have a next one; asking for it fails. FlashList calls onEndReached on every re-render of a short
+    // list, so without the guard a failed page was re-requested in a tight loop.
     mockFetchListings
       .mockResolvedValueOnce([listing()])
-      .mockRejectedValue(
-        new ApiError({ status: 500, code: 'unknown', kind: 'server', message: 'Boom' }),
-      );
-    await renderWithQuery(
-      <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
-    );
+      .mockRejectedValue(new ApiError({ status: 500, code: 'unknown', kind: 'server', message: 'Boom' }));
+    await renderWithQuery(<BrowseScreen navigation={makeNavigation()} route={{} as never} />);
 
-    expect(await screen.findByText("Couldn't load listings")).toBeTruthy();
-    const callsAfterFailure = mockFetchListings.mock.calls.length;
+    expect(await screen.findByText('Wheat seeds')).toBeTruthy();
+    await waitFor(() => expect(mockFetchListings.mock.calls.length).toBeGreaterThanOrEqual(1));
+    const callsSoFar = mockFetchListings.mock.calls.length;
     await new Promise(resolve => setTimeout(resolve, 200));
-    expect(mockFetchListings.mock.calls.length).toBe(callsAfterFailure);
-    expect(callsAfterFailure).toBeLessThanOrEqual(2);
+    expect(mockFetchListings.mock.calls.length).toBe(callsSoFar);
+    expect(callsSoFar).toBeLessThanOrEqual(2);
     expect(screen.getByText('Wheat seeds')).toBeTruthy();
   });
 });

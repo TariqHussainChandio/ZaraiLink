@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { queryKeys } from '../../../hooks/keys';
 import { RequestConsultationScreen } from './RequestConsultationScreen';
@@ -9,19 +9,25 @@ import {
   updateConsultationImages,
   uploadConsultationAttachments,
 } from '../services/consultationService';
+import { pickPhotos } from '../../../utils/photoPicker';
+import { fetchExpertById } from '../../../expert/services/expertService';
+import { fetchReviewsForExpert } from '../../reviews/services/reviewsService';
 import { useAuthStore } from '../../../state/authStore';
-import { pickFromLibrary } from '../../../utils/photoPicker';
 import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
 
 const queryClient = createTestQueryClient();
 
-// The picker's own re-encoding is tested with photoPicker; here only what it hands back matters.
 jest.mock('../../../utils/photoPicker', () => ({
-  pickFromLibrary: jest.fn(),
+  pickPhotos: jest.fn(),
 }));
-
 jest.mock('../../../farmer/services/farmService', () => ({
   fetchFarms: jest.fn(),
+}));
+jest.mock('../../../expert/services/expertService', () => ({
+  fetchExpertById: jest.fn(),
+}));
+jest.mock('../../reviews/services/reviewsService', () => ({
+  fetchReviewsForExpert: jest.fn(),
 }));
 jest.mock('../services/consultationService', () => ({
   createConsultationRequest: jest.fn(),
@@ -33,11 +39,13 @@ const mockFetchFarms = fetchFarms as jest.Mock;
 const mockCreateConsultationRequest = createConsultationRequest as jest.Mock;
 const mockUpdateConsultationImages = updateConsultationImages as jest.Mock;
 const mockUploadConsultationAttachments = uploadConsultationAttachments as jest.Mock;
-const mockPickFromLibrary = pickFromLibrary as jest.Mock;
+const mockPickPhotos = pickPhotos as jest.Mock;
+const mockFetchExpertById = fetchExpertById as jest.Mock;
+const mockFetchReviews = fetchReviewsForExpert as jest.Mock;
 
 function makeProps(prefill?: unknown) {
   return {
-    navigation: { goBack: jest.fn() },
+    navigation: { replace: jest.fn() },
     route: { params: { expertId: 'expert1', prefill } },
   } as unknown as ConsultationsScreenProps<'RequestConsultation'>;
 }
@@ -48,30 +56,38 @@ describe('RequestConsultationScreen', () => {
     mockCreateConsultationRequest.mockReset();
     mockUpdateConsultationImages.mockReset();
     mockUploadConsultationAttachments.mockReset();
-    mockPickFromLibrary.mockReset();
+    mockPickPhotos.mockReset();
+    mockFetchExpertById.mockReset().mockResolvedValue({
+      id: 'expert1',
+      profile: { id: 'expert1', full_name: 'Dr Ali' },
+      expert_specializations: [],
+    });
+    mockFetchReviews.mockReset().mockResolvedValue([]);
     useAuthStore.setState({ user: { id: 'u1' } as never });
     queryClient.clear();
     queryClient.setQueryData(queryKeys.marketplace.crops(), [{ id: 'crop1', name: 'Wheat', category: null }]);
   });
 
-  it('renders the form with a default medium priority', async () => {
+  it('renders the form with Medium urgency chosen', async () => {
     await renderWithQuery(<RequestConsultationScreen {...makeProps()} />, queryClient);
     expect(await screen.findByLabelText('Subject')).toBeTruthy();
-    expect(screen.getByText('Medium')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Medium' }).props.accessibilityState).toMatchObject({ selected: true });
   });
 
-  it('pre-fills the subject from a disease-advisory handoff and leaves the description to the farmer', async () => {
+  it("brings the scan's crop and photo along, never its description", async () => {
     const prefill = {
       subject: 'Yellowing wheat leaves',
+      problemDescription: 'AI text that must not appear',
       cropId: 'crop1',
-      imageUrl: null,
+      imageUrl: 'https://example.com/leaf.jpg',
     };
     await renderWithQuery(<RequestConsultationScreen {...makeProps(prefill)} />, queryClient);
 
     expect(await screen.findByLabelText('Subject')).toBeTruthy();
-    expect(screen.getByLabelText('Subject').props.value).toBe('Yellowing wheat leaves');
-    // BR-13, SRDS §34-§36: AI-written text never lands in the farmer's own field.
     expect(screen.getByLabelText('Describe the problem').props.value).toBe('');
+    expect(screen.queryByText('AI text that must not appear')).toBeNull();
+    expect(screen.getByText('What do you see? Since when?')).toBeTruthy();
+    expect(screen.getByLabelText('Photo 1 of 1')).toBeTruthy();
   });
 
   it('shows the Farm select once the farmer’s farms load', async () => {
@@ -84,18 +100,21 @@ describe('RequestConsultationScreen', () => {
     await renderWithQuery(<RequestConsultationScreen {...makeProps()} />, queryClient);
     await screen.findByLabelText('Subject');
 
-    await fireEvent.press(screen.getByText('Send Request'));
+    await fireEvent.press(screen.getByText('Send request'));
     expect(await screen.findByText('Enter a subject')).toBeTruthy();
     expect(mockCreateConsultationRequest).not.toHaveBeenCalled();
   });
 
-  it('submits the request with no crop, farm, or images', async () => {
+  it('sends the request, opens the new case and confirms it to the expert by name', async () => {
     mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
     const props = makeProps();
     await renderWithQuery(<RequestConsultationScreen {...props} />, queryClient);
     await fireEvent.changeText(await screen.findByLabelText('Subject'), 'Aphids on cotton');
+    // The expert's name is what the confirmation uses.
+    await waitFor(() => expect(mockFetchExpertById).toHaveBeenCalled());
 
-    await fireEvent.press(screen.getByText('Send Request'));
+    await fireEvent.press(screen.getByText('Send request'));
+    await waitFor(() => expect(props.navigation.replace).toHaveBeenCalled());
 
     expect(mockCreateConsultationRequest).toHaveBeenCalledWith({
       expertId: 'expert1',
@@ -107,39 +126,87 @@ describe('RequestConsultationScreen', () => {
       priority: 'medium',
     });
     expect(mockUploadConsultationAttachments).not.toHaveBeenCalled();
-    expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(props.navigation.replace).toHaveBeenCalledWith('ConsultationDetail', { consultationId: 'c1' });
+    expect(await screen.findByText('Request sent to Dr Ali')).toBeTruthy();
   });
 
-  it('uploads picked photos and attaches them after creating the consultation', async () => {
-    mockPickFromLibrary.mockResolvedValue([{ uri: 'file://photo1.jpg', fileName: 'photo1.jpg', mimeType: 'image/jpeg' }]);
+  it('adds photos to the ones chosen, lets one be removed, and uploads the rest after creating the request', async () => {
+    mockPickPhotos
+      .mockResolvedValueOnce([
+        {
+          uri: 'file://photo1.jpg',
+          fileName: 'photo1.jpg',
+          mimeType: 'image/jpeg',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          uri: 'file://photo2.jpg',
+          fileName: 'photo2.jpg',
+          mimeType: 'image/jpeg',
+        },
+      ]);
     mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
-    mockUploadConsultationAttachments.mockResolvedValue(['c1/u1/photo1.jpg']);
+    mockUploadConsultationAttachments.mockResolvedValue(['c1/u1/photo2.jpg']);
     const props = makeProps();
     await renderWithQuery(<RequestConsultationScreen {...props} />, queryClient);
     await fireEvent.changeText(await screen.findByLabelText('Subject'), 'Aphids on cotton');
-    await fireEvent.press(screen.getByLabelText('Add photos'));
-    expect(await screen.findByLabelText('Photo 1 of 1')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Send Request'));
+    await fireEvent.press(screen.getByText('Add photo'));
+    expect(await screen.findByLabelText('Photo 1 of 1')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Add photo'));
+    expect(await screen.findByLabelText('Photo 2 of 2')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Remove photo 1'));
+    expect(screen.queryByLabelText('Photo 2 of 2')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Send request'));
+    await waitFor(() => expect(props.navigation.replace).toHaveBeenCalled());
 
     expect(mockUploadConsultationAttachments).toHaveBeenCalledWith('c1', 'u1', [
-      { uri: 'file://photo1.jpg', fileName: 'photo1.jpg', mimeType: 'image/jpeg' },
+      {
+        uri: 'file://photo2.jpg',
+        fileName: 'photo2.jpg',
+        mimeType: 'image/jpeg',
+      },
     ]);
-    expect(mockUpdateConsultationImages).toHaveBeenCalledWith('c1', ['c1/u1/photo1.jpg']);
-    expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(mockUpdateConsultationImages).toHaveBeenCalledWith('c1', ['c1/u1/photo2.jpg']);
   });
 
-  it('shows the error on screen and does not navigate back when the request fails', async () => {
+  it('opens the case and says the photos did not upload, instead of calling the sent request a failure', async () => {
+    mockPickPhotos.mockResolvedValue([
+      {
+        uri: 'file://photo1.jpg',
+        fileName: 'photo1.jpg',
+        mimeType: 'image/jpeg',
+      },
+    ]);
+    mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
+    mockUploadConsultationAttachments.mockRejectedValue(new Error('Storage down'));
+    const props = makeProps();
+    await renderWithQuery(<RequestConsultationScreen {...props} />, queryClient);
+    await fireEvent.changeText(await screen.findByLabelText('Subject'), 'Aphids on cotton');
+    await fireEvent.press(screen.getByText('Add photo'));
+
+    await fireEvent.press(screen.getByText('Send request'));
+    await waitFor(() =>
+      expect(props.navigation.replace).toHaveBeenCalledWith('ConsultationDetail', { consultationId: 'c1' }),
+    );
+
+    expect(await screen.findByText('Request sent, but the photos did not upload. Send them in the case.')).toBeTruthy();
+    expect(mockCreateConsultationRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the reason in a banner and stays on the form when the request fails', async () => {
     mockCreateConsultationRequest.mockRejectedValue(new Error('Server unavailable'));
     const props = makeProps();
     await renderWithQuery(<RequestConsultationScreen {...props} />, queryClient);
     await fireEvent.changeText(await screen.findByLabelText('Subject'), 'Aphids on cotton');
 
-    await fireEvent.press(screen.getByText('Send Request'));
+    await fireEvent.press(screen.getByText('Send request'));
 
-    expect(await screen.findByText('Could not send request')).toBeTruthy();
+    expect(await screen.findByText("Couldn't send your request")).toBeTruthy();
     expect(screen.getByText('Server unavailable')).toBeTruthy();
-    expect(props.navigation.goBack).not.toHaveBeenCalled();
+    expect(props.navigation.replace).not.toHaveBeenCalled();
   });
 
   it('shows no AI report row for a plain question and sends no disease case', async () => {
@@ -148,15 +215,17 @@ describe('RequestConsultationScreen', () => {
     await fireEvent.changeText(await screen.findByLabelText('Subject'), 'Aphids on cotton');
     expect(screen.queryByText('AI report attached')).toBeNull();
 
-    await fireEvent.press(screen.getByText('Send Request'));
+    await fireEvent.press(screen.getByText('Send request'));
 
+    await waitFor(() => expect(mockCreateConsultationRequest).toHaveBeenCalled());
     expect(mockCreateConsultationRequest.mock.calls[0][0].diseaseCaseId).toBeUndefined();
   });
 
-  it('carries the AI disease case to the expert from a scan handoff', async () => {
+  it('carries the AI disease case to the expert from a scan handoff (A6)', async () => {
     mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
     const prefill = {
-      subject: 'Tomato — Early blight',
+      subject: 'Disease advisory: Tomato — Early blight',
+      problemDescription: '',
       cropId: null,
       imageUrl: null,
       diseaseCaseId: 'case-1',
@@ -168,26 +237,27 @@ describe('RequestConsultationScreen', () => {
     expect(await screen.findByText('AI report attached')).toBeTruthy();
     expect(screen.getByText('The expert will see the AI result and give their own assessment.')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Send Request'));
+    await fireEvent.press(screen.getByText('Send request'));
 
-    expect(mockCreateConsultationRequest).toHaveBeenCalledWith(
-      expect.objectContaining({
-        expertId: 'expert1',
-        subject: 'Tomato — Early blight',
-        diseaseCaseId: 'case-1',
-        // The AI text stays in the linked case, not in the farmer's description.
-        problemDescription: '',
-      }),
+    await waitFor(() =>
+      expect(mockCreateConsultationRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          expertId: 'expert1',
+          diseaseCaseId: 'case-1',
+          // The AI text stays in the linked case, not in the farmer's description.
+          problemDescription: '',
+        }),
+      ),
     );
-    expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
     // A null photo link (no longer in storage) shows no preview.
     expect(screen.queryByLabelText('Photo from your scan')).toBeNull();
   });
 
-  it('previews the case photo but does not re-upload its expiring signed link', async () => {
+  it('previews the case photo but does not re-upload its expiring signed link (A6)', async () => {
     mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
     const prefill = {
-      subject: 'Tomato — Early blight',
+      subject: 'Sick tomato plant',
+      problemDescription: '',
       cropId: null,
       imageUrl: 'https://signed.example/case-1.jpg?token=short-lived',
       diseaseCaseId: 'case-1',
@@ -197,53 +267,33 @@ describe('RequestConsultationScreen', () => {
 
     expect(await screen.findByLabelText('Photo from your scan')).toBeTruthy();
     expect(screen.getByText('Photo from your scan (attached with the AI report)')).toBeTruthy();
-    // It is not an attachment: the picker still offers to add photos, not to change one.
-    expect(screen.getByLabelText('Add photos')).toBeTruthy();
+    // It is not an attachment of its own.
     expect(screen.queryByLabelText('Photo 1 of 1')).toBeNull();
 
-    await fireEvent.press(screen.getByText('Send Request'));
+    await fireEvent.press(screen.getByText('Send request'));
 
-    expect(mockCreateConsultationRequest).toHaveBeenCalledWith(expect.objectContaining({ diseaseCaseId: 'case-1' }));
+    await waitFor(() =>
+      expect(mockCreateConsultationRequest).toHaveBeenCalledWith(expect.objectContaining({ diseaseCaseId: 'case-1' })),
+    );
     // The expert sees the photo through the case summary; nothing is fetched from the signed URL.
     expect(mockUploadConsultationAttachments).not.toHaveBeenCalled();
-    expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
-  });
-
-  it('uploads only the photos the farmer adds by hand alongside a case photo', async () => {
-    mockPickFromLibrary.mockResolvedValue([{ uri: 'file://photo1.jpg', fileName: 'photo1.jpg', mimeType: 'image/jpeg' }]);
-    mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
-    mockUploadConsultationAttachments.mockResolvedValue(['c1/u1/photo1.jpg']);
-    const prefill = {
-      subject: 'Tomato — Early blight',
-      cropId: null,
-      imageUrl: 'https://signed.example/case-1.jpg?token=short-lived',
-      diseaseCaseId: 'case-1',
-    };
-    await renderWithQuery(<RequestConsultationScreen {...makeProps(prefill)} />, queryClient);
-    await fireEvent.press(await screen.findByLabelText('Add photos'));
-    expect(await screen.findByLabelText('Photo 1 of 1')).toBeTruthy();
-
-    await fireEvent.press(screen.getByText('Send Request'));
-
-    expect(mockUploadConsultationAttachments).toHaveBeenCalledWith('c1', 'u1', [
-      { uri: 'file://photo1.jpg', fileName: 'photo1.jpg', mimeType: 'image/jpeg' },
-    ]);
-    expect(mockUpdateConsultationImages).toHaveBeenCalledWith('c1', ['c1/u1/photo1.jpg']);
   });
 
   it('still attaches the scan photo when no case was recorded', async () => {
     mockCreateConsultationRequest.mockResolvedValue({ id: 'c1' });
     mockUploadConsultationAttachments.mockResolvedValue(['c1/u1/disease-photo.jpg']);
-    const prefill = { subject: 'Crop disease advisory', cropId: null, imageUrl: 'file://scan.jpg' };
+    const prefill = { subject: 'Sick plant', problemDescription: '', cropId: null, imageUrl: 'file://scan.jpg' };
     await renderWithQuery(<RequestConsultationScreen {...makeProps(prefill)} />, queryClient);
 
     expect(await screen.findByLabelText('Photo 1 of 1')).toBeTruthy();
     expect(screen.queryByLabelText('Photo from your scan')).toBeNull();
 
-    await fireEvent.press(screen.getByText('Send Request'));
+    await fireEvent.press(screen.getByText('Send request'));
 
-    expect(mockUploadConsultationAttachments).toHaveBeenCalledWith('c1', 'u1', [
-      { uri: 'file://scan.jpg', fileName: 'disease-photo.jpg', mimeType: 'image/jpeg' },
-    ]);
+    await waitFor(() =>
+      expect(mockUploadConsultationAttachments).toHaveBeenCalledWith('c1', 'u1', [
+        { uri: 'file://scan.jpg', fileName: 'disease-photo.jpg', mimeType: 'image/jpeg' },
+      ]),
+    );
   });
 });

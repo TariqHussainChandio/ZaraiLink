@@ -11,7 +11,7 @@ Disease cases and prediction. `engine.py` runs the model in `checkpoints/`, whic
 
 ## Public API
 
-Other modules call only `service.py` and use only the models in `schemas.py`; the reality gate's `module-boundary` rule fails any other import. Service functions today: `create_case`, `get_case_for_user`, `predict`, `list_knowledge`, and `fetch_case_report(access_token, case_id)` for other modules (the consultations lane reads the case and its AI report as the caller, so RLS decides). The report text comes from the `disease_knowledge` table.
+Other modules call only `service.py` and use only the models in `schemas.py`; the reality gate's `module-boundary` rule fails any other import. Service functions today: `create_case`, `get_case_for_user`, `predict`, `list_knowledge`, `supported_crops`, and `fetch_case_report(access_token, case_id)` for other modules (the consultations lane reads the case and its AI report as the caller, so RLS decides). The report text comes from the `disease_knowledge` table. The supported crops (D16) are derived from the model's class list; `predict` takes an optional `chosen_crop` and answers `predicted_crop` and `crop_matches`, withholding the treatment on a mismatch.
 
 ## Layers
 

@@ -1,7 +1,7 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useInsets } from '../../hooks/useInsets';
 import { type Accent, type Theme, useRoleAccent, useTheme } from '../../theme';
 
 /** Each role's bottom navigation (passed as a bottom-tab navigator's `tabBar`): three to five destinations, the active
@@ -10,7 +10,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
-  const insets = useSafeAreaInsets();
+  const insets = useInsets();
 
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom }]} accessibilityRole="tablist">
@@ -34,6 +34,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             accessibilityState={{ selected: focused }}
             accessibilityLabel={options.tabBarBadge ? `${label}, new` : label}
             testID={options.tabBarButtonTestID}
+            // Every tab ripples when pressed (D15); the tab fills its slot, so the ripple is its whole 64 dp cell.
+            android_ripple={{ color: theme.colors.ripple }}
             style={styles.tab}
           >
             <View style={[styles.pill, focused && styles.pillActive]}>

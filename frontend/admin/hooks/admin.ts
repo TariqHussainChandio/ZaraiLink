@@ -4,19 +4,18 @@ import {
   decideDealerApplication,
   dismissReport,
   fetchAllRequiredDocuments,
+  fetchAuditLogsPage,
   fetchDealerApplication,
   fetchDealerApplications,
-  resolveDealerDocumentUrl,
-  updateRequiredDocument,
-  type DealerApplicationForAdmin,
-  type RequiredDocumentInput,
-  fetchAllOrders,
-  fetchAllProfiles,
-  fetchAuditLogs,
+  fetchModerationListingsPage,
+  fetchOrdersPage,
   fetchPlatformStats,
-  fetchReports,
+  fetchProfilesPage,
+  fetchReportsPage,
+  resolveDealerDocumentUrl,
   resolveReport,
   setProfileSuspended,
+  updateRequiredDocument,
   updateUserRole,
   fetchAiActivity,
   fetchDiseaseKnowledge,
@@ -34,6 +33,8 @@ import {
   hideReview,
   moderateConsultation,
   restoreReview,
+  type DealerApplicationForAdmin,
+  type RequiredDocumentInput,
 } from '../services/adminService';
 import type { DiseaseKnowledgeEntry, DiseaseKnowledgeUpdate } from '../types/ai';
 import type { ConsultationStatus } from '../types/consultations';
@@ -50,7 +51,6 @@ import {
 import {
   createCategory,
   deleteCategory,
-  fetchAllListingsForModeration,
   fetchListingById,
   updateCategory,
   updateListingStatus,
@@ -59,9 +59,13 @@ import {
 } from '../../common/marketplace';
 import { fetchMessageById, redactMessage } from '../../common/messaging';
 import { fetchReviewById } from '../../common/reviews';
+import { statusMeta } from '../../common/constants/status';
 import type { Role } from '../../common/constants/roles';
+import type { Profile } from '../../common/types/profile';
 import type { ReportStatus, ReportWithReporter } from '../types/reports';
 import { queryKeys } from '../../hooks/keys';
+import { formatRs } from '../../utils/money';
+import { useAdminPages } from './useAdminPages';
 
 /*
  * Every admin write below is audit-logged by the API (BR-15); the hooks only decide what refetches afterwards. The
@@ -87,13 +91,16 @@ export function usePlatformStats() {
   return useQuery({ queryKey: queryKeys.admin.stats(), queryFn: fetchPlatformStats });
 }
 
-/** The audit log, filtered on the server by one SRDS §51 event name when `action` is given. */
-export function useAuditLogs(action?: string) {
-  return useQuery({
-    queryKey: [...queryKeys.admin.auditLogs(), action ?? 'all'],
-    queryFn: () => fetchAuditLogs({ action }),
-    staleTime: 0,
-  });
+/**
+ * The audit log newest first, a page at a time, filtered on the server by one SRDS §51 event name when `action` is
+ * given and by one table when `entity` is.
+ */
+export function useAuditLogPages(filter: { action?: string; entity?: string }, loadAll: boolean) {
+  return useAdminPages(
+    [...queryKeys.admin.auditLogs(), 'pages', filter.action ?? 'all', filter.entity ?? 'all'],
+    offset => fetchAuditLogsPage({ action: filter.action, targetEntity: filter.entity }, offset),
+    { loadAll },
+  );
 }
 
 /** The §51 event names and labels; reference data, so it is kept for the session. */
@@ -106,12 +113,13 @@ export function useAdminQueues() {
   return useQuery({ queryKey: moderationKeys.queues(), queryFn: fetchAdminQueues, staleTime: 0 });
 }
 
-export function useAllOrders(status?: 'disputed') {
-  return useQuery({
-    queryKey: [...queryKeys.admin.orders(), status ?? 'all'],
-    queryFn: () => fetchAllOrders(status),
-    staleTime: 0,
-  });
+/** Every order a page at a time, or only the disputed ones (the dispute queue). */
+export function useOrderPages(status: 'disputed' | undefined, loadAll: boolean) {
+  return useAdminPages(
+    [...queryKeys.admin.orders(), 'pages', status ?? 'all'],
+    offset => fetchOrdersPage(offset, status),
+    { loadAll },
+  );
 }
 
 function useInvalidateAdmin() {
@@ -121,9 +129,19 @@ function useInvalidateAdmin() {
 
 // ---- users
 
-/** Every user. Dealer applications are decided from Approvals, after reading them (A3b). */
-export function useProfiles() {
-  return useQuery({ queryKey: queryKeys.admin.profiles(), queryFn: () => fetchAllProfiles(), staleTime: 0 });
+export interface ProfileFilter {
+  role?: Role;
+  accountStatus?: Profile['account_status'];
+}
+
+/** Users, filtered by the server on role and account status. Dealer applications are decided from Approvals, after
+ * reading them (A3b). */
+export function useProfilePages(filter: ProfileFilter, loadAll: boolean) {
+  return useAdminPages(
+    [...queryKeys.admin.profiles(`${filter.role ?? 'any'}:${filter.accountStatus ?? 'any'}`), 'pages'],
+    offset => fetchProfilesPage(filter, offset),
+    { loadAll },
+  );
 }
 
 export function useSetProfileSuspended() {
@@ -153,12 +171,8 @@ export function useUpdateUserRole() {
 
 // ---- listings
 
-export function useModerationListings() {
-  return useQuery({
-    queryKey: queryKeys.admin.moderationListings(),
-    queryFn: fetchAllListingsForModeration,
-    staleTime: 0,
-  });
+export function useModerationListingPages(loadAll: boolean) {
+  return useAdminPages([...queryKeys.admin.moderationListings(), 'pages'], fetchModerationListingsPage, { loadAll });
 }
 
 /** A moderation change to a listing shows in the marketplace as well as in the admin list. */
@@ -265,6 +279,41 @@ export function useApplicationDocumentUrl() {
   });
 }
 
+/** A photographed document's name and its fresh signed link. */
+export interface DocumentLink {
+  id: string;
+  label: string;
+  uri: string;
+}
+
+/**
+ * Fresh links to a set of photographed documents, asked for each time the viewer opens (`enabled`) and dropped when it
+ * closes, because a link lasts ten minutes. A document whose link cannot be had is left out; if none can, the query fails
+ * and the viewer offers "Get a new link" (`refetch`).
+ */
+export function useApplicationDocumentLinks(
+  role: 'dealer' | 'expert',
+  applicantId: string,
+  documents: { id: string; label: string }[],
+  enabled: boolean,
+) {
+  const ids = documents.map(d => d.id).join(',');
+  return useQuery({
+    queryKey: [...queryKeys.admin.all, 'document-links', role, applicantId, ids],
+    queryFn: async (): Promise<DocumentLink[]> => {
+      const resolve = role === 'dealer' ? resolveDealerDocumentUrl : resolveExpertDocumentUrl;
+      const results = await Promise.allSettled(documents.map(async d => ({ id: d.id, label: d.label, uri: await resolve(applicantId, d.id) })));
+      const links = results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []));
+      if (links.length === 0) throw new Error('No document link could be opened');
+      return links;
+    },
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+}
+
 // ---- required documents (A3b)
 
 export function useAllRequiredDocuments() {
@@ -287,48 +336,69 @@ export function useSaveRequiredDocument() {
 
 // ---- reports
 
-export function useReports(status: ReportStatus | undefined) {
-  return useQuery({ queryKey: queryKeys.admin.reports(status), queryFn: () => fetchReports(status), staleTime: 0 });
+export function useReportPages(status: ReportStatus | undefined, loadAll: boolean) {
+  return useAdminPages([...queryKeys.admin.reports(status), 'pages'], offset => fetchReportsPage(status, offset), { loadAll });
+}
+
+/** The reported item as the admin needs to judge it: what it is, what it says, and the facts around it. */
+export interface ReportTarget {
+  heading: string;
+  /** The words themselves (a review's comment, a message), when the target has any. */
+  body: string | null;
+  facts: string[];
+  /** The item could not be loaded (removed, or not visible). */
+  unavailable?: boolean;
 }
 
 /**
- * Best-effort one-line preview of what a report is about, fetched per report's target type. A preview that cannot be
- * loaded (the content was deleted, or is not visible) shows a placeholder instead of failing the list.
+ * Fetches what a report is about, per target type. A target that cannot be loaded (deleted, or not visible) reads as
+ * unavailable instead of failing the sheet. A user has no single-account route in the API, so a reported user shows
+ * without a name (backend work: GET /api/v1/admin/users/{id}).
  */
-async function fetchPreview(report: ReportWithReporter): Promise<string> {
+async function fetchReportTarget(report: ReportWithReporter): Promise<ReportTarget> {
   try {
     switch (report.target_type) {
       case 'listing':
-      case 'product':
-        return (await fetchListingById(report.target_id)).title;
-      case 'review':
-        return (await fetchReviewById(report.target_id)).comment ?? '(no comment)';
-      case 'message':
-        return (await fetchMessageById(report.target_id)).body;
-      case 'expert':
-        return (await fetchExpertById(report.target_id)).profile?.full_name || 'Unknown expert';
-      case 'user': {
-        const profiles = await fetchAllProfiles();
-        return profiles.find(p => p.id === report.target_id)?.full_name || 'Unknown user';
+      case 'product': {
+        const listing = await fetchListingById(report.target_id);
+        return {
+          heading: listing.title,
+          body: listing.description,
+          facts: [
+            `${formatRs(listing.price)} per ${listing.unit}`,
+            `Seller: ${listing.owner?.full_name || 'Unknown'}`,
+            `Now: ${statusMeta('listing', listing.status).label}`,
+          ],
+        };
       }
+      case 'review': {
+        const review = await fetchReviewById(report.target_id);
+        return { heading: 'Review', body: review.comment ?? 'No comment, only a rating.', facts: [`Rated ${review.rating} out of 5`] };
+      }
+      case 'message': {
+        const message = await fetchMessageById(report.target_id);
+        return { heading: 'Message', body: message.body, facts: [] };
+      }
+      case 'expert': {
+        const expert = await fetchExpertById(report.target_id);
+        return { heading: expert.profile?.full_name || 'Expert', body: null, facts: ['An expert account'] };
+      }
+      case 'user':
+        return { heading: 'A user account', body: null, facts: [`Account ${report.target_id.slice(0, 8)}`] };
       default:
-        return report.target_id;
+        return { heading: 'Reported item', body: null, facts: [report.target_id] };
     }
   } catch {
-    return '(content unavailable — may have been removed)';
+    return { heading: 'This content is no longer available', body: null, facts: ['It may have been removed already.'], unavailable: true };
   }
 }
 
-/** Previews for a list of reports, by report id. */
-export function useReportPreviews(reports: ReportWithReporter[]) {
-  const ids = reports.map(report => report.id);
+/** The reported item behind one report, read when its sheet opens (not once for every row of the list). */
+export function useReportTarget(report: ReportWithReporter | null) {
   return useQuery({
-    queryKey: queryKeys.admin.reportPreviews(ids),
-    queryFn: async () => {
-      const entries = await Promise.all(reports.map(async report => [report.id, await fetchPreview(report)] as const));
-      return Object.fromEntries(entries) as Record<string, string>;
-    },
-    enabled: reports.length > 0,
+    queryKey: [...queryKeys.admin.reports(undefined), 'target', report?.id],
+    queryFn: () => fetchReportTarget(report as ReportWithReporter),
+    enabled: !!report,
     staleTime: 60 * 1000,
   });
 }
@@ -355,13 +425,13 @@ async function applyReportAction(report: ReportWithReporter) {
   }
 }
 
-/** Takes the action a report calls for, then resolves the report. */
+/** Takes the action a report calls for, then resolves the report with the admin's reason as its notes (BR-15). */
 export function useModerateReport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ report }: { report: ReportWithReporter }) => {
+    mutationFn: async ({ report, notes }: { report: ReportWithReporter; notes: string }) => {
       await applyReportAction(report);
-      await resolveReport(report.id, null);
+      await resolveReport(report.id, notes);
     },
     // The action can remove a listing, review or message, or suspend a user or an expert, so those refetch too.
     onSuccess: () =>
@@ -375,7 +445,10 @@ export function useModerateReport() {
 
 export function useDismissReport() {
   const invalidate = useInvalidateAdmin();
-  return useMutation({ mutationFn: (reportId: string) => dismissReport(reportId, null), onSuccess: invalidate });
+  return useMutation({
+    mutationFn: ({ reportId, notes }: { reportId: string; notes: string }) => dismissReport(reportId, notes),
+    onSuccess: invalidate,
+  });
 }
 
 // ---- AI module (A6; SRDS §37)

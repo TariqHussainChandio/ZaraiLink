@@ -52,7 +52,7 @@ describe('AiActivityScreen', () => {
     expect(await screen.findByLabelText('Scans: 12')).toBeTruthy();
     expect(screen.getByLabelText('Failed: 2')).toBeTruthy();
     expect(screen.getByLabelText('Expert referrals: 3')).toBeTruthy();
-    expect(screen.getByLabelText(/^Low confidence: 12\.5\s?%\. 1 of 8 predictions$/)).toBeTruthy();
+    expect(screen.getByLabelText(/^Low confidence: 12\.5\s?%, 1 of 8 predictions$/)).toBeTruthy();
     expect(screen.getByText(/^Last 30 days, since/)).toBeTruthy();
   });
 

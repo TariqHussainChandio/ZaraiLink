@@ -1,61 +1,86 @@
 import { ShoppingBag } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
 import type { ConsultationMessageWithListing } from '../../../expert';
+import { formatTime } from '../../../utils/dates';
 import { formatRs } from '../../../utils/money';
 
 export interface ConsultationMessageBubbleProps {
   message: ConsultationMessageWithListing;
   isOwn: boolean;
+  /** Who wrote it, said in words: "You" for the viewer's own message, otherwise the other person's name (FA-10). */
+  senderName: string;
   /** Signed URLs for `message.attachments`, keyed by storage path. */
   attachmentUrls: Record<string, string>;
-  /** The other person's name, read out by a screen reader on their messages ("Dr. Ahsan, 10:30: ..."). */
-  senderName?: string;
   onPressRecommendation?: (listingId: string) => void;
+  /** Opens this message's photos full screen, on the one tapped. */
+  onPressPhoto?: (index: number) => void;
 }
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** One message in a consultation. The sender is written and spoken, not only shown by side and colour; the text is one
+ * stop for a screen reader ("Dr Ahsan, 3:42 pm: …"); each photo is its own labelled button that opens it. */
 export function ConsultationMessageBubble({
   message,
   isOwn,
-  attachmentUrls,
   senderName,
+  attachmentUrls,
   onPressRecommendation,
+  onPressPhoto,
 }: ConsultationMessageBubbleProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
-  const time = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const from = isOwn ? 'You' : senderName || 'The other person';
+  const time = formatTime(message.created_at);
   const photoCount = message.attachments.length;
-  const photos = photoCount > 0 ? `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}` : '';
-  const content = [photos, message.body].filter(Boolean).join('. ');
+
+  const spoken = [
+    `${senderName}, ${time}`,
+    message.body,
+    photoCount > 0 && !message.body ? plural(photoCount, 'photo', 'photos') : null,
+  ]
+    .filter(Boolean)
+    .join(message.body ? ': ' : ', ');
 
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
       <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-        {/* One focus stop for the message, read as "You, <time>: <text>" or "<name>, <time>: <text>", the same as a
-            chat bubble (A8). The recommended listing stays outside it: it is a button of its own, and an accessible
-            parent would swallow it. The time is in the label, so its visible line below is hidden from the reader. */}
-        <View accessible accessibilityLabel={`${from}, ${time}: ${content}`}>
-          {message.attachments.length > 0 ? (
-            <View style={styles.imagesRow}>
-              {message.attachments.map(path =>
-                attachmentUrls[path] ? (
+        <View accessible accessibilityLabel={spoken}>
+          <Text style={[styles.sender, isOwn && styles.onFill]}>{senderName}</Text>
+          {message.body ? <Text style={[styles.body, isOwn && styles.onFill]}>{message.body}</Text> : null}
+        </View>
+        {photoCount > 0 ? (
+          <View style={styles.imagesRow}>
+            {message.attachments.map((path, index) => {
+              const label = `Photo ${index + 1} of ${photoCount} from ${senderName}`;
+              return attachmentUrls[path] ? (
+                <Pressable
+                  key={path}
+                  onPress={() => onPressPhoto?.(index)}
+                  disabled={!onPressPhoto}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={label}
+                  accessibilityHint="Opens the photo full screen"
+                >
                   <Image
-                    key={path}
                     testID={`attachment-image-${path}`}
                     source={{ uri: attachmentUrls[path] }}
                     style={styles.attachmentImage}
                   />
-                ) : (
-                  <View key={path} style={[styles.attachmentImage, styles.attachmentPlaceholder]} />
-                ),
-              )}
-            </View>
-          ) : null}
-          {message.body ? <Text style={[styles.body, isOwn && styles.bodyOwn]}>{message.body}</Text> : null}
-        </View>
+                </Pressable>
+              ) : (
+                <View
+                  key={path}
+                  style={[styles.attachmentImage, styles.attachmentPlaceholder]}
+                  accessible
+                  accessibilityLabel={`${label}, still loading`}
+                />
+              );
+            })}
+          </View>
+        ) : null}
         {message.recommended_listing ? (
           <TouchableOpacity
             style={styles.recommendation}
@@ -67,20 +92,14 @@ export function ConsultationMessageBubble({
           >
             <ShoppingBag size={theme.size.iconSm} color={theme.colors.module.marketplace} />
             <View style={styles.recommendationText}>
-              <Text style={styles.recommendationTitle} numberOfLines={1}>
-                {message.recommended_listing.title}
-              </Text>
+              <Text style={styles.recommendationTitle}>{message.recommended_listing.title}</Text>
               <Text style={styles.recommendationPrice}>
                 {formatRs(message.recommended_listing.price)} / {message.recommended_listing.unit}
               </Text>
             </View>
           </TouchableOpacity>
         ) : null}
-        <Text
-          style={[styles.time, isOwn && styles.timeOwn]}
-          importantForAccessibility="no"
-          accessibilityElementsHidden
-        >
+        <Text style={[styles.time, isOwn && styles.onFill]} importantForAccessibility="no">
           {time}
         </Text>
       </View>
@@ -99,24 +118,30 @@ function makeStyles({ colors, space, radius, typography, fontWeight, size }: The
       justifyContent: 'flex-end',
     },
     bubble: {
-      maxWidth: '78%',
+      maxWidth: '82%',
       borderRadius: radius.md,
       paddingHorizontal: space[3],
       paddingVertical: space[2],
+      gap: space[1],
     },
+    // `line` is a decoration colour; an incoming bubble sits on the sunken surface.
     bubbleOther: {
-      backgroundColor: colors.line,
+      backgroundColor: colors.surfaceSunken,
       borderBottomLeftRadius: radius.xs,
     },
     bubbleOwn: {
       backgroundColor: accent.fill,
       borderBottomRightRadius: radius.xs,
     },
+    sender: {
+      ...typography.caption,
+      fontWeight: fontWeight.semibold,
+      color: colors.ink2,
+    },
     imagesRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: space[1],
-      marginBottom: space[1],
     },
     attachmentImage: {
       width: size.photoLg,
@@ -129,7 +154,8 @@ function makeStyles({ colors, space, radius, typography, fontWeight, size }: The
       ...typography.bodyLg,
       color: colors.ink,
     },
-    bodyOwn: {
+    // Text on the filled own-message bubble, at full strength: a faded time fell under 4.5:1 (FA-19).
+    onFill: {
       color: colors.onAccent,
     },
     recommendation: {
@@ -139,7 +165,6 @@ function makeStyles({ colors, space, radius, typography, fontWeight, size }: The
       backgroundColor: colors.surface,
       borderRadius: radius.sm,
       padding: space[2],
-      marginTop: space[1],
       gap: space[2],
     },
     recommendationText: {
@@ -155,15 +180,9 @@ function makeStyles({ colors, space, radius, typography, fontWeight, size }: The
       color: colors.ink2,
     },
     time: {
-      marginTop: space[1] / 2,
       ...typography.caption,
       color: colors.ink2,
       alignSelf: 'flex-end',
-    },
-    timeOwn: {
-      // Timestamps on an outgoing (filled) bubble: the text colour of the fill, a little quieter.
-      color: colors.onAccent,
-      opacity: 0.8,
     },
   });
 }

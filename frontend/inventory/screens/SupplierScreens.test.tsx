@@ -103,7 +103,7 @@ describe('SupplierFormScreen', () => {
     await fireEvent.press(await screen.findByText('Remove supplier'));
     await fireEvent.press(lastByText('Remove supplier'));
     await waitFor(() => expect(api.removeSupplier).toHaveBeenCalledWith('sup-1'));
-    expect(await screen.findByText('The service is not available right now. Please try again shortly.')).toBeTruthy();
+    expect(await screen.findByText('The service is not available right now. Try again shortly.')).toBeTruthy();
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
 });

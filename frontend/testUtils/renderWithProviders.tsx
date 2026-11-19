@@ -4,13 +4,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { render, type RenderResult } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SnackbarProvider } from '../common/components/Snackbar';
 import { ToastProvider } from '../common/components/Toast';
 
 const Stack = createNativeStackNavigator();
 
 // The app renders everything inside App.tsx's SafeAreaProvider; tests get one too, measured like a phone with a 24 dp
 // status bar and a 24 dp gesture area, so app bars and bottom-fixed controls lay out as they do on a device. Like App.tsx,
-// both helpers mount the ToastProvider, since a screen that calls useToast() throws without it (A8).
+// both helpers mount the ToastProvider and the SnackbarProvider, since a screen that calls useToast() or useSnackbar()
+// throws without its provider (A8).
 const PHONE = { frame: { x: 0, y: 0, width: 400, height: 800 }, insets: { top: 24, left: 0, right: 0, bottom: 24 } };
 
 /**
@@ -40,11 +42,13 @@ export function renderWithProviders(
     <SafeAreaProvider initialMetrics={PHONE}>
       <ToastProvider>
         <QueryClientProvider client={queryClient}>
-          <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="__UnderTest__">{() => ui}</Stack.Screen>
-            </Stack.Navigator>
-          </NavigationContainer>
+          <SnackbarProvider>
+            <NavigationContainer>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="__UnderTest__">{() => ui}</Stack.Screen>
+              </Stack.Navigator>
+            </NavigationContainer>
+          </SnackbarProvider>
         </QueryClientProvider>
       </ToastProvider>
     </SafeAreaProvider>,
@@ -56,7 +60,9 @@ export function renderWithQuery(ui: React.ReactElement, queryClient: QueryClient
   return render(
     <SafeAreaProvider initialMetrics={PHONE}>
       <ToastProvider>
-        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+        <QueryClientProvider client={queryClient}>
+          <SnackbarProvider>{ui}</SnackbarProvider>
+        </QueryClientProvider>
       </ToastProvider>
     </SafeAreaProvider>,
   );

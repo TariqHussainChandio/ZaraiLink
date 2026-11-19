@@ -36,7 +36,18 @@ jest.mock('../../common/notifications/services/notificationsService', () => ({
 jest.mock('../../common/orders/services/ordersService', () => ({ fetchOrdersForUser: jest.fn().mockResolvedValue([]) }));
 jest.mock('../../common/analytics/services/analyticsService', () => ({
   fetchFarmerAnalytics: jest.fn().mockResolvedValue({}),
-  fetchDealerAnalytics: jest.fn().mockResolvedValue({}),
+  fetchDealerAnalytics: jest.fn().mockResolvedValue({
+    totalSales: 0,
+    totalOrders: 0,
+    activeListings: 0,
+    pendingOrders: 0,
+    readyToDispatch: 0,
+    inventoryMovement: [],
+    lowStockCount: 0,
+    bestSellers: [],
+    storeCount: 0,
+    supplierCount: 0,
+  }),
 }));
 jest.mock('../../common/auth/services/applicationService', () => ({
   ...jest.requireActual('../../common/auth/services/applicationService'),
@@ -118,7 +129,7 @@ describe('an offline cold start', () => {
     await rememberProfile(account('dealer-a', 'dealer') as never);
     await coldStartOffline('dealer-a');
 
-    await fireEvent.press(await screen.findByText('Inventory Management'));
+    await fireEvent.press(await screen.findByText('Open inventory system'));
     expect(screen.queryByText('Inventory Management is for approved dealers')).toBeNull();
     expect(tabLabels()).toEqual(['Dashboard', 'Products', 'Stock', 'Reports', 'More']);
   });
@@ -127,9 +138,10 @@ describe('an offline cold start', () => {
     await rememberProfile(account('dealer-a', 'dealer') as never);
     await coldStartOffline('dealer-a');
 
-    expect(await screen.findByText('Inventory Management')).toBeTruthy();
+    expect(await screen.findByText('Open inventory system')).toBeTruthy();
     expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'Messages', 'Account']);
-    expect(screen.getByText('My Listings')).toBeTruthy();
+    // The dealer's shop row says "Listings" (D15), never "Products", which is the inventory's word.
+    expect(screen.getByText('Listings')).toBeTruthy();
     expect(screen.queryByText('Products')).toBeNull();
   });
 
@@ -155,20 +167,20 @@ describe('an offline cold start', () => {
 
     answerProfile({ data: account('dealer-a', 'dealer'), error: null, status: 200 });
     await fireEvent.press(screen.getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByText('Inventory Management')).toBeTruthy();
+    expect(await screen.findByText('Open inventory system')).toBeTruthy();
     expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'Messages', 'Account']);
   });
 
   it('follows the server on reconnect: a dealer suspended meanwhile sees Suspended', async () => {
     await rememberProfile(account('dealer-a', 'dealer') as never);
     await coldStartOffline('dealer-a');
-    await screen.findByText('Inventory Management');
+    await screen.findByText('Open inventory system');
 
     answerProfile({ data: account('dealer-a', 'dealer', { is_suspended: true }), error: null, status: 200 });
     await act(async () => {
       useNetworkStore.setState({ isOffline: false });
     });
-    expect(await screen.findByRole('header', { name: 'Account Suspended' })).toBeTruthy();
+    expect(await screen.findByRole('header', { name: 'Your account is suspended' })).toBeTruthy();
     expect(screen.queryAllByRole('tab')).toHaveLength(0);
   });
 });

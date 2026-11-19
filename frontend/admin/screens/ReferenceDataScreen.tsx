@@ -1,87 +1,74 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { List, Pencil, Save, Trash2 } from 'lucide-react-native';
-import { Button, ChipRow, EmptyState, ScreenState, Sheet, TextField, useToast } from '../../common/components';
-import {
-  useDeleteRefDataRow,
-  useRefDataRows,
-  useSaveRefDataRow,
-  type RefDataTable,
-} from '../../common/reference-data';
-import { useAuthStore } from '../../state/authStore';
-import { useTheme, type Theme } from '../../theme';
+import { Banner, Button, ChipRow, ListGroup, ListRow, QueryState, ScreenScaffold, Sheet, StickyActionBar, TextField } from '../../common/components';
+import { useDeleteRefDataRow, useRefDataRows, useSaveRefDataRow, type RefDataTable } from '../../common/reference-data';
 import { errorMessage } from '../../utils/errorMessage';
+import { AdminActionSheet, type AdminAction } from '../components/AdminActionSheet';
 
 type Row = Record<string, unknown> & { id: string };
 
 interface FieldConfig {
   key: string;
   label: string;
+  placeholder: string;
 }
 
 interface TableConfig {
-  title: string;
-  // Said in full rather than cut from the plural: "Currencies" minus its last letter read "Currencie" on the device.
+  /** The list's name, plural: "Currencies". */
+  plural: string;
+  /** One entry, lower case, for sentences: "currency". */
   singular: string;
   fields: FieldConfig[];
   renderLabel: (row: Row) => string;
   renderSubtitle?: (row: Row) => string;
 }
 
+// Written out in full: "Currencies".slice(0, -1) read "Currencie" (AD-15).
+const TABLES: Record<RefDataTable, TableConfig> = {
+  currencies: {
+    plural: 'Currencies',
+    singular: 'currency',
+    fields: [
+      { key: 'code', label: 'Code', placeholder: 'PKR' },
+      { key: 'symbol', label: 'Symbol', placeholder: 'Rs' },
+      { key: 'name', label: 'Name', placeholder: 'Pakistani rupee' },
+    ],
+    renderLabel: r => `${String(r.code)} — ${String(r.name)}`,
+  },
+  units: {
+    plural: 'Units',
+    singular: 'unit',
+    fields: [
+      { key: 'code', label: 'Code', placeholder: 'kg' },
+      { key: 'label', label: 'Name', placeholder: 'Kilogram' },
+      { key: 'applies_to', label: 'Used for', placeholder: 'weight' },
+    ],
+    renderLabel: r => String(r.label),
+    renderSubtitle: r => String(r.applies_to ?? ''),
+  },
+};
+
+const TABLE_OPTIONS: { value: RefDataTable; label: string }[] = [
+  { value: 'currencies', label: TABLES.currencies.plural },
+  { value: 'units', label: TABLES.units.plural },
+];
+
+/** The lists the app offers as choices: currencies and units (SRDS §8). Every change is audited by the API (BR-15). */
 export function ReferenceDataScreen() {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  const actorId = useAuthStore(state => state.user?.id);
   const [table, setTable] = useState<RefDataTable>('currencies');
-  const rowsQuery = useRefDataRows(table);
-  const { refetch } = rowsQuery;
-  const toast = useToast();
+  const query = useRefDataRows(table);
+  const { refetch } = query;
+  const rows = useMemo(() => (query.data ?? []) as Row[], [query.data]);
   const saveRow = useSaveRefDataRow(table);
   const removeRow = useDeleteRefDataRow(table);
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editing, setEditing] = useState<Row | null>(null);
+  const config = TABLES[table];
+  const [selected, setSelected] = useState<Row | null>(null);
+  const [editing, setEditing] = useState<Row | 'new' | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
-  const [deleting, setDeleting] = useState<Row | null>(null);
-
-  const tableConfig: Record<RefDataTable, TableConfig> = useMemo(
-    () => ({
-      currencies: {
-        title: 'Currencies',
-        singular: 'Currency',
-        fields: [
-          { key: 'code', label: 'Code' },
-          { key: 'symbol', label: 'Symbol' },
-          { key: 'name', label: 'Name' },
-        ],
-        renderLabel: r => `${String(r.code)} — ${String(r.name)}`,
-      },
-      units: {
-        title: 'Units',
-        singular: 'Unit',
-        fields: [
-          { key: 'code', label: 'Code' },
-          { key: 'label', label: 'Label' },
-          { key: 'applies_to', label: 'Applies To' },
-        ],
-        renderLabel: r => String(r.label),
-        renderSubtitle: r => String(r.applies_to ?? ''),
-      },
-    }),
-    [],
-  );
-
-  const tableOptions: { value: RefDataTable; label: string }[] = useMemo(
-    () => [
-      { value: 'currencies', label: 'Currencies' },
-      { value: 'units', label: 'Units' },
-    ],
-    [],
-  );
-
-  const config = tableConfig[table];
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [failure, setFailure] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [action, setAction] = useState<AdminAction | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -89,191 +76,108 @@ export function ReferenceDataScreen() {
     }, [refetch]),
   );
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm({});
-    setSheetOpen(true);
-  };
-
-  const openEdit = (row: Row) => {
-    setEditing(row);
+  const openEditor = (row: Row | 'new') => {
     const initial: Record<string, string> = {};
-    for (const field of config.fields) initial[field.key] = String(row[field.key] ?? '');
+    for (const field of config.fields) initial[field.key] = row === 'new' ? '' : String(row[field.key] ?? '');
+    setSelected(null);
     setForm(initial);
-    setSheetOpen(true);
+    setErrors({});
+    setFailure(null);
+    setEditing(row);
   };
 
   const save = async () => {
-    if (!actorId) return;
-    setSavingId(editing?.id ?? 'new');
+    const missing: Record<string, string> = {};
+    for (const field of config.fields) {
+      if (!form[field.key]?.trim()) missing[field.key] = `Enter the ${field.label.toLowerCase()}`;
+    }
+    setErrors(missing);
+    if (Object.keys(missing).length > 0) return;
+    setFailure(null);
+    setSaving(true);
     try {
-      const payload: Record<string, unknown> = { ...form };
-      await saveRow.mutateAsync({ id: editing?.id, row: payload });
-      setSheetOpen(false);
-      toast.success(editing ? 'Entry saved' : 'Entry created');
+      const payload: Record<string, unknown> = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, value.trim()]));
+      await saveRow.mutateAsync({ id: editing && editing !== 'new' ? editing.id : undefined, row: payload });
+      setEditing(null);
     } catch (error) {
-      toast.error(`Could not save the entry. ${errorMessage(error)}`);
+      setFailure(errorMessage(error));
     } finally {
-      setSavingId(null);
+      setSaving(false);
     }
   };
 
-  // Deleting cannot be undone, so it is confirmed in a sheet first.
-  const remove = (row: Row) => {
-    if (!actorId) return;
-    setDeleting(row);
-  };
-
-  const confirmRemove = async () => {
-    const row = deleting;
-    if (!row) return;
-    setDeleting(null);
-    setSavingId(row.id);
-    try {
-      await removeRow.mutateAsync(row.id);
-      toast.success('Entry deleted');
-    } catch (error) {
-      toast.error(`Could not delete the entry. ${errorMessage(error)}`);
-    } finally {
-      setSavingId(null);
-    }
+  const askDelete = (row: Row) => {
+    const label = config.renderLabel(row);
+    setSelected(null);
+    setAction({
+      title: `Delete ${label}?`,
+      message: `"${label}" is removed from the ${config.singular} list. This cannot be undone.`,
+      confirmLabel: `Delete ${config.singular}`,
+      destructive: true,
+      run: () => removeRow.mutateAsync(row.id),
+      done: `${label} deleted`,
+    });
   };
 
   return (
-    <View style={styles.container}>
-      <ChipRow options={tableOptions} value={table}
-        onChange={next => {
-          setTable(next);
-          setForm({});
-        }}
-      />
+    <>
+      <ScreenScaffold
+        onRefresh={() => refetch()}
+        refreshing={query.isRefetching}
+        footer={
+          <StickyActionBar>
+            <Button label={`Add a ${config.singular}`} size="lg" onPress={() => openEditor('new')} />
+          </StickyActionBar>
+        }
+      >
+        <ChipRow options={TABLE_OPTIONS} value={table} onChange={setTable} />
+        <QueryState
+          query={query}
+          failureTitle={`Couldn't load ${config.plural.toLowerCase()}`}
+          isEmpty={rows.length === 0}
+          empty={{ title: `No ${config.plural.toLowerCase()} yet`, description: `Add the first ${config.singular}.` }}
+        >
+          <ListGroup>
+            {rows.map(row => (
+              <ListRow key={row.id} title={config.renderLabel(row)} meta={config.renderSubtitle?.(row) || undefined} onPress={() => setSelected(row)} />
+            ))}
+          </ListGroup>
+        </QueryState>
+      </ScreenScaffold>
 
-      <ScreenState query={rowsQuery} errorTitle={`Couldn't load the ${config.title.toLowerCase()}`}>
-        {rowData => (
-          <FlashList
-            contentContainerStyle={styles.list}
-            data={rowData as Row[]}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.row}>
-                <View style={styles.info}>
-                  <Text style={styles.name}>{config.renderLabel(item)}</Text>
-                  {config.renderSubtitle ? <Text style={styles.subtitle}>{config.renderSubtitle(item)}</Text> : null}
-                </View>
-                <View style={styles.actions}>
-                  <Button
-                    label="Edit"
-                    icon={Pencil}
-                    variant="secondary"
-                    fullWidth={false}
-                    loading={savingId === item.id}
-                    onPress={() => openEdit(item)}
-                  />
-                  <Button
-                    label="Delete"
-                    icon={Trash2}
-                    variant="danger"
-                    fullWidth={false}
-                    loading={savingId === item.id}
-                    onPress={() => remove(item)}
-                  />
-                </View>
-              </View>
-            )}
-            ListEmptyComponent={
-              <EmptyState
-                title={`No ${config.title.toLowerCase()} yet`}
-                description="Add the first one below."
-                icon={List}
-              />
-            }
-            ListFooterComponent={
-              <Button
-                label={`+ Add ${config.singular}`}
-                variant="secondary"
-                onPress={openCreate}
-                style={styles.addButton}
-              />
-            }
-          />
-        )}
-      </ScreenState>
+      <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selected ? config.renderLabel(selected) : config.plural}>
+        <ListGroup>
+          <ListRow title={`Edit ${config.singular}`} onPress={() => selected && openEditor(selected)} />
+          <ListRow title={`Delete ${config.singular}`} onPress={() => selected && askDelete(selected)} />
+        </ListGroup>
+      </Sheet>
 
       <Sheet
-        visible={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        title={editing ? `Edit ${config.singular}` : `New ${config.singular}`}
+        visible={editing !== null}
+        onClose={() => !saving && setEditing(null)}
+        title={editing === 'new' ? `New ${config.singular}` : `Edit ${config.singular}`}
+        footer={<Button label={editing === 'new' ? `Add ${config.singular}` : `Save ${config.singular}`} size="lg" loading={saving} onPress={save} />}
       >
-        <View style={styles.sheet}>
-          {config.fields.map(field => (
-            <TextField
-              key={field.key}
-              label={field.label}
-              value={form[field.key] ?? ''}
-              onChangeText={text => setForm(prev => ({ ...prev, [field.key]: text }))}
-            />
-          ))}
-          <Button
-            label={editing ? 'Save Changes' : 'Create'}
-            icon={Save}
-            loading={savingId === (editing?.id ?? 'new')}
-            onPress={save}
+        {config.fields.map(field => (
+          <TextField
+            key={field.key}
+            label={field.label}
+            placeholder={field.placeholder}
+            value={form[field.key] ?? ''}
+            onChangeText={text => setForm(prev => ({ ...prev, [field.key]: text }))}
+            error={errors[field.key]}
+            editable={!saving}
+            autoCapitalize="none"
           />
-        </View>
+        ))}
+        {failure ? (
+          <Banner tone="danger" title={`Couldn't save the ${config.singular}`}>
+            {failure}
+          </Banner>
+        ) : null}
       </Sheet>
 
-      <Sheet visible={deleting !== null} onClose={() => setDeleting(null)} title="Delete entry">
-        <View style={styles.sheet}>
-          <Text style={styles.sheetBody}>{`Delete "${deleting ? config.renderLabel(deleting) : ''}"? This cannot be undone.`}</Text>
-          <Button label="Delete" icon={Trash2} variant="danger" onPress={confirmRemove} />
-          <Button label="Cancel" variant="secondary" onPress={() => setDeleting(null)} />
-        </View>
-      </Sheet>
-    </View>
+      <AdminActionSheet action={action} onClose={() => setAction(null)} />
+    </>
   );
-}
-
-function makeStyles({ colors, space, typography, borders }: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      paddingTop: space[3],
-      paddingHorizontal: space[4],
-    },
-    list: {
-      paddingBottom: space[4],
-    },
-    row: {
-      paddingVertical: space[3],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    info: {
-      marginBottom: space[2],
-    },
-    name: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-    },
-    subtitle: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginTop: space[1] / 2,
-    },
-    actions: {
-      flexDirection: 'row',
-      gap: space[2],
-    },
-    addButton: {
-      marginTop: space[4],
-    },
-    sheet: {
-      gap: space[3],
-    },
-    sheetBody: {
-      ...typography.body,
-      color: colors.ink,
-    },
-  });
 }

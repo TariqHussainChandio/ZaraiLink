@@ -3,14 +3,12 @@ import { act, fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { DiseaseResultScreen } from './DiseaseResultScreen';
 import { fetchDiseaseCaseWithPrediction } from '../services/diseaseService';
-import { fetchListings } from '../../common/marketplace/services/listingsService';
-import { APP_TABS, CONSULTATIONS_ROUTES, MARKETPLACE_ROUTES } from '../../common/constants/routes';
+import { APP_TABS, CONSULTATIONS_ROUTES, HOME_ROUTES } from '../../common/constants/routes';
 import type { DiseaseCaseWithPrediction, DiseaseReport } from '../types/disease';
-import type { ListingWithRelations } from '../../common/marketplace/types/marketplace';
 
 const mockNavigate = jest.fn();
-const mockGetParent = jest.fn();
-let mockRouteParams: Record<string, unknown> = { diseaseCaseId: 'case-1' };
+const mockTabNavigate = jest.fn();
+let mockRouteParams: Record<string, unknown> = {};
 // The latest focus effect, so a test can bring the screen back into focus.
 let mockFocusEffect: (() => void) | null = null;
 
@@ -26,36 +24,35 @@ jest.mock('@react-navigation/native', () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, []);
     },
-    useNavigation: () => ({ navigate: mockNavigate, getParent: mockGetParent }),
+    useNavigation: () => ({ navigate: mockNavigate }),
     useRoute: () => ({ params: mockRouteParams }),
   };
 });
+
+jest.mock('../../navigation/stacks/useAppTabNavigation', () => ({
+  useAppTabNavigation: () => ({ navigate: mockTabNavigate }),
+}));
 
 jest.mock('../services/diseaseService', () => ({
   fetchDiseaseCaseWithPrediction: jest.fn(),
 }));
 
-jest.mock('../../common/marketplace/services/listingsService', () => ({
-  fetchListings: jest.fn(),
-}));
-
 const mockFetchCase = fetchDiseaseCaseWithPrediction as jest.Mock;
-const mockFetchListings = fetchListings as jest.Mock;
 
 // The report as the backend builds it from the knowledge base (plan A6); the screen shows only this, never the stored
 // prediction text.
 const report = (overrides: Partial<DiseaseReport> = {}): DiseaseReport => ({
-  predicted_disease: 'Wheat — Leaf rust',
-  class_label: 'Wheat___Leaf_rust',
-  crop: 'Wheat',
-  disease: 'Leaf rust',
-  confidence_score: 0.85,
+  predicted_disease: 'Tomato — Late blight',
+  class_label: 'Tomato___Late_blight',
+  crop: 'Tomato',
+  disease: 'Late blight',
+  confidence_score: 0.78,
   confidence_band: 'confident',
   is_healthy: false,
-  symptoms: ['Orange pustules on leaves'],
-  treatment: ['Apply fungicide', 'Remove infected leaves'],
-  precautions: ['Rotate crops'],
-  advisory: 'A fungal disease affecting wheat leaves.',
+  symptoms: ['Dark patches on leaves'],
+  treatment: ['Remove affected leaves', 'Water at the base of the plant'],
+  precautions: ['Avoid overhead irrigation'],
+  advisory: 'The leaf pattern may indicate late blight.',
   review_status: 'reviewed',
   disclaimer: 'This is an AI suggestion, not a diagnosis. Confirm it with an agricultural expert before you treat your crop.',
   model_version: 'v1',
@@ -70,14 +67,14 @@ const diseaseCase = (overrides: Partial<DiseaseCaseWithPrediction> = {}): Diseas
     crop_id: 'crop-1',
     image_signed_url: 'https://example.com/leaf.jpg?token=signed',
     created_at: '2026-01-01T00:00:00.000Z',
-    crop: { id: 'crop-1', name: 'Wheat' },
+    crop: { id: 'crop-1', name: 'Tomato' },
     status: 'predicted',
     failure_reason: null,
     prediction: {
       id: 'pred-1',
       disease_case_id: 'case-1',
       predicted_disease: 'Stored name (history only)',
-      confidence_score: 0.85,
+      confidence_score: 0.78,
       description: 'Stored text (history only)',
       recommended_actions: [],
       model_version: 'v1',
@@ -88,26 +85,34 @@ const diseaseCase = (overrides: Partial<DiseaseCaseWithPrediction> = {}): Diseas
   }) as DiseaseCaseWithPrediction;
 
 beforeEach(() => {
-  mockNavigate.mockReset();
-  mockGetParent.mockReset();
-  mockFetchCase.mockReset();
-  mockFetchListings.mockReset().mockResolvedValue([]);
-  mockRouteParams = { diseaseCaseId: 'case-1' };
+  jest.clearAllMocks();
+  mockRouteParams = { diseaseCaseId: 'case-1', cropMatches: true, chosenCropName: 'Tomato' };
 });
 
 describe('DiseaseResultScreen', () => {
-  it('shows the predicted disease and confidence once loaded', async () => {
+  it('leads with the advisory, then names the condition with confidence in words, the number and a bar', async () => {
     mockFetchCase.mockResolvedValue(diseaseCase());
     await renderWithQuery(<DiseaseResultScreen />);
 
-    expect(await screen.findByText('Wheat — Leaf rust')).toBeTruthy();
-    expect(screen.getByText('85% confidence')).toBeTruthy();
-    expect(screen.getByText(/Orange pustules/)).toBeTruthy();
-    expect(screen.getByText(/Apply fungicide/)).toBeTruthy();
-    expect(screen.getByText(/Rotate crops/)).toBeTruthy();
-    expect(screen.getByText('A fungal disease affecting wheat leaves.')).toBeTruthy();
+    expect(await screen.findByText('Late blight')).toBeTruthy();
+    expect(screen.getByText('A suggestion, not a diagnosis')).toBeTruthy();
+    expect(screen.getByText('Tomato')).toBeTruthy();
+    expect(screen.getByText('Likely')).toBeTruthy();
+    expect(screen.getByText('The scan is fairly sure: 78% match')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: '78 percent match' })).toBeTruthy();
     // The stored prediction row is history; the screen reads the report.
     expect(screen.queryByText('Stored name (history only)')).toBeNull();
+  });
+
+  it('shows the report from the knowledge base: symptoms, what to do, precautions and the advisory', async () => {
+    mockFetchCase.mockResolvedValue(diseaseCase());
+    await renderWithQuery(<DiseaseResultScreen />);
+
+    expect(await screen.findByText(/Dark patches on leaves/)).toBeTruthy();
+    expect(screen.getByText('What to do now')).toBeTruthy();
+    expect(screen.getByText(/Remove affected leaves/)).toBeTruthy();
+    expect(screen.getByText(/Avoid overhead irrigation/)).toBeTruthy();
+    expect(screen.getByText('The leaf pattern may indicate late blight.')).toBeTruthy();
     // Reviewed text: no draft marker.
     expect(screen.queryByText('Draft advice, not yet checked')).toBeNull();
     expect(screen.queryByText(/pending agronomist review/i)).toBeNull();
@@ -131,19 +136,18 @@ describe('DiseaseResultScreen', () => {
     expect(screen.getByText(/has not yet been reviewed/)).toBeTruthy();
   });
 
-  it('puts the expert route first when the confidence is low', async () => {
+  it('says when the scan is not sure, from the backend band, and keeps the expert action', async () => {
     mockFetchCase.mockResolvedValue(diseaseCase({ report: report({ confidence_score: 0.42, confidence_band: 'low' }) }));
     await renderWithQuery(<DiseaseResultScreen />);
     expect(await screen.findByText('Low confidence: ask an expert to check')).toBeTruthy();
-    expect(screen.getByText('42% confidence')).toBeTruthy();
-    expect(screen.getByLabelText('Low confidence, 42 percent')).toBeTruthy();
-    // One Consult button, placed before the report lists.
-    expect(screen.getAllByText('Consult an Expert')).toHaveLength(1);
+    expect(screen.getByText('Not sure')).toBeTruthy();
+    expect(screen.getByLabelText('Not sure, 42 percent match')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Ask an expert' })).toHaveLength(1);
   });
 
   it('shows preventive care, not symptoms, for a healthy crop, worded as an estimate (BR-13)', async () => {
     const healthy = report({
-      predicted_disease: 'Wheat — Healthy',
+      predicted_disease: 'Tomato — Healthy',
       disease: 'Healthy',
       is_healthy: true,
       symptoms: ['should not show'],
@@ -153,6 +157,7 @@ describe('DiseaseResultScreen', () => {
     mockFetchCase.mockResolvedValue(diseaseCase({ report: healthy }));
     await renderWithQuery(<DiseaseResultScreen />);
     expect(await screen.findByText('The AI found no sign of disease')).toBeTruthy();
+    expect(screen.getByText('Healthy leaf')).toBeTruthy();
     expect(
       screen.getByText(
         'This is an estimate from one photo, not a diagnosis. If the plant still looks unwell, ask an expert to check.',
@@ -164,7 +169,19 @@ describe('DiseaseResultScreen', () => {
     expect(screen.getByText(/Keep inspecting weekly/)).toBeTruthy();
     expect(screen.queryByText(/should not show/)).toBeNull();
     // The route to an expert stays visible for a healthy result too.
-    expect(screen.getByText('Consult an Expert')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Ask an expert' })).toBeTruthy();
+  });
+
+  it('shows the advisory and the expert action instead of a report when the photo is another crop (D16)', async () => {
+    mockRouteParams = { diseaseCaseId: 'case-1', cropMatches: false, chosenCropName: 'Potato' };
+    mockFetchCase.mockResolvedValue(diseaseCase());
+    await renderWithQuery(<DiseaseResultScreen />);
+
+    expect(await screen.findByText('This does not look like potato')).toBeTruthy();
+    expect(screen.queryByText('Late blight')).toBeNull();
+    expect(screen.queryByText('What to do now')).toBeNull();
+    expect(screen.queryByText(/% match/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ask an expert' })).toBeTruthy();
   });
 
   it('shows a placeholder, and still the report, when the photo is no longer in storage', async () => {
@@ -172,18 +189,16 @@ describe('DiseaseResultScreen', () => {
     await renderWithQuery(<DiseaseResultScreen />);
     expect(await screen.findByText('The photo is no longer available')).toBeTruthy();
     expect(screen.queryByLabelText('Your leaf photo')).toBeNull();
-    expect(screen.getByText('Wheat — Leaf rust')).toBeTruthy();
+    expect(screen.getByText('Late blight')).toBeTruthy();
 
-    const tabNavigate = jest.fn();
-    mockGetParent.mockReturnValue({ navigate: tabNavigate });
-    await fireEvent.press(screen.getByText('Consult an Expert'));
-    expect(tabNavigate.mock.calls[0][1].params.prefill.imageUrl).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Ask an expert' }));
+    expect(mockTabNavigate.mock.calls[0][1].params.prefill.imageUrl).toBeNull();
   });
 
   it('fetches the case again when the screen regains focus, so an expired photo link is replaced', async () => {
     mockFetchCase.mockResolvedValue(diseaseCase());
     await renderWithQuery(<DiseaseResultScreen />);
-    await screen.findByText('Wheat — Leaf rust');
+    await screen.findByText('Late blight');
     const callsBefore = mockFetchCase.mock.calls.length;
 
     // The link is signed for ten minutes; coming back to the screen must swap in a freshly signed one.
@@ -204,17 +219,17 @@ describe('DiseaseResultScreen', () => {
     );
     await renderWithQuery(<DiseaseResultScreen />);
     expect(await screen.findByText('This photo could not be analysed. An expert can still look at it.')).toBeTruthy();
-    expect(screen.getByText('Consult an Expert')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Ask an expert' })).toBeTruthy();
   });
 
-  it("shows a retryable error state when loading fails", async () => {
+  it('shows a retryable error state when loading fails', async () => {
     mockFetchCase.mockRejectedValueOnce(new Error('offline'));
     await renderWithQuery(<DiseaseResultScreen />);
     expect(await screen.findByText("Couldn't load this result")).toBeTruthy();
 
     mockFetchCase.mockResolvedValueOnce(diseaseCase());
     await fireEvent.press(screen.getByText('Retry'));
-    expect(await screen.findByText('Wheat — Leaf rust')).toBeTruthy();
+    expect(await screen.findByText('Late blight')).toBeTruthy();
   });
 
   it('shows a fallback message when no prediction is available yet', async () => {
@@ -223,39 +238,28 @@ describe('DiseaseResultScreen', () => {
     expect(await screen.findByText('No prediction is available for this case.')).toBeTruthy();
   });
 
-  it('loads and lists related marketplace listings for the predicted crop', async () => {
+  it('has no related products', async () => {
     mockFetchCase.mockResolvedValue(diseaseCase());
-    const listing = { id: 'listing-1', title: 'Fungicide Spray', price: 1200, unit: 'bottle' } as ListingWithRelations;
-    mockFetchListings.mockResolvedValue([listing]);
     await renderWithQuery(<DiseaseResultScreen />);
-
-    expect(await screen.findByText('Fungicide Spray')).toBeTruthy();
-    expect(mockFetchListings).toHaveBeenCalledWith({ cropName: 'Wheat' });
-
-    const tabNavigate = jest.fn();
-    mockGetParent.mockReturnValue({ navigate: tabNavigate });
-    await fireEvent.press(screen.getByText('Fungicide Spray'));
-    expect(tabNavigate).toHaveBeenCalledWith(APP_TABS.Marketplace, {
-      screen: MARKETPLACE_ROUTES.ListingDetail,
-      params: { listingId: 'listing-1' },
-    });
+    await screen.findByText('Late blight');
+    expect(screen.queryByText(/related products/i)).toBeNull();
   });
 
-  it('navigates to Consult an Expert with the report context and links the case', async () => {
+  it('asks an expert through the Consultations tab with the case id and without the AI text', async () => {
     mockFetchCase.mockResolvedValue(diseaseCase());
-    const tabNavigate = jest.fn();
-    mockGetParent.mockReturnValue({ navigate: tabNavigate });
     await renderWithQuery(<DiseaseResultScreen />);
-    await screen.findByText('Wheat — Leaf rust');
+    await screen.findByText('Late blight');
 
-    await fireEvent.press(screen.getByText('Consult an Expert'));
-    expect(tabNavigate).toHaveBeenCalledWith(APP_TABS.Consultations, {
+    await fireEvent.press(screen.getByRole('button', { name: 'Ask an expert' }));
+    expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Consultations, {
       screen: CONSULTATIONS_ROUTES.ExpertList,
+      initial: false,
       params: {
         specialization: 'plant_diseases',
         prefill: {
-          // No problemDescription: the AI's advisory is never put forward as the farmer's own words (BR-13).
-          subject: 'Disease advisory: Wheat — Leaf rust',
+          subject: 'Disease advisory: Tomato — Late blight',
+          // The AI's advisory is never put forward as the farmer's own words (BR-13, FA-09).
+          problemDescription: '',
           cropId: 'crop-1',
           imageUrl: 'https://example.com/leaf.jpg?token=signed',
           // The consultation is linked to the case, so the assigned expert sees the photo and the report.
@@ -263,5 +267,13 @@ describe('DiseaseResultScreen', () => {
         },
       },
     });
+  });
+
+  it('goes back to the scan start for another plant', async () => {
+    mockFetchCase.mockResolvedValue(diseaseCase());
+    await renderWithQuery(<DiseaseResultScreen />);
+    await screen.findByText('Late blight');
+    await fireEvent.press(screen.getByText('Scan another plant'));
+    expect(mockNavigate).toHaveBeenCalledWith(HOME_ROUTES.DiseaseAdvisory);
   });
 });

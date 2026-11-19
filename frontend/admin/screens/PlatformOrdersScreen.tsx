@@ -1,34 +1,32 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { Receipt } from 'lucide-react-native';
-import { ChipRow, ScreenState } from '../../common/components';
-import { OrderCard } from '../../common/orders';
+import React, { useCallback, useState } from 'react';
+import { ChipRow, QueryState, ScreenScaffold, TextField, type ChipOption } from '../../common/components';
+import { OrderCard, type OrderStatus } from '../../common/orders';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
-import { useAllOrders } from '../hooks/admin';
+import { statusMeta } from '../../common/constants/status';
 import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
-import { useTheme, type Theme } from '../../theme';
+import { LoadMore } from '../components/LoadMore';
+import { useOrderPages } from '../hooks/admin';
 
-type OrderFilter = 'all' | 'disputed';
+type Filter = OrderStatus | 'all';
 
-const FILTERS: { value: OrderFilter; label: string }[] = [
+const FILTER_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'dispatched', 'completed', 'disputed', 'cancelled'];
+const FILTERS: ChipOption<Filter>[] = [
   { value: 'all', label: 'All' },
-  { value: 'disputed', label: 'Disputed' },
+  ...FILTER_STATUSES.map(status => ({ value: status, label: statusMeta('order', status).label })),
 ];
 
 /**
- * Platform-wide order overview — every order, not scoped to a buyer/seller segment. The Overview's "Disputes" tile opens
- * it filtered to disputed orders. The filter runs in the database (/admin/orders?status=), so no disputed order is missed.
+ * Platform-wide order overview: every order, not scoped to a buyer or seller. The Overview's "Disputes" tile opens it
+ * filtered to disputed orders, and that filter runs in the database (/admin/orders?status=disputed), so no disputed order
+ * is missed past the first page. The API filters on nothing else, so the search and the other status chips look through
+ * the pages already loaded.
  */
 export function PlatformOrdersScreen({ route }: Partial<AdminScreenProps<typeof ADMIN_HOME_ROUTES.Orders>>) {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
   const navigation = useNavigation<AdminScreenProps<typeof ADMIN_HOME_ROUTES.Orders>['navigation']>();
   const requested = route?.params?.status;
-  const [filter, setFilter] = useState<OrderFilter>(requested ?? 'all');
-  const orders = useAllOrders(filter === 'all' ? undefined : filter);
-  const { refetch } = orders;
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<Filter>(requested ?? 'all');
 
   // A tile pressed while this screen is open brings a new param; the filter follows it (adjusted during render, not in
   // an effect, so the list never draws once with the old filter).
@@ -38,53 +36,54 @@ export function PlatformOrdersScreen({ route }: Partial<AdminScreenProps<typeof 
     if (requested) setFilter(requested);
   }
 
+  const needle = search.trim().toLowerCase();
+  const serverStatus = filter === 'disputed' ? 'disputed' : undefined;
+  const query = useOrderPages(serverStatus, needle.length > 0 || (filter !== 'all' && serverStatus === undefined));
+  const { rows, refetch } = query;
+
   useFocusEffect(
     useCallback(() => {
       refetch();
     }, [refetch]),
   );
 
+  const shown = rows.filter(order => {
+    if (filter !== 'all' && order.status !== filter) return false;
+    if (!needle) return true;
+    const haystack = [order.buyer?.full_name, order.seller?.full_name, ...order.order_items.map(item => item.listing?.title)].join(' ').toLowerCase();
+    return haystack.includes(needle);
+  });
+
   return (
-    <View style={styles.container}>
+    <ScreenScaffold onRefresh={() => refetch()} refreshing={query.isRefetching && !query.isFetchingNextPage}>
+      <TextField label="Find an order" placeholder="Buyer, seller or item" value={search} onChangeText={setSearch} autoCorrect={false} />
       <ChipRow options={FILTERS} value={filter} onChange={setFilter} />
-      <ScreenState
-        query={orders}
-        errorTitle="Couldn't load the orders"
-        empty={{
-          title: filter === 'disputed' ? 'No disputed orders' : 'No orders yet',
-          description: filter === 'disputed' ? undefined : 'Platform orders will show up here once placed.',
-          icon: Receipt,
-        }}
+      <QueryState
+        query={query}
+        failureTitle="Couldn't load orders"
+        isEmpty={shown.length === 0 && !query.hasNextPage && !query.isFetching}
+        empty={
+          needle || filter !== 'all'
+            ? { title: 'No order matches', description: 'Try a different name, item or status.' }
+            : { title: 'No orders yet', description: 'Platform orders show up here once they are placed.' }
+        }
       >
-        {data => (
-          <FlashList
-            data={data}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.list}
-            renderItem={({ item }) => (
-              <OrderCard
-                order={item}
-                counterpartyName={`${item.buyer?.full_name || 'Unknown buyer'} → ${item.seller?.full_name || 'Unknown seller'}`}
-                onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.OrderDetail, { orderId: item.id })}
-              />
-            )}
+        {shown.map(order => (
+          <OrderCard
+            key={order.id}
+            order={order}
+            counterpartyName={`${order.buyer?.full_name || 'Unknown buyer'} → ${order.seller?.full_name || 'Unknown seller'}`}
+            onPress={() => navigation.navigate(ADMIN_HOME_ROUTES.OrderDetail, { orderId: order.id })}
           />
-        )}
-      </ScreenState>
-    </View>
+        ))}
+        <LoadMore
+          hasMore={!!query.hasNextPage}
+          loading={query.isFetchingNextPage}
+          onLoadMore={() => query.fetchNextPage()}
+          noun="orders"
+        />
+      </QueryState>
+    </ScreenScaffold>
   );
 }
 
-function makeStyles({ colors, space }: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      paddingTop: space[3],
-    },
-    list: {
-      paddingHorizontal: space[4],
-      paddingTop: space[4],
-    },
-  });
-}

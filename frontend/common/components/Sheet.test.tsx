@@ -1,20 +1,16 @@
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { lightTheme } from '../../theme';
 import { Sheet } from './Sheet';
 
-// A phone with a 24 dp status bar and a 24 dp gesture area, as App.tsx's SafeAreaProvider measures it.
-const PHONE = { frame: { x: 0, y: 0, width: 400, height: 800 }, insets: { top: 24, left: 0, right: 0, bottom: 24 } };
-
-function renderSheet(ui: React.ReactElement) {
-  return render(<SafeAreaProvider initialMetrics={PHONE}>{ui}</SafeAreaProvider>);
-}
+// A phone with a 24 dp status bar and a 30 dp gesture area.
+const PHONE = { frame: { x: 0, y: 0, width: 400, height: 800 }, insets: { top: 24, left: 0, right: 0, bottom: 30 } };
 
 describe('Sheet', () => {
   it('renders its children when visible', async () => {
-    await renderSheet(
+    await render(
       <Sheet visible onClose={() => {}}>
         <Text>Sheet content</Text>
       </Sheet>,
@@ -22,38 +18,31 @@ describe('Sheet', () => {
     expect(screen.getByText('Sheet content')).toBeTruthy();
   });
 
-  it('calls onClose when the backdrop is pressed', async () => {
-    const onClose = jest.fn();
-    await renderSheet(
-      <Sheet visible onClose={onClose}>
+  it('renders nothing when it is not visible', async () => {
+    await render(
+      <Sheet visible={false} onClose={() => {}} title="Adjust stock">
         <Text>Sheet content</Text>
       </Sheet>,
     );
-    await fireEvent.press(screen.getByTestId('sheet-backdrop', { includeHiddenElements: true }));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Sheet content')).toBeNull();
   });
 
-  it('always offers a Close button, with or without a title (A8)', async () => {
+  it('has a labelled backdrop that calls onClose when it is pressed', async () => {
     const onClose = jest.fn();
-    await renderSheet(
-      <Sheet visible onClose={onClose}>
-        <Text>Filters</Text>
+    await render(
+      <Sheet visible onClose={onClose} title="Adjust stock">
+        <Text>Sheet content</Text>
       </Sheet>,
     );
-    await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    const backdrop = screen.getByTestId('sheet-backdrop', { includeHiddenElements: true });
+    expect(backdrop.props.accessibilityRole).toBe('button');
+    expect(backdrop.props.accessibilityLabel).toBe('Close Adjust stock');
+    await fireEvent.press(backdrop);
     expect(onClose).toHaveBeenCalledTimes(1);
-
-    await renderSheet(
-      <Sheet visible onClose={onClose} title="Delete this farm?">
-        <Text>Body</Text>
-      </Sheet>,
-    );
-    expect(screen.getByRole('header', { name: 'Delete this farm?' })).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
   });
 
-  it('hides the full-screen backdrop from TalkBack, so Close is the one Close stop', async () => {
-    await renderSheet(
+  it('hides the full-screen backdrop from TalkBack, so Close is the one Close stop (A8)', async () => {
+    await render(
       <Sheet visible onClose={() => {}} title="Filters">
         <Text>Body</Text>
       </Sheet>,
@@ -64,28 +53,83 @@ describe('Sheet', () => {
     expect(backdrop.props.importantForAccessibility).toBe('no-hide-descendants');
   });
 
-  it('scrolls a tall body, keeps a tap with the keyboard up, and stays clear of the status bar', async () => {
-    await renderSheet(
+  it('names the dialog with a header and adds a close button', async () => {
+    const onClose = jest.fn();
+    await render(
+      <Sheet visible onClose={onClose} title="Adjust stock">
+        <Text>Sheet content</Text>
+      </Sheet>,
+    );
+    expect(screen.getByRole('header', { name: 'Adjust stock' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+    await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers a Close button without a title too (A8)', async () => {
+    const onClose = jest.fn();
+    await render(
+      <Sheet visible onClose={onClose}>
+        <Text>Filters</Text>
+      </Sheet>,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('scrolls its body, so a long form never pushes the footer off a small phone', async () => {
+    await render(
+      <Sheet visible onClose={() => {}} title="Filters" footer={<Text>Footer</Text>}>
+        <Text>Long body</Text>
+      </Sheet>,
+    );
+    const scroll = screen.getByTestId('sheet-body');
+    // Taps on buttons still count while a field in the sheet has the keyboard open.
+    expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
+    expect(StyleSheet.flatten(scroll.props.style).flexShrink).toBe(1);
+    expect(within(scroll).getByText('Long body')).toBeTruthy();
+  });
+
+  it('keeps the footer outside the scrolling body, so it stays in view above the keyboard', async () => {
+    await render(
+      <Sheet visible onClose={() => {}} title="Filters" footer={<Text>Apply filters</Text>}>
+        <Text>Long body</Text>
+      </Sheet>,
+    );
+    expect(within(screen.getByTestId('sheet-body')).queryByText('Apply filters')).toBeNull();
+    expect(screen.getByText('Apply filters')).toBeTruthy();
+  });
+
+  it('stops at 90% of the window', async () => {
+    await render(
       <Sheet visible onClose={() => {}} title="Filters">
         <Text>Body</Text>
       </Sheet>,
     );
-    const body = screen.getByTestId('sheet-body');
-    expect(body.props.scrollEnabled).not.toBe(false);
-    expect(body.props.keyboardShouldPersistTaps).toBe('handled');
-    expect(StyleSheet.flatten(body.props.style).flexShrink).toBe(1);
-
-    const backdrop = screen.getByTestId('sheet-backdrop', { includeHiddenElements: true });
-    expect(StyleSheet.flatten(backdrop.props.style).minHeight).toBeGreaterThan(PHONE.insets.top);
+    const sheet = screen.getByLabelText('Filters');
+    expect(StyleSheet.flatten(sheet.props.style).maxHeight).toBe(lightTheme.components.sheet.maxHeight);
+    expect(lightTheme.components.sheet.maxHeight).toBe('90%');
   });
 
-  it('reaches the bottom edge and pads its content above the gesture area', async () => {
-    await renderSheet(
-      <Sheet visible onClose={() => {}} title="Dispatch">
-        <Text>Body</Text>
+  it('can leave scrolling to a body that scrolls itself, such as a list', async () => {
+    await render(
+      <Sheet visible onClose={() => {}} title="Choose" scroll={false}>
+        <Text>Own list</Text>
       </Sheet>,
     );
-    const sheet = screen.getByLabelText('Dispatch');
-    expect(StyleSheet.flatten(sheet.props.style).paddingBottom).toBe(lightTheme.space[6] + PHONE.insets.bottom);
+    expect(screen.queryByTestId('sheet-body')).toBeNull();
+    expect(screen.getByText('Own list')).toBeTruthy();
+  });
+
+  it('keeps its bottom clear of the gesture area', async () => {
+    await render(
+      <SafeAreaProvider initialMetrics={PHONE}>
+        <Sheet visible onClose={() => {}} title="Filters" footer={<Text>Apply</Text>}>
+          <Text>Body</Text>
+        </Sheet>
+      </SafeAreaProvider>,
+    );
+    const sheet = screen.getByLabelText('Filters');
+    expect(StyleSheet.flatten(sheet.props.style).paddingBottom).toBe(PHONE.insets.bottom);
   });
 });

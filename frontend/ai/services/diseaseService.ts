@@ -2,7 +2,7 @@ import type { PickedPhoto } from '../../utils/photoPicker';
 import { extensionFromMimeType } from '../../utils/mimeExtension';
 import { supabase } from '../../services/supabase/client';
 import { apiFetch } from '../../services/api/client';
-import type { DiseaseCase, DiseaseCaseWithPrediction, DiseasePrediction } from '../types/disease';
+import type { DiseaseCase, DiseaseCaseWithPrediction, DiseasePredictResult, SupportedCrop } from '../types/disease';
 
 /**
  * Uploads the photo and returns its storage PATH, not a URL — the disease-images bucket is
@@ -34,6 +34,12 @@ export async function createDiseaseCase(cropId: string | null, storagePath: stri
   });
 }
 
+/** The crops the model knows (D16): the only crops the scan offers. */
+export async function fetchSupportedCrops(): Promise<SupportedCrop[]> {
+  const response = await apiFetch<{ crops: SupportedCrop[] }>('/api/v1/disease/crops');
+  return response.crops;
+}
+
 /**
  * Calls the FastAPI inference endpoint. It answers 503 when the model is unavailable (checkpoint
  * missing or failing to load), which the Processing screen shows as its own "unavailable" state,
@@ -41,11 +47,12 @@ export async function createDiseaseCase(cropId: string | null, storagePath: stri
  * `report` built from the expert-reviewed knowledge base; it is advisory only (BR-13): the model
  * cannot yet tell "not a plant leaf" from a real leaf, so a confident label is not evidence of a
  * diagnosis (docs/status/baseline-2026-09.md).
+ * `chosenCrop` lets the server say whether the photo looks like the crop the farmer chose (`crop_matches`, D16).
  */
-export async function predictDisease(diseaseCaseId: string): Promise<DiseasePrediction> {
+export async function predictDisease(diseaseCaseId: string, chosenCrop: string | null = null): Promise<DiseasePredictResult> {
   return apiFetch('/api/v1/disease/predict', {
     method: 'POST',
-    body: { disease_case_id: diseaseCaseId },
+    body: { disease_case_id: diseaseCaseId, chosen_crop: chosenCrop },
   });
 }
 

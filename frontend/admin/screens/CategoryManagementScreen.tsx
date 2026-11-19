@@ -1,31 +1,34 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { Pencil, Save, Tags, Trash2 } from 'lucide-react-native';
-import { Button, EmptyState, ScreenState, Sheet, TextField, useToast } from '../../common/components';
-import { useDeleteCategory, useSaveCategory } from '../hooks/admin';
+import React, { useCallback, useState } from 'react';
+import { Banner, Button, ListGroup, ListRow, QueryState, ScreenScaffold, Sheet, StickyActionBar, TextField } from '../../common/components';
 import { useCategories, type Category } from '../../common/marketplace';
-import { useAuthStore } from '../../state/authStore';
-import { useTheme, type Theme } from '../../theme';
 import { errorMessage } from '../../utils/errorMessage';
+import { AdminActionSheet, type AdminAction } from '../components/AdminActionSheet';
+import { useDeleteCategory, useSaveCategory } from '../hooks/admin';
 
+// The machine name of a new category, made from its name: "Farm tools" becomes "farm-tools". Nobody types it (AD-15); it
+// is not changed when a category is renamed, because listings and links may already use it.
+function slugFrom(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** The marketplace categories (SRDS §8). Every change is audited by the API (BR-15). */
 export function CategoryManagementScreen() {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  const actorId = useAuthStore(state => state.user?.id);
-  const categories = useCategories();
-  const { refetch } = categories;
-  const toast = useToast();
+  const query = useCategories();
+  const { data: categories = [], refetch } = query;
   const saveCategory = useSaveCategory();
   const removeCategory = useDeleteCategory();
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editing, setEditing] = useState<Category | null>(null);
+  const [selected, setSelected] = useState<Category | null>(null);
+  const [editing, setEditing] = useState<Category | 'new' | null>(null);
   const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [icon, setIcon] = useState('');
-  const [deleting, setDeleting] = useState<Category | null>(null);
+  const [nameError, setNameError] = useState<string | undefined>(undefined);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [action, setAction] = useState<AdminAction | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -33,187 +36,101 @@ export function CategoryManagementScreen() {
     }, [refetch]),
   );
 
-  const openCreate = () => {
-    setEditing(null);
-    setName('');
-    setSlug('');
-    setIcon('');
-    setSheetOpen(true);
-  };
-
-  const openEdit = (category: Category) => {
+  const openEditor = (category: Category | 'new') => {
+    setSelected(null);
+    setName(category === 'new' ? '' : category.name);
+    setNameError(undefined);
+    setFailure(null);
     setEditing(category);
-    setName(category.name);
-    setSlug(category.slug);
-    setIcon(category.icon ?? '');
-    setSheetOpen(true);
   };
 
   const save = async () => {
-    if (!actorId || !name.trim() || !slug.trim()) return;
-    setSavingId(editing?.id ?? 'new');
+    const trimmed = name.trim();
+    if (trimmed.length < 2) {
+      setNameError('Give the category a name of at least 2 letters');
+      return;
+    }
+    const current = editing;
+    const slug = current && current !== 'new' ? current.slug : slugFrom(trimmed);
+    if (!slug) {
+      setNameError('Use letters or numbers in the name');
+      return;
+    }
+    setNameError(undefined);
+    setFailure(null);
+    setSaving(true);
     try {
-      const input = { name: name.trim(), slug: slug.trim(), icon: icon.trim() || null };
-      await saveCategory.mutateAsync({ id: editing?.id, input });
-      setSheetOpen(false);
-      toast.success(editing ? 'Category saved' : 'Category created');
+      await saveCategory.mutateAsync({
+        id: current && current !== 'new' ? current.id : undefined,
+        input: { name: trimmed, slug, icon: current && current !== 'new' ? current.icon : null },
+      });
+      setEditing(null);
     } catch (error) {
-      toast.error(`Could not save the category. ${errorMessage(error)}`);
+      setFailure(errorMessage(error));
     } finally {
-      setSavingId(null);
+      setSaving(false);
     }
   };
 
-  // Deleting cannot be undone, so it is confirmed in a sheet first.
-  const remove = (category: Category) => {
-    if (!actorId) return;
-    setDeleting(category);
-  };
-
-  const confirmRemove = async () => {
-    const category = deleting;
-    if (!category) return;
-    setDeleting(null);
-    setSavingId(category.id);
-    try {
-      await removeCategory.mutateAsync(category.id);
-      toast.success('Category deleted');
-    } catch (error) {
-      toast.error(`Could not delete the category. ${errorMessage(error)}`);
-    } finally {
-      setSavingId(null);
-    }
+  const askDelete = (category: Category) => {
+    setSelected(null);
+    setAction({
+      title: `Delete ${category.name}?`,
+      message: `"${category.name}" is removed from the category list. This cannot be undone.`,
+      confirmLabel: `Delete ${category.name}`,
+      destructive: true,
+      run: () => removeCategory.mutateAsync(category.id),
+      done: `${category.name} deleted`,
+    });
   };
 
   return (
-    <View style={styles.container}>
-      <ScreenState query={categories} errorTitle="Couldn't load the categories">
-        {data => (
-          <FlashList
-            contentContainerStyle={styles.list}
-            data={data}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.row}>
-                <View style={styles.info}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.slug}>{item.slug}</Text>
-                </View>
-                <View style={styles.actions}>
-                  <Button
-                    label="Edit"
-                    icon={Pencil}
-                    variant="secondary"
-                    fullWidth={false}
-                    loading={savingId === item.id}
-                    onPress={() => openEdit(item)}
-                  />
-                  <Button
-                    label="Delete"
-                    icon={Trash2}
-                    variant="danger"
-                    fullWidth={false}
-                    loading={savingId === item.id}
-                    onPress={() => remove(item)}
-                  />
-                </View>
-              </View>
-            )}
-            ListEmptyComponent={
-              <EmptyState title="No categories yet" description="Add the first product category below." icon={Tags} />
-            }
-            ListFooterComponent={
-              <Button
-                label="+ Add Category"
-                variant="secondary"
-                onPress={openCreate}
-                style={styles.addButton}
-              />
-            }
-          />
-        )}
-      </ScreenState>
+    <>
+      <ScreenScaffold
+        onRefresh={() => refetch()}
+        refreshing={query.isRefetching}
+        footer={
+          <StickyActionBar>
+            <Button label="Add a category" size="lg" onPress={() => openEditor('new')} />
+          </StickyActionBar>
+        }
+      >
+        <QueryState
+          query={query}
+          failureTitle="Couldn't load categories"
+          isEmpty={categories.length === 0}
+          empty={{ title: 'No categories yet', description: 'Add the first marketplace category.' }}
+        >
+          <ListGroup>
+            {categories.map(category => (
+              <ListRow key={category.id} title={category.name} onPress={() => setSelected(category)} />
+            ))}
+          </ListGroup>
+        </QueryState>
+      </ScreenScaffold>
 
-      <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title={editing ? 'Edit Category' : 'New Category'}>
-        <View style={styles.sheet}>
-          <TextField
-            label="Name"
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g. Seeds"
-          />
-          <TextField
-            label="Slug"
-            value={slug}
-            onChangeText={setSlug}
-            placeholder="e.g. seeds"
-            autoCapitalize="none"
-          />
-          <TextField
-            label="Icon (optional)"
-            value={icon}
-            onChangeText={setIcon}
-            placeholder="e.g. sprout"
-          />
-          <Button
-            label={editing ? 'Save Changes' : 'Create Category'}
-            icon={Save}
-            loading={savingId === (editing?.id ?? 'new')}
-            onPress={save}
-          />
-        </View>
+      <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? 'Category'}>
+        <ListGroup>
+          <ListRow title="Rename category" onPress={() => selected && openEditor(selected)} />
+          <ListRow title={`Delete ${selected?.name ?? 'category'}`} onPress={() => selected && askDelete(selected)} />
+        </ListGroup>
       </Sheet>
 
-      <Sheet visible={deleting !== null} onClose={() => setDeleting(null)} title="Delete category">
-        <View style={styles.sheet}>
-          <Text style={styles.sheetBody}>{`Delete "${deleting?.name ?? ''}"? This cannot be undone.`}</Text>
-          <Button label="Delete" icon={Trash2} variant="danger" onPress={confirmRemove} />
-          <Button label="Cancel" variant="secondary" onPress={() => setDeleting(null)} />
-        </View>
+      <Sheet
+        visible={editing !== null}
+        onClose={() => !saving && setEditing(null)}
+        title={editing === 'new' ? 'New category' : 'Rename category'}
+        footer={<Button label={editing === 'new' ? 'Add category' : 'Save category'} size="lg" loading={saving} onPress={save} />}
+      >
+        <TextField label="Name" placeholder="Seeds" value={name} onChangeText={setName} error={nameError} editable={!saving} />
+        {failure ? (
+          <Banner tone="danger" title="Couldn't save the category">
+            {failure}
+          </Banner>
+        ) : null}
       </Sheet>
-    </View>
+
+      <AdminActionSheet action={action} onClose={() => setAction(null)} />
+    </>
   );
-}
-
-function makeStyles({ colors, space, typography, borders }: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    list: {
-      padding: space[4],
-    },
-    row: {
-      paddingVertical: space[3],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    info: {
-      marginBottom: space[2],
-    },
-    name: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-    },
-    slug: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginTop: space[1] / 2,
-    },
-    actions: {
-      flexDirection: 'row',
-      gap: space[2],
-    },
-    addButton: {
-      marginTop: space[4],
-    },
-    sheet: {
-      gap: space[3],
-    },
-    sheetBody: {
-      ...typography.body,
-      color: colors.ink,
-    },
-  });
 }

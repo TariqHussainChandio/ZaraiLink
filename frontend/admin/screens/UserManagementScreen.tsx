@@ -1,32 +1,91 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { Ban, UserCheck, UserCog, Users } from 'lucide-react-native';
-import { Button, ListGroup, ListRow, RoleBadge, ScreenState, Sheet, StatusBadge, useToast } from '../../common/components';
-import { ROLES, ROLE_LABELS } from '../../common/constants/roles';
-import { useProfiles, useSetProfileSuspended, useUpdateUserRole } from '../hooks/admin';
+import { StyleSheet, View } from 'react-native';
+import {
+  Avatar,
+  ChipRow,
+  ListGroup,
+  ListRow,
+  QueryState,
+  RoleBadge,
+  ScreenScaffold,
+  Sheet,
+  StatusBadge,
+  TextField,
+  type ChipOption,
+} from '../../common/components';
+import { ROLES, ROLE_LABELS, type Role } from '../../common/constants/roles';
+import { statusMeta } from '../../common/constants/status';
+import type { Profile } from '../../common/types/profile';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
-import type { Profile } from '../../common/types/profile';
+import { formatDay } from '../../utils/dates';
+import { AdminActionSheet, type AdminAction } from '../components/AdminActionSheet';
+import { LoadMore } from '../components/LoadMore';
+import { useProfilePages, useSetProfileSuspended, useUpdateUserRole } from '../hooks/admin';
 
-// Every user: role and suspension. A dealer's or expert's application is decided in Approvals, after reading it and its
-// documents (A3b), so this list shows the status but offers no decision.
+type RoleFilter = Role | 'all';
+type StatusFilter = Profile['account_status'] | 'all';
+
+// Admin is not offered anywhere in the app (D17): an administrator is made outside it.
+const ROLE_FILTERS: ChipOption<RoleFilter>[] = [
+  { value: 'all', label: 'Everyone' },
+  { value: 'farmer', label: 'Farmers' },
+  { value: 'buyer', label: 'Buyers' },
+  { value: 'dealer', label: 'Dealers' },
+  { value: 'expert', label: 'Experts' },
+  { value: 'admin', label: 'Admins' },
+];
+const STATUS_FILTERS: ChipOption<StatusFilter>[] = [
+  { value: 'all', label: 'Any status' },
+  { value: 'pending', label: statusMeta('application', 'pending').label },
+  { value: 'approved', label: statusMeta('application', 'approved').label },
+  { value: 'rejected', label: statusMeta('application', 'rejected').label },
+];
+const CHOOSABLE_ROLES = ROLES.filter(role => role !== 'admin');
+
+/** What changing this person's role does to them, in words (D17). The database resets the approval on every role change
+ * (guard_profiles_role, 20261012080000_applications.sql): a dealer or expert starts again at "Under review", and nobody
+ * keeps an approval from a role they have left. */
+function roleChangeConsequence(name: string, from: Role, to: Role): string {
+  const parts: string[] = [];
+  if (to === 'dealer' || to === 'expert') {
+    parts.push(`${name} becomes a ${ROLE_LABELS[to].toLowerCase()} but goes back to Under review. They cannot sell or use inventory until you approve a new application.`);
+  } else {
+    parts.push(`${name} becomes a ${ROLE_LABELS[to].toLowerCase()}.`);
+  }
+  if (from === 'dealer' || from === 'expert') {
+    parts.push(`They lose their ${ROLE_LABELS[from].toLowerCase()} approval, and with it ${from === 'dealer' ? 'selling and inventory access' : 'their place among verified experts'}. Changing back does not restore it.`);
+  } else if (from === 'admin') {
+    parts.push('They lose admin access.');
+  }
+  return parts.join(' ');
+}
+
+/**
+ * Every user: role and suspension (SRDS §8). A dealer's or expert's application is decided in Approvals, after reading it
+ * and its documents (A3b), so this list shows the status but offers no decision. The list pages (AD-02); the API filters
+ * on role and account status, and the search box looks through the pages already loaded.
+ */
 export function UserManagementScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const currentUserId = useAuthStore(state => state.user?.id);
   const suspend = useSetProfileSuspended();
   const updateRole = useUpdateUserRole();
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [roleSheetFor, setRoleSheetFor] = useState<Profile | null>(null);
-  // Suspending signs a person out of everything they do on the platform, so it (and lifting it) is confirmed first.
-  // The suspend route takes no reason (SuspendUserRequest is is_suspended only), so the sheet asks for none.
-  const [suspendSheetFor, setSuspendSheetFor] = useState<Profile | null>(null);
-  const profiles = useProfiles();
-  const { refetch } = profiles;
-  const toast = useToast();
+  const [search, setSearch] = useState('');
+  const [role, setRole] = useState<RoleFilter>('all');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [selected, setSelected] = useState<Profile | null>(null);
+  const [choosingRoleFor, setChoosingRoleFor] = useState<Profile | null>(null);
+  const [action, setAction] = useState<AdminAction | null>(null);
+
+  const needle = search.trim().toLowerCase();
+  const query = useProfilePages(
+    { role: role === 'all' ? undefined : role, accountStatus: status === 'all' ? undefined : status },
+    needle.length > 0,
+  );
+  const { rows, refetch } = query;
 
   useFocusEffect(
     useCallback(() => {
@@ -34,179 +93,145 @@ export function UserManagementScreen() {
     }, [refetch]),
   );
 
-  const toggleSuspend = async (profile: Profile) => {
-    if (!currentUserId) return;
-    setSuspendSheetFor(null);
-    setUpdatingId(profile.id);
-    try {
-      await suspend.mutateAsync({ id: profile.id, suspended: !profile.is_suspended });
-      toast.success(profile.is_suspended ? 'User unsuspended' : 'User suspended');
-    } catch (error) {
-      toast.error(`Could not update the user. ${errorMessage(error)}`);
-    } finally {
-      setUpdatingId(null);
-    }
+  const shown = needle
+    ? rows.filter(p => p.full_name.toLowerCase().includes(needle) || (p.phone ?? '').replace(/\s/g, '').includes(needle.replace(/\s/g, '')))
+    : rows;
+  const filtered = needle.length > 0 || role !== 'all' || status !== 'all';
+
+
+  const askSuspend = (profile: Profile) => {
+    const name = nameOf(profile);
+    const lifting = profile.is_suspended;
+    setSelected(null);
+    setAction(
+      lifting
+        ? {
+            title: `Lift the suspension on ${name}?`,
+            message: `${name} can sign in and use ZaraiLink again.`,
+            confirmLabel: `Lift suspension for ${name}`,
+            run: () => suspend.mutateAsync({ id: profile.id, suspended: false }),
+            done: `${name} can use ZaraiLink again`,
+            undo: () => suspend.mutateAsync({ id: profile.id, suspended: true }),
+          }
+        : {
+            title: `Suspend ${name}?`,
+            message: `${name} is signed out and cannot use ZaraiLink until you lift the suspension. Their listings and orders are not changed.`,
+            confirmLabel: `Suspend ${name}`,
+            destructive: true,
+            run: () => suspend.mutateAsync({ id: profile.id, suspended: true }),
+            done: `${name} suspended`,
+            undo: () => suspend.mutateAsync({ id: profile.id, suspended: false }),
+          },
+    );
   };
 
-  const changeRole = async (profile: Profile, newRole: Profile['role']) => {
-    if (!currentUserId) return;
-    setRoleSheetFor(null);
-    setUpdatingId(profile.id);
-    try {
-      await updateRole.mutateAsync({ id: profile.id, role: newRole });
-      toast.success(`Role changed to ${ROLE_LABELS[newRole]}`);
-    } catch (error) {
-      toast.error(`Could not update the user. ${errorMessage(error)}`);
-    } finally {
-      setUpdatingId(null);
-    }
+  const askRole = (profile: Profile, to: Role) => {
+    const name = nameOf(profile);
+    setChoosingRoleFor(null);
+    setAction({
+      title: `Change ${name} to ${ROLE_LABELS[to].toLowerCase()}?`,
+      message: roleChangeConsequence(name, profile.role, to),
+      confirmLabel: `Change ${name} to ${ROLE_LABELS[to].toLowerCase()}`,
+      destructive: profile.role === 'dealer' || profile.role === 'expert' || profile.role === 'admin',
+      run: () => updateRole.mutateAsync({ id: profile.id, role: to }),
+      done: `${name} is now a ${ROLE_LABELS[to].toLowerCase()}`,
+    });
   };
+
+  const selectedName = selected ? nameOf(selected) : '';
 
   return (
-    <View style={styles.container}>
-      <ScreenState query={profiles} errorTitle="Couldn't load the users" empty={{ title: 'No users found', icon: Users }}>
-        {shown => (
-          <FlashList
-            style={styles.container}
-            contentContainerStyle={styles.list}
-            data={shown}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.row}>
-                <View>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {displayName(item)}
-                  </Text>
-                  <Text style={styles.meta} numberOfLines={1}>
-                    {identifier(item)}
-                  </Text>
-                  <View style={styles.badgeRow}>
-                    <RoleBadge role={item.role} />
-                    {item.is_suspended ? <StatusBadge kind="application" status="suspended" /> : null}
-                    {(item.role === 'dealer' || item.role === 'expert') && item.account_status !== 'approved' ? (
-                      <StatusBadge kind="application" status={item.account_status} />
-                    ) : null}
-                  </View>
-                </View>
-                {item.id !== currentUserId ? (
-                  <View style={styles.actions}>
-                    <Button
-                      label="Change Role"
-                      icon={UserCog}
-                      variant="secondary"
-                      fullWidth={false}
-                      loading={updatingId === item.id}
-                      onPress={() => setRoleSheetFor(item)}
-                    />
-                    <Button
-                      label={item.is_suspended ? 'Unsuspend' : 'Suspend'}
-                      icon={item.is_suspended ? UserCheck : Ban}
-                      variant={item.is_suspended ? 'secondary' : 'danger'}
-                      fullWidth={false}
-                      loading={updatingId === item.id}
-                      onPress={() => setSuspendSheetFor(item)}
-                    />
-                  </View>
-                ) : null}
-              </View>
-            )}
-          />
-        )}
-      </ScreenState>
-
-      <Sheet
-        visible={!!suspendSheetFor}
-        onClose={() => setSuspendSheetFor(null)}
-        title={`${suspendSheetFor?.is_suspended ? 'Unsuspend' : 'Suspend'} ${suspendSheetFor ? displayName(suspendSheetFor) : ''}`}
-      >
-        <View style={styles.sheet}>
-          <Text style={styles.sheetBody}>
-            {suspendSheetFor?.is_suspended
-              ? 'They can sign in and use ZaraiLink again.'
-              : 'They are signed out and cannot buy, sell, message or consult until you lift the suspension.'}
-          </Text>
-          {suspendSheetFor ? <Text style={styles.meta}>{identifier(suspendSheetFor)}</Text> : null}
-          <Button
-            label={suspendSheetFor?.is_suspended ? 'Unsuspend user' : 'Suspend user'}
-            icon={suspendSheetFor?.is_suspended ? UserCheck : Ban}
-            variant={suspendSheetFor?.is_suspended ? 'primary' : 'danger'}
-            onPress={() => suspendSheetFor && toggleSuspend(suspendSheetFor)}
-          />
-          <Button label="Not now" variant="secondary" onPress={() => setSuspendSheetFor(null)} />
+    <>
+      <ScreenScaffold onRefresh={() => refetch()} refreshing={query.isRefetching && !query.isFetchingNextPage}>
+        <TextField label="Find a person" placeholder="Name or phone number" value={search} onChangeText={setSearch} autoCorrect={false} />
+        <View>
+          <ChipRow options={ROLE_FILTERS} value={role} onChange={setRole} />
+          <ChipRow options={STATUS_FILTERS} value={status} onChange={setStatus} />
         </View>
+        <QueryState
+          query={query}
+          failureTitle="Couldn't load users"
+          isEmpty={shown.length === 0 && !query.hasNextPage && !query.isFetching}
+          empty={
+            filtered
+              ? { title: 'No one matches', description: 'Try a different name, role or status.' }
+              : { title: 'No users yet', description: 'People appear here once they sign up.' }
+          }
+        >
+          <ListGroup>
+            {shown.map(profile => {
+              const isSelf = profile.id === currentUserId;
+              const needsDecision = (profile.role === 'dealer' || profile.role === 'expert') && profile.account_status !== 'approved';
+              return (
+                <ListRow
+                  key={profile.id}
+                  title={nameOf(profile)}
+                  meta={identifier(profile, isSelf)}
+                  leading={<Avatar uri={profile.avatar_url} name={profile.full_name} role={profile.role} />}
+                  status={
+                    <View style={styles.badges}>
+                      <RoleBadge role={profile.role} />
+                      {profile.is_suspended ? <StatusBadge kind="application" status="suspended" /> : null}
+                      {needsDecision ? <StatusBadge kind="application" status={profile.account_status} /> : null}
+                    </View>
+                  }
+                  onPress={isSelf ? undefined : () => setSelected(profile)}
+                  accessibilityLabel={`${nameOf(profile)}, ${ROLE_LABELS[profile.role]}${profile.is_suspended ? ', suspended' : ''}${isSelf ? ', you' : ''}`}
+                />
+              );
+            })}
+          </ListGroup>
+          <LoadMore hasMore={!!query.hasNextPage} loading={query.isFetchingNextPage} onLoadMore={() => query.fetchNextPage()} noun="users" />
+        </QueryState>
+      </ScreenScaffold>
+
+      <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selectedName}>
+        <ListGroup>
+          <ListRow
+            title="Change role"
+            meta={selected ? `Now ${ROLE_LABELS[selected.role].toLowerCase()}` : undefined}
+            onPress={() => {
+              setChoosingRoleFor(selected);
+              setSelected(null);
+            }}
+          />
+          <ListRow
+            title={selected?.is_suspended ? `Lift suspension for ${selectedName}` : `Suspend ${selectedName}`}
+            onPress={() => selected && askSuspend(selected)}
+          />
+        </ListGroup>
       </Sheet>
 
-      <Sheet visible={!!roleSheetFor} onClose={() => setRoleSheetFor(null)} title={`Change role for ${roleSheetFor ? displayName(roleSheetFor) : 'this user'}`}>
+      <Sheet visible={!!choosingRoleFor} onClose={() => setChoosingRoleFor(null)} title={`Change role for ${choosingRoleFor ? nameOf(choosingRoleFor) : ''}`}>
         <ListGroup>
-          {ROLES.filter(role => role !== roleSheetFor?.role).map(role => (
-            <ListRow key={role} title={ROLE_LABELS[role]} onPress={() => roleSheetFor && changeRole(roleSheetFor, role)} />
+          {CHOOSABLE_ROLES.filter(r => r !== choosingRoleFor?.role).map(r => (
+            <ListRow key={r} title={ROLE_LABELS[r]} onPress={() => choosingRoleFor && askRole(choosingRoleFor, r)} />
           ))}
         </ListGroup>
       </Sheet>
-    </View>
+
+      <AdminActionSheet action={action} onClose={() => setAction(null)} />
+    </>
   );
 }
 
-const JOINED = new Intl.DateTimeFormat('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
-
-/** A profile with no name still needs telling apart from the next one, so it falls back to its short id. */
-function displayName(profile: Profile): string {
+/** A profile with no name still needs telling apart from the next one, so it falls back to its short id (A8). */
+function nameOf(profile: Profile): string {
   return profile.full_name || `User ${profile.id.slice(0, 8)}`;
 }
 
 /**
  * What tells two people apart in the list. Profiles hold no email (it lives in Supabase Auth, which this list does not
- * read), so the phone, city and join date serve, with the short id that is always there.
+ * read), so the phone, city and join date serve, with the short id that is always there (A8).
  */
-function identifier(profile: Profile): string {
-  return [profile.phone, profile.city, `Joined ${JOINED.format(new Date(profile.created_at))}`, `#${profile.id.slice(0, 8)}`]
+function identifier(profile: Profile, isSelf: boolean): string {
+  return [isSelf ? 'You' : null, profile.phone, profile.city, `Joined ${formatDay(profile.created_at)}`, `#${profile.id.slice(0, 8)}`]
     .filter(Boolean)
     .join(' · ');
 }
 
-function makeStyles({ colors, space, typography, borders }: Theme) {
+function makeStyles({ space }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    list: {
-      padding: space[4],
-    },
-    row: {
-      gap: space[2],
-      paddingVertical: space[3],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    name: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-      marginBottom: space[1],
-    },
-    meta: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginBottom: space[1],
-    },
-    sheet: {
-      gap: space[3],
-    },
-    sheetBody: {
-      ...typography.body,
-      color: colors.ink,
-    },
-    badgeRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space[1],
-    },
-    // Up to four actions (Approve, Reject, Change Role, Suspend) wrap under the name instead of squeezing it away
-    // (A3a verification, H3).
-    actions: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space[2],
-    },
+    badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space[1] },
   });
 }

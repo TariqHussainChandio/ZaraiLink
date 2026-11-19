@@ -1,35 +1,26 @@
-import { Plus, Store } from 'lucide-react-native';
+import { Plus, SearchX, Store } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import {
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { ScreenState, SkeletonCard, StaggeredItem } from '../../components';
+import { Button, QueryState, ScreenScaffold, Spinner } from '../../components';
 import { FilterBar } from '../components/FilterBar';
 import { ListingCard } from '../components/ListingCard';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useCategories, useListings } from '../hooks/marketplace';
 import { useAuthStore } from '../../../state/authStore';
 import { useMarketplaceStore } from '../../../state/marketplaceStore';
-import {
-  useTheme,
-  type Theme,
-  useRoleAccent,
-  type Accent,
-} from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
+/** The market: a two-column grid people scan for price. Each card leads with its rate plate, then the name and who sells
+ * it. Search waits for typing to stop, the old grid stays until the new one arrives, and a list that is empty says whether
+ * that is because of the filters. */
 export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const role = useAuthStore(state => state.role);
   const canSell = role === 'farmer' || role === 'dealer';
-  const { filters, setFilters } = useMarketplaceStore();
+  const { filters, setFilters, resetFilters } = useMarketplaceStore();
   const { data: categories = [] } = useCategories();
   const [pulling, setPulling] = useState(false);
 
@@ -44,9 +35,10 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
     }),
     [filters],
   );
-  const listingsQuery = useListings(params);
-  const { refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isError } =
-    listingsQuery;
+  const query = useListings(params);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError, refetch } = query;
+  const listings = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const filtered = Object.values(params).some(value => value !== undefined);
 
   const onRefresh = async () => {
     setPulling(true);
@@ -54,29 +46,24 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
     setPulling(false);
   };
 
-  // No automatic paging while the feed is in error: FlashList calls onEndReached again on every re-render of a short
-  // list, so a failed page was re-requested in a tight loop (over a hundred requests a second in the Jest run). The
-  // Retry banner or a pull to refresh starts it again.
   const onEndReached = () => {
-    if (hasNextPage && !isFetchingNextPage && !isError) fetchNextPage();
+    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) fetchNextPage();
   };
 
-  // The first load shows the grid's shape, two cards a row, so the page does not jump when listings arrive.
-  const skeleton = (
-    <View style={[styles.list, styles.skeletonGrid]}>
-      {Array.from({ length: 6 }, (_, i) => (
-        <View key={i} style={styles.skeletonGridCell}>
-          <SkeletonCard />
-        </View>
-      ))}
-    </View>
-  );
+  const newListing = () => navigation.navigate(MARKETPLACE_ROUTES.CreateListing);
 
   return (
-    <View style={styles.container}>
+    <ScreenScaffold scroll={false} contentStyle={styles.column}>
+      {canSell ? (
+        // Beside the cart in the app bar once the navigator offers it there (a request to zl-app-core); until then it
+        // is the first thing under the title, a real button of its own, never a floating one over the last row (MK-18).
+        <View style={styles.sell}>
+          <Button label="New listing" icon={Plus} variant="secondary" size="sm" fullWidth={false} onPress={newListing} />
+        </View>
+      ) : null}
       <FilterBar
         search={filters.search}
-        onSearchChange={value => setFilters({ search: value })}
+        onSearchChange={search => setFilters({ search })}
         categories={categories}
         selectedCategoryId={filters.categoryId}
         onSelectCategory={categoryId => setFilters({ categoryId })}
@@ -86,98 +73,54 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
         cropName={filters.cropName}
         onApplyMoreFilters={setFilters}
       />
-      <ScreenState
-        query={listingsQuery}
-        skeleton={skeleton}
-        isEmpty={loaded => loaded.pages.every(page => page.length === 0)}
-        empty={{
-          icon: Store,
-          title: 'No listings yet',
-          description: 'Check back soon, or be the first to list produce here.',
-        }}
-        errorTitle="Couldn't load listings"
-      >
-        {loaded => (
+      <View style={styles.results}>
+        <QueryState
+          query={query}
+          skeleton="cards"
+          failureTitle="Couldn't load the market"
+          isEmpty={listings.length === 0}
+          empty={
+            filtered
+              ? { title: 'No listings match', description: 'Try a wider price range or another city.', icon: SearchX, actionLabel: 'Clear filters', onAction: resetFilters }
+              : canSell
+                ? { title: 'Nothing is listed yet', description: 'List what you sell and buyers will see it here.', icon: Store, actionLabel: 'New listing', onAction: newListing }
+                : { title: 'Nothing is listed yet', description: 'Check back soon. New listings appear here.', icon: Store }
+          }
+        >
           <FlashList
-            data={loaded.pages.flat()}
+            data={listings}
             keyExtractor={item => item.id}
             numColumns={2}
             contentContainerStyle={styles.list}
-            refreshControl={
-              <RefreshControl refreshing={pulling} onRefresh={onRefresh} />
-            }
+            refreshControl={<RefreshControl refreshing={pulling} onRefresh={onRefresh} />}
             onEndReachedThreshold={0.4}
             onEndReached={onEndReached}
-            renderItem={({ item, index }) => (
-              <StaggeredItem index={index} style={styles.staggeredCard}>
-                <ListingCard
-                  listing={item}
-                  onPress={() =>
-                    navigation.navigate(MARKETPLACE_ROUTES.ListingDetail, {
-                      listingId: item.id,
-                    })
-                  }
-                />
-              </StaggeredItem>
+            renderItem={({ item }) => (
+              <ListingCard listing={item} onPress={() => navigation.navigate(MARKETPLACE_ROUTES.ListingDetail, { listingId: item.id })} />
             )}
+            ListFooterComponent={
+              isFetchingNextPage ? (
+                <Spinner />
+              ) : isFetchNextPageError ? (
+                <View style={styles.more}>
+                  <Button label="Couldn't load more. Try again" variant="secondary" fullWidth={false} onPress={() => fetchNextPage()} />
+                </View>
+              ) : null
+            }
           />
-        )}
-      </ScreenState>
-      {canSell ? (
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="List produce for sale"
-          style={styles.fab}
-          onPress={() => navigation.navigate(MARKETPLACE_ROUTES.CreateListing)}
-        >
-          <Plus color={theme.colors.onAccent} size={theme.size.iconButton} />
-          <Text style={styles.fabLabel}>List</Text>
-        </TouchableOpacity>
-      ) : null}
-    </View>
+        </QueryState>
+      </View>
+    </ScreenScaffold>
   );
 }
 
-function makeStyles(
-  { colors, space, radius, shadows, typography, size }: Theme,
-  accent: Accent,
-) {
+function makeStyles({ space }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    list: {
-      paddingHorizontal: space[2],
-      paddingBottom: space[12],
-    },
-    skeletonGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-    },
-    skeletonGridCell: {
-      width: '50%',
-    },
-    staggeredCard: {
-      flex: 1,
-    },
-    fab: {
-      position: 'absolute',
-      right: space[4],
-      bottom: space[4],
-      backgroundColor: accent.fill,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space[1],
-      minHeight: size.touchMin,
-      paddingHorizontal: space[4],
-      paddingVertical: space[3],
-      borderRadius: radius.pill,
-      ...shadows.elev2,
-    },
-    fabLabel: {
-      ...typography.label,
-      color: colors.onAccent,
-    },
+    // The grid fills the screen under the filters; the scaffold's gap between sections would push it down.
+    column: { gap: 0 },
+    sell: { alignItems: 'flex-start' },
+    results: { flex: 1 },
+    list: { paddingBottom: space[6] },
+    more: { alignItems: 'center', padding: space[4] },
   });
 }

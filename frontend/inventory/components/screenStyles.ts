@@ -14,6 +14,8 @@ export function makeScreenStyles({ colors, space, typography }: Theme) {
     body: { ...typography.body, color: colors.ink },
     caption: { ...typography.caption, color: colors.ink2 },
     figure: { ...typography.figure, color: colors.ink },
-    overline: { ...typography.overline, color: colors.ink2 },
+    // A small section label ("Period", "Stock in"). D15 retired the uppercase overline style; a label in the secondary ink
+    // keeps the same place in the hierarchy.
+    overline: { ...typography.label, color: colors.ink2 },
   });
 }

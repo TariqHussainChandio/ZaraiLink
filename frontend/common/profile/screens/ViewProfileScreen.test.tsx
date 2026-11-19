@@ -32,23 +32,25 @@ function makeNavigation() {
 }
 
 describe('ViewProfileScreen', () => {
-  it('renders nothing while the profile has not loaded', async () => {
-    useAuthStore.setState({ profile: null, user: null });
-    const { toJSON } = await renderWithQuery(
-      <ViewProfileScreen navigation={makeNavigation()} route={{} as never} />,
-    );
-    // The test providers (as in the app) wrap the screen; the screen itself adds nothing inside them.
-    expect(toJSON()).toMatchObject({ children: [] });
+  it('says the profile could not be loaded, and still offers a way to sign out (AU-24)', async () => {
+    const refreshProfile = jest.fn().mockResolvedValue(undefined);
+    useAuthStore.setState({ profile: null, user: null, refreshProfile });
+    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
+
+    expect(screen.getByText("Couldn't load your profile")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(refreshProfile).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the user's name, role, and contact details", async () => {
+  it("renders the user's name, role, and contact details, the phone as it is written locally", async () => {
     useAuthStore.setState({ profile: profile(), user: { email: 'ahmed@example.com' } as never });
     await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
     expect(screen.getByText('Ahmed Khan')).toBeTruthy();
     expect(screen.getByText('Farmer')).toBeTruthy();
     expect(screen.getByText('ahmed@example.com')).toBeTruthy();
-    expect(screen.getByText('+923001234567')).toBeTruthy();
+    expect(screen.getByText('0300 1234567')).toBeTruthy();
     expect(screen.getByText('Multan, Punjab, Pakistan')).toBeTruthy();
   });
 
@@ -71,7 +73,7 @@ describe('ViewProfileScreen', () => {
     expect(screen.getByText('Multan, Punjab')).toBeTruthy();
   });
 
-  it('opens a dealer\'s business details, and offers them to no other role', async () => {
+  it("opens a dealer's business details, and offers them to no other role", async () => {
     useAuthStore.setState({ profile: profile({ role: 'dealer' }), user: { email: 'd@example.com' } as never });
     const navigation = makeNavigation();
     await renderWithQuery(<ViewProfileScreen navigation={navigation} route={{} as never} />);
@@ -79,36 +81,47 @@ describe('ViewProfileScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.BusinessDetails);
   });
 
-  it.each(['farmer', 'buyer', 'expert', 'admin'] as const)('shows no business details for a %s', async (role) => {
+  it.each(['farmer', 'buyer', 'expert', 'admin'] as const)('shows no business details for a %s', async role => {
     useAuthStore.setState({ profile: profile({ role }), user: { email: 'ahmed@example.com' } as never });
     await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.queryByText('Business details')).toBeNull();
   });
 
-  it('shows a placeholder for an empty name', async () => {
+  it('shows a prompt for an empty name', async () => {
     useAuthStore.setState({ profile: profile({ full_name: '' }), user: { email: 'ahmed@example.com' } as never });
     await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(screen.getByText('No name yet')).toBeTruthy();
+    expect(screen.getByText('Add your name')).toBeTruthy();
   });
 
-  it('shows placeholders for missing phone and location', async () => {
+  it('turns missing values into prompts that open the form, not dashes', async () => {
     useAuthStore.setState({
       profile: profile({ phone: null, location: null, country: null, province: null, city: null }),
       user: { email: 'ahmed@example.com' } as never,
     });
-    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(screen.getAllByText('—').length).toBe(3);
+    const navigation = makeNavigation();
+    await renderWithQuery(<ViewProfileScreen navigation={navigation} route={{} as never} />);
+    expect(screen.queryByText('—')).toBeNull();
+    expect(screen.getByText('Add phone number')).toBeTruthy();
+    expect(screen.getByText('Add your location')).toBeTruthy();
+    expect(screen.getByText('Add your address')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Add phone number'));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.EditProfile);
   });
 
-  it('navigates to EditProfile and Settings', async () => {
-    useAuthStore.setState({ profile: profile(), user: { email: 'ahmed@example.com' } as never });
+  it('is the merged Account tab: edit profile, appearance, password, sign out and delete account in one list (D3)', async () => {
+    useAuthStore.setState({ profile: profile(), user: { email: 'ahmed@example.com' } as never, signOut: jest.fn() });
     const navigation = makeNavigation();
     await renderWithQuery(<ViewProfileScreen navigation={navigation} route={{} as never} />);
 
-    await fireEvent.press(screen.getByText('Edit Profile'));
+    await fireEvent.press(screen.getByText('Edit profile'));
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.EditProfile);
+    expect(screen.getByText('Appearance')).toBeTruthy();
+    expect(screen.queryByText('Notifications')).toBeNull();
 
-    await fireEvent.press(screen.getByText('Settings'));
-    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.Settings);
+    await fireEvent.press(screen.getByText('Password'));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.ChangePassword);
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.DeleteAccount);
   });
 });

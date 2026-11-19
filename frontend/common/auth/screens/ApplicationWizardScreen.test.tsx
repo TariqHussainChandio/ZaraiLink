@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ApplicationWizardScreen } from './ApplicationWizardScreen';
 import {
@@ -17,9 +17,20 @@ import { useAuthStore } from '../../../state/authStore';
 import type { Profile } from '../../types/profile';
 
 const mockGoBack = jest.fn();
+// The handler the wizard registers for the system Back gesture and the app bar's arrow.
+let mockBeforeRemove: ((event: { preventDefault: () => void }) => void) | undefined;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
-  useNavigation: () => ({ goBack: mockGoBack, navigate: jest.fn() }),
+  useNavigation: () => ({
+    goBack: mockGoBack,
+    navigate: jest.fn(),
+    addListener: (_name: string, handler: (event: { preventDefault: () => void }) => void) => {
+      mockBeforeRemove = handler;
+      return () => {
+        mockBeforeRemove = undefined;
+      };
+    },
+  }),
 }));
 jest.mock('../services/applicationService', () => ({
   attachDocument: jest.fn(),
@@ -85,6 +96,7 @@ function first<T>(items: T[]): T {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockBeforeRemove = undefined;
   (fetchRequiredDocuments as jest.Mock).mockResolvedValue(required);
   (fetchApplicationDocuments as jest.Mock).mockResolvedValue([]);
   (fetchDealerApplication as jest.Mock).mockResolvedValue(null);
@@ -106,8 +118,10 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
     await fireEvent.press(screen.getByText('Wholesaler'));
     await fireEvent.changeText(screen.getByLabelText('Registration or licence number'), 'NTN-1');
     await fireEvent.changeText(screen.getByLabelText('Business address'), '7 Grain Market Road');
-    await fireEvent.changeText(screen.getByLabelText('Country'), 'Pakistan');
-    await fireEvent.changeText(screen.getByLabelText('Province'), 'Sindh');
+    // The country is not asked; the province is chosen from a list.
+    expect(screen.queryByLabelText('Country')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: /^Province/ }));
+    await fireEvent.press(await screen.findByText('Sindh'));
     await fireEvent.changeText(screen.getByLabelText('City'), 'Hyderabad');
     await fireEvent.press(screen.getByText('Save and continue'));
 
@@ -126,20 +140,22 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
     expect(screen.getByText('Your trade licence.')).toBeTruthy();
     expect(screen.getAllByText('Needed')).toHaveLength(2);
     expect(screen.getByText('Optional')).toBeTruthy();
+    expect(screen.getByText('0 of 2 required documents added')).toBeTruthy();
     const file = { uri: 'file:///cache/reg.pdf', mimeType: 'application/pdf', fileName: 'reg.pdf', sizeBytes: 4096 };
     (pickApplicationDocument as jest.Mock).mockResolvedValue(file);
     (attachDocument as jest.Mock).mockResolvedValue(doc('reg', 'req-reg'));
     (fetchApplicationDocuments as jest.Mock).mockResolvedValue([doc('reg', 'req-reg')]);
-    await fireEvent.press(first(screen.getAllByText('Add file')));
+    await fireEvent.press(first(screen.getAllByText('Add photo or PDF')));
     expect(attachDocument).toHaveBeenCalledWith('dealer', 'user-1', file, 'req-reg');
     expect(await screen.findByText('reg.pdf')).toBeTruthy();
 
     // Review: the licence is still missing, so submitting waits.
     await fireEvent.press(screen.getByText('Continue to review'));
-    expect(await screen.findByText('Add what is missing above before you submit.')).toBeTruthy();
-    expect(screen.getByLabelText('Business licence, missing')).toBeTruthy();
+    expect(await screen.findByText('Add what is missing above before you send the application.')).toBeTruthy();
+    expect(screen.getByText('Business licence')).toBeTruthy();
+    expect(screen.getByText('Needed')).toBeTruthy();
     expect(screen.getByText('Green Inputs')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Submit for review'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Send for review' }));
     expect(submitApplication).not.toHaveBeenCalled();
   });
 
@@ -155,7 +171,7 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
     await waitFor(() => expect(screen.getByLabelText('Business name').props.value).toBe('Green Inputs'));
     await fireEvent.press(screen.getByText('Save and continue'));
     await fireEvent.press(await screen.findByText('Continue to review'));
-    await fireEvent.press(await screen.findByText('Submit for review'));
+    await fireEvent.press(await screen.findByText('Send for review'));
 
     await waitFor(() => expect(submitApplication).toHaveBeenCalledTimes(1));
     expect(refreshProfile).toHaveBeenCalled();
@@ -173,7 +189,11 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
     await fireEvent.press(screen.getByText('Save and continue'));
 
     await fireEvent.press(await screen.findByLabelText('Remove reg.pdf'));
-    expect(removeDocument).toHaveBeenCalledWith('dealer', 'reg');
+    // Removing asks first; nothing is deleted by the first tap.
+    expect(removeDocument).not.toHaveBeenCalled();
+    expect(await screen.findByText('Remove this file?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove file' }));
+    await waitFor(() => expect(removeDocument).toHaveBeenCalledWith('dealer', 'reg'));
   });
 
   it('refuses a file over 10 MB before uploading it', async () => {
@@ -189,9 +209,11 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
     await renderWithQuery(<ApplicationWizardScreen />);
     await waitFor(() => expect(screen.getByLabelText('Business name').props.value).toBe('Green Inputs'));
     await fireEvent.press(screen.getByText('Save and continue'));
-    await fireEvent.press(first(await screen.findAllByText('Add file')));
+    await fireEvent.press(first(await screen.findAllByText('Add photo or PDF')));
 
-    expect(await screen.findByText(/larger than 10 MB/)).toBeTruthy();
+    // The error sits inside the card of the document it was for.
+    expect(await screen.findByText("Couldn't add the file")).toBeTruthy();
+    expect(screen.getByText(/larger than 10 MB/)).toBeTruthy();
     expect(attachDocument).not.toHaveBeenCalled();
   });
 
@@ -203,10 +225,10 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
 
     expect(screen.getByLabelText('Step 4 of 4, Review, current step')).toBeTruthy();
     expect(await screen.findByText(/cannot be changed until they decide/)).toBeTruthy();
-    expect(screen.queryByText('Submit for review')).toBeNull();
+    expect(screen.queryByText('Send for review')).toBeNull();
     expect(await screen.findByText('reg.pdf')).toBeTruthy();
     expect(screen.queryByLabelText('Remove reg.pdf')).toBeNull();
-    expect(screen.queryByText('Add file')).toBeNull();
+    expect(screen.queryByText('Add photo or PDF')).toBeNull();
   });
 
   it('asks an expert for the professional details SRDS §10 lists, then saves them as the draft', async () => {
@@ -217,7 +239,7 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
 
     expect(screen.getByLabelText('Step 2 of 4, Professional, current step')).toBeTruthy();
     await fireEvent.press(await screen.findByText('Save and continue'));
-    expect(await screen.findByText('Enter your years of experience as a number')).toBeTruthy();
+    expect((await screen.findAllByText('Enter your years of experience as a number')).length).toBeGreaterThan(0);
     expect(screen.getByText('Enter the institution you are affiliated with')).toBeTruthy();
 
     await fireEvent.changeText(screen.getByLabelText('Qualifications'), 'MSc Plant Pathology');
@@ -225,8 +247,8 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
     await fireEvent.changeText(screen.getByLabelText('Years of experience'), '8');
     await fireEvent.changeText(screen.getByLabelText('Institution affiliation'), 'Sindh Agriculture University');
     await fireEvent.press(screen.getByText('Save and continue'));
-    expect(await screen.findByText('Choose at least one specialization')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Plant Diseases'));
+    expect((await screen.findAllByText('Choose at least one specialization')).length).toBeGreaterThan(0);
+    await fireEvent.press(screen.getByText('Plant diseases'));
     await fireEvent.press(screen.getByText('Save and continue'));
 
     await waitFor(() =>
@@ -239,5 +261,95 @@ describe('ApplicationWizardScreen (A3b; SRDS §7–§11)', () => {
         }),
       ),
     );
+  });
+
+  it('shows a rejected applicant the administrator reason on every step, not only on the status screen (AU-10)', async () => {
+    signedInAs({ role: 'dealer', account_status: 'rejected', account_status_reason: 'The business licence is missing.' });
+    (fetchDealerApplication as jest.Mock).mockResolvedValue(business);
+    (saveDealerApplication as jest.Mock).mockResolvedValue(business);
+    await renderWithQuery(<ApplicationWizardScreen />);
+    await waitFor(() => expect(screen.getByLabelText('Business name').props.value).toBe('Green Inputs'));
+    expect(screen.getByText('The business licence is missing.')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Save and continue'));
+    expect(await screen.findByText('Continue to review')).toBeTruthy();
+    expect(screen.getByText('The business licence is missing.')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Continue to review'));
+    expect(await screen.findByRole('button', { name: 'Send for review' })).toBeTruthy();
+    expect(screen.getByText('The business licence is missing.')).toBeTruthy();
+  });
+
+  it('goes back one step at a time, and from the review changes a section (AU-15)', async () => {
+    signedInAs({ role: 'dealer' });
+    (fetchDealerApplication as jest.Mock).mockResolvedValue(business);
+    (saveDealerApplication as jest.Mock).mockResolvedValue(business);
+    await renderWithQuery(<ApplicationWizardScreen />);
+    await waitFor(() => expect(screen.getByLabelText('Business name').props.value).toBe('Green Inputs'));
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+    await fireEvent.press(screen.getByText('Save and continue'));
+    await fireEvent.press(await screen.findByText('Continue to review'));
+
+    expect(await screen.findByRole('button', { name: 'Change business details' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('Continue to review')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByLabelText('Business name')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Save and continue'));
+    await fireEvent.press(await screen.findByText('Continue to review'));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Change documents' }));
+    expect(await screen.findByText('Continue to review')).toBeTruthy();
+  });
+
+  it('shows a failed load as a failure with Try again, never as an empty form (AU-12)', async () => {
+    signedInAs({ role: 'dealer', account_status: 'rejected' });
+    (fetchDealerApplication as jest.Mock).mockRejectedValueOnce(new TypeError('Network request failed'));
+    await renderWithQuery(<ApplicationWizardScreen />);
+
+    expect(await screen.findByText("Couldn't load your saved details")).toBeTruthy();
+    expect(screen.queryByLabelText('Business name')).toBeNull();
+    expect(screen.queryByText('Save and continue')).toBeNull();
+
+    (fetchDealerApplication as jest.Mock).mockResolvedValue(business);
+    await fireEvent.press(screen.getByText('Try again'));
+    await waitFor(() => expect(screen.getByLabelText('Business name').props.value).toBe('Green Inputs'));
+  });
+
+  it('never starts a new expert application when loading the existing one failed (AU-12)', async () => {
+    signedInAs({ role: 'expert', account_status: 'rejected' });
+    (fetchExpertProfile as jest.Mock).mockRejectedValue(new TypeError('Network request failed'));
+    await renderWithQuery(<ApplicationWizardScreen />);
+
+    expect(await screen.findByText("Couldn't load your saved details")).toBeTruthy();
+    expect(screen.queryByText('Save and continue')).toBeNull();
+    expect(createExpertApplication).not.toHaveBeenCalled();
+  });
+
+  it('shows the review as loading, not as empty, while the application is still on its way (AU-12)', async () => {
+    signedInAs({ role: 'dealer', account_status: 'pending', application_submitted_at: '2026-10-12T08:00:00Z' });
+    (fetchDealerApplication as jest.Mock).mockReturnValue(new Promise(() => undefined));
+    await renderWithQuery(<ApplicationWizardScreen />);
+    expect(screen.getAllByLabelText('Loading your saved details').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Not filled in')).toBeNull();
+  });
+
+  it('steps back when the system Back is used inside the application, and only leaves from the first step (AU-15)', async () => {
+    signedInAs({ role: 'dealer' });
+    (fetchDealerApplication as jest.Mock).mockResolvedValue(business);
+    (saveDealerApplication as jest.Mock).mockResolvedValue(business);
+    await renderWithQuery(<ApplicationWizardScreen />);
+    await waitFor(() => expect(screen.getByLabelText('Business name').props.value).toBe('Green Inputs'));
+    // First step: nothing is intercepted, so Back leaves the application.
+    expect(mockBeforeRemove).toBeUndefined();
+
+    await fireEvent.press(screen.getByText('Save and continue'));
+    await screen.findByText('Continue to review');
+    const preventDefault = jest.fn();
+    await act(async () => {
+      mockBeforeRemove?.({ preventDefault });
+    });
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(await screen.findByLabelText('Business name')).toBeTruthy();
   });
 });

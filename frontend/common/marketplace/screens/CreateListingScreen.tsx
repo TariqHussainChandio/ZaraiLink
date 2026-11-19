@@ -1,214 +1,129 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ImagePlus, Send } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import type { NavigationAction } from '@react-navigation/native';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Banner, Button, useToast } from '../../components';
-import {
-  ListingFormFields,
-  listingFormDefaults,
-  listingSchema,
-  type ListingFormInput,
-  type ListingFormValues,
-} from '../components/ListingFormFields';
-import { useCreateListing } from '../hooks/marketplace';
+import { Banner, Button, ConfirmSheet, ScreenScaffold, StickyActionBar, useSnackbar } from '../../components';
+import { ListingFormFields, listingFormDefaults, listingSchema, type ListingFormInput, type ListingFormValues } from '../components/ListingFormFields';
+import { ListingPhotos, MAX_LISTING_PHOTOS } from '../components/ListingPhotos';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
+import { useCreateListing } from '../hooks/marketplace';
 import { useAuthStore } from '../../../state/authStore';
-import { useTheme, type Theme } from '../../../theme';
 import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
 
-export function CreateListingScreen({
-  navigation,
-}: MarketplaceScreenProps<'CreateListing'>) {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+const NO_PHOTO = 'Add at least one photo so buyers can see what you sell';
+
+/** A new listing: photos first, then what it is, its price and quantity, where it is. Back from a half-filled form asks
+ * before throwing it away; Publish ends on the new listing with "Listing published". */
+export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'CreateListing'>) {
   const userId = useAuthStore(state => state.user?.id);
+  const profile = useAuthStore(state => state.profile);
+  const snackbar = useSnackbar();
   const [images, setImages] = useState<PickedPhoto[]>([]);
-  const createListing = useCreateListing();
-  const toast = useToast();
-  // Form problems stay on the screen (and are announced) until fixed; a toast could vanish before it is read.
-  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | undefined>();
+  // A refused publish stays on the screen (and is announced) until the next try; an alert could be dismissed unread (A8).
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [discarding, setDiscarding] = useState<NavigationAction | null>(null);
+  const createListing = useCreateListing();
+  // Set once the listing is saved, so leaving the screen after Publish is not mistaken for abandoning the form.
+  const done = useRef(false);
 
   const {
     control,
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ListingFormInput, any, ListingFormValues>({
     resolver: zodResolver(listingSchema),
-    defaultValues: listingFormDefaults,
+    // The seller's own place is the likeliest place of the goods, so the form starts with it.
+    defaultValues: { ...listingFormDefaults, country: profile?.country ?? null, province: profile?.province ?? null, city: profile?.city ?? null },
   });
 
+  const unsaved = isDirty || images.length > 0;
+  useEffect(
+    () =>
+      navigation.addListener('beforeRemove', event => {
+        if (done.current || !unsaved) return;
+        event.preventDefault();
+        setDiscarding(event.data.action);
+      }),
+    [navigation, unsaved],
+  );
+
   const pickImages = async () => {
-    const assets = await pickPhotos({ selectionLimit: 5 });
-    if (assets.length > 0) {
-      setImages(assets);
-      setPhotoError(null);
-    }
+    const assets = await pickPhotos({ selectionLimit: MAX_LISTING_PHOTOS - images.length });
+    if (assets.length === 0) return;
+    // Added to the photos already chosen, never instead of them: a camera adds one at a time.
+    setImages(current => [...current, ...assets].slice(0, MAX_LISTING_PHOTOS));
+    setPhotoError(undefined);
   };
 
   const onSubmit = async (values: ListingFormValues) => {
     if (!userId) return;
     if (images.length === 0) {
-      setPhotoError('Add at least one photo of your produce.');
+      setPhotoError(NO_PHOTO);
       return;
     }
-
     setSubmitError(null);
     try {
-      await createListing.mutateAsync({
+      const listing = await createListing.mutateAsync({
         userId,
         images,
-        input: {
-          ...values,
-          description: values.description ?? '',
-          brand: values.brand || null,
-          condition: values.condition || null,
-        },
+        input: { ...values, description: values.description ?? '', brand: values.brand || null, condition: values.condition || null },
       });
-      toast.success('Listing published');
-      // Land on Browse, never the filled form: popTo returns to Browse when it is underneath and puts it in place of
-      // the form when it is not, so publishing twice by accident cannot happen (A8 finding).
-      navigation.popTo(MARKETPLACE_ROUTES.Browse);
+      done.current = true;
+      snackbar.show('Listing published');
+      navigation.replace(MARKETPLACE_ROUTES.ListingDetail, { listingId: listing.id });
     } catch (error) {
       setSubmitError(errorMessage(error));
     }
   };
 
+  // An invalid form still reports a missing photo, so every problem is on screen at once.
+  const submit = () =>
+    handleSubmit(onSubmit, () => {
+      if (images.length === 0) setPhotoError(NO_PHOTO);
+    })();
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <ListingFormFields
-        control={control}
-        errors={errors}
-        setValue={setValue}
-        watch={watch}
-      />
-
-      <Text style={styles.label}>Photos</Text>
-      <View style={styles.imageRow}>
-        {images.map((image, index) => (
-          <Image
-            key={image.uri ?? index}
-            source={{ uri: image.uri }}
-            style={styles.thumbnail}
-            accessibilityRole="image"
-            accessibilityLabel={`Photo ${index + 1}`}
-          />
-        ))}
-        <TouchableOpacity
-          style={styles.addImage}
-          onPress={pickImages}
-          accessibilityRole="button"
-          accessibilityLabel={
-            images.length > 0 ? 'Change photos' : 'Add photos'
-          }
-        >
-          <ImagePlus color={theme.colors.ink2} size={theme.size.iconMd} />
-          <Text style={styles.addImageLabel}>Add</Text>
-        </TouchableOpacity>
-      </View>
-      {photoError ? (
-        <Text
-          style={styles.fieldError}
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-        >
-          {photoError}
-        </Text>
-      ) : null}
-
-      {submitError ? (
-        <View style={styles.submitError}>
-          <Banner tone="danger" title="Listing not published">
+    <>
+      <ScreenScaffold
+        footer={
+          <StickyActionBar>
+            <Button label="Publish listing" size="lg" loading={createListing.isPending} onPress={submit} />
+          </StickyActionBar>
+        }
+      >
+        {submitError ? (
+          <Banner tone="danger" title="Couldn't publish the listing">
             {submitError}
           </Banner>
-        </View>
-      ) : null}
-
-      <Button
-        label="Publish Listing"
-        icon={Send}
-        loading={createListing.isPending}
-        onPress={handleSubmit(onSubmit)}
-        style={styles.submit}
+        ) : null}
+        <ListingPhotos
+          uris={images.map(image => image.uri)}
+          onAdd={pickImages}
+          onRemove={index => setImages(current => current.filter((_, i) => i !== index))}
+          error={photoError}
+          disabled={createListing.isPending}
+        />
+        <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
+      </ScreenScaffold>
+      <ConfirmSheet
+        visible={discarding !== null}
+        onClose={() => setDiscarding(null)}
+        title="Discard this listing?"
+        message="What you have entered and the photos you chose will be lost."
+        confirmLabel="Discard listing"
+        keepLabel="Keep editing"
+        destructive
+        onConfirm={() => {
+          const action = discarding;
+          done.current = true;
+          if (action) navigation.dispatch(action);
+        }}
       />
-    </ScrollView>
+    </>
   );
-}
-
-function makeStyles({
-  colors,
-  space,
-  radius,
-  typography,
-  size,
-  borders,
-}: Theme) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    label: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginBottom: space[1],
-    },
-    imageRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space[2],
-      marginBottom: space[6],
-    },
-    thumbnail: {
-      width: size.photoMd,
-      height: size.photoMd,
-      borderRadius: radius.sm,
-      backgroundColor: colors.line,
-    },
-    addImage: {
-      width: size.photoMd,
-      height: size.photoMd,
-      borderRadius: radius.sm,
-      borderWidth: borders.hairline,
-      borderColor: colors.line,
-      borderStyle: 'dashed',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    fieldError: {
-      ...typography.caption,
-      color: colors.status.danger.ink,
-      marginTop: -space[4],
-      marginBottom: space[4],
-    },
-    submitError: {
-      marginBottom: space[3],
-    },
-    addImageLabel: {
-      color: colors.ink2,
-      ...typography.caption,
-    },
-    submit: {
-      marginBottom: space[8],
-    },
-  });
 }

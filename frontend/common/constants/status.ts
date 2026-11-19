@@ -10,6 +10,9 @@ import {
   CircleQuestionMark,
   CircleX,
   Clock,
+  FileCheck,
+  FileMinus,
+  FilePlus,
   Gavel,
   Hourglass,
   LoaderCircle,
@@ -34,7 +37,7 @@ import type { ListingStatus } from '../marketplace';
 import type { OrderStatus } from '../orders';
 import type { PaymentStatus } from '../payments';
 
-// The status vocabulary (A2, D14; the design system's "Status vocabulary"): every status the app shows maps to one tone,
+// The status vocabulary (A2, D14; kept by D15, Rate Board): every status the app shows maps to one tone,
 // one icon and one label, so the same state reads the same on every screen. Status is never colour alone: StatusBadge
 // always draws the icon and the word. Tones: warning = waiting on someone, info = in flight, success = settled well,
 // neutral = ended or unknown, danger = stopped or failed (the only solid badge).
@@ -117,6 +120,13 @@ const stock = {
   unknown: meta('neutral', CircleQuestionMark, 'Stock not known'),
 };
 
+// An application's required document: what it still needs from the person, what is attached, and what may be skipped.
+const document = {
+  needed: meta('warning', FilePlus, 'Needed'),
+  added: meta('success', FileCheck, 'Added'),
+  optional: meta('neutral', FileMinus, 'Optional'),
+};
+
 // A6: a disease knowledge entry stays a draft until a qualified agronomist reviews it.
 const knowledge = {
   pending_review: meta('warning', Hourglass, 'Pending agronomist review'),
@@ -179,6 +189,7 @@ export const STATUS = {
   movement,
   purchase,
   reconciliation,
+  document,
 } as const;
 
 export type StatusKind = keyof typeof STATUS;

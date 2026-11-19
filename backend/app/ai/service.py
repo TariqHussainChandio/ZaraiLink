@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import httpx
 from fastapi import HTTPException
@@ -45,8 +46,36 @@ _FALLBACK_ADVISORY = (
 _FAILURE_MODEL_UNAVAILABLE = "model_unavailable"
 _FAILURE_IMAGE = "image_unprocessable"
 
+# D16: when the photo looks like another crop than the one the farmer chose, no treatment is given for it.
+_CROP_MISMATCH_ADVISORY = (
+    "This photo looks like {crop}, not the crop you chose. Retake the photo of the right crop, or ask an "
+    "agricultural expert to look at it."
+)
+
 # Lane rule: an AI outage is a clear 503 confined to this module; nothing else in the marketplace depends on it.
 _MODEL_UNAVAILABLE_DETAIL = "The AI advisory is temporarily unavailable. Please try again later."
+
+# D16: the scan offers only the crops the model was trained on. The list is derived from the model's own
+# class list (model_metadata.json via settings.model_classes, which checkpoints/class_names.json mirrors; a test
+# keeps the two equal), so a retrained model changes the offer with no code edit. Only the farmer-facing names
+# of three taxonomy strings are curated; every other crop uses its taxonomy name as is.
+_CROP_DISPLAY_NAMES = {
+    "Corn_(maize)": "Maize",
+    "Pepper,_bell": "Bell pepper",
+    "Cherry_(including_sour)": "Cherry",
+}
+
+
+def _crop_of_class(raw_class: str) -> dict[str, str]:
+    crop_part = raw_class.partition("___")[0]
+    name = _CROP_DISPLAY_NAMES.get(crop_part) or crop_part.replace("_", " ").strip()
+    return {"key": re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-"), "name": name}
+
+
+def supported_crops() -> list[dict[str, str]]:
+    """The crops the model knows, as `{key, name}` sorted by name (the scan screen's only crop choices)."""
+    unique = {crop["key"]: crop for crop in map(_crop_of_class, settings.model_classes)}
+    return sorted(unique.values(), key=lambda crop: crop["name"])
 
 
 def _label(crop: str, disease: str) -> str:
@@ -216,7 +245,12 @@ async def _fail(case_id: str, reason: str, status_code: int, detail: str) -> HTT
     return HTTPException(status_code=status_code, detail=detail)
 
 
-async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
+async def predict(user: AuthenticatedUser, disease_case_id: str, chosen_crop: str | None = None) -> dict:
+    """Runs the model on the case photo. `chosen_crop` is a `supported_crops()` key the farmer picked; when the model
+    reads the photo as a different crop the response says `crop_matches: false` and the report carries no treatment,
+    because a report for the wrong crop would be a confident answer about the wrong plant (BR-13, D16)."""
+    if chosen_crop is not None and chosen_crop not in {crop["key"] for crop in supported_crops()}:
+        raise HTTPException(status_code=422, detail="chosen_crop is not a crop the AI advisory supports.")
     case = _assert_owner(user, await disease_repository.get_disease_case(disease_case_id))
     case_id = case["id"]
 
@@ -255,6 +289,9 @@ async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
         predicted_disease = _label(*_fallback_names(class_label))
         description, recommended_actions = _FALLBACK_ADVISORY, []
 
+    predicted_crop = _crop_of_class(class_label)
+    crop_matches = None if chosen_crop is None else predicted_crop["key"] == chosen_crop
+
     # The prediction row keeps the text shown at the time, as history; a later report reads the live knowledge row.
     prediction = await disease_repository.insert_prediction(
         disease_case_id=case_id,
@@ -266,4 +303,16 @@ async def predict(user: AuthenticatedUser, disease_case_id: str) -> dict:
     )
     await disease_repository.set_case_status(case_id, "predicted", None)
     prediction["report"] = build_report(prediction, knowledge, class_label)
-    return prediction
+    # The stored row keeps the model's full output so an expert can read it as the AI's suggestion; the farmer's
+    # response drops the treatment when the photo is of another crop and sends them to an expert instead (D16).
+    response = {**prediction, "predicted_crop": predicted_crop, "crop_matches": crop_matches}
+    if crop_matches is False:
+        response.update(description=None, recommended_actions=[])
+        response["report"] = {
+            **response["report"],
+            "symptoms": [],
+            "treatment": [],
+            "precautions": [],
+            "advisory": _CROP_MISMATCH_ADVISORY.format(crop=predicted_crop["name"]),
+        }
+    return response

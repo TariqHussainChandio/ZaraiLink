@@ -8,16 +8,8 @@ import React, { useEffect } from 'react';
 import { StatusBar, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import {
-  ErrorBoundary,
-  OfflineBanner,
-  ToastProvider,
-} from './frontend/common/components';
-import {
-  connectQueryManagers,
-  persistOptions,
-  queryClient,
-} from './frontend/hooks/queryClient';
+import { ErrorBoundary, OfflineFrame, SnackbarProvider, ToastProvider } from './frontend/common/components';
+import { connectQueryManagers, persistOptions, queryClient } from './frontend/hooks/queryClient';
 import { linking } from './frontend/navigation/linking';
 import { RootNavigator } from './frontend/navigation/stacks/RootNavigator';
 import { configureGeneratedClient } from './frontend/services/api/client';
@@ -62,9 +54,10 @@ function AppShell() {
       {/* The status bar's icons follow the app's own light/dark choice (Settings), not the phone's: left to the phone,
           a dark phone showing the light app drew white icons on white. */}
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <OfflineBanner>
+      {/* The offline banner is part of the layout, above the navigator, so it never covers an app bar or Back. */}
+      <OfflineFrame>
         <RootNavigator />
-      </OfflineBanner>
+      </OfflineFrame>
     </NavigationContainer>
   );
 }
@@ -93,11 +86,15 @@ function App() {
         >
           <ThemeProvider>
             {/* Inside the theme (its colours) and the safe area (its place above the tab bar), outside the error
-                boundary so a toast raised just before a crash is not lost with the screen. */}
+                boundary so a message raised just before a crash is not lost with the screen. Toast carries a status
+                (saved, failed); the snackbar carries a message with an action (Undo). Both sit above navigation, so
+                either can confirm an action on whichever screen is open. */}
             <ToastProvider>
-              <ErrorBoundary name="root">
-                <AppShell />
-              </ErrorBoundary>
+              <SnackbarProvider>
+                <ErrorBoundary name="root">
+                  <AppShell />
+                </ErrorBoundary>
+              </SnackbarProvider>
             </ToastProvider>
           </ThemeProvider>
         </PersistQueryClientProvider>

@@ -49,7 +49,7 @@ function ExpertHomeNavigator() {
 
 type ExpertConsultationsStackParamList = {
   [CONSULTATIONS_ROUTES.ConsultationList]: undefined;
-  [CONSULTATIONS_ROUTES.ConsultationDetail]: { consultationId: string };
+  [CONSULTATIONS_ROUTES.ConsultationDetail]: { consultationId: string; aiSuggestion?: { label: string; confidence: number } };
 };
 
 const ExpertConsultationsStack = createNativeStackNavigator<ExpertConsultationsStackParamList>();
@@ -67,7 +67,8 @@ function ExpertConsultationsNavigator() {
       <ExpertConsultationsStack.Screen
         name={CONSULTATIONS_ROUTES.ConsultationDetail}
         component={ConsultationDetailScreen}
-        options={{ title: 'Consultation' }}
+        // The case is named by its AI suggestion when it came from a plant scan; otherwise it is simply a case.
+        options={({ route }) => ({ title: route.params.aiSuggestion?.label ?? 'Case' })}
       />
     </ExpertConsultationsStack.Navigator>
   );

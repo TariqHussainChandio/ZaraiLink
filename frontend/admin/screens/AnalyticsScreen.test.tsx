@@ -49,7 +49,7 @@ describe('AdminAnalyticsScreen', () => {
     mockFetchAnalytics.mockResolvedValue(analytics());
     await renderWithQuery(<AdminAnalyticsScreen />);
 
-    expect(await screen.findByText('Total Listings')).toBeTruthy();
+    expect(await screen.findByText('Listed now')).toBeTruthy();
     expect(screen.getByText('10')).toBeTruthy();
     expect(screen.getByText('40')).toBeTruthy();
     expect(screen.getByText('30')).toBeTruthy();
@@ -62,22 +62,41 @@ describe('AdminAnalyticsScreen', () => {
     mockFetchAnalytics.mockResolvedValue(analytics());
     await renderWithQuery(<AdminAnalyticsScreen />);
 
-    await screen.findByText('Total Listings');
+    await screen.findByText('Listed now');
     // The vocabulary's words, as on every payment badge, never the raw value.
     expect(screen.getByText('Paid')).toBeTruthy();
     expect(screen.getByText('Awaiting payment')).toBeTruthy();
     expect(screen.queryByText('Successful')).toBeNull();
     expect(screen.getByText('Open')).toBeTruthy();
     expect(screen.getByText('Resolved')).toBeTruthy();
-    expect(screen.getByText(/Approved experts: 7/)).toBeTruthy();
+    expect(screen.getByText(/7 approved experts/)).toBeTruthy();
     expect(screen.getByText(/75%/)).toBeTruthy();
+  });
+
+  it('names the months, and reads each chart aloud with its figures (AD-19)', async () => {
+    mockFetchAnalytics.mockResolvedValue(analytics());
+    await renderWithQuery(<AdminAnalyticsScreen />);
+
+    await screen.findByText('Listed now');
+    // The API sends "2026-07"; the axis says "Jul", not "07".
+    expect(screen.getAllByText('Jul').length).toBeGreaterThan(0);
+    expect(screen.queryByText('07')).toBeNull();
+    expect(screen.getByLabelText('New users each month: Jul 45')).toBeTruthy();
+    expect(screen.getByLabelText('Orders each month: Jul 8')).toBeTruthy();
+  });
+
+  it('labels the experts figure for what it counts', async () => {
+    mockFetchAnalytics.mockResolvedValue(analytics());
+    await renderWithQuery(<AdminAnalyticsScreen />);
+    expect(await screen.findByText('Experts waiting for approval')).toBeTruthy();
+    expect(screen.queryByText('Pending Verifications')).toBeNull();
   });
 
   it('shows an empty message for charts with no data points', async () => {
     mockFetchAnalytics.mockResolvedValue(analytics({ userGrowth: [], orderVolume: [] }));
     await renderWithQuery(<AdminAnalyticsScreen />);
 
-    await screen.findByText('Total Listings');
+    await screen.findByText('Listed now');
     expect(screen.getByText('No signups yet')).toBeTruthy();
     expect(screen.getByText('No orders yet')).toBeTruthy();
   });
@@ -89,9 +108,9 @@ describe('AdminAnalyticsScreen', () => {
     expect(await screen.findByText("Couldn't load analytics")).toBeTruthy();
 
     mockFetchAnalytics.mockResolvedValueOnce(analytics());
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
 
-    await waitFor(() => expect(screen.getByText('Total Listings')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Listed now')).toBeTruthy());
     expect(mockFetchAnalytics).toHaveBeenCalledTimes(2);
   });
 });

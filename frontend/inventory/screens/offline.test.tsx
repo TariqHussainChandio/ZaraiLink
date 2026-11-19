@@ -58,7 +58,7 @@ describe('the inventory system offline', () => {
       </View>,
       cachedClient(),
     );
-    expect(screen.getByText('You are offline')).toBeTruthy();
+    expect(screen.getByText('No connection')).toBeTruthy();
     expect(await screen.findByLabelText('Products: 3')).toBeTruthy();
     expect(screen.queryByText("Couldn't load your inventory")).toBeNull();
   });

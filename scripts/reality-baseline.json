@@ -6,7 +6,6 @@
   },
   "lint-disable": {
    "frontend/ai/screens/DiseaseProcessingScreen.tsx": 1,
-   "frontend/common/components/StaggeredItem.tsx": 1,
    "frontend/hooks/realtime/useRealtimeConsultationMessages.ts": 1,
    "frontend/hooks/realtime/useRealtimeMessages.ts": 1,
    "frontend/hooks/realtime/useRealtimeNotifications.ts": 1

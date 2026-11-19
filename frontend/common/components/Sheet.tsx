@@ -1,5 +1,5 @@
 import { X } from 'lucide-react-native';
-import React, { useContext, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -11,119 +11,118 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import { useInsets } from '../../hooks/useInsets';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { type Theme, useTheme } from '../../theme';
-
-const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+import { IconButton } from './TopAppBar';
 
 export interface SheetProps extends Pick<ModalProps, 'visible'> {
   onClose: () => void;
-  /** Names the task; with a title the sheet is announced as a dialog with that name. */
+  /** Names the dialog; with a title the sheet is announced as a dialog with that name. Optional in the type while screens
+   * migrate; every sheet should have one. */
   title?: string;
   children: React.ReactNode;
+  /** A sticky action row (a primary Button, or Cancel and Save), kept above the keyboard and the gesture inset however
+   * long the body is. */
+  footer?: React.ReactNode;
+  /** Scroll the body (default). Turn off for a body that scrolls itself, such as a list: a list inside a scroll view
+   * loses its virtualisation. */
+  scroll?: boolean;
 }
 
-/** A bottom sheet for a task that belongs to the screen behind it: filters, a reason, a stock adjustment. It rises over
- * the scrim with elevation 3; system back, the backdrop and the close button dismiss it. */
-export function Sheet({ visible, onClose, title, children }: SheetProps) {
+/** A bottom sheet for a task that belongs to the screen behind it: filters, a reason, recording stock, a confirmation. It
+ * rises over the scrim with elevation 3. The body scrolls and the sheet stops at 90% of the window, so a long form never
+ * pushes its footer off a small phone; the footer stays above the keyboard and the gesture inset. System back, the
+ * backdrop and the close button dismiss it. With reduced motion on it appears without sliding. */
+export function Sheet({ visible, onClose, title, children, footer, scroll = true }: SheetProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  // Read softly: App.tsx provides the insets; a component test that renders a picker on its own gets none, not a crash.
-  const insets = useContext(SafeAreaInsetsContext) ?? NO_INSETS;
+  const insets = useInsets();
+  const reduceMotion = useReducedMotion();
 
   return (
     <Modal
-      animationType="slide"
+      animationType={reduceMotion ? 'none' : 'slide'}
       transparent
       visible={visible}
       onRequestClose={onClose}
       // Edge to edge (Android 15+): the modal window covers the status and navigation bars too, so the sheet reaches the
-      // bottom edge instead of stopping part-way down the tab bar (A8 accessibility run, dark mode), and the insets
-      // below keep its content clear of both bars.
+      // bottom edge instead of stopping part-way down the tab bar (A8 accessibility run, dark mode), and the insets keep
+      // its content clear of both bars.
       statusBarTranslucent
       navigationBarTranslucent
     >
-      {/* The sheet rides up on the keyboard: a picker's search field focuses itself, and without this the keyboard
-          covered the options it was filtering (B3 verification, N1). The modal window is not resized for the keyboard
-          on Android (edge to edge), so padding is used on both platforms. */}
-      <KeyboardAvoidingView style={styles.fill} behavior="padding">
+      <View style={styles.root}>
         <Pressable
           testID="sheet-backdrop"
-          // At least the status bar plus a strip of scrim stays above a tall sheet, so its top never runs under the
-          // status bar; the body below scrolls instead.
-          style={[styles.backdrop, { minHeight: insets.top + theme.space[8] }]}
+          style={[StyleSheet.absoluteFill, styles.scrim]}
           onPress={onClose}
           // A full-screen "Close" stop was the first thing TalkBack found (A8). On Android the backdrop is hidden from
           // accessibility; the Close button and the back gesture close the sheet. iOS keeps it as the escape.
           accessible={Platform.OS !== 'android'}
           importantForAccessibility="no-hide-descendants"
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={title ? `Close ${title}` : 'Close'}
         />
-        <View
-          style={[styles.sheet, { paddingBottom: theme.space[6] + insets.bottom }]}
-          accessibilityViewIsModal
-          accessibilityLabel={title}
-        >
-          <View style={styles.grip} />
-          {/* The Close button is always there, titled or not: on Android it is the one way to close by touch that
-              TalkBack offers besides the back gesture. */}
-          <View style={styles.head}>
-            {title ? (
-              <Text style={styles.title} accessibilityRole="header">
-                {title}
-              </Text>
-            ) : (
-              <View style={styles.titleSpace} />
-            )}
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              style={styles.close}
-            >
-              <X color={theme.colors.ink} size={theme.size.iconMd} />
-            </Pressable>
-          </View>
-          {/* The body scrolls when it is taller than the room left (a long Filters sheet kept Apply and Clear off the
-              screen while `scrollEnabled` was off). `handled` still passes the first tap with the keyboard up to the
-              button under it and closes the keyboard on a tap elsewhere (A7 emulator walk). A picker's own list inside
-              scrolls on its own (`nestedScrollEnabled` in SelectField). */}
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            style={styles.body}
-            testID="sheet-body"
+        {/* `padding` lifts the sheet by the keyboard's height. The sheet's own maxHeight is a share of what is left, so
+            it never rises past the top of the window. box-none: a tap above the sheet reaches the backdrop. */}
+        <KeyboardAvoidingView behavior="padding" style={styles.avoider} pointerEvents="box-none">
+          <View
+            style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, theme.components.sheet.padding) }]}
+            accessibilityViewIsModal
+            accessibilityLabel={title}
+            collapsable={false}
           >
-            {children}
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+            <View style={styles.grip} />
+            {/* The Close button is always there, titled or not: on Android it is the one way to close by touch that
+                TalkBack offers besides the back gesture (A8). */}
+            <View style={styles.head}>
+              {title ? (
+                <Text style={styles.title} accessibilityRole="header">
+                  {title}
+                </Text>
+              ) : (
+                <View style={styles.titleSpace} />
+              )}
+              <IconButton icon={X} label="Close" onPress={onClose} />
+            </View>
+            {scroll ? (
+              <ScrollView
+                testID="sheet-body"
+                style={styles.body}
+                contentContainerStyle={styles.bodyContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                {children}
+              </ScrollView>
+            ) : (
+              <View style={styles.body}>{children}</View>
+            )}
+            {footer ? <View style={styles.footer}>{footer}</View> : null}
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
 
-function makeStyles({
-  colors,
-  space,
-  size,
-  components,
-  shadows,
-  typography,
-  radius,
-}: Theme) {
+function makeStyles({ colors, space, size, components, shadows, typography, radius, borders }: Theme) {
   const { sheet } = components;
   return StyleSheet.create({
-    fill: { flex: 1 },
-    // Shrinks with the sheet when the content is taller than the room above, so it scrolls.
-    body: { flexGrow: 0, flexShrink: 1 },
-    backdrop: { flex: 1, backgroundColor: colors.scrim },
+    root: { flex: 1 },
+    scrim: { backgroundColor: colors.scrim },
+    avoider: { flex: 1, justifyContent: 'flex-end' },
     sheet: {
+      // On a tablet the sheet is a centred column, like the screens behind it.
+      alignSelf: 'center',
+      width: '100%',
+      maxWidth: size.contentMax,
+      maxHeight: sheet.maxHeight,
       backgroundColor: colors.surface,
       borderTopLeftRadius: sheet.radius,
       borderTopRightRadius: sheet.radius,
       paddingHorizontal: sheet.padding,
       paddingTop: space[2],
-      flexShrink: 1,
       ...shadows.elev3,
     },
     grip: {
@@ -134,19 +133,11 @@ function makeStyles({
       backgroundColor: colors.lineStrong,
       marginBottom: space[3],
     },
-    head: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      minHeight: size.touchMin,
-      marginBottom: space[2],
-    },
+    head: { flexDirection: 'row', alignItems: 'center', minHeight: size.touchMin, marginBottom: space[2] },
     title: { ...typography.title, flex: 1, color: colors.ink },
     titleSpace: { flex: 1 },
-    close: {
-      width: size.touchMin,
-      height: size.touchMin,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    body: { flexShrink: 1 },
+    bodyContent: { paddingBottom: space[2] },
+    footer: { paddingTop: space[3], borderTopWidth: borders.hairline, borderTopColor: colors.line },
   });
 }

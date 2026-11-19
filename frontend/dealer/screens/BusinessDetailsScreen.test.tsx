@@ -31,7 +31,7 @@ describe('BusinessDetailsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (fetchDealerApplication as jest.Mock).mockResolvedValue(business);
-    (saveDealerApplication as jest.Mock).mockImplementation((input) => Promise.resolve({ ...business, ...input }));
+    (saveDealerApplication as jest.Mock).mockImplementation(input => Promise.resolve({ ...business, ...input }));
   });
 
   it('fills the saved details, saves an edit and goes back to the profile', async () => {
@@ -39,21 +39,35 @@ describe('BusinessDetailsScreen', () => {
     expect(await screen.findByDisplayValue('Green Inputs')).toBeTruthy();
     // The profile's form saves and returns; the wizard's "Save and continue" belongs to the application.
     expect(screen.queryByText('Save and continue')).toBeNull();
+    // It is the approved dealer's own profile: no application steps, no Back.
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
 
     await fireEvent.changeText(screen.getByLabelText('Business address'), '9 Grain Market Road');
-    await fireEvent.press(screen.getByText('Save'));
+    await fireEvent.press(screen.getByText('Save details'));
 
     await waitFor(() => expect(mockGoBack).toHaveBeenCalled());
-    expect(saveDealerApplication).toHaveBeenCalledWith(expect.objectContaining({ business_address: '9 Grain Market Road' }));
+    expect(saveDealerApplication).toHaveBeenCalledWith(expect.objectContaining({ business_address: '9 Grain Market Road', country: 'Pakistan' }));
+    expect(await screen.findByText('Business details saved')).toBeTruthy();
   });
 
-  it('stays open when the save is refused', async () => {
-    (saveDealerApplication as jest.Mock).mockRejectedValue(new Error('application_locked'));
+  it('stays open and shows the refusal when the save is refused', async () => {
+    (saveDealerApplication as jest.Mock).mockRejectedValue(new Error('Server unavailable'));
     await renderWithQuery(<BusinessDetailsScreen />);
     await screen.findByDisplayValue('Green Inputs');
-    await fireEvent.press(screen.getByText('Save'));
+    await fireEvent.press(screen.getByText('Save details'));
 
     await waitFor(() => expect(saveDealerApplication).toHaveBeenCalled());
+    expect(await screen.findByText('Server unavailable')).toBeTruthy();
     expect(mockGoBack).not.toHaveBeenCalled();
+  });
+
+  it('shows a failed load as a failure with Try again, and does not offer to save an empty form', async () => {
+    (fetchDealerApplication as jest.Mock).mockRejectedValueOnce(new TypeError('Network request failed'));
+    await renderWithQuery(<BusinessDetailsScreen />);
+
+    expect(await screen.findByText("Couldn't load your saved details")).toBeTruthy();
+    expect(screen.queryByText('Save details')).toBeNull();
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(await screen.findByDisplayValue('Green Inputs')).toBeTruthy();
   });
 });

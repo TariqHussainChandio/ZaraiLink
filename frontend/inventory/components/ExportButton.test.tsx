@@ -67,7 +67,7 @@ describe('ExportButton', () => {
     api.createExport.mockRejectedValueOnce(apiError(503, 'service_unavailable', 'Exports are unavailable'));
     await renderWithQuery(<ExportButton report="stock-summary" range={{ from: '2026-10-01', to: '2026-10-31' }} />);
     await fireEvent.press(screen.getByText('Export CSV'));
-    expect(await screen.findByText('The service is not available right now. Please try again shortly.')).toBeTruthy();
+    expect(await screen.findByText('The service is not available right now. Try again shortly.')).toBeTruthy();
     expect(openURL).not.toHaveBeenCalled();
   });
 

@@ -108,10 +108,10 @@ describeReal('expert and admin hooks against the real backend', () => {
       const calls = await renderHook(
         () => ({
           stats: admin.usePlatformStats(),
-          users: admin.useProfiles(),
-          audit: admin.useAuditLogs(),
-          orders: admin.useAllOrders(),
-          reports: admin.useReports(undefined),
+          users: admin.useProfilePages({}, false),
+          audit: admin.useAuditLogPages({}, false),
+          orders: admin.useOrderPages(undefined, false),
+          reports: admin.useReportPages(undefined, false),
           verifications: admin.useExpertVerifications(undefined),
           suspend: admin.useSetProfileSuspended(),
         }),

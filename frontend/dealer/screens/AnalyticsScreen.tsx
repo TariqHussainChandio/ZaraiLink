@@ -8,16 +8,11 @@ import { StatTile } from '../../common/components/dashboards/StatTile';
 import { useDealerAnalytics } from '../../common/analytics';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
+import { formatMonth } from '../../utils/dates';
 import { formatRs } from '../../utils/money';
 
 const UNITS = new Intl.NumberFormat('en-PK');
-const MONTH = new Intl.DateTimeFormat('en-PK', { month: 'short' });
-
-/** "2026-03" as "Mar": a month name reads more plainly than its number. Built from parts, so no time zone shifts it. */
-function monthLabel(month: string): string {
-  const [year, index] = month.split('-').map(Number);
-  return year && index ? MONTH.format(new Date(year, index - 1, 1)) : month;
-}
+const CHART_TITLE = 'Units sold from stock, by month';
 
 export function DealerAnalyticsScreen() {
   const theme = useTheme();
@@ -43,30 +38,34 @@ export function DealerAnalyticsScreen() {
       {data => (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
           <View style={styles.statsRow}>
-            <StatTile
-              label="Total Sales"
-              value={formatRs(data.totalSales)}
-              accent={theme.colors.module.payments}
-            />
-            <StatTile label="Total Orders" value={data.totalOrders} accent={theme.colors.module.orders} />
-            <StatTile label="Low Stock" value={data.lowStockCount} accent={theme.colors.module.dealer} />
+            <StatTile label="Total sales" value={formatRs(data.totalSales)} accent={theme.colors.module.payments} />
+            <StatTile label="Total orders" value={data.totalOrders} accent={theme.colors.module.orders} />
+            {/* Low stock is a warning, not the dealer's colour: the dealer orange would read as branding (AD-12). */}
+            <StatTile label="Low stock" value={data.lowStockCount} tone={data.lowStockCount > 0 ? 'warning' : undefined} />
           </View>
 
-          <Text style={styles.sectionTitle}>Inventory Movement</Text>
+          <Text style={styles.sectionTitle}>{CHART_TITLE}</Text>
+          {/* The API adds every sold item in the unit it was sold in (bags, kilograms, litres), so the bars are a count
+              of sold units, not of one measure. Per-unit series need the analytics endpoint to group by unit (AD-19). */}
+          <Text style={styles.chartNote}>Each bag, kilogram or litre counts as one unit.</Text>
           <BarChart
-            data={data.inventoryMovement.map(m => ({ label: monthLabel(m.month), value: m.value }))}
-            color={theme.colors.accent.dealer.mark}
+            data={data.inventoryMovement.map(m => ({ label: formatMonth(m.month), value: m.value }))}
+            accessibilityLabel={
+              data.inventoryMovement.length === 0
+                ? `${CHART_TITLE}: no sales yet`
+                : `${CHART_TITLE}: ${data.inventoryMovement.map(m => `${formatMonth(m.month)} ${UNITS.format(m.value)}`).join(', ')}`
+            }
             emptyMessage="No recorded stock movement yet"
           />
 
           <ActivityFeed
-            title="Best Sellers"
+            title="Best sellers"
             emptyMessage="No completed sales yet"
             items={data.bestSellers.map(p => ({
               id: p.listingId,
               title: p.title,
               subtitle: `${formatRs(p.revenue)} revenue`,
-              value: `${UNITS.format(p.unitsSold)} units`,
+              value: `${UNITS.format(p.unitsSold)} sold`,
             }))}
           />
         </ScrollView>
@@ -77,6 +76,7 @@ export function DealerAnalyticsScreen() {
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
+    chartNote: { ...typography.caption, color: colors.ink2, marginBottom: space[2] },
     container: {
       flex: 1,
       backgroundColor: colors.surface,

@@ -1,27 +1,26 @@
-import { CircleCheck, CircleX } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import {
   Badge,
   Banner,
   Button,
   Card,
-  DocumentTile,
-  ScreenState,
-  Sheet,
+  ListGroup,
+  ListRow,
+  QueryState,
+  ScreenScaffold,
   StatusBadge,
-  TextField,
-  useToast,
+  StickyActionBar,
 } from '../../common/components';
-import {
-  BUSINESS_TYPE_LABELS,
-  SPECIALIZATION_LABELS,
-} from '../../common/constants/labels';
+import { BUSINESS_TYPE_LABELS, SPECIALIZATION_LABELS } from '../../common/constants/labels';
 import { ADMIN_HOME_ROUTES } from '../../common/constants/routes';
 import type { ApplicationDecision } from '../../expert';
 import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
 import { useTheme, type Theme } from '../../theme';
+import { formatDay } from '../../utils/dates';
 import { errorMessage } from '../../utils/errorMessage';
+import { AdminActionSheet, type AdminAction } from '../components/AdminActionSheet';
+import { DocumentViewer } from '../components/DocumentViewer';
 import {
   useApplicationDocumentUrl,
   useDealerApplication,
@@ -32,11 +31,8 @@ import {
 
 // The applicant reads a rejection's reason in the app and in the email, so it must say something (A3a).
 const MIN_REASON = 10;
-const longDate = new Intl.DateTimeFormat(undefined, {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
+const REJECTION_REASONS = ['A document is unclear', 'A document is missing', 'The details do not match the documents'];
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface Document {
   id: string;
@@ -46,25 +42,34 @@ interface Document {
   required_document: { label: string } | null;
 }
 
-/** What the document is, from the required-document catalogue; a file sent before the catalogue had it says so. */
-function documentLabel(document: Document): string {
-  return document.required_document?.label ?? 'Earlier document';
-}
-
 interface Section {
   title: string;
-  rows: [string, string | null | undefined][];
+  /** Shown in the code face: an identifier, not a sentence. */
+  rows: [label: string, value: string | null | undefined, code?: boolean][];
+}
+
+/** Whole days since an ISO time. */
+function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / DAY_MS));
+}
+
+const isImage = (document: Document) => document.mime_type?.startsWith('image/') ?? false;
+
+/** "Photo · 1.2 MB", "PDF · 340 KB": what the file is and how big, never its file name. */
+function fileFacts(document: Document): string {
+  const kind = isImage(document) ? 'Photo' : document.mime_type === 'application/pdf' ? 'PDF' : 'File';
+  const size = document.size_bytes;
+  if (size === null || size === undefined) return kind;
+  return `${kind} · ${size >= 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`}`;
 }
 
 /**
- * One dealer or expert application, as SRDS §12 lists it: the applicant, the business or professional information, the
- * submitted documents (each opened from a short-lived link), then the decision. Approving or rejecting needs the
- * second factor and writes the audit row with the decision; the applicant is emailed after it (SRDS §9).
+ * One dealer or expert application, as SRDS §12 lists it (D4): who applied and where it stands, the documents named by
+ * what they are (each opens in a zoomable viewer, or the phone's PDF viewer), the business or professional details, and the
+ * decision in a bar at the bottom. Approving or rejecting needs the second factor and writes the audit row with the
+ * decision; the applicant is emailed after it (SRDS §9).
  */
-export function ApplicationDetailScreen({
-  route,
-  navigation,
-}: AdminScreenProps<typeof ADMIN_HOME_ROUTES.ApplicationDetail>) {
+export function ApplicationDetailScreen({ route }: AdminScreenProps<typeof ADMIN_HOME_ROUTES.ApplicationDetail>) {
   const { role, id } = route.params;
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -73,35 +78,21 @@ export function ApplicationDetailScreen({
   const decideDealer = useDecideDealerApplication();
   const decideExpert = useReviewVerification();
   const documentUrl = useApplicationDocumentUrl();
-  const [rejecting, setRejecting] = useState(false);
-  const [approving, setApproving] = useState(false);
-  const [reason, setReason] = useState('');
-  const [reasonError, setReasonError] = useState<string | undefined>(undefined);
-  const [outcome, setOutcome] = useState<ApplicationDecision | null>(null);
+  const [action, setAction] = useState<AdminAction | null>(null);
+  const [outcome, setOutcome] = useState<{ verb: string; result: ApplicationDecision } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const toast = useToast();
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   const query = role === 'dealer' ? dealer : expert;
-  if (!query.data) {
-    return (
-      <ScreenState
-        query={query}
-        errorTitle="Couldn't load this application"
-        empty={{
-          title: 'Application not found',
-          description: 'Go back and open it again.',
-        }}
-      />
-    );
-  }
 
-  let name: string;
+  let name = '';
   let phone: string | null | undefined;
-  let status: 'pending' | 'approved' | 'rejected';
+  let status: 'pending' | 'approved' | 'rejected' = 'pending';
   let statusReason: string | null | undefined;
   let submittedAt: string | null | undefined;
-  let sections: Section[];
-  let documents: Document[];
+  let sections: Section[] = [];
+  let documents: Document[] = [];
   let specializations: string[] = [];
   if (role === 'dealer' && dealer.data) {
     const d = dealer.data;
@@ -114,306 +105,237 @@ export function ApplicationDetailScreen({
     documents = d.dealer_documents;
     sections = [
       {
-        title: 'Business information',
+        title: 'Business details',
         rows: [
           ['Business name', business?.business_name],
-          [
-            'Business type',
-            business ? BUSINESS_TYPE_LABELS[business.business_type] : null,
-          ],
-          ['Registration number', business?.registration_number],
+          ['Business type', business ? BUSINESS_TYPE_LABELS[business.business_type] : null],
+          ['Registration number', business?.registration_number, true],
           ['Address', business?.business_address],
-          [
-            'Location',
-            business
-              ? [business.city, business.province, business.country].join(', ')
-              : null,
-          ],
+          ['Location', business ? [business.city, business.province, business.country].join(', ') : null],
         ],
       },
     ];
-  } else {
+  } else if (role === 'expert' && expert.data) {
     const e = expert.data;
-    name = e?.profile?.full_name ?? '';
-    phone = e?.profile?.phone;
-    status = e?.profile?.account_status ?? 'pending';
-    statusReason = e?.profile?.account_status_reason;
-    submittedAt = e?.profile?.application_submitted_at;
-    documents = e?.expert_documents ?? [];
-    specializations = (e?.expert_specializations ?? []).map(
-      s => SPECIALIZATION_LABELS[s.specialization],
-    );
+    name = e.profile?.full_name ?? '';
+    phone = e.profile?.phone;
+    status = e.profile?.account_status ?? 'pending';
+    statusReason = e.profile?.account_status_reason;
+    submittedAt = e.profile?.application_submitted_at;
+    documents = e.expert_documents ?? [];
+    specializations = (e.expert_specializations ?? []).map(s => SPECIALIZATION_LABELS[s.specialization]);
     sections = [
       {
-        title: 'Professional information',
+        title: 'Professional details',
         rows: [
-          ['Qualifications', e?.qualifications],
-          ['Degree', e?.degree],
-          ['Professional experience', e?.experience],
-          ['About', e?.professional_description],
+          ['Qualifications', e.qualifications],
+          ['Degree', e.degree],
+          ['Experience', e.experience],
+          ['Years of experience', e.years_experience?.toString()],
+          ['Institution', e.institution_affiliation],
+          ['About', e.professional_description],
         ],
-      },
-      {
-        title: 'Experience',
-        rows: [['Years of experience', e?.years_experience?.toString()]],
-      },
-      {
-        title: 'Institution affiliation',
-        rows: [['Institution', e?.institution_affiliation]],
       },
     ];
   }
-  const decidable = status === 'pending' && !!submittedAt;
-  const deciding = decideDealer.isPending || decideExpert.isPending;
 
-  const decide = async (decision: 'approved' | 'rejected', text?: string) => {
-    setFailure(null);
-    try {
-      const result =
-        role === 'dealer'
-          ? await decideDealer.mutateAsync({
-              id,
-              status: decision,
-              reason: text,
-            })
-          : await decideExpert.mutateAsync({
-              expertId: id,
-              decision,
-              notes: text ?? '',
-            });
-      setOutcome(result);
-      // The banner below stays for the email's fate; the toast confirms the decision itself, which TalkBack announces.
-      toast.success(decision === 'approved' ? `${name || 'Application'} approved` : `${name || 'Application'} rejected`);
-      await query.refetch();
-    } catch (error) {
-      setFailure(errorMessage(error));
-    }
+  const decidable = status === 'pending' && !!submittedAt;
+  const applicant = name || 'this applicant';
+  const roleWord = role === 'dealer' ? 'dealer' : 'expert';
+  const requirement = (document: Document) => document.required_document?.label ?? 'Other document';
+  const imageDocuments = documents.filter(isImage).map(d => ({ id: d.id, label: requirement(d) }));
+  const waitingDays = submittedAt ? daysSince(submittedAt) : 0;
+
+  const decide = async (decision: 'approved' | 'rejected', reason?: string) => {
+    const result =
+      role === 'dealer'
+        ? await decideDealer.mutateAsync({ id, status: decision, reason })
+        : await decideExpert.mutateAsync({ expertId: id, decision, notes: reason ?? '' });
+    setOutcome({ verb: decision === 'approved' ? `${roleWord[0]?.toUpperCase()}${roleWord.slice(1)} approved` : 'Application rejected', result });
+    await query.refetch();
   };
 
-  const reject = async () => {
-    if (reason.trim().length < MIN_REASON) {
-      setReasonError(`Write at least ${MIN_REASON} characters`);
-      return;
-    }
-    setRejecting(false);
-    await decide('rejected', reason.trim());
+  const askApprove = () => {
+    setOutcome(null);
+    setAction({
+      title: `Approve ${applicant}?`,
+      // The approval reaches the app only on a fresh sign-in (A3a, `sign_in_again`), which the email tells them.
+      message: `${applicant} is emailed and can ${role === 'dealer' ? 'sell on ZaraiLink' : 'take consultations'} once they sign in again.`,
+      confirmLabel: `Approve ${roleWord}`,
+      run: () => decide('approved'),
+      done: `${applicant} approved`,
+    });
+  };
+
+  const askReject = () => {
+    setOutcome(null);
+    setAction({
+      title: `Reject ${applicant}'s application?`,
+      message: `${applicant} is emailed with your reason and can correct the application and send it again.`,
+      confirmLabel: 'Reject application',
+      destructive: true,
+      reason: {
+        label: 'Reason',
+        chips: REJECTION_REASONS,
+        minLength: MIN_REASON,
+        helper: `At least ${MIN_REASON} characters. ${applicant} reads this in the app and in the email.`,
+      },
+      run: reason => decide('rejected', reason),
+      done: `${applicant}'s application rejected`,
+    });
   };
 
   const open = async (document: Document) => {
     setFailure(null);
+    if (isImage(document)) {
+      setViewing(document.id);
+      return;
+    }
+    // A PDF opens in the phone's own viewer, which reads PDFs better than an image view can.
+    setOpeningId(document.id);
     try {
-      const url = await documentUrl.mutateAsync({
-        role,
-        applicantId: id,
-        documentId: document.id,
-      });
-      // A photo opens here; a PDF in the phone's own viewer, which reads PDFs better than an image view can.
-      if (document.mime_type?.startsWith('image/')) {
-        navigation.navigate(ADMIN_HOME_ROUTES.DocumentViewer, {
-          url,
-          title: documentLabel(document),
-        });
-      } else {
-        await Linking.openURL(url);
-      }
+      const url = await documentUrl.mutateAsync({ role, applicantId: id, documentId: document.id });
+      await Linking.openURL(url);
     } catch (error) {
       setFailure(errorMessage(error));
+    } finally {
+      setOpeningId(null);
     }
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Card>
-        <View style={styles.header}>
-          <Text style={styles.name} accessibilityRole="header">
-            {name || 'Unnamed applicant'}
-          </Text>
-          <StatusBadge kind="application" status={status} />
-        </View>
-        <Text style={styles.meta}>
-          {role === 'dealer' ? 'Dealer application' : 'Expert application'}
-        </Text>
-        {phone ? <Text style={styles.meta}>{phone}</Text> : null}
-        <Text style={styles.meta}>
-          {submittedAt
-            ? `Sent ${longDate.format(new Date(submittedAt))}`
-            : 'Not sent yet'}
-        </Text>
-      </Card>
-
-      {status === 'rejected' && statusReason ? (
-        <Banner tone="danger" title="Reason given">
-          {statusReason}
-        </Banner>
-      ) : null}
-
-      {sections.map(section => (
-        <Card key={section.title}>
-          <Text style={styles.heading}>{section.title}</Text>
-          {section.rows.map(([label, value]) => (
-            <View key={label} style={styles.row}>
-              <Text style={styles.term}>{label}</Text>
-              <Text style={styles.value}>{value || '—'}</Text>
-            </View>
-          ))}
-        </Card>
-      ))}
-
-      {specializations.length ? (
-        <Card>
-          <Text style={styles.heading}>Specializations</Text>
-          <View style={styles.badges}>
-            {specializations.map(label => (
-              <Badge key={label} label={label} tone="info" />
-            ))}
-          </View>
-        </Card>
-      ) : null}
-
-      <Card>
-        <Text style={styles.heading}>Submitted documents</Text>
-        {documents.length === 0 ? (
-          <Text style={styles.meta}>No documents attached.</Text>
-        ) : null}
-        <View style={styles.documents}>
-          {documents.map(document => (
-            <View key={document.id} style={styles.document}>
-              {/* The tile is named by the document type, so its View button reads "View Business licence" rather than
-                  the uploaded file's name (A8, A2); the file name stays visible underneath for the admin's own check.
-                  DocumentTile has no separate label prop yet (requested from zl-app-core). */}
-              <DocumentTile
-                fileName={documentLabel(document)}
-                mimeType={document.mime_type}
-                sizeBytes={document.size_bytes}
-                onView={() => open(document)}
-                busy={
-                  documentUrl.isPending &&
-                  documentUrl.variables?.documentId === document.id
-                }
-              />
-              <Text style={styles.term}>{`File: ${document.file_name}`}</Text>
-            </View>
-          ))}
-        </View>
-      </Card>
-
-      {outcome ? (
-        <Banner
-          tone={outcome.email_delivered ? 'success' : 'warning'}
-          title="Decision recorded"
-        >
-          {outcome.email_delivered
-            ? 'The applicant has been emailed.'
-            : 'The email to the applicant could not be sent. They will see the decision in the app.'}
-        </Banner>
-      ) : null}
-      {failure ? <Banner tone="danger">{failure}</Banner> : null}
-
-      {decidable ? (
-        <View style={styles.actions}>
-          <Button
-            label="Approve"
-            icon={CircleCheck}
-            loading={deciding}
-            onPress={() => setApproving(true)}
-          />
-          <Button
-            label="Reject"
-            icon={CircleX}
-            variant="danger"
-            disabled={deciding}
-            onPress={() => {
-              setReason('');
-              setReasonError(undefined);
-              setRejecting(true);
-            }}
-          />
-        </View>
-      ) : null}
-
-      {/* An approval opens the account to trade or advise and cannot be taken back here, so it is confirmed first, like
-          a rejection: one stray tap on the button used to decide it. */}
-      <Sheet
-        visible={approving}
-        onClose={() => setApproving(false)}
-        title={`Approve ${name || 'this application'}`}
+    <>
+      <ScreenScaffold
+        onRefresh={() => query.refetch()}
+        refreshing={query.isRefetching}
+        footer={
+          decidable ? (
+            <StickyActionBar>
+              <View style={styles.decision}>
+                <View style={styles.decisionButton}>
+                  <Button label="Reject…" variant="secondary" size="lg" onPress={askReject} />
+                </View>
+                <View style={styles.decisionButton}>
+                  <Button label={`Approve ${roleWord}`} size="lg" onPress={askApprove} />
+                </View>
+              </View>
+            </StickyActionBar>
+          ) : undefined
+        }
       >
-        <View style={styles.sheet}>
-          <Text style={styles.meta}>
-            {role === 'dealer'
-              ? 'The dealer can sell on the marketplace once they sign in again.'
-              : 'The expert can take consultations once they sign in again.'}
-          </Text>
-          <Button
-            label="Approve application"
-            icon={CircleCheck}
-            onPress={() => {
-              setApproving(false);
-              decide('approved');
-            }}
-          />
-          <Button
-            label="Not now"
-            variant="secondary"
-            onPress={() => setApproving(false)}
-          />
-        </View>
-      </Sheet>
+        <QueryState query={query} failureTitle="Couldn't load this application">
+          {query.data ? (
+            <>
+              <Card>
+                <View style={styles.header}>
+                  <Text style={styles.name} accessibilityRole="header">
+                    {name || 'Unnamed applicant'}
+                  </Text>
+                  <StatusBadge kind="application" status={status} />
+                </View>
+                <Text style={styles.meta}>
+                  {[
+                    roleWord[0]?.toUpperCase() + roleWord.slice(1),
+                    submittedAt ? `sent ${formatDay(submittedAt)}${status === 'pending' ? `, waiting ${waitingDays === 0 ? 'since today' : waitingDays === 1 ? '1 day' : `${waitingDays} days`}` : ''}` : 'not sent yet',
+                    phone,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              </Card>
 
-      <Sheet
-        visible={rejecting}
-        onClose={() => setRejecting(false)}
-        title={`Reject ${name || 'this application'}`}
-      >
-        <View style={styles.sheet}>
-          <TextField
-            label="Reason"
-            helper="The applicant reads this in the app and in the email, and can correct the application."
-            value={reason}
-            onChangeText={setReason}
-            error={reasonError}
-            multiline
-          />
-          <Button
-            label="Reject application"
-            icon={CircleX}
-            variant="danger"
-            onPress={reject}
-          />
-        </View>
-      </Sheet>
-    </ScrollView>
+              {statusReason && status !== 'approved' ? (
+                <Banner tone="warning" title={status === 'rejected' ? 'Not approved' : 'Not approved before'}>
+                  {statusReason}
+                </Banner>
+              ) : null}
+
+              {outcome ? (
+                <Banner tone={outcome.result.email_delivered ? 'success' : 'warning'} title={outcome.verb}>
+                  {outcome.result.email_delivered
+                    ? `${applicant} was emailed.`
+                    : `The email to ${applicant} could not be sent. They will see the decision in the app.`}
+                </Banner>
+              ) : null}
+              {failure ? <Banner tone="danger">{failure}</Banner> : null}
+
+              <View>
+                <Text style={styles.heading} accessibilityRole="header">
+                  Documents
+                </Text>
+                {documents.length === 0 ? (
+                  <Text style={styles.meta}>No documents attached.</Text>
+                ) : (
+                  <ListGroup>
+                    {documents.map(document => (
+                      <ListRow
+                        key={document.id}
+                        title={requirement(document)}
+                        meta={openingId === document.id ? 'Opening…' : fileFacts(document)}
+                        onPress={() => open(document)}
+                        accessibilityLabel={`${requirement(document)}, ${fileFacts(document)}, ${isImage(document) ? 'opens the photo' : 'opens the PDF'}`}
+                      />
+                    ))}
+                  </ListGroup>
+                )}
+              </View>
+
+              {sections.map(section => (
+                <Card key={section.title}>
+                  <Text style={styles.heading} accessibilityRole="header">
+                    {section.title}
+                  </Text>
+                  {section.rows.map(([label, value, code]) => (
+                    <View key={label} style={styles.row}>
+                      <Text style={styles.term}>{label}</Text>
+                      <Text style={code ? styles.code : styles.value}>{value || '—'}</Text>
+                    </View>
+                  ))}
+                </Card>
+              ))}
+
+              {specializations.length ? (
+                <Card>
+                  <Text style={styles.heading} accessibilityRole="header">
+                    Specializations
+                  </Text>
+                  <View style={styles.badges}>
+                    {specializations.map(label => (
+                      <Badge key={label} label={label} tone="info" />
+                    ))}
+                  </View>
+                </Card>
+              ) : null}
+            </>
+          ) : null}
+        </QueryState>
+      </ScreenScaffold>
+
+      <DocumentViewer
+        visible={viewing !== null}
+        onClose={() => setViewing(null)}
+        role={role}
+        applicantId={id}
+        documents={imageDocuments}
+        startId={viewing ?? undefined}
+      />
+      <AdminActionSheet action={action} onClose={() => setAction(null)} />
+    </>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: colors.ground },
-    content: { padding: space[4], gap: space[3] },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: space[2],
-    },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] },
     name: { ...typography.title, color: colors.ink, flexShrink: 1 },
     meta: { ...typography.caption, color: colors.ink2, marginTop: space[1] },
-    heading: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-      marginBottom: space[2],
-    },
+    heading: { ...typography.bodyStrong, color: colors.ink, marginBottom: space[2] },
     row: { paddingVertical: space[1], gap: space[1] },
     term: { ...typography.caption, color: colors.ink3 },
     value: { ...typography.body, color: colors.ink },
+    code: { ...typography.code, color: colors.ink },
     badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space[1] },
-    documents: { gap: space[3] },
-    document: { gap: space[1] },
-    actions: { gap: space[2] },
-    sheet: { gap: space[3] },
+    decision: { flex: 1, flexDirection: 'row', gap: space[3] },
+    decisionButton: { flex: 1 },
   });
 }

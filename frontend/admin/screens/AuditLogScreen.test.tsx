@@ -1,9 +1,9 @@
 import React from 'react';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AuditLogScreen } from './AuditLogScreen';
-import { fetchAuditEvents, fetchAuditLogs } from '../services/adminService';
-import type { AuditEventNameEntry, AuditLogEntryWithActor } from '../types/audit';
+import { fetchAuditEvents, fetchAuditLogsPage } from '../services/adminService';
+import type { AuditLogEntryWithActor } from '../types/audit';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -19,14 +19,14 @@ jest.mock('@react-navigation/native', () => {
 });
 
 jest.mock('../services/adminService', () => ({
-  fetchAuditLogs: jest.fn(),
+  fetchAuditLogsPage: jest.fn(),
   fetchAuditEvents: jest.fn(),
 }));
 
-const mockFetchAuditLogs = fetchAuditLogs as jest.Mock;
+const mockFetchPage = fetchAuditLogsPage as jest.Mock;
 const mockFetchAuditEvents = fetchAuditEvents as jest.Mock;
 
-const EVENTS: AuditEventNameEntry[] = [
+const EVENTS = [
   { name: 'product_moderated', label: 'Product Moderated' },
   { name: 'review_moderated', label: 'Review Moderated' },
   { name: 'user_suspended', label: 'User Suspended' },
@@ -38,149 +38,130 @@ const entry = (overrides: Partial<AuditLogEntryWithActor> = {}): AuditLogEntryWi
   action: 'user_suspended',
   action_label: 'User Suspended',
   target_entity: 'profiles',
-  target_id: 'user-9',
-  previous_state: null,
-  new_state: null,
+  target_id: 'user-9abcdef',
+  previous_state: { is_suspended: false },
+  new_state: { is_suspended: true },
   metadata: null,
-  created_at: '2026-08-01T10:00:00Z',
-  actor: { id: 'admin-1', full_name: 'Admin One' },
+  created_at: new Date().toISOString(),
+  actor: { id: 'admin-1', full_name: 'Sana' },
   ...overrides,
 });
 
+const page = (rows: AuditLogEntryWithActor[], next: { limit: number; offset: number } | null = null) => ({ data: rows, next });
+
 beforeEach(() => {
-  mockFetchAuditLogs.mockReset();
-  mockFetchAuditEvents.mockReset();
-  mockFetchAuditEvents.mockResolvedValue(EVENTS);
+  mockFetchPage.mockReset();
+  mockFetchAuditEvents.mockReset().mockResolvedValue(EVENTS);
 });
 
 describe('AuditLogScreen', () => {
   it('shows an empty state when there are no entries', async () => {
-    mockFetchAuditLogs.mockResolvedValue([]);
+    mockFetchPage.mockResolvedValue(page([]));
     await renderWithQuery(<AuditLogScreen />);
-    expect(await screen.findByText('No audit log entries yet')).toBeTruthy();
+    expect(await screen.findByText('Nothing logged yet')).toBeTruthy();
   });
 
-  it('lists entries with actor, the SRDS §51 label of the action, and a readable target', async () => {
-    mockFetchAuditLogs.mockResolvedValue([entry()]);
+  it('says the load failed instead of "No audit log entries yet" (AD-07)', async () => {
+    mockFetchPage.mockRejectedValueOnce(new Error('boom'));
+    await renderWithQuery(<AuditLogScreen />);
+    expect(await screen.findByText("Couldn't load the audit log")).toBeTruthy();
+    expect(screen.queryByText('Nothing logged yet')).toBeNull();
+    expect(screen.getByText('Try again')).toBeTruthy();
+  });
+
+  it('writes each entry as a sentence under a Today heading, with the change in words', async () => {
+    mockFetchPage.mockResolvedValue(page([entry()]));
     await renderWithQuery(<AuditLogScreen />);
 
-    expect(await screen.findByText('User Suspended')).toBeTruthy();
-    // The raw event name is the API's; the admin reads the label.
+    expect(await screen.findByText('Sana suspended an account')).toBeTruthy();
+    expect(screen.getByText('Today')).toBeTruthy();
+    expect(screen.getByText(/Active → Suspended/)).toBeTruthy();
+    // No machine names or JSON.
     expect(screen.queryByText('user_suspended')).toBeNull();
-    expect(screen.getByText('Admin One')).toBeTruthy();
-    // The table name reads as the thing it holds: a profile row is a user.
-    expect(screen.getByText(/user user-9/)).toBeTruthy();
-    expect(screen.queryByText(/profiles/)).toBeNull();
-    expect(mockFetchAuditLogs).toHaveBeenCalledWith({ action: undefined });
+    expect(screen.queryByText(/previous:/)).toBeNull();
   });
 
-  it('reads each entry as one stop: who, what, which target and when', async () => {
-    mockFetchAuditLogs.mockResolvedValue([entry()]);
-    await renderWithQuery(<AuditLogScreen />);
-    await screen.findByText('User Suspended');
-
-    const when = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(
-      new Date('2026-08-01T10:00:00Z'),
+  it('groups earlier days under their date', async () => {
+    mockFetchPage.mockResolvedValue(
+      page([entry(), entry({ id: 'log-2', created_at: '2020-03-07T10:00:00Z', action: 'report_dismissed', target_entity: 'reports' })]),
     );
-    const stop = screen.getByLabelText(`User Suspended by Admin One, on user user-9, ${when}`);
-    expect(stop.props.accessible).toBe(true);
-    // An entry with nothing to unfold is not a button.
-    expect(stop.props.accessibilityRole).toBeUndefined();
-  });
-
-  it('keeps the before and after folded, then shows them as readable changes, never raw JSON', async () => {
-    mockFetchAuditLogs.mockResolvedValue([
-      entry({
-        action: 'product_moderated',
-        action_label: 'Product Moderated',
-        target_entity: 'listings',
-        target_id: 'abcdef12-3456',
-        previous_state: { status: 'active' },
-        new_state: { status: 'inactive' },
-        metadata: { change: 'hide' },
-      }),
-    ]);
     await renderWithQuery(<AuditLogScreen />);
-    await screen.findByText('Product Moderated');
 
-    expect(screen.queryByText('status: active to inactive')).toBeNull();
-    expect(screen.queryByText(/[{}"]/)).toBeNull();
-    const entryButton = screen.getByRole('button', { name: /^Product Moderated by Admin One, on listing abcdef12/ });
-    expect(entryButton.props.accessibilityState).toMatchObject({ expanded: false });
-
-    await fireEvent.press(screen.getByText('Show details'));
-
-    expect(screen.getByText('status: active to inactive')).toBeTruthy();
-    expect(screen.getByText('change: hide')).toBeTruthy();
-    expect(screen.queryByText(/[{}"]/)).toBeNull();
-    const open = screen.getByRole('button', { name: /status: active to inactive\. change: hide$/ });
-    expect(open.props.accessibilityState).toMatchObject({ expanded: true });
-
-    await fireEvent.press(screen.getByText('Hide details'));
-    expect(screen.queryByText('status: active to inactive')).toBeNull();
+    expect(await screen.findByText('Today')).toBeTruthy();
+    expect(screen.getByText('7 Mar 2020')).toBeTruthy();
   });
 
-  it('reads booleans and empty values in words', async () => {
-    mockFetchAuditLogs.mockResolvedValue([
-      entry({ previous_state: { is_suspended: false, hidden_reason: null }, new_state: { is_suspended: true, hidden_reason: 'Spam' } }),
-    ]);
+  it('shows the reason in the row and the whole change in the detail sheet', async () => {
+    mockFetchPage.mockResolvedValue(
+      page([
+        entry({
+          action: 'dealer_application_rejected',
+          previous_state: { account_status: 'pending' },
+          new_state: { account_status: 'rejected' },
+          metadata: { reason: 'CNIC photo blurred' },
+        }),
+      ]),
+    );
     await renderWithQuery(<AuditLogScreen />);
-    await fireEvent.press(await screen.findByText('Show details'));
+    expect(await screen.findByText(/"CNIC photo blurred"/)).toBeTruthy();
 
-    expect(screen.getByText('is suspended: no to yes')).toBeTruthy();
-    expect(screen.getByText('hidden reason: none to Spam')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Sana rejected a dealer application'));
+
+    expect(await screen.findByText('What happened')).toBeTruthy();
+    expect(screen.getByText('Application: Under review → Not approved')).toBeTruthy();
+    expect(screen.getByText('Reason given')).toBeTruthy();
+    expect(screen.getByText('Account user-9ab')).toBeTruthy();
   });
 
-  it('falls back to "System" when there is no actor', async () => {
-    mockFetchAuditLogs.mockResolvedValue([entry({ actor: null })]);
+  it('falls back to "The system" when there is no actor', async () => {
+    mockFetchPage.mockResolvedValue(page([entry({ actor: null })]));
     await renderWithQuery(<AuditLogScreen />);
-    expect(await screen.findByText('System')).toBeTruthy();
+    expect(await screen.findByText('The system suspended an account')).toBeTruthy();
   });
 
-  it('offers every §51 event by its label and asks the server for the one chosen', async () => {
-    mockFetchAuditLogs.mockImplementation(({ action }: { action?: string }) =>
-      Promise.resolve(
-        action === 'review_moderated'
-          ? [entry({ id: 'log-2', action: 'review_moderated', action_label: 'Review Moderated', target_entity: 'reviews' })]
-          : [entry(), entry({ id: 'log-2', action: 'review_moderated', action_label: 'Review Moderated', target_entity: 'reviews' })],
+  it('offers every SRDS §51 event by its label and asks the server for the one chosen (A7)', async () => {
+    mockFetchPage.mockImplementation(async (params: { action?: string }) =>
+      page(
+        params.action === 'product_moderated'
+          ? [entry({ id: 'log-2', action: 'product_moderated', target_entity: 'listings', previous_state: null, new_state: { status: 'inactive' } })]
+          : [entry()],
       ),
     );
     await renderWithQuery(<AuditLogScreen />);
-    await screen.findByText('User Suspended');
+    await screen.findByText('Sana suspended an account');
 
     await fireEvent.press(await screen.findByLabelText('Event, Every event'));
     for (const event of EVENTS) {
       expect(screen.getAllByText(event.label).length).toBeGreaterThan(0);
     }
-    await fireEvent.press(screen.getByRole('button', { name: 'Review Moderated' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Product Moderated' }));
 
-    expect(mockFetchAuditLogs).toHaveBeenLastCalledWith({ action: 'review_moderated' });
-    expect(await screen.findByLabelText('Event, Review Moderated')).toBeTruthy();
-    await waitFor(() => expect(screen.queryByText(/user user-9/)).toBeNull());
-    expect(screen.getByText(/review user-9/)).toBeTruthy();
+    expect(await screen.findByText('Sana hid a listing')).toBeTruthy();
+    expect(screen.queryByText('Sana suspended an account')).toBeNull();
+    expect(mockFetchPage).toHaveBeenLastCalledWith({ action: 'product_moderated', targetEntity: undefined }, 0);
   });
 
   it('suggests another event when the chosen one has no entries', async () => {
-    mockFetchAuditLogs.mockImplementation(({ action }: { action?: string }) =>
-      Promise.resolve(action ? [] : [entry()]),
-    );
+    mockFetchPage.mockImplementation(async (params: { action?: string }) => page(params.action ? [] : [entry()]));
     await renderWithQuery(<AuditLogScreen />);
-    await screen.findByText('User Suspended');
+    await screen.findByText('Sana suspended an account');
 
     await fireEvent.press(await screen.findByLabelText('Event, Every event'));
-    await fireEvent.press(screen.getByRole('button', { name: 'Product Moderated' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Review Moderated' }));
 
-    expect(await screen.findByText('No audit log entries yet')).toBeTruthy();
-    expect(screen.getByText('Try a different event.')).toBeTruthy();
+    expect(await screen.findByText('Nothing matches')).toBeTruthy();
+    expect(screen.getByText('Try another event or a different name.')).toBeTruthy();
   });
 
-  it("shows a retry state when the log cannot be loaded", async () => {
-    mockFetchAuditLogs.mockRejectedValueOnce(new Error('offline'));
+  it('loads older entries on request', async () => {
+    mockFetchPage.mockResolvedValueOnce(page([entry()], { limit: 50, offset: 50 }));
+    mockFetchPage.mockResolvedValueOnce(page([entry({ id: 'log-101', actor: { id: 'a2', full_name: 'Bilal' } })]));
     await renderWithQuery(<AuditLogScreen />);
-    expect(await screen.findByText("Couldn't load the audit log")).toBeTruthy();
+    await screen.findByText('Sana suspended an account');
 
-    mockFetchAuditLogs.mockResolvedValueOnce([entry()]);
-    await fireEvent.press(screen.getByText('Retry'));
-    expect(await screen.findByText('User Suspended')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Load more older entries' }));
+
+    expect(await screen.findByText('Bilal suspended an account')).toBeTruthy();
+    expect(mockFetchPage).toHaveBeenLastCalledWith({ action: undefined, targetEntity: undefined }, 50);
   });
 });

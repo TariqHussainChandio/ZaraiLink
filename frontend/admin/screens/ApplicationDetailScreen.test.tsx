@@ -41,120 +41,170 @@ const dealer = (overrides = {}) => ({
   ...overrides,
 });
 
-function renderFor(role: 'dealer' | 'expert', navigate = jest.fn()) {
-  const navigation = { navigate } as never;
+function renderFor(role: 'dealer' | 'expert') {
   return renderWithQuery(
-    <ApplicationDetailScreen navigation={navigation} route={{ key: 'k', name: ADMIN_HOME_ROUTES.ApplicationDetail, params: { role, id: role === 'dealer' ? 'dealer-1' : 'expert-1' } }} />,
+    <ApplicationDetailScreen
+      navigation={{ navigate: jest.fn() } as never}
+      route={{ key: 'k', name: ADMIN_HOME_ROUTES.ApplicationDetail, params: { role, id: role === 'dealer' ? 'dealer-1' : 'expert-1' } }}
+    />,
   );
 }
+
+// The decision bar and the confirmation sheet can each hold a button of the same name; the sheet is the later one.
+const lastButton = (name: string) => {
+  const found = screen.getAllByRole('button', { name });
+  const button = found[found.length - 1];
+  if (!button) throw new Error(`no button ${name}`);
+  return button;
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
   (fetchDealerApplication as jest.Mock).mockResolvedValue(dealer());
 });
 
-describe('ApplicationDetailScreen (SRDS §12)', () => {
-  it('shows the dealer, the business information and the submitted documents', async () => {
+describe('ApplicationDetailScreen (SRDS §12, D4)', () => {
+  it('puts the applicant and where the application stands first', async () => {
     await renderFor('dealer');
     expect(await screen.findByText('Dealer Bilal')).toBeTruthy();
-    expect(screen.getByText('Business information')).toBeTruthy();
+    expect(screen.getByText('Under review')).toBeTruthy();
+    expect(screen.getByText(/Dealer · sent 12 Oct, waiting \d+ days? · \+923001234567/)).toBeTruthy();
+  });
+
+  it('names each document by what it is, not by its file name, and shows the business details', async () => {
+    await renderFor('dealer');
+    expect(await screen.findByText('Business licence')).toBeTruthy();
+    expect(screen.getByText('Business registration certificate')).toBeTruthy();
+    expect(screen.getByText('PDF · 4 KB')).toBeTruthy();
+    expect(screen.getByText('Photo · 2 KB')).toBeTruthy();
+    expect(screen.queryByText('licence.pdf')).toBeNull();
+    expect(screen.queryByText('certificate.jpg')).toBeNull();
+    expect(screen.getByText('Business details')).toBeTruthy();
     expect(screen.getByText('Hyderabad Agri Inputs')).toBeTruthy();
     expect(screen.getByText('Wholesaler')).toBeTruthy();
     expect(screen.getByText('NTN-4455')).toBeTruthy();
     expect(screen.getByText('Hyderabad, Sindh, Pakistan')).toBeTruthy();
-    expect(screen.getByText('Business licence')).toBeTruthy();
-    // The file names stay visible beside the document type, for the admin's own check.
-    expect(screen.getByText('File: licence.pdf')).toBeTruthy();
-    expect(screen.getByText('File: certificate.jpg')).toBeTruthy();
   });
 
-  it('names each View button after the document type, not the uploaded file', async () => {
+  it('marks the section headings as headings', async () => {
     await renderFor('dealer');
-    await screen.findByText('Dealer Bilal');
-    expect(screen.getByRole('button', { name: 'View Business licence' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'View Business registration certificate' })).toBeTruthy();
-    expect(screen.queryByLabelText('View licence.pdf')).toBeNull();
+    await screen.findByText('Documents');
+    expect(screen.getByRole('header', { name: 'Documents' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Business details' })).toBeTruthy();
   });
 
-  it('names a document sent before the catalogue had its type as an earlier document', async () => {
-    (fetchDealerApplication as jest.Mock).mockResolvedValue(dealer({ dealer_documents: [{ ...pdf, required_document: null }] }));
-    await renderFor('dealer');
-    expect(await screen.findByRole('button', { name: 'View Earlier document' })).toBeTruthy();
-  });
-
-  it('opens a PDF in the phone’s viewer and a photo in the app, each from its own signed link', async () => {
-    const navigate = jest.fn();
+  it('opens a PDF in the phone’s viewer from its own signed link', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     (resolveDealerDocumentUrl as jest.Mock).mockImplementation((_d: string, id: string) => Promise.resolve(`https://signed/${id}`));
-    await renderFor('dealer', navigate);
+    await renderFor('dealer');
 
-    await fireEvent.press(await screen.findByLabelText('View Business licence'));
+    await fireEvent.press(await screen.findByRole('button', { name: /^Business licence,/ }));
+
     await waitFor(() => expect(openURL).toHaveBeenCalledWith('https://signed/doc-pdf'));
     expect(resolveDealerDocumentUrl).toHaveBeenCalledWith('dealer-1', 'doc-pdf');
-
-    await fireEvent.press(screen.getByLabelText('View Business registration certificate'));
-    await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.DocumentViewer, { url: 'https://signed/doc-img', title: 'Business registration certificate' }),
-    );
     openURL.mockRestore();
   });
 
-  it('approves, and says the dealer was emailed', async () => {
+  it('opens a photo in the zoomable viewer, named by its requirement', async () => {
+    (resolveDealerDocumentUrl as jest.Mock).mockImplementation((_d: string, id: string) => Promise.resolve(`https://signed/${id}`));
+    await renderFor('dealer');
+
+    await fireEvent.press(await screen.findByRole('button', { name: /^Business registration certificate,/ }));
+
+    expect(await screen.findByLabelText('Business registration certificate')).toBeTruthy();
+    expect(resolveDealerDocumentUrl).toHaveBeenCalledWith('dealer-1', 'doc-img');
+    // Only the photographed documents are in the viewer; the PDF opens elsewhere.
+    expect(resolveDealerDocumentUrl).not.toHaveBeenCalledWith('dealer-1', 'doc-pdf');
+  });
+
+  it('approves only after a confirmation that says the applicant is emailed, then says the same verb (AD-05)', async () => {
     (decideDealerApplication as jest.Mock).mockResolvedValue({ role: 'dealer', previous_status: 'pending', new_status: 'approved', email_delivered: true });
     await renderFor('dealer');
-    await fireEvent.press(await screen.findByText('Approve'));
-    // The button only asks; the sheet's button decides.
+    await fireEvent.press(await screen.findByRole('button', { name: 'Approve dealer' }));
+
+    expect(await screen.findByText('Approve Dealer Bilal?')).toBeTruthy();
+    expect(screen.getByText(/Dealer Bilal is emailed and can sell on ZaraiLink once they sign in again/)).toBeTruthy();
     expect(decideDealerApplication).not.toHaveBeenCalled();
-    expect(screen.getByText('The dealer can sell on the marketplace once they sign in again.')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Approve application'));
+
+    await fireEvent.press(lastButton('Approve dealer'));
+
     expect(decideDealerApplication).toHaveBeenCalledWith('dealer-1', 'approved', undefined);
-    expect(await screen.findByText('The applicant has been emailed.')).toBeTruthy();
-    // The decision itself is confirmed by a toast, which TalkBack announces.
-    expect(screen.getByText('Dealer Bilal approved')).toBeTruthy();
+    expect(await screen.findByText('Dealer approved')).toBeTruthy();
+    expect(screen.getByText('Dealer Bilal was emailed.')).toBeTruthy();
   });
 
   it('backing out of the approval decides nothing', async () => {
     await renderFor('dealer');
-    await fireEvent.press(await screen.findByText('Approve'));
-    await fireEvent.press(screen.getByText('Not now'));
-    expect(screen.queryByText('Approve application')).toBeNull();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Approve dealer' }));
+    await screen.findByText('Approve Dealer Bilal?');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
+
     expect(decideDealerApplication).not.toHaveBeenCalled();
   });
 
-  it('rejects only with a reason the dealer can read, and says when the email could not be sent', async () => {
+  it('rejects only with a reason of ten characters, shown as help before it is an error', async () => {
     (decideDealerApplication as jest.Mock).mockResolvedValue({ role: 'dealer', previous_status: 'pending', new_status: 'rejected', email_delivered: false });
     await renderFor('dealer');
-    await fireEvent.press(await screen.findByText('Reject'));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Reject…' }));
+
+    expect(await screen.findByText(/At least 10 characters/)).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Reason'), 'short');
-    await fireEvent.press(screen.getByText('Reject application'));
     expect(await screen.findByText('Write at least 10 characters')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Reject application' }));
     expect(decideDealerApplication).not.toHaveBeenCalled();
 
     await fireEvent.changeText(screen.getByLabelText('Reason'), 'The business licence has expired.');
-    await fireEvent.press(screen.getByText('Reject application'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Reject application' }));
+
     await waitFor(() => expect(decideDealerApplication).toHaveBeenCalledWith('dealer-1', 'rejected', 'The business licence has expired.'));
-    expect(await screen.findByText(/could not be sent/)).toBeTruthy();
-    expect(screen.getByText('Dealer Bilal rejected')).toBeTruthy();
+    expect(await screen.findByText('Application rejected')).toBeTruthy();
+    expect(screen.getByText(/could not be sent/)).toBeTruthy();
   });
 
-  it('confirms no decision with a toast when the API refuses it', async () => {
-    (decideDealerApplication as jest.Mock).mockRejectedValue(new Error('Server error'));
+  it('fills the reason from a chip', async () => {
     await renderFor('dealer');
-    await fireEvent.press(await screen.findByText('Approve'));
-    await fireEvent.press(screen.getByText('Approve application'));
-    expect(await screen.findByText('Server error')).toBeTruthy();
-    expect(screen.queryByText('Dealer Bilal approved')).toBeNull();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Reject…' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'A document is unclear' }));
+    expect(screen.getByLabelText('Reason').props.value).toBe('A document is unclear');
   });
 
-  it('offers no decision on a draft or a decided application, and shows a rejection’s reason', async () => {
+  it('keeps the typed reason when the rejection fails, so nothing is written twice (AD-05)', async () => {
+    (decideDealerApplication as jest.Mock).mockRejectedValue(new Error('network'));
+    await renderFor('dealer');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Reject…' }));
+    await fireEvent.changeText(await screen.findByLabelText('Reason'), 'The business licence has expired.');
+    await fireEvent.press(screen.getByRole('button', { name: 'Reject application' }));
+
+    expect(await screen.findByText("Couldn't finish")).toBeTruthy();
+    expect(screen.getByLabelText('Reason').props.value).toBe('The business licence has expired.');
+  });
+
+  it('offers no decision on a decided application, and shows the reason it was not approved', async () => {
     (fetchDealerApplication as jest.Mock).mockResolvedValue(dealer({ account_status: 'rejected', account_status_reason: 'Licence expired.' }));
     await renderFor('dealer');
     expect(await screen.findByText('Licence expired.')).toBeTruthy();
-    expect(screen.queryByText('Approve')).toBeNull();
-    expect(screen.queryByText('Reject')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Approve dealer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reject…' })).toBeNull();
   });
 
-  it('shows an expert’s professional information, experience, institution and specializations, and decides it', async () => {
+  it('offers no decision on a draft that was never sent', async () => {
+    (fetchDealerApplication as jest.Mock).mockResolvedValue(dealer({ application_submitted_at: null }));
+    await renderFor('dealer');
+    expect(await screen.findByText('Dealer Bilal')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Approve dealer' })).toBeNull();
+  });
+
+  it('says the load failed and tries again', async () => {
+    (fetchDealerApplication as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    await renderFor('dealer');
+    expect(await screen.findByText("Couldn't load this application")).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(await screen.findByText('Dealer Bilal')).toBeTruthy();
+  });
+
+  it('shows an expert’s professional details and specializations, and decides it', async () => {
     (fetchExpertForAdminById as jest.Mock).mockResolvedValue({
       id: 'expert-1',
       qualifications: 'MSc Plant Pathology',
@@ -174,18 +224,18 @@ describe('ApplicationDetailScreen (SRDS §12)', () => {
     await renderFor('expert');
 
     expect(await screen.findByText('Dr Sana')).toBeTruthy();
-    expect(screen.getByText('Professional information')).toBeTruthy();
+    expect(screen.getByText('Professional details')).toBeTruthy();
     expect(screen.getByText('8')).toBeTruthy();
     expect(screen.getByText('Sindh Agriculture University')).toBeTruthy();
-    expect(screen.getByText('Plant Diseases')).toBeTruthy();
-    expect(screen.getByText('Degree certificate')).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('View Degree certificate'));
+    expect(screen.getByText('Plant diseases')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: /^Degree certificate,/ }));
     await waitFor(() => expect(resolveExpertDocumentUrl).toHaveBeenCalledWith('expert-1', 'edoc'));
 
-    await fireEvent.press(screen.getByText('Approve'));
-    await fireEvent.press(screen.getByText('Approve application'));
-    expect(reviewExpertVerification).toHaveBeenCalledWith('expert-1', 'approved', '');
-    expect(await screen.findByText('Dr Sana approved')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Approve expert' }));
+    expect(await screen.findByText('Approve Dr Sana?')).toBeTruthy();
+    await fireEvent.press(lastButton('Approve expert'));
+    await waitFor(() => expect(reviewExpertVerification).toHaveBeenCalledWith('expert-1', 'approved', ''));
+    expect(await screen.findByText('Expert approved')).toBeTruthy();
     expect(fetchDealerApplication).not.toHaveBeenCalled();
   });
 });

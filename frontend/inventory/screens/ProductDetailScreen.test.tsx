@@ -111,6 +111,6 @@ describe('ProductDetailScreen', () => {
     api.fetchProduct.mockRejectedValueOnce(apiError(404, 'not_found', 'Product not found'));
     await renderDetail();
     expect(await screen.findByText("Couldn't load this product")).toBeTruthy();
-    expect(screen.getByText('We could not find what you were looking for.')).toBeTruthy();
+    expect(screen.getByText('That could not be found. It may have been removed.')).toBeTruthy();
   });
 });

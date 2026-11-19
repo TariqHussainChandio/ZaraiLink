@@ -43,9 +43,12 @@ const expert: ExpertWithProfile = {
   expert_specializations: [{ specialization: 'plant_diseases' }],
 };
 
-function makeProps(params?: { specialization?: ExpertWithProfile['expert_specializations'][number]['specialization']; prefill?: never }) {
+function makeProps(params?: {
+  specialization?: ExpertWithProfile['expert_specializations'][number]['specialization'];
+  prefill?: never;
+}) {
   return {
-    navigation: { navigate: jest.fn() },
+    navigation: { navigate: jest.fn(), setParams: jest.fn() },
     route: { params },
   } as unknown as ConsultationsScreenProps<'ExpertList'>;
 }
@@ -61,14 +64,14 @@ describe('ExpertListScreen', () => {
 
     expect(await screen.findByText('Dr. Ahsan')).toBeTruthy();
     expect(screen.getByText('PhD')).toBeTruthy();
-    expect(screen.getByText('Plant Diseases')).toBeTruthy();
+    expect(screen.getByText('Plant diseases')).toBeTruthy();
   });
 
   it('passes the specialization filter through to fetchExperts', async () => {
     mockFetchExperts.mockResolvedValue([]);
     await renderWithQuery(<ExpertListScreen {...makeProps({ specialization: 'plant_diseases' })} />);
 
-    await screen.findByText('No verified experts yet');
+    await screen.findByText('No verified experts for plant diseases yet');
     expect(mockFetchExperts).toHaveBeenCalledWith({ specialization: 'plant_diseases' });
   });
 
@@ -98,7 +101,34 @@ describe('ExpertListScreen', () => {
     expect(await screen.findByText("Couldn't load experts")).toBeTruthy();
 
     mockFetchExperts.mockResolvedValue([expert]);
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('Dr. Ahsan')).toBeTruthy();
+  });
+
+  it("shows a scan's plant-disease filter as a chip that removes itself", async () => {
+    mockFetchExperts.mockResolvedValue([expert]);
+    const props = makeProps({ specialization: 'plant_diseases' });
+    await renderWithQuery(<ExpertListScreen {...props} />);
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Plant diseases' }));
+    expect(props.navigation.setParams).toHaveBeenCalledWith({ specialization: undefined });
+  });
+
+  it('offers every expert when the narrowed list is empty', async () => {
+    mockFetchExperts.mockResolvedValue([]);
+    const props = makeProps({ specialization: 'plant_diseases' });
+    await renderWithQuery(<ExpertListScreen {...props} />);
+
+    expect(await screen.findByText('No verified experts for plant diseases yet')).toBeTruthy();
+    expect(screen.queryByText('Check back soon for available experts.')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'See all experts' }));
+    expect(props.navigation.setParams).toHaveBeenCalledWith({ specialization: undefined });
+  });
+
+  it('shows no filter chip when nothing narrows the list', async () => {
+    mockFetchExperts.mockResolvedValue([expert]);
+    await renderWithQuery(<ExpertListScreen {...makeProps()} />);
+    await screen.findByText('Dr. Ahsan');
+    expect(screen.queryByText('Tap to see every expert')).toBeNull();
   });
 });

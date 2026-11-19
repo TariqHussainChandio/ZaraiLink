@@ -50,8 +50,19 @@ class DiseaseReport(BaseModel):
     created_at: str
 
 
+class SupportedCrop(BaseModel):
+    key: str
+    name: str
+
+
+class SupportedCropsResponse(BaseModel):
+    crops: list[SupportedCrop]
+
+
 class PredictRequest(BaseModel):
     disease_case_id: str
+    # A key from GET /api/v1/disease/crops. Optional: without it the response says nothing about a crop match.
+    chosen_crop: str | None = None
 
 
 class PredictionRecord(BaseModel):
@@ -65,6 +76,10 @@ class PredictionRecord(BaseModel):
     recommended_actions: list[str] = []
     model_version: str | None = None
     created_at: str
+    # The crop the model read from the photo, and whether it is the crop the farmer chose (None when none was
+    # chosen). False means the photo looks like another crop: no report text, route the farmer to an expert (D16).
+    predicted_crop: SupportedCrop | None = None
+    crop_matches: bool | None = None
 
 
 class PredictResponse(PredictionRecord):

@@ -18,10 +18,9 @@ export interface ActivityFeedProps {
   emptyMessage: string;
 }
 
-/** A dashboard's recent activity: one row per item, a row that opens something reads as a button to TalkBack.
- *
- * @example
- * <ActivityFeed title="Recent sales" emptyMessage="No sales yet" items={[{ id, title: 'Ali', subtitle: 'Completed', value: 'Rs 1,200', onPress }]} />
+/**
+ * @deprecated Retired by D15 (Rate Board): use `ListGroup` and `ListRow` (one fact per row, the status under the meta).
+ * Kept only until the dashboards have stopped using it.
  */
 export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) {
   const theme = useTheme();

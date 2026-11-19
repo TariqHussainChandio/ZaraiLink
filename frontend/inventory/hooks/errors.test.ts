@@ -46,10 +46,10 @@ describe('inventoryErrorMessage', () => {
 
   it('falls back to the app’s message for a body without a title, and for offline', () => {
     expect(inventoryErrorMessage(apiError(409, 'conflict', 'Request failed (409)'))).toBe(
-      'This already exists or is still in use.',
+      'That already exists, or it is still in use.',
     );
     expect(inventoryErrorMessage(apiError(0, 'network', 'No connection to the server'))).toBe(
-      'No internet connection. Check your connection and try again.',
+      'No connection. Check your internet, then try again.',
     );
   });
 
@@ -84,7 +84,7 @@ describe('writeErrorMessage', () => {
       'Only 2 in stock at this location',
     );
     expect(writeErrorMessage(apiError(500, 'server_error', 'Internal'))).toBe(
-      'Something went wrong on our side. Please try again shortly.',
+      'The server had a problem. Try again shortly.',
     );
   });
 });

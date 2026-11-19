@@ -1,28 +1,33 @@
-import { Check, CircleAlert, Send } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Banner, Button, Card, SkeletonList, useToast } from '../../../components';
+import { Banner, Button, Card, StatusBadge, useToast } from '../../../components';
 import { BUSINESS_TYPE_LABELS, SPECIALIZATION_LABELS } from '../../../constants/labels';
 import { useOwnExpertProfile } from '../../../../expert';
 import { useTheme, type Theme } from '../../../../theme';
 import { errorMessage } from '../../../../utils/errorMessage';
 import { useApplicationDocuments, useDealerApplication, useRequiredDocuments, useSubmitApplication } from '../../hooks/application';
 import type { ApplicationRole } from '../../types/application';
+import { FormSkeleton, StepActions } from './StepParts';
+
+const YEARS_FORMAT = new Intl.NumberFormat('en-PK');
 
 export interface ReviewStepProps {
   role: ApplicationRole;
   /** False while under review: the summary only, no submit. */
   editable: boolean;
   onSubmitted: () => void;
+  /** Back to the documents. */
+  onBack?: () => void;
+  /** "Change" beside each section; both are present while the application can still be edited. */
+  onChangeDetails?: () => void;
+  onChangeDocuments?: () => void;
 }
-
-const YEARS_FORMAT = new Intl.NumberFormat('en-PK');
 
 /**
  * Everything the applicant is about to send, with anything missing called out before they submit. The server checks the
  * same again (submit_application()), and its answer, naming what is missing, is shown if it disagrees.
  */
-export function ReviewStep({ role, editable, onSubmitted }: ReviewStepProps) {
+export function ReviewStep({ role, editable, onSubmitted, onBack, onChangeDetails, onChangeDocuments }: ReviewStepProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const dealer = useDealerApplication(role === 'dealer');
@@ -31,6 +36,20 @@ export function ReviewStep({ role, editable, onSubmitted }: ReviewStepProps) {
   const documents = useApplicationDocuments(role);
   const submit = useSubmitApplication();
   const toast = useToast();
+
+  const queries = [role === 'dealer' ? dealer : expert, required, documents];
+  const loading = queries.some(query => query.isPending);
+  const failed = queries.find(query => query.isError);
+
+  // Until everything has loaded, "Not filled in" and a disabled button would claim the application is empty.
+  if (loading) return <FormSkeleton />;
+  if (failed) {
+    return (
+      <Banner tone="danger" title="Couldn't load your application" actionLabel="Try again" onAction={() => queries.forEach(query => query.refetch())}>
+        {errorMessage(failed.error)}
+      </Banner>
+    );
+  }
 
   const rows: [string, string | null | undefined][] =
     role === 'dealer'
@@ -43,7 +62,7 @@ export function ReviewStep({ role, editable, onSubmitted }: ReviewStepProps) {
         ]
       : [
           ['Qualifications', expert.data?.qualifications],
-          ['Degree', expert.data?.degree],
+          ['Highest degree or certification', expert.data?.degree],
           [
             'Years of experience',
             expert.data?.years_experience == null ? null : YEARS_FORMAT.format(expert.data.years_experience),
@@ -68,31 +87,22 @@ export function ReviewStep({ role, editable, onSubmitted }: ReviewStepProps) {
     }
   };
 
-  // Every part of the summary must be read before it is judged: a read still loading or failed would otherwise show as
-  // "Not filled in" and keep Submit off for no reason. isLoading (not isPending) so the other role's idle query counts
-  // as settled.
-  const reads = [role === 'dealer' ? dealer : expert, required, documents];
-  if (reads.some(read => read.isLoading)) return <SkeletonList count={3} />;
-  const failed = reads.find(read => read.isError && read.data === undefined);
-  if (failed) {
-    return (
-      <Banner
-        tone="danger"
-        title="Couldn't load your application"
-        actionLabel={reads.some(read => read.isFetching) ? undefined : 'Retry'}
-        onAction={() => {
-          for (const read of reads) if (read.isError) read.refetch();
-        }}
-      >
-        {errorMessage(failed.error)}
-      </Banner>
-    );
-  }
-
   return (
     <View style={styles.list}>
       <Card>
-        <Text style={styles.heading}>{role === 'dealer' ? 'Business' : 'Professional details'}</Text>
+        <View style={styles.heading}>
+          <Text style={styles.headingText}>{role === 'dealer' ? 'Business' : 'Professional details'}</Text>
+          {editable && onChangeDetails ? (
+            <Button
+              label="Change"
+              variant="quiet"
+              size="sm"
+              fullWidth={false}
+              onPress={onChangeDetails}
+              accessibilityLabel={`Change ${role === 'dealer' ? 'business' : 'professional'} details`}
+            />
+          ) : null}
+        </View>
         {rows.map(([label, value]) => (
           <View key={label} style={styles.row}>
             <Text style={styles.term}>{label}</Text>
@@ -100,28 +110,28 @@ export function ReviewStep({ role, editable, onSubmitted }: ReviewStepProps) {
           </View>
         ))}
       </Card>
-      <Card>
-        <Text style={styles.heading}>Required documents</Text>
-        {checklist.map(item => {
-          const Icon = item.done ? Check : CircleAlert;
-          return (
-            <View key={item.label} style={styles.check} accessible accessibilityLabel={`${item.label}, ${item.done ? 'added' : 'missing'}`}>
-              <Icon
-                color={item.done ? theme.colors.status.success.mark : theme.colors.status.warning.mark}
-                size={theme.size.iconSm}
-                strokeWidth={theme.size.iconStrokeBold}
-              />
-              <Text style={styles.value}>{item.label}</Text>
+      {/* Under review the same files are listed below in full, so the checklist is only for an application still being
+          prepared. */}
+      {editable ? (
+        <Card>
+          <View style={styles.heading}>
+            <Text style={styles.headingText}>Required documents</Text>
+            {onChangeDocuments ? (
+              <Button label="Change" variant="quiet" size="sm" fullWidth={false} onPress={onChangeDocuments} accessibilityLabel="Change documents" />
+            ) : null}
+          </View>
+          {checklist.map(item => (
+            <View key={item.label} style={styles.check}>
+              <Text style={styles.checkLabel}>{item.label}</Text>
+              <StatusBadge kind="document" status={item.done ? 'added' : 'needed'} size="sm" />
             </View>
-          );
-        })}
-      </Card>
-      {editable && !ready ? (
-        <Banner tone="warning">Add what is missing above before you submit.</Banner>
+          ))}
+        </Card>
       ) : null}
+      {editable && !ready ? <Banner tone="warning">Add what is missing above before you send the application.</Banner> : null}
       {submit.error ? <Banner tone="danger">{errorMessage(submit.error)}</Banner> : null}
       {editable ? (
-        <Button label="Submit for review" icon={Send} disabled={!ready} loading={submit.isPending} onPress={onSubmit} />
+        <StepActions onBack={onBack} primaryLabel="Send for review" disabled={!ready} loading={submit.isPending} onPrimary={onSubmit} />
       ) : (
         <Banner tone="info">Your application is with an administrator. It cannot be changed until they decide.</Banner>
       )}
@@ -132,11 +142,14 @@ export function ReviewStep({ role, editable, onSubmitted }: ReviewStepProps) {
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     list: { gap: space[3] },
-    heading: { ...typography.bodyStrong, color: colors.ink, marginBottom: space[2] },
+    heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2], marginBottom: space[2] },
+    headingText: { ...typography.bodyStrong, color: colors.ink, flexShrink: 1 },
     row: { paddingVertical: space[1], gap: space[1] },
-    term: { ...typography.caption, color: colors.ink3 },
+    term: { ...typography.caption, color: colors.ink2 },
     value: { ...typography.body, color: colors.ink, flexShrink: 1 },
-    missing: { color: colors.status.warning.mark },
-    check: { flexDirection: 'row', alignItems: 'center', gap: space[2], paddingVertical: space[1] },
+    // The warning's `ink`, not its `mark`: text needs the 4.5:1 that the mark (an icon colour) is not held to.
+    missing: { color: colors.status.warning.ink },
+    check: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2], paddingVertical: space[1] },
+    checkLabel: { ...typography.body, color: colors.ink, flexShrink: 1 },
   });
 }

@@ -5,19 +5,19 @@ import type { PaymentMethod } from '../payments';
 // Display names for values the database stores as codes, shared by every screen that shows them.
 
 export const SPECIALIZATION_LABELS: Record<ExpertSpecialization, string> = {
-  crop_management: 'Crop Management',
-  plant_diseases: 'Plant Diseases',
-  pest_management: 'Pest Management',
-  fertilizer_management: 'Fertilizer Management',
+  crop_management: 'Crop management',
+  plant_diseases: 'Plant diseases',
+  pest_management: 'Pest management',
+  fertilizer_management: 'Fertilizer management',
   irrigation: 'Irrigation',
-  soil_management: 'Soil Management',
-  crop_nutrition: 'Crop Nutrition',
-  general_agriculture: 'General Agriculture',
+  soil_management: 'Soil management',
+  crop_nutrition: 'Crop nutrition',
+  general_agriculture: 'General agriculture',
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  cod: 'Cash on Delivery',
-  bank_transfer: 'Bank Transfer',
+  cod: 'Cash on delivery',
+  bank_transfer: 'Bank transfer',
 };
 
 // The five dealer business types decided on 2026-10-04 (A3b; SRDS §7).

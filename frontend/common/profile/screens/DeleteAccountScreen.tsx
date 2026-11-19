@@ -1,20 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Trash2, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, Sheet, TextField } from '../../components';
+import { Button, ConfirmSheet, ScreenScaffold, TextField } from '../../components';
+import { useLoginNotice } from '../../auth';
 import { useDeleteOwnAccount } from '../hooks/profile';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
-import { errorMessage } from '../../../utils/errorMessage';
+import { isApiError } from '../../../services/api/errors';
 
-function makeDeleteAccountSchema() {
-  return z.object({ password: z.string().min(1, 'Enter your password to confirm') });
-}
+const deleteAccountSchema = z.object({ password: z.string().min(1, 'Enter your password to confirm') });
 
-type DeleteAccountFormValues = z.infer<ReturnType<typeof makeDeleteAccountSchema>>;
+type DeleteAccountFormValues = z.infer<typeof deleteAccountSchema>;
 
 // P4 (4A.5). No navigation prop used — on success, signOut() flips authStore's status to
 // 'unauthenticated' and RootNavigator swaps to the auth flow on its own, the same way every
@@ -23,53 +21,60 @@ export function DeleteAccountScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { mutateAsync: deleteOwnAccount } = useDeleteOwnAccount();
-  const deleteAccountSchema = useMemo(() => makeDeleteAccountSchema(), []);
   const signOut = useAuthStore(state => state.signOut);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const leaveNotice = useLoginNotice(state => state.leave);
+  // The password is checked by the server when the deletion is confirmed; it is held here only for that one request.
+  const [confirming, setConfirming] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    setError,
+    formState: { errors },
   } = useForm<DeleteAccountFormValues>({
     resolver: zodResolver(deleteAccountSchema),
     defaultValues: { password: '' },
   });
 
-  // The password waits here while the confirmation sheet is open; it is the last check before the account goes.
-  const [confirmPassword, setConfirmPassword] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const onSubmit = (values: DeleteAccountFormValues) => {
-    setSubmitError(null);
-    setConfirmPassword(values.password);
-  };
-
-  const confirmDelete = async () => {
-    if (confirmPassword === null) return;
-    setDeleting(true);
+  const deleteNow = async () => {
+    if (confirming === null) return;
     try {
-      await deleteOwnAccount(confirmPassword);
-      await signOut();
+      await deleteOwnAccount(confirming);
     } catch (error) {
-      setConfirmPassword(null);
-      setSubmitError(errorMessage(error));
-    } finally {
-      setDeleting(false);
+      if (isApiError(error) && error.code === 'incorrect_password') {
+        // The wrong password belongs on the password field, not in a banner: close the sheet and say it there.
+        setConfirming(null);
+        setError('password', { message: 'That password is not correct.' });
+        return;
+      }
+      // Anything else stays in the sheet, with the reason, so the person can try again without retyping.
+      throw error;
     }
+    // Signing out swaps the whole navigator, so the sign-in screen is told what happened through this notice.
+    leaveNotice({ tone: 'success', title: 'Account deleted', message: 'Your account and your personal details were removed.' });
+    await signOut();
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Delete account</Text>
-      <Text style={styles.warning}>This permanently deactivates your account. Your name, phone number, and photo are removed everywhere they appear. You will not be able to sign in again.</Text>
+    <ScreenScaffold>
+      <Text style={styles.warning}>
+        This permanently deletes your account. Your name, phone number and photo are removed everywhere they appear, and you
+        cannot sign in again.
+      </Text>
 
       <Controller
         control={control}
         name="password"
-        render={({ field: { onChange, onBlur, value } }) => (
+        render={({ field: { ref, onChange, onBlur, value } }) => (
           <TextField
-            label="Confirm your password"
+            ref={ref}
+            label="Your password"
+            helper="Enter it to confirm that this is you"
             secureTextEntry
+            autoCapitalize="none"
+            autoComplete="current-password"
+            textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit(values => setConfirming(values.password))}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -78,72 +83,29 @@ export function DeleteAccountScreen() {
         )}
       />
 
-      {submitError ? (
-        <View style={styles.errorBanner}>
-          <Banner tone="danger" title={submitError} />
-        </View>
-      ) : null}
-
       <Button
         label="Delete my account"
-        icon={Trash2}
         variant="danger"
-        loading={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
-        style={styles.submit}
+        size="lg"
+        onPress={handleSubmit(values => setConfirming(values.password))}
       />
 
-      <Sheet
-        visible={confirmPassword !== null}
-        onClose={() => (deleting ? undefined : setConfirmPassword(null))}
+      <ConfirmSheet
+        visible={confirming !== null}
+        onClose={() => setConfirming(null)}
         title="Delete your account?"
-      >
-        <Text style={styles.sheetText}>This cannot be undone. Your account is deleted for good.</Text>
-        <View style={styles.sheetActions}>
-          <Button label="Delete" icon={Trash2} variant="danger" loading={deleting} onPress={confirmDelete} />
-          <Button
-            label="Cancel"
-            icon={X}
-            variant="secondary"
-            disabled={deleting}
-            onPress={() => setConfirmPassword(null)}
-          />
-        </View>
-      </Sheet>
-    </View>
+        message="This cannot be undone. Your account and your personal details are removed for good."
+        confirmLabel="Delete account"
+        keepLabel="Keep my account"
+        destructive
+        onConfirm={deleteNow}
+      />
+    </ScreenScaffold>
   );
 }
 
-function makeStyles({ colors, space, typography }: Theme) {
+function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      padding: space[4],
-    },
-    title: {
-      ...typography.titleLg,
-      color: colors.ink,
-      marginBottom: space[2],
-    },
-    warning: {
-      ...typography.body,
-      color: colors.status.danger.mark,
-      marginBottom: space[6],
-    },
-    errorBanner: {
-      marginBottom: space[3],
-    },
-    submit: {
-      marginTop: space[2],
-    },
-    sheetText: {
-      ...typography.body,
-      color: colors.ink2,
-      marginBottom: space[4],
-    },
-    sheetActions: {
-      gap: space[2],
-    },
+    warning: { ...typography.body, color: colors.status.danger.ink },
   });
 }

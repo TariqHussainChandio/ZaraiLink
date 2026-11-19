@@ -13,6 +13,7 @@ test_disease_case_ssrf_protection.py for the payload tests.
 """
 
 import asyncio
+import json
 import re
 import time
 from contextlib import ExitStack, contextmanager
@@ -28,6 +29,7 @@ from storage3.exceptions import StorageApiError
 from app.ai import service as disease_service
 from app.ai.engine import ModelUnavailableError
 from app.ai.schemas import LOW_CONFIDENCE_THRESHOLD, DiseaseCaseWithPredictionResponse, DiseaseReport
+from app.ai.service import supported_crops
 from app.auth.dependencies import AuthenticatedUser
 from app.config.settings import settings
 
@@ -159,6 +161,7 @@ async def test_predict_stores_the_knowledge_text_and_returns_the_report():
     # BR-13 plus plan A6: unreviewed text says so, on top of the advisory disclaimer every report carries.
     assert report.disclaimer.startswith("This is an AI suggestion, not a diagnosis.")
     assert "not yet been reviewed" in report.disclaimer
+    assert result["crop_matches"] is None  # no crop was chosen, so there is nothing to match
 
 
 @pytest.mark.asyncio
@@ -462,3 +465,68 @@ async def test_inference_does_not_block_the_event_loop():
     finally:
         watcher.cancel()
     assert ticks >= 10, f"the event loop was blocked during inference (only {ticks} ticks in 0.4 s)"
+
+
+# --- D16: the scan offers only the crops the model knows; a photo of another crop gets no report ---
+_EXPECTED_CROPS = [
+    "Apple", "Bell pepper", "Blueberry", "Cherry", "Grape", "Maize", "Orange", "Peach",
+    "Potato", "Raspberry", "Soybean", "Squash", "Strawberry", "Tomato",
+]  # fmt: skip
+
+
+def test_supported_crops_are_the_fourteen_crops_of_the_model():
+    crops = supported_crops()
+    assert [c["name"] for c in crops] == _EXPECTED_CROPS
+    assert {c["key"] for c in crops} >= {"maize", "bell-pepper", "tomato"}
+
+
+def test_class_names_json_and_the_model_metadata_list_the_same_classes():
+    # Two files describe the model's classes; the crop offer is derived from the one the engine uses.
+    checkpoint_dir = Path(__file__).resolve().parents[2] / "app" / "ai" / "checkpoints"
+    names = json.loads((checkpoint_dir / "class_names.json").read_text(encoding="utf-8"))
+    assert [names[str(i)] for i in range(len(names))] == settings.model_classes
+
+
+async def _predict_as(raw_class: str, chosen_crop: str | None, knowledge=LATE_BLIGHT):
+    with _predict_path(knowledge=knowledge), _mock_classifier(return_value=(raw_class, 0.91)):
+        return await disease_service.predict(OWNER, CASE["id"], chosen_crop)
+
+
+@pytest.mark.asyncio
+async def test_predict_reports_a_matching_crop_with_its_report_text():
+    result = await _predict_as("Tomato___Late_blight", "tomato")
+    assert result["crop_matches"] is True
+    assert result["predicted_crop"] == {"key": "tomato", "name": "Tomato"}
+    assert result["description"] == LATE_BLIGHT["advisory"]
+    assert result["report"]["treatment"] == LATE_BLIGHT["treatment"]
+
+
+@pytest.mark.asyncio
+async def test_predict_flags_a_different_crop_and_withholds_the_treatment():
+    # The farmer said potato, the model reads a tomato leaf: no treatment goes back for the wrong plant (BR-13, D16),
+    # but the report, its disclaimer and the route to an expert stay.
+    result = await _predict_as("Tomato___Late_blight", "potato")
+    assert result["crop_matches"] is False
+    assert result["predicted_crop"]["name"] == "Tomato"
+    assert result["description"] is None
+    assert result["recommended_actions"] == []
+    report = DiseaseReport.model_validate(result["report"])
+    assert report.symptoms == []
+    assert report.treatment == []
+    assert report.precautions == []
+    assert "looks like Tomato, not the crop you chose" in report.advisory
+    assert report.disclaimer.startswith("This is an AI suggestion, not a diagnosis.")
+
+
+@pytest.mark.asyncio
+async def test_predict_matches_the_curated_names_maize_and_bell_pepper():
+    assert (await _predict_as("Corn_(maize)___healthy", "maize", None))["crop_matches"] is True
+    assert (await _predict_as("Pepper,_bell___healthy", "bell-pepper", None))["crop_matches"] is True
+
+
+@pytest.mark.asyncio
+async def test_predict_rejects_a_crop_the_model_does_not_know_before_any_work():
+    with _predict_path() as mocks, pytest.raises(HTTPException) as exc_info:
+        await disease_service.predict(OWNER, CASE["id"], "wheat")
+    assert exc_info.value.status_code == 422
+    mocks["get_disease_case"].assert_not_called()

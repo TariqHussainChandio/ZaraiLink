@@ -100,7 +100,7 @@ describe('DashboardScreen (SRDS §18)', () => {
     api.retrySync.mockRejectedValue(apiError(0, 'network', 'offline'));
     await renderDashboard();
     await fireEvent.press(await screen.findByText('Retry failed dispatches'));
-    expect(await screen.findByText('No internet connection. Check your connection and try again.')).toBeTruthy();
+    expect(await screen.findByText('No connection. Check your internet, then try again.')).toBeTruthy();
   });
 
   it('refetches when it comes back into view (a dispatch may have changed stock)', async () => {

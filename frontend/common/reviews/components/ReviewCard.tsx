@@ -4,8 +4,7 @@ import { Avatar, Banner, Card } from '../../components';
 import { RatingStars } from './RatingStars';
 import { useTheme, type Theme } from '../../../theme';
 import type { ReviewWithBuyer } from '../types/reviews';
-
-const WRITTEN = new Intl.DateTimeFormat('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+import { formatDay } from '../../../utils/dates';
 
 /**
  * One review. A hidden one reaches only its author (on their own order) and the admin (SRDS §14), so it says so: the
@@ -14,8 +13,8 @@ const WRITTEN = new Intl.DateTimeFormat('en-PK', { day: 'numeric', month: 'short
 export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const name = review.buyer?.full_name || 'Unknown buyer';
-  const date = WRITTEN.format(new Date(review.created_at));
+  const name = review.buyer?.full_name || 'A buyer';
+  const date = formatDay(review.created_at);
   // The review read as one TalkBack stop: who, how many stars, when, and what they said, instead of an avatar, a name,
   // a date and five stars in turn (A8 finding).
   const label = [
@@ -53,7 +52,7 @@ export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: {
       marginBottom: space[3],
@@ -70,8 +69,7 @@ function makeStyles({ colors, space, typography, fontWeight }: Theme) {
       flex: 1,
     },
     name: {
-      ...typography.caption,
-      fontWeight: fontWeight.semibold,
+      ...typography.bodyStrong,
       color: colors.ink,
     },
     date: {
@@ -80,8 +78,8 @@ function makeStyles({ colors, space, typography, fontWeight }: Theme) {
     },
     comment: {
       marginTop: space[2],
-      ...typography.caption,
-      color: colors.ink2,
+      ...typography.body,
+      color: colors.ink,
     },
   });
 }

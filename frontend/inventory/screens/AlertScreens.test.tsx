@@ -95,7 +95,7 @@ describe('AlertSettingsScreen', () => {
     api.saveAlertSettings.mockRejectedValue(apiError(0, 'network', 'offline'));
     await renderSettings();
     await fireEvent.press(await screen.findByText('Save settings'));
-    expect(await screen.findByText('No internet connection. Check your connection and try again.')).toBeTruthy();
+    expect(await screen.findByText('No connection. Check your internet, then try again.')).toBeTruthy();
   });
 
   it('shows a failed load with Retry', async () => {

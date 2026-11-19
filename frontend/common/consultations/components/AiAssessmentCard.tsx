@@ -77,7 +77,7 @@ export function AiAssessmentCard({ summary }: AiAssessmentCardProps) {
   );
 }
 
-function makeStyles({ colors, space, radius, typography, size }: Theme) {
+function makeStyles({ colors, space, radius, typography, fontWeight, size }: Theme) {
   return StyleSheet.create({
     card: {
       marginTop: space[3],
@@ -100,8 +100,10 @@ function makeStyles({ colors, space, radius, typography, size }: Theme) {
       gap: space[2],
       marginBottom: space[1],
     },
+    // A kicker in sentence case (D15): the retired uppercase `overline` style is gone from the theme.
     overline: {
-      ...typography.overline,
+      ...typography.caption,
+      fontWeight: fontWeight.bold,
       color: colors.ink2,
     },
     disease: {

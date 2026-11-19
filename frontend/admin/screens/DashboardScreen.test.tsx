@@ -4,8 +4,9 @@ import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { AdminDashboardScreen } from './DashboardScreen';
 import { fetchAdminQueues, fetchPlatformStats, type PlatformStats } from '../services/adminService';
 import { ADMIN_HOME_ROUTES, ADMIN_TABS } from '../../common/constants/routes';
-import type { AdminQueues } from '../../services/api/generated/types.gen';
 import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
+import type { AdminQueues } from '../../services/api/generated/types.gen';
+import { useAuthStore } from '../../state/authStore';
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -29,9 +30,9 @@ const mockFetchStats = fetchPlatformStats as jest.Mock;
 const mockFetchQueues = fetchAdminQueues as jest.Mock;
 
 const queues = (overrides: Partial<AdminQueues> = {}): AdminQueues => ({
-  pending_dealer_applications: 2,
+  pending_dealer_applications: 3,
   pending_expert_applications: 1,
-  open_reports: 4,
+  open_reports: 2,
   disputed_orders: 5,
   stale_consultations: 0,
   ...overrides,
@@ -45,33 +46,92 @@ const stats = (overrides: Partial<PlatformStats> = {}): PlatformStats => ({
   ...overrides,
 });
 
-// The queue tiles open other tabs through the parent tab navigator, so the stack's navigation has a parent.
-const tabNavigate = jest.fn();
-
 function makeNavigation() {
-  return { navigate: jest.fn(), getParent: () => ({ navigate: tabNavigate }) } as unknown as AdminScreenProps<'Dashboard'>['navigation'];
+  const tabs = { navigate: jest.fn() };
+  const navigation = { navigate: jest.fn(), getParent: () => tabs } as unknown as AdminScreenProps<'Dashboard'>['navigation'];
+  return { navigation, tabs };
+}
+
+async function renderScreen(navigation: AdminScreenProps<'Dashboard'>['navigation']) {
+  return renderWithQuery(<AdminDashboardScreen navigation={navigation} route={{} as never} />);
 }
 
 beforeEach(() => {
-  mockFetchStats.mockReset();
-  mockFetchQueues.mockReset();
-  mockFetchQueues.mockResolvedValue(queues());
-  tabNavigate.mockReset();
+  mockFetchStats.mockReset().mockResolvedValue(stats());
+  mockFetchQueues.mockReset().mockResolvedValue(queues());
 });
 
 describe('AdminDashboardScreen', () => {
-  it('loads and renders the platform totals', async () => {
-    mockFetchStats.mockResolvedValue(stats());
-    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
+  it('greets the admin by first name in the first heading (A8)', async () => {
+    useAuthStore.setState({ profile: { full_name: 'Sana Iqbal' } as never });
+    const { navigation } = makeNavigation();
+    await renderScreen(navigation);
+    expect(await screen.findByRole('header', { name: 'Hello, Sana' })).toBeTruthy();
+    useAuthStore.setState({ profile: null });
+  });
+
+  it('leads with what needs the admin, counted by the server (SRDS §14, AD-14)', async () => {
+    const { navigation } = makeNavigation();
+    await renderScreen(navigation);
+
+    expect(await screen.findByText('Needs you')).toBeTruthy();
+    // 3 dealers and 1 expert are one queue.
+    expect(await screen.findByLabelText('Applications waiting: 4 waiting')).toBeTruthy();
+    expect(screen.getByLabelText('Open reports: 2 open')).toBeTruthy();
+    expect(screen.getByLabelText('Disputed orders: 5 disputed')).toBeTruthy();
+    expect(screen.getByLabelText('Consultations left open: none left open')).toBeTruthy();
+  });
+
+  it('shows "—", not 0, when the queues could not be loaded, and keeps the totals', async () => {
+    mockFetchQueues.mockRejectedValue(new Error('boom'));
+    const { navigation } = makeNavigation();
+    await renderScreen(navigation);
+
+    expect(await screen.findByLabelText('Open reports: not available')).toBeTruthy();
+    expect(screen.queryByLabelText('Open reports: none open')).toBeNull();
+    expect(await screen.findByText('120')).toBeTruthy();
+  });
+
+  it('opens each queue in its own tab, keeping the tab root underneath', async () => {
+    const { navigation, tabs } = makeNavigation();
+    await renderScreen(navigation);
+
+    await fireEvent.press(await screen.findByLabelText('Applications waiting: 4 waiting'));
+    expect(tabs.navigate).toHaveBeenLastCalledWith(ADMIN_TABS.Approvals, { screen: ADMIN_HOME_ROUTES.Approvals, params: undefined, initial: false });
+
+    await fireEvent.press(screen.getByLabelText('Open reports: 2 open'));
+    expect(tabs.navigate).toHaveBeenLastCalledWith(ADMIN_TABS.Moderation, { screen: ADMIN_HOME_ROUTES.Reports, params: undefined, initial: false });
+
+    await fireEvent.press(screen.getByLabelText('Disputed orders: 5 disputed'));
+    expect(tabs.navigate).toHaveBeenLastCalledWith(ADMIN_TABS.Moderation, {
+      screen: ADMIN_HOME_ROUTES.Orders,
+      params: { status: 'disputed' },
+      initial: false,
+    });
+
+    await fireEvent.press(screen.getByLabelText('Consultations left open: none left open'));
+    expect(tabs.navigate).toHaveBeenLastCalledWith(ADMIN_TABS.Moderation, {
+      screen: ADMIN_HOME_ROUTES.ConsultationModeration,
+      params: { stale: true },
+      initial: false,
+    });
+  });
+
+  it('loads and renders the platform totals, each opening where it comes from', async () => {
+    const { navigation, tabs } = makeNavigation();
+    await renderScreen(navigation);
 
     expect(await screen.findByText('120')).toBeTruthy();
     expect(screen.getByText('55')).toBeTruthy();
     expect(screen.getByText('33')).toBeTruthy();
+
+    await fireEvent.press(screen.getByLabelText('Users: 120'));
+    expect(tabs.navigate).toHaveBeenCalledWith(ADMIN_TABS.Moderation, { screen: ADMIN_HOME_ROUTES.UserManagement, params: undefined, initial: false });
   });
 
   it('shows a breakdown of users by role', async () => {
-    mockFetchStats.mockResolvedValue(stats());
-    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
+    const { navigation } = makeNavigation();
+    await renderScreen(navigation);
 
     await screen.findByText('120');
     expect(screen.getByText('Farmer')).toBeTruthy();
@@ -81,75 +141,38 @@ describe('AdminDashboardScreen', () => {
     expect(screen.getByText('Expert')).toBeTruthy();
   });
 
-  it("shows a retry state when loading fails", async () => {
+  it('shows a retry state for the figures when loading fails, and keeps "Needs you"', async () => {
     mockFetchStats.mockRejectedValueOnce(new Error('offline'));
-    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
+    const { navigation } = makeNavigation();
+    await renderScreen(navigation);
 
-    expect(await screen.findByText("Couldn't load the dashboard")).toBeTruthy();
+    expect(await screen.findByText("Couldn't load the platform figures")).toBeTruthy();
+    expect(screen.getByText('Needs you')).toBeTruthy();
 
     mockFetchStats.mockResolvedValueOnce(stats());
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('120')).toBeTruthy();
   });
 
-  it('links the overview to analytics and notifications; the other destinations have their own tabs', async () => {
-    mockFetchStats.mockResolvedValue(stats());
-    const navigation = makeNavigation();
-    await renderWithQuery(<AdminDashboardScreen navigation={navigation} route={{} as never} />);
+  it('links to analytics, AI activity and disease knowledge; notifications are the bell, not a second button', async () => {
+    const { navigation } = makeNavigation();
+    await renderScreen(navigation);
     await screen.findByText('120');
 
     await fireEvent.press(screen.getByText('Analytics'));
     expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Analytics);
+    await fireEvent.press(screen.getByText('AI activity'));
+    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.AiActivity);
+    await fireEvent.press(screen.getByText('Disease knowledge'));
+    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.DiseaseKnowledge);
 
-    await fireEvent.press(screen.getByText('Notifications'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Notifications);
-
+    expect(screen.queryByText('Notifications')).toBeNull();
     expect(screen.queryByText('Manage Users')).toBeNull();
-    expect(screen.queryByText('Audit Logs')).toBeNull();
-  });
-
-  it('shows what waits for the admin, and each queue opens its own list (SRDS §14)', async () => {
-    mockFetchStats.mockResolvedValue(stats());
-    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
-
-    // Dealer and expert applications are one queue.
-    expect(await screen.findByLabelText('Applications: 3 waiting')).toBeTruthy();
-    expect(screen.getByLabelText('Reports: 4 waiting')).toBeTruthy();
-    expect(screen.getByLabelText('Disputes: 5 waiting')).toBeTruthy();
-    expect(screen.getByLabelText('Stale consultations: 0 waiting')).toBeTruthy();
-    expect(screen.getByText('Nothing waiting')).toBeTruthy();
-
-    await fireEvent.press(screen.getByLabelText('Applications: 3 waiting'));
-    expect(tabNavigate).toHaveBeenLastCalledWith(ADMIN_TABS.Approvals, { screen: ADMIN_HOME_ROUTES.Approvals });
-    await fireEvent.press(screen.getByLabelText('Reports: 4 waiting'));
-    expect(tabNavigate).toHaveBeenLastCalledWith(ADMIN_TABS.Moderation, { screen: ADMIN_HOME_ROUTES.Reports, initial: false });
-    await fireEvent.press(screen.getByLabelText('Disputes: 5 waiting'));
-    expect(tabNavigate).toHaveBeenLastCalledWith(ADMIN_TABS.Moderation, {
-      screen: ADMIN_HOME_ROUTES.Orders,
-      params: { status: 'disputed' },
-      initial: false,
-    });
-    await fireEvent.press(screen.getByLabelText('Stale consultations: 0 waiting'));
-    expect(tabNavigate).toHaveBeenLastCalledWith(ADMIN_TABS.Moderation, {
-      screen: ADMIN_HOME_ROUTES.ConsultationModeration,
-      params: { stale: true },
-      initial: false,
-    });
-  });
-
-  it('keeps the totals when only the queues fail', async () => {
-    mockFetchStats.mockResolvedValue(stats());
-    mockFetchQueues.mockReset();
-    mockFetchQueues.mockRejectedValue(new Error('offline'));
-    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
-
-    expect(await screen.findByText("Couldn't load the queues")).toBeTruthy();
-    expect(screen.getByText('120')).toBeTruthy();
   });
 
   it('has no inventory entry: the admin has no access to dealer inventory (SRDS §15)', async () => {
-    mockFetchStats.mockResolvedValue(stats());
-    await renderWithQuery(<AdminDashboardScreen navigation={makeNavigation()} route={{} as never} />);
+    const { navigation } = makeNavigation();
+    await renderScreen(navigation);
     await screen.findByText('120');
 
     expect(screen.queryByText(/inventory|stock/i)).toBeNull();

@@ -56,13 +56,15 @@ export function ExpertAssessmentPanel({ assessments, expertName, action }: Exper
   );
 }
 
-function makeStyles({ colors, space, typography, borders }: Theme) {
+function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     card: {
       marginTop: space[3],
     },
+    // A kicker in sentence case (D15): the retired uppercase `overline` style is gone from the theme.
     overline: {
-      ...typography.overline,
+      ...typography.caption,
+      fontWeight: fontWeight.bold,
       color: colors.ink2,
     },
     byline: {

@@ -1,214 +1,149 @@
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
+import { BadgeCheck, Flag, Scale, Stethoscope } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Card, ScreenState, Skeleton } from '../../common/components';
+import { StyleSheet, Text, View } from 'react-native';
+import { ListGroup, ListRow, ListRowIcon, QueryState, ScreenScaffold } from '../../common/components';
 import { QuickActions } from '../../common/components/dashboards/QuickActions';
 import { StatTile } from '../../common/components/dashboards/StatTile';
 import { ADMIN_HOME_ROUTES, ADMIN_TABS } from '../../common/constants/routes';
 import { ROLE_LABELS, ROLES } from '../../common/constants/roles';
-import { useAdminQueues, usePlatformStats } from '../hooks/admin';
+import { navigateInTab } from '../../navigation/navigateInTab';
+import type { AdminScreenProps, AdminTabParamList } from '../../navigation/stacks/AdminNavigator';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
-import type { AdminScreenProps, AdminTabParamList } from '../../navigation/stacks/AdminNavigator';
+import { useAdminQueues, usePlatformStats } from '../hooks/admin';
 
 const figure = new Intl.NumberFormat('en-PK');
+
+/** "4", or "—" while the number is not known: a zero would say nothing is waiting. */
+function count(known: number | undefined): string {
+  return known === undefined ? '—' : figure.format(known);
+}
 
 export function AdminDashboardScreen({ navigation }: AdminScreenProps<'Dashboard'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const platformStats = usePlatformStats();
-  const { refetch } = platformStats;
+  const tabs = navigation.getParent<BottomTabNavigationProp<AdminTabParamList>>();
+  const stats = usePlatformStats();
+  // What waits for the admin (SRDS §14), counted by the server (/admin/queues), so a queue past one page is counted whole.
   const queues = useAdminQueues();
-  const refetchQueues = queues.refetch;
   const firstName = useAuthStore(state => state.profile?.full_name?.trim().split(/\s+/)[0]);
+
+  const { refetch: refetchStats } = stats;
+  const { refetch: refetchQueues } = queues;
+  const refetchAll = useCallback(() => {
+    refetchStats();
+    refetchQueues();
+  }, [refetchStats, refetchQueues]);
 
   useFocusEffect(
     useCallback(() => {
-      refetch();
-      refetchQueues();
-    }, [refetch, refetchQueues]),
+      refetchAll();
+    }, [refetchAll]),
   );
 
-  // Each queue lives in another tab's stack; `initial: false` keeps that tab's own first screen under it for Back.
-  const tabs = navigation.getParent<BottomTabNavigationProp<AdminTabParamList>>();
-  const queueTiles: QueueTileProps[] = queues.data
-    ? [
-        {
-          label: 'Applications',
-          count: queues.data.pending_dealer_applications + queues.data.pending_expert_applications,
-          onPress: () => tabs?.navigate(ADMIN_TABS.Approvals, { screen: ADMIN_HOME_ROUTES.Approvals }),
-        },
-        {
-          label: 'Reports',
-          count: queues.data.open_reports,
-          onPress: () => tabs?.navigate(ADMIN_TABS.Moderation, { screen: ADMIN_HOME_ROUTES.Reports, initial: false }),
-        },
-        {
-          label: 'Disputes',
-          count: queues.data.disputed_orders,
-          onPress: () =>
-            tabs?.navigate(ADMIN_TABS.Moderation, { screen: ADMIN_HOME_ROUTES.Orders, params: { status: 'disputed' }, initial: false }),
-        },
-        {
-          label: 'Stale consultations',
-          count: queues.data.stale_consultations,
-          onPress: () =>
-            tabs?.navigate(ADMIN_TABS.Moderation, {
-              screen: ADMIN_HOME_ROUTES.ConsultationModeration,
-              params: { stale: true },
-              initial: false,
-            }),
-        },
-      ]
-    : [];
+  const q = queues.data;
+  const applications = q ? q.pending_dealer_applications + q.pending_expert_applications : undefined;
 
-  const queueSkeleton = (
-    <View style={styles.statsRow}>
-      {[0, 1, 2, 3].map(key => (
-        <View key={key} style={styles.queueCell}>
-          <Skeleton style={styles.queueSkeleton} />
-        </View>
-      ))}
-    </View>
+  const needsRow = (title: string, value: number | undefined, waiting: string, icon: typeof BadgeCheck, onPress: () => void) => (
+    <ListRow
+      key={title}
+      title={title}
+      leading={<ListRowIcon icon={icon} />}
+      trailing={<Text style={styles.figure}>{count(value)}</Text>}
+      onPress={onPress}
+      accessibilityLabel={`${title}: ${value === undefined ? 'not available' : value === 0 ? `none ${waiting}` : `${count(value)} ${waiting}`}`}
+    />
   );
 
   return (
-    <View style={styles.container}>
+    <ScreenScaffold onRefresh={refetchAll} refreshing={stats.isRefetching || queues.isRefetching}>
       {/* The screen's first heading, outside the loading and error states so TalkBack always lands on it (A8). */}
       <Text style={styles.greeting} accessibilityRole="header">
         {firstName ? `Hello, ${firstName}` : 'Hello'}
       </Text>
-      <ScreenState
-        query={platformStats}
-        errorTitle="Couldn't load the dashboard"
-        skeleton={
-          <View style={styles.content}>
-            {queueSkeleton}
-            {queueSkeleton}
-          </View>
-        }
-      >
-        {stats => (
-          <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            {/* What waits for the admin (SRDS §14), first: each tile opens its queue. */}
-            <Text style={styles.sectionTitle} accessibilityRole="header">
-              Waiting for you
-            </Text>
-            <ScreenState query={queues} errorTitle="Couldn't load the queues" skeleton={queueSkeleton}>
-              {() =>
-                queueTiles.length ? (
-                  <View style={styles.statsRow}>
-                    {queueTiles.map(tile => (
-                      <QueueTile key={tile.label} {...tile} />
-                    ))}
-                  </View>
-                ) : null
-              }
-            </ScreenState>
 
-            <View style={styles.statsRow}>
-              <StatTile label="Total Users" value={stats.totalUsers} accent={theme.colors.accent.admin.mark} />
-              <StatTile label="Listings" value={stats.totalListings} accent={theme.colors.module.marketplace} />
-              <StatTile label="Orders" value={stats.totalOrders} accent={theme.colors.module.orders} />
+      <View>
+        <Text style={styles.heading} accessibilityRole="header">
+          Needs you
+        </Text>
+        <ListGroup>
+          {needsRow('Applications waiting', applications, 'waiting', BadgeCheck, () =>
+            navigateInTab(tabs, ADMIN_TABS.Approvals, ADMIN_HOME_ROUTES.Approvals),
+          )}
+          {needsRow('Open reports', q?.open_reports, 'open', Flag, () =>
+            navigateInTab(tabs, ADMIN_TABS.Moderation, ADMIN_HOME_ROUTES.Reports),
+          )}
+          {needsRow('Disputed orders', q?.disputed_orders, 'disputed', Scale, () =>
+            navigateInTab(tabs, ADMIN_TABS.Moderation, ADMIN_HOME_ROUTES.Orders, { status: 'disputed' }),
+          )}
+          {needsRow('Consultations left open', q?.stale_consultations, 'left open', Stethoscope, () =>
+            navigateInTab(tabs, ADMIN_TABS.Moderation, ADMIN_HOME_ROUTES.ConsultationModeration, { stale: true }),
+          )}
+        </ListGroup>
+      </View>
+
+      <QueryState query={stats} failureTitle="Couldn't load the platform figures">
+        {stats.data ? (
+          <>
+            <View>
+              <Text style={styles.heading} accessibilityRole="header">
+                Platform
+              </Text>
+              <View style={styles.tiles}>
+                <StatTile
+                  label="Users"
+                  value={stats.data.totalUsers}
+                  onPress={() => navigateInTab(tabs, ADMIN_TABS.Moderation, ADMIN_HOME_ROUTES.UserManagement)}
+                />
+                <StatTile
+                  label="Listings"
+                  value={stats.data.totalListings}
+                  accent={theme.colors.module.marketplace}
+                  onPress={() => navigateInTab(tabs, ADMIN_TABS.Moderation, ADMIN_HOME_ROUTES.ListingModeration)}
+                />
+                <StatTile
+                  label="Orders"
+                  value={stats.data.totalOrders}
+                  accent={theme.colors.module.orders}
+                  onPress={() => navigateInTab(tabs, ADMIN_TABS.Moderation, ADMIN_HOME_ROUTES.Orders)}
+                />
+              </View>
             </View>
 
-            <Text style={styles.sectionTitle} accessibilityRole="header">
-              Users by Role
-            </Text>
-            <View style={styles.statsRow}>
-              {ROLES.filter(role => role !== 'admin').map(role => (
-                <StatTile key={role} label={ROLE_LABELS[role]} value={stats.usersByRole[role] ?? 0} accent={theme.colors.accent[role].mark} />
-              ))}
+            <View>
+              <Text style={styles.heading} accessibilityRole="header">
+                Users by role
+              </Text>
+              <View style={styles.tiles}>
+                {ROLES.filter(role => role !== 'admin').map(role => (
+                  <StatTile key={role} label={ROLE_LABELS[role]} value={stats.data.usersByRole[role] ?? 0} accent={theme.colors.accent[role].mark} />
+                ))}
+              </View>
             </View>
+          </>
+        ) : null}
+      </QueryState>
 
-            {/* Approvals, moderation and the audit log have their own tabs; the overview links only what stays here. */}
-            <QuickActions
-              actions={[
-                { label: 'Analytics', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Analytics) },
-                { label: 'Notifications', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Notifications) },
-                { label: 'AI activity', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.AiActivity) },
-                { label: 'Disease knowledge', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.DiseaseKnowledge) },
-              ]}
-            />
-          </ScrollView>
-        )}
-      </ScreenState>
-    </View>
-  );
-}
-
-interface QueueTileProps {
-  label: string;
-  count: number;
-  onPress: () => void;
-}
-
-/** One queue as a figure that opens it; a pressable card, since StatTile is a read-only figure. */
-function QueueTile({ label, count, onPress }: QueueTileProps) {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  return (
-    <View style={styles.queueCell}>
-      <Card onPress={onPress} accessibilityLabel={`${label}: ${count} waiting`}>
-        <Text style={styles.queueLabel}>{label}</Text>
-        <Text style={count > 0 ? styles.queueCount : styles.queueCountNone}>{figure.format(count)}</Text>
-        <Text style={styles.queueNote}>{count > 0 ? 'Open the queue' : 'Nothing waiting'}</Text>
-      </Card>
-    </View>
+      {/* Approvals, moderation and the audit log have their own tabs, and notifications are the bell; the overview links
+          only what stays here. */}
+      <QuickActions
+        actions={[
+          { label: 'Analytics', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.Analytics) },
+          { label: 'AI activity', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.AiActivity) },
+          { label: 'Disease knowledge', onPress: () => navigation.navigate(ADMIN_HOME_ROUTES.DiseaseKnowledge) },
+        ]}
+      />
+    </ScreenScaffold>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    greeting: {
-      ...typography.title,
-      color: colors.ink,
-      paddingHorizontal: space[4],
-      paddingTop: space[4],
-    },
-    statsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space[3],
-      marginBottom: space[6],
-    },
-    sectionTitle: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-      marginBottom: space[2],
-    },
-    queueSkeleton: {
-      height: space[12] * 2,
-    },
-    // Two across, like StatTile: the cell takes the row's share and the card fills it.
-    queueCell: {
-      flexGrow: 1,
-      flexBasis: '40%',
-      minWidth: 0,
-    },
-    queueLabel: {
-      ...typography.caption,
-      color: colors.ink2,
-    },
-    queueCount: {
-      ...typography.figureLg,
-      color: colors.ink,
-    },
-    queueCountNone: {
-      ...typography.figureLg,
-      color: colors.ink3,
-    },
-    queueNote: {
-      ...typography.caption,
-      color: colors.ink3,
-    },
+    greeting: { ...typography.title, color: colors.ink },
+    heading: { ...typography.bodyStrong, color: colors.ink, marginBottom: space[2] },
+    figure: { ...typography.figure, color: colors.ink },
+    tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },
   });
 }
