@@ -7,7 +7,7 @@ import { addApiBreadcrumb } from '../observability/breadcrumbs';
 import { supabase } from '../supabase/client';
 import { ApiError, apiErrorFromNetwork, apiErrorFromResponse } from './errors';
 
-export { ApiError, isApiError } from './errors';
+export { ApiError } from './errors';
 
 export interface ApiFetchOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';

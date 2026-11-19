@@ -86,6 +86,9 @@ describe('ListingFormFields', () => {
     expect(screen.getByText('Price')).toBeTruthy();
     expect(screen.getByText('Unit')).toBeTruthy();
     expect(screen.getByText('Quantity available')).toBeTruthy();
+    // Let the category and crop reads settle inside the test, so their updates do not land after it, outside act().
+    expect(await screen.findByText('Seeds')).toBeTruthy();
+    expect(await screen.findByText('Wheat')).toBeTruthy();
   });
 
   it('lets the user select a category', async () => {

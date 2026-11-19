@@ -70,4 +70,11 @@ describe('IconButton', () => {
     await render(<IconButton icon={Bell} label="Cart" count={2} countLabel={n => `${n} items`} onPress={() => undefined} />);
     expect(screen.getByRole('button', { name: 'Cart, 2 items' })).toBeTruthy();
   });
+
+  it('lets the count badge grow with large text instead of a fixed height', async () => {
+    await render(<IconButton icon={Bell} label="Notifications" count={7} onPress={() => undefined} />);
+    const badge = StyleSheet.flatten(screen.getByText('7').parent?.props.style);
+    expect(badge.height).toBeUndefined();
+    expect(badge.minHeight).toBe(lightTheme.size.countBadge);
+  });
 });

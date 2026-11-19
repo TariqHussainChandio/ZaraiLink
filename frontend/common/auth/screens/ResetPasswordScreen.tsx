@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { KeyRound } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, TextField } from '../../components';
+import { Banner, Button, TextField, useToast } from '../../components';
 import { useUpdatePassword } from '../../profile';
 import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
@@ -34,6 +35,7 @@ export function ResetPasswordScreen() {
   const resetPasswordSchema = useMemo(() => makeResetPasswordSchema(), []);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const updatePassword = useUpdatePassword();
+  const toast = useToast();
   const {
     control,
     handleSubmit,
@@ -47,6 +49,7 @@ export function ResetPasswordScreen() {
     setSubmitError(null);
     try {
       await updatePassword.mutateAsync(values.password);
+      toast.success('Password changed');
     } catch (error) {
       setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to update password'));
     }
@@ -54,7 +57,9 @@ export function ResetPasswordScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Set a new password</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Set a new password
+      </Text>
       <Text style={styles.subtitle}>Choose a new password for your ZaraiLink account.</Text>
 
       <Controller
@@ -87,17 +92,14 @@ export function ResetPasswordScreen() {
       />
 
       {submitError ? (
-
         <View style={styles.errorBanner}>
-
           <Banner tone="danger" title={submitError} />
-
         </View>
-
       ) : null}
 
       <Button
         label="Update password"
+        icon={KeyRound}
         loading={isSubmitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}

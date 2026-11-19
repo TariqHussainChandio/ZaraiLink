@@ -45,7 +45,7 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
     [filters],
   );
   const listingsQuery = useListings(params);
-  const { refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isError } =
     listingsQuery;
 
   const onRefresh = async () => {
@@ -54,8 +54,11 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
     setPulling(false);
   };
 
+  // No automatic paging while the feed is in error: FlashList calls onEndReached again on every re-render of a short
+  // list, so a failed page was re-requested in a tight loop (over a hundred requests a second in the Jest run). The
+  // Retry banner or a pull to refresh starts it again.
   const onEndReached = () => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+    if (hasNextPage && !isFetchingNextPage && !isError) fetchNextPage();
   };
 
   // The first load shows the grid's shape, two cards a row, so the page does not jump when listings arrive.

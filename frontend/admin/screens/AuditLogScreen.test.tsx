@@ -60,7 +60,7 @@ describe('AuditLogScreen', () => {
     expect(await screen.findByText('No audit log entries yet')).toBeTruthy();
   });
 
-  it('lists entries with actor, the SRDS §51 label of the action, and target', async () => {
+  it('lists entries with actor, the SRDS §51 label of the action, and a readable target', async () => {
     mockFetchAuditLogs.mockResolvedValue([entry()]);
     await renderWithQuery(<AuditLogScreen />);
 
@@ -68,18 +68,67 @@ describe('AuditLogScreen', () => {
     // The raw event name is the API's; the admin reads the label.
     expect(screen.queryByText('user_suspended')).toBeNull();
     expect(screen.getByText('Admin One')).toBeTruthy();
-    expect(screen.getByText(/profiles #user-9/)).toBeTruthy();
+    // The table name reads as the thing it holds: a profile row is a user.
+    expect(screen.getByText(/user user-9/)).toBeTruthy();
+    expect(screen.queryByText(/profiles/)).toBeNull();
     expect(mockFetchAuditLogs).toHaveBeenCalledWith({ action: undefined });
   });
 
-  it('renders previous/new state when present', async () => {
+  it('reads each entry as one stop: who, what, which target and when', async () => {
+    mockFetchAuditLogs.mockResolvedValue([entry()]);
+    await renderWithQuery(<AuditLogScreen />);
+    await screen.findByText('User Suspended');
+
+    const when = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(
+      new Date('2026-08-01T10:00:00Z'),
+    );
+    const stop = screen.getByLabelText(`User Suspended by Admin One, on user user-9, ${when}`);
+    expect(stop.props.accessible).toBe(true);
+    // An entry with nothing to unfold is not a button.
+    expect(stop.props.accessibilityRole).toBeUndefined();
+  });
+
+  it('keeps the before and after folded, then shows them as readable changes, never raw JSON', async () => {
     mockFetchAuditLogs.mockResolvedValue([
-      entry({ previous_state: { is_suspended: false }, new_state: { is_suspended: true } }),
+      entry({
+        action: 'product_moderated',
+        action_label: 'Product Moderated',
+        target_entity: 'listings',
+        target_id: 'abcdef12-3456',
+        previous_state: { status: 'active' },
+        new_state: { status: 'inactive' },
+        metadata: { change: 'hide' },
+      }),
     ]);
     await renderWithQuery(<AuditLogScreen />);
+    await screen.findByText('Product Moderated');
 
-    expect(await screen.findByText(/previous: /)).toBeTruthy();
-    expect(screen.getByText(/new: /)).toBeTruthy();
+    expect(screen.queryByText('status: active to inactive')).toBeNull();
+    expect(screen.queryByText(/[{}"]/)).toBeNull();
+    const entryButton = screen.getByRole('button', { name: /^Product Moderated by Admin One, on listing abcdef12/ });
+    expect(entryButton.props.accessibilityState).toMatchObject({ expanded: false });
+
+    await fireEvent.press(screen.getByText('Show details'));
+
+    expect(screen.getByText('status: active to inactive')).toBeTruthy();
+    expect(screen.getByText('change: hide')).toBeTruthy();
+    expect(screen.queryByText(/[{}"]/)).toBeNull();
+    const open = screen.getByRole('button', { name: /status: active to inactive\. change: hide$/ });
+    expect(open.props.accessibilityState).toMatchObject({ expanded: true });
+
+    await fireEvent.press(screen.getByText('Hide details'));
+    expect(screen.queryByText('status: active to inactive')).toBeNull();
+  });
+
+  it('reads booleans and empty values in words', async () => {
+    mockFetchAuditLogs.mockResolvedValue([
+      entry({ previous_state: { is_suspended: false, hidden_reason: null }, new_state: { is_suspended: true, hidden_reason: 'Spam' } }),
+    ]);
+    await renderWithQuery(<AuditLogScreen />);
+    await fireEvent.press(await screen.findByText('Show details'));
+
+    expect(screen.getByText('is suspended: no to yes')).toBeTruthy();
+    expect(screen.getByText('hidden reason: none to Spam')).toBeTruthy();
   });
 
   it('falls back to "System" when there is no actor', async () => {
@@ -107,8 +156,8 @@ describe('AuditLogScreen', () => {
 
     expect(mockFetchAuditLogs).toHaveBeenLastCalledWith({ action: 'review_moderated' });
     expect(await screen.findByLabelText('Event, Review Moderated')).toBeTruthy();
-    await waitFor(() => expect(screen.queryByText(/profiles #user-9/)).toBeNull());
-    expect(screen.getByText(/reviews #user-9/)).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText(/user user-9/)).toBeNull());
+    expect(screen.getByText(/review user-9/)).toBeTruthy();
   });
 
   it('suggests another event when the chosen one has no entries', async () => {

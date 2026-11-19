@@ -5,7 +5,7 @@ import { useAuthStore } from './authStore';
  * The marketplace filters the buyer has set: client state, so it lives in a store. Categories, crops and listings are
  * server data and are read through the query hooks in `frontend/common/marketplace/hooks/marketplace.ts`.
  */
-export interface MarketplaceFilters {
+interface MarketplaceFilters {
   categoryId: string | null;
   search: string;
   minPrice: number | null;

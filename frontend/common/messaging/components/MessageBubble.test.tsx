@@ -32,6 +32,17 @@ describe('MessageBubble', () => {
     expect(screen.getByTestId('attachment-image-msg/img.jpg').props.source.uri).toBe('https://example.com/img.jpg');
   });
 
+  it('is one screen-reader stop naming the sender, the time and the text (A8)', async () => {
+    const time = new Date(baseMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const { rerender } = await render(
+      <MessageBubble message={baseMessage} isOwn={false} attachmentUrls={{}} senderName="Ali" />,
+    );
+    expect(screen.getByLabelText(`Ali, ${time}: Hey, is it still in stock?`)).toBeTruthy();
+
+    await rerender(<MessageBubble message={baseMessage} isOwn={true} attachmentUrls={{}} senderName="Ali" />);
+    expect(screen.getByLabelText(`You, ${time}: Hey, is it still in stock?`)).toBeTruthy();
+  });
+
   it('renders a placeholder for an attachment whose URL has not resolved yet', async () => {
     const message: Message = { ...baseMessage, body: '', attachments: ['msg/img.jpg'] };
     await render(<MessageBubble message={message} isOwn={true} attachmentUrls={{}} />);

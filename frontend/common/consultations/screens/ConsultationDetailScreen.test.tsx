@@ -1,6 +1,6 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { AccessibilityInfo, Alert } from 'react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ConsultationDetailScreen } from './ConsultationDetailScreen';
 import {
@@ -16,6 +16,7 @@ import { fetchListings } from '../../marketplace/services/listingsService';
 import { createConsultationReview, fetchReviewByConsultationId } from '../../reviews/services/reviewsService';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../../state/authStore';
+import { useRealtimeConsultationMessages } from '../../../hooks/realtime/useRealtimeConsultationMessages';
 import type { ConsultationMessageWithListing, ConsultationWithRelations } from '../../../expert/types/expert';
 import type { AiCaseSummary, ConsultationAssessment, ConsultationDetail } from '../types/consultations';
 
@@ -216,6 +217,40 @@ describe('ConsultationDetailScreen', () => {
 
     expect(mockSendConsultationMessage).toHaveBeenCalledWith('c1', 'Please share a close-up photo', []);
     expect(await screen.findByText('Please share a close-up photo')).toBeTruthy();
+  });
+
+  it('announces a message from the other person as it arrives, but not history or own sends (A8, E4)', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => undefined);
+    // Only chat announcements count here: a toast from an earlier test in this file can still be read out late.
+    const messageAnnouncements = () =>
+      announce.mock.calls.map(([text]) => text).filter(text => /new messages? from/i.test(text));
+    const msg = (id: string, sender_id: string, body: string): ConsultationMessageWithListing => ({
+      id,
+      consultation_id: 'c1',
+      sender_id,
+      body,
+      attachments: [],
+      recommended_listing_id: null,
+      recommended_listing: null,
+      created_at: '2026-08-20T11:00:00.000Z',
+    });
+    setup({}, [msg('m1', 'expert1', 'Send a photo of the leaf')]);
+    mockSendConsultationMessage.mockResolvedValue(msg('m2', 'requester1', 'Here it is'));
+    useAuthStore.setState({ user: { id: 'requester1' } as never });
+    await renderWithQuery(<ConsultationDetailScreen />);
+    await screen.findByText('Send a photo of the leaf');
+    expect(messageAnnouncements()).toEqual([]);
+
+    await fireEvent.changeText(screen.getByPlaceholderText('Type a message...'), 'Here it is');
+    await fireEvent.press(screen.getByLabelText('Send message'));
+    await screen.findByText('Here it is');
+    expect(messageAnnouncements()).toEqual([]);
+
+    const calls = (useRealtimeConsultationMessages as jest.Mock).mock.calls;
+    const onIncoming = calls[calls.length - 1][1] as (incoming: ConsultationMessageWithListing) => void;
+    await act(async () => onIncoming(msg('m3', 'expert1', 'Spray copper weekly')));
+    expect(await screen.findByText('Spray copper weekly')).toBeTruthy();
+    expect(messageAnnouncements()).toEqual(['New message from Dr. Ahsan: Spray copper weekly']);
   });
 
   it('lets the requester write a review once the consultation is resolved', async () => {

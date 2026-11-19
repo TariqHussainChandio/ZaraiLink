@@ -83,7 +83,7 @@ describe('FarmListScreen', () => {
     await renderWithQuery(<FarmListScreen {...props} />);
     await screen.findByText('No farms yet');
 
-    await fireEvent.press(screen.getByText('+ New Farm'));
+    await fireEvent.press(screen.getByRole('button', { name: 'New Farm' }));
     expect(props.navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.CreateFarm);
   });
 });

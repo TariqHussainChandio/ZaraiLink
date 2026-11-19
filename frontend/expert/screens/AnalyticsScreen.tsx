@@ -1,7 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { CircleCheck, MessagesSquare, Star } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EmptyState, Spinner } from '../../common/components';
+import { ScreenState, SkeletonCard } from '../../common/components';
 import { BarChart } from '../../common/components/dashboards/BarChart';
 import { StatTile } from '../../common/components/dashboards/StatTile';
 import { useExpertAnalytics } from '../../common/analytics';
@@ -12,9 +13,8 @@ export function ExpertAnalyticsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const { data: analytics, isPending, error, refetch } = useExpertAnalytics(!!userId);
-  const loading = isPending && !!userId;
-  const load = () => refetch();
+  const query = useExpertAnalytics(!!userId);
+  const { data: analytics, refetch } = query;
 
   useFocusEffect(
     useCallback(() => {
@@ -22,15 +22,21 @@ export function ExpertAnalyticsScreen() {
     }, [userId, refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
-  if (error || !analytics) {
+  if (!analytics) {
     return (
-      <EmptyState
-        title="Couldn't load analytics"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
+      <View style={styles.container}>
+        <ScreenState
+          // Signed out the query is disabled and never settles; show the Retry state rather than an endless skeleton.
+          query={userId ? query : { ...query, isPending: false, isError: true }}
+          errorTitle="Couldn't load analytics"
+          skeleton={
+            <View style={styles.content}>
+              <SkeletonCard />
+              <SkeletonCard />
+            </View>
+          }
+        />
+      </View>
     );
   }
 
@@ -39,22 +45,27 @@ export function ExpertAnalyticsScreen() {
       <View style={styles.statsRow}>
         <StatTile
           label="Total Consultations"
+          icon={MessagesSquare}
           value={analytics.totalConsultations}
           accent={theme.colors.module.expert}
         />
         <StatTile
           label="Completed"
+          icon={CircleCheck}
           value={analytics.completedConsultations}
           accent={theme.colors.module.expert}
         />
         <StatTile
           label={`Avg Rating (${analytics.reviewCount})`}
+          icon={Star}
           value={analytics.reviewCount ? analytics.averageRating.toFixed(1) : '—'}
           accent={theme.colors.module.expert}
         />
       </View>
 
-      <Text style={styles.sectionTitle}>Consultations by Month</Text>
+      <Text style={styles.sectionTitle} accessibilityRole="header">
+        Consultations by Month
+      </Text>
       <BarChart
         data={analytics.consultationsByMonth.map(m => ({ label: m.month.slice(5), value: m.value }))}
         color={theme.colors.accent.expert.mark}

@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Camera, Save } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Avatar, Button, TextField, LocationPicker, PhoneInput, isValidE164 } from '../../components';
+import { Avatar, Banner, Button, TextField, LocationPicker, PhoneInput, isValidE164, useToast } from '../../components';
 import { useFarmerProfile, useUpdateProfile, useUploadAvatar, useUpsertFarmerProfile } from '../hooks/profile';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
@@ -44,6 +45,9 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
   const [pickedAvatar, setPickedAvatar] = useState<PickedPhoto | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // A save that failed stays on the screen until the next try: the person has to read it before going on.
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const toast = useToast();
 
   const {
     control,
@@ -94,6 +98,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
 
   const onSubmit = async (values: EditProfileFormValues) => {
     if (!userId) return;
+    setSubmitError(null);
     setSubmitting(true);
     try {
       let avatarUrl = profile?.avatar_url ?? null;
@@ -123,9 +128,10 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
       }
 
       await refreshProfile();
+      toast.success('Profile saved');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Failed to update profile', errorMessage(error));
+      setSubmitError(errorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -133,14 +139,23 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <TouchableOpacity style={styles.avatarWrap} onPress={pickAvatar}>
+      <Pressable
+        style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
+        onPress={pickAvatar}
+        accessibilityRole="button"
+        accessibilityLabel="Change photo"
+      >
+        {/* The photo is part of the button, which already says what it does. */}
         {avatarUri ? (
-          <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          <Image source={{ uri: avatarUri }} style={styles.avatarImage} accessible={false} />
         ) : (
           <Avatar name={profile?.full_name} size={theme.size.avatarLg} />
         )}
-        <View style={styles.avatarBadge} />
-      </TouchableOpacity>
+        <View style={styles.avatarAction}>
+          <Camera color={theme.colors.ink2} size={theme.size.iconSm} />
+          <Text style={styles.avatarActionText}>Change photo</Text>
+        </View>
+      </Pressable>
 
       <Controller
         control={control}
@@ -224,8 +239,17 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
         </>
       ) : null}
 
+      {submitError ? (
+        <View style={styles.errorBanner}>
+          <Banner tone="danger" title="Profile not saved">
+            {submitError}
+          </Banner>
+        </View>
+      ) : null}
+
       <Button
         label="Save Changes"
+        icon={Save}
         loading={submitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
@@ -234,7 +258,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   );
 }
 
-function makeStyles({ colors, space, size, radius }: Theme) {
+function makeStyles({ colors, space, size, radius, typography }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -245,15 +269,21 @@ function makeStyles({ colors, space, size, radius }: Theme) {
     },
     avatarWrap: {
       alignSelf: 'center',
+      alignItems: 'center',
+      gap: space[2],
+      minHeight: size.touchMin,
       marginBottom: space[6],
     },
+    pressed: { opacity: 0.6 },
     avatarImage: {
       width: size.avatarLg,
       height: size.avatarLg,
       borderRadius: radius.pill,
       backgroundColor: colors.line,
     },
-    avatarBadge: {},
+    avatarAction: { flexDirection: 'row', alignItems: 'center', gap: space[1] },
+    avatarActionText: { ...typography.caption, color: colors.ink2 },
+    errorBanner: { marginTop: space[3] },
     submit: {
       marginTop: space[3],
     },

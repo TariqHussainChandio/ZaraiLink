@@ -4,7 +4,7 @@
  * like the real builder; the chain resolves via `.then()` (the real builder is a thenable, not
  * a Promise) to whatever `{ data, error }` the test configures.
  */
-export function makeQueryBuilder(result: { data: unknown; error: unknown }) {
+function makeQueryBuilder(result: { data: unknown; error: unknown }) {
   const methods = [
     'select', 'insert', 'update', 'upsert', 'delete', 'eq', 'neq', 'in', 'contains',
     'order', 'limit', 'range', 'match', 'or', 'ilike', 'like', 'gte', 'lte', 'gt', 'lt', 'is', 'not',

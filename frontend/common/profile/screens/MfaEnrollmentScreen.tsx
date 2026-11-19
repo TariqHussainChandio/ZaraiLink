@@ -1,7 +1,8 @@
+import { Check, ShieldCheck, ShieldOff } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { Banner, Button, TextField } from '../../components';
+import { Banner, Button, SkeletonList, TextField } from '../../components';
 import {
   useEnrollTotp,
   useUnenrollTotp,
@@ -10,7 +11,7 @@ import {
   type TotpEnrollment,
   mapMfaErrorMessage,
 } from '../../auth';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
+import { useTheme, type Theme } from '../../../theme';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 
 type ScreenState = 'loading' | 'enrolled' | 'not-enrolled' | 'enrolling';
@@ -22,8 +23,7 @@ type ScreenState = 'loading' | 'enrolled' | 'not-enrolled' | 'enrolling';
 // covers.
 export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>) {
   const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   // What the user did on this screen (enrolled, disabled) overrides what was read on load.
   const [stateOverride, setState] = useState<ScreenState | null>(null);
   const [factorOverride, setVerifiedFactorId] = useState<string | null | undefined>(undefined);
@@ -90,10 +90,11 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
     }
   };
 
+  // isPending ends on success and on failure alike, so this skeleton cannot outlive the first read.
   if (state === 'loading') {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={accent.mark} />
+      <View style={styles.container}>
+        <SkeletonList count={3} />
       </View>
     );
   }
@@ -104,13 +105,17 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
       <Text style={styles.subtitle}>Admin actions that change data (suspending a user, verifying an expert, and similar) require a verified authenticator app code in addition to your password.</Text>
 
       {error ?? loadErrorMessage ? (
-
         <View style={styles.errorBanner}>
-
-          <Banner tone="danger" title={error ?? loadErrorMessage ?? undefined} />
-
+          {/* Only the failed status read can be retried from here; an action's error clears on its next try. */}
+          <Banner
+            tone="danger"
+            title={error ?? loadErrorMessage ?? undefined}
+            actionLabel={!error && loadError && !factorQuery.isFetching ? 'Retry' : undefined}
+            onAction={() => {
+              factorQuery.refetch();
+            }}
+          />
         </View>
-
       ) : null}
 
       {state === 'enrolled' ? (
@@ -118,6 +123,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
           <Text style={styles.statusEnabled}>Two-factor authentication is enabled.</Text>
           <Button
             label="Turn off two-factor authentication"
+            icon={ShieldOff}
             variant="danger"
             loading={submitting}
             onPress={onDisable}
@@ -129,6 +135,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
       {state === 'not-enrolled' ? (
         <Button
           label="Set up two-factor authentication"
+          icon={ShieldCheck}
           loading={submitting}
           onPress={onStartEnroll}
           style={styles.action}
@@ -139,7 +146,14 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
         <>
           <Text style={styles.stepLabel}>1. Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</Text>
           <View style={styles.qrContainer}>
-            <SvgXml xml={enrollment.qrCodeSvg} width={theme.size.qrCode} height={theme.size.qrCode} />
+            <SvgXml
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel="QR code for your authenticator app"
+              xml={enrollment.qrCodeSvg}
+              width={theme.size.qrCode}
+              height={theme.size.qrCode}
+            />
           </View>
           <Text style={styles.secretLabel}>{"Can't scan the code? Enter this key manually:"}</Text>
           <Text selectable style={styles.secret}>
@@ -158,6 +172,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
           />
           <Button
             label="Verify and enable"
+            icon={Check}
             loading={submitting}
             disabled={code.length !== 6}
             onPress={onVerify}
@@ -169,16 +184,10 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight, radius }: Theme, accent: Accent) {
+function makeStyles({ colors, space, typography, fontWeight, radius }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.surface,
-    },
-    center: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
       backgroundColor: colors.surface,
     },
     content: {

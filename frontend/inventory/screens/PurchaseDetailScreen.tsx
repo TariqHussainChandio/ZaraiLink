@@ -1,12 +1,13 @@
 import { CircleX, PackageCheck, Pencil } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
-import { Banner, Button, Card, ListGroup, ListRow, ScreenState, StatusBadge, useToast } from '../../common/components';
+import { Banner, Button, Card, ListGroup, ScreenState, StatusBadge, useToast } from '../../common/components';
 import { hapticSuccess } from '../../utils/haptics';
 import { useTheme } from '../../theme';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { formatDate, formatMoney, formatQuantity } from '../components/format';
 import { makeScreenStyles } from '../components/screenStyles';
+import { SpokenRow } from '../components/SpokenRow';
 import { Section } from '../components/Section';
 import { inventoryErrorMessage } from '../hooks/errors';
 import { useCancelPurchase, usePurchase, useReceivePurchase, useSuppliers } from '../hooks/inventory';
@@ -99,8 +100,16 @@ export function PurchaseDetailScreen({ route, navigation }: InventoryScreenProps
           {items.map(item => {
             const product = productById.get(item.product_id);
             return (
-              <ListRow
+              <SpokenRow
                 key={item.id}
+                label={[
+                  product?.name ?? 'Product',
+                  formatQuantity(item.quantity, product?.unit),
+                  locationById.get(item.location_id)?.name,
+                  item.unit_cost != null ? `${formatMoney(item.unit_cost)} each` : null,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
                 title={product?.name ?? 'Product'}
                 meta={[
                   locationById.get(item.location_id)?.name,

@@ -2,12 +2,14 @@ import { FlashList } from '@shopify/flash-list';
 import { Boxes, MapPin } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
-import { EmptyState, ListRow, ScreenState, StatusBadge } from '../../common/components';
+import { EmptyState, ScreenState, StatusBadge } from '../../common/components';
+import { statusMeta } from '../../common/constants/status';
 import { QuickActions } from '../../common/components/dashboards/QuickActions';
 import { type Theme, useTheme } from '../../theme';
 import { formatQuantity, stockStatus } from '../components/format';
 import { makeScreenStyles } from '../components/screenStyles';
 import { Section } from '../components/Section';
+import { SpokenRow } from '../components/SpokenRow';
 import { useLocations, useStock } from '../hooks/inventory';
 import { useSelectedLocation } from '../hooks/location';
 import { useLookups } from '../hooks/lookups';
@@ -77,7 +79,15 @@ export function StockScreen({ navigation }: InventoryScreenProps<typeof INVENTOR
           </View>
         }
         renderItem={({ item: { level, product } }) => (
-          <ListRow
+          <SpokenRow
+            label={[
+              product?.name ?? 'Product',
+              statusMeta('stock', stockStatus(level.quantity, product?.reorder_threshold ?? 0)).label,
+              formatQuantity(level.quantity, product?.unit),
+              product?.sku,
+            ]
+              .filter(Boolean)
+              .join(', ')}
             title={product?.name ?? 'Product'}
             meta={product ? product.sku : undefined}
             trailing={

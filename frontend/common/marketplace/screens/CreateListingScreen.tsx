@@ -19,6 +19,7 @@ import {
   type ListingFormValues,
 } from '../components/ListingFormFields';
 import { useCreateListing } from '../hooks/marketplace';
+import { MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
@@ -77,7 +78,9 @@ export function CreateListingScreen({
         },
       });
       toast.success('Listing published');
-      navigation.goBack();
+      // Land on Browse, never the filled form: popTo returns to Browse when it is underneath and puts it in place of
+      // the form when it is not, so publishing twice by accident cannot happen (A8 finding).
+      navigation.popTo(MARKETPLACE_ROUTES.Browse);
     } catch (error) {
       setSubmitError(errorMessage(error));
     }

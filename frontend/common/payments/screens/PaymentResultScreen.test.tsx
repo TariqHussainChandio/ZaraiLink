@@ -65,6 +65,20 @@ describe('PaymentResultScreen', () => {
     expect(await screen.findByText('Payment Failed')).toBeTruthy();
   });
 
+  it('says a refunded payment was returned by the seller, never by the platform (BR-11)', async () => {
+    mockFetchPayment.mockResolvedValue({
+      id: 'payment-1',
+      order_id: 'order-1',
+      amount: 1500,
+      method: 'cod',
+      status: 'refunded',
+    });
+    await renderWithQuery(<PaymentResultScreen {...makeProps()} />);
+    expect(await screen.findByText('Payment Returned')).toBeTruthy();
+    expect(screen.getByText('The seller returned this payment to you directly.')).toBeTruthy();
+    expect(screen.getByText('Refunded by seller')).toBeTruthy();
+  });
+
   it('reads a status this build does not know as its word instead of crashing', async () => {
     mockFetchPayment.mockResolvedValue({
       id: 'payment-1',

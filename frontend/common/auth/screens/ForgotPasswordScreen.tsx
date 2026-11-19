@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft, Send } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
@@ -47,7 +48,9 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Reset your password</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Reset your password
+      </Text>
       <Text style={styles.subtitle}>{"Enter your account email and we'll send you a reset code."}</Text>
 
       <Controller
@@ -67,24 +70,21 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
       />
 
       {submitError ? (
-
         <View style={styles.errorBanner}>
-
           <Banner tone="danger" title={submitError} />
-
         </View>
-
       ) : null}
 
       <Button
         label="Send code"
+        icon={Send}
         loading={isSubmitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
       />
 
       <View style={styles.links}>
-        <Button label="Back to sign in" variant="quiet" fullWidth={false} onPress={() => navigation.goBack()} />
+        <Button label="Back to sign in" icon={ArrowLeft} variant="quiet" fullWidth={false} onPress={() => navigation.goBack()} />
       </View>
     </View>
   );

@@ -107,6 +107,7 @@ function makeStyles({ colors, space, radius, typography, size, borders }: Theme,
     row: {
       flexDirection: 'row',
       alignItems: 'center',
+      minHeight: size.touchMin,
       paddingVertical: space[3],
       paddingHorizontal: space[4],
       borderBottomWidth: borders.hairline,

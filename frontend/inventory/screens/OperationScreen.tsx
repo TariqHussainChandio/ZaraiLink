@@ -7,7 +7,6 @@ import {
   Banner,
   Button,
   Chip,
-  ChipRow,
   SelectField,
   TextField,
   useToast,
@@ -334,8 +333,18 @@ export function OperationScreen({
           <Controller
             control={control}
             name="direction"
+            // Wrapped like the reasons: in a sideways row the labels were once clipped to "Add to" / "Take from" (A8).
             render={({ field: { onChange, value } }) => (
-              <ChipRow options={DIRECTIONS} value={value} onChange={onChange} />
+              <View style={styles.wrap}>
+                {DIRECTIONS.map(option => (
+                  <Chip
+                    key={option.value}
+                    label={option.label}
+                    selected={option.value === value}
+                    onPress={() => onChange(option.value)}
+                  />
+                ))}
+              </View>
             )}
           />
         </View>

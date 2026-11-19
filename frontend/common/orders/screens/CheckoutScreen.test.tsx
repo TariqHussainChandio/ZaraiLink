@@ -67,7 +67,8 @@ describe('CheckoutScreen', () => {
       screen.getByLabelText('Delivery charge (optional)'),
       '50',
     );
-    expect(screen.getByText('Rs 250')).toBeTruthy();
+    // One seller: the order's own total in its breakdown and the footer total are the same Rs 250.
+    expect(screen.getAllByText('Rs 250')).toHaveLength(2);
   });
 
   it('checks out, clears the cart, and pops to top on success', async () => {

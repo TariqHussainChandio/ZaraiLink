@@ -1,6 +1,6 @@
 import { CircleAlert } from 'lucide-react-native';
-import React, { forwardRef, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
+import React, { forwardRef, useCallback, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
 import { type Theme, useTheme } from '../../theme';
 
 export interface TextFieldProps extends TextInputProps {
@@ -25,6 +25,17 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(
     const theme = useTheme();
     const styles = useMemo(() => makeStyles(theme), [theme]);
     const [focused, setFocused] = useState(false);
+    // The box holds the input; a tap anywhere in it (its border, the prefix, the suffix) focuses the input, so the whole
+    // 52 dp box is the target, not only the text line inside it (A8 accessibility run).
+    const inputRef = useRef<TextInput | null>(null);
+    const setRefs = useCallback(
+      (node: TextInput | null) => {
+        inputRef.current = node;
+        if (typeof ref === 'function') ref(node);
+        else if (ref) ref.current = node;
+      },
+      [ref],
+    );
 
     return (
       <View style={styles.container}>
@@ -34,7 +45,11 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(
             {optional ? <Text style={styles.optional}>Optional</Text> : null}
           </View>
         ) : null}
-        <View
+        <Pressable
+          // Not a stop of its own: TalkBack focuses the input, which carries the label.
+          accessible={false}
+          disabled={!editable}
+          onPress={() => inputRef.current?.focus()}
           style={[
             styles.box,
             focused && styles.boxFocused,
@@ -44,7 +59,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(
         >
           {prefix ? <Text style={styles.affix}>{prefix}</Text> : null}
           <TextInput
-            ref={ref}
+            ref={setRefs}
             accessibilityLabel={label}
             accessibilityHint={error ?? helper}
             editable={editable}
@@ -61,7 +76,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(
             {...rest}
           />
           {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
-        </View>
+        </Pressable>
         {error ? (
           <View style={styles.errorRow} accessibilityLiveRegion="polite">
             <CircleAlert color={theme.colors.status.danger.mark} size={theme.size.iconSm} />
@@ -98,7 +113,8 @@ function makeStyles({ colors, space, borders, components, typography }: Theme) {
     boxFocused: { borderColor: colors.focus, borderWidth: borders.focus },
     boxError: { borderColor: colors.status.danger.mark, borderWidth: borders.focus },
     boxDisabled: { backgroundColor: colors.surfaceSunken, borderColor: colors.line },
-    input: { ...typography.bodyLg, flex: 1, color: colors.ink, paddingVertical: space[3] },
+    // Stretched to the box's full height, so the input itself is as tall as the box.
+    input: { ...typography.bodyLg, flex: 1, alignSelf: 'stretch', color: colors.ink, paddingVertical: space[3] },
     numeric: { ...typography.figure },
     inputDisabled: { color: colors.inkDisabled },
     affix: { ...typography.figure, color: colors.ink2 },

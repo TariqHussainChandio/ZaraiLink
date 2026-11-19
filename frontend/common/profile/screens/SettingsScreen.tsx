@@ -1,6 +1,7 @@
+import { KeyRound, LogOut, ShieldCheck, Trash2 } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
-import { Button, Chip } from '../../components';
+import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Button, Chip, useToast } from '../../components';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { useUpdateProfile } from '../hooks/profile';
 import { useAuthStore } from '../../../state/authStore';
@@ -24,6 +25,7 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
   const themeMode = useThemeStore(state => state.mode);
   const setThemeMode = useThemeStore(state => state.setMode);
   const [savingNotifications, setSavingNotifications] = useState(false);
+  const toast = useToast();
 
   const onToggleNotifications = async (value: boolean) => {
     setSavingNotifications(true);
@@ -31,10 +33,8 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
       await updateProfile({ notifications_enabled: value });
       await refreshProfile();
     } catch (error) {
-      Alert.alert(
-        'Could not update notification setting',
-        errorMessage(error),
-      );
+      // Nothing changed and nothing to decide: the switch stays where it was, the toast says why.
+      toast.error(`Notifications not changed. ${errorMessage(error)}`);
     } finally {
       setSavingNotifications(false);
     }
@@ -50,6 +50,7 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
         <Switch
           accessible
           accessibilityLabel="Notifications"
+          accessibilityState={{ checked: profile?.notifications_enabled ?? true, disabled: savingNotifications }}
           value={profile?.notifications_enabled ?? true}
           onValueChange={onToggleNotifications}
           disabled={savingNotifications}
@@ -70,6 +71,7 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
       {role === 'admin' ? (
         <Button
           label="Account security"
+          icon={ShieldCheck}
           variant="secondary"
           onPress={() => navigation.navigate(PROFILE_ROUTES.AccountSecurity)}
           style={styles.action}
@@ -77,6 +79,7 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
       ) : (
         <Button
           label="Change Password"
+          icon={KeyRound}
           variant="secondary"
           onPress={() => navigation.navigate(PROFILE_ROUTES.ChangePassword)}
           style={styles.action}
@@ -84,11 +87,12 @@ export function SettingsScreen({ navigation }: ProfileScreenProps<'Settings'>) {
       )}
       <Button
         label="Delete Account"
+        icon={Trash2}
         variant="secondary"
         onPress={() => navigation.navigate(PROFILE_ROUTES.DeleteAccount)}
         style={styles.action}
       />
-      <Button label="Sign Out" variant="danger" onPress={signOut} style={styles.action} />
+      <Button label="Sign Out" icon={LogOut} variant="danger" onPress={signOut} style={styles.action} />
     </View>
   );
 }

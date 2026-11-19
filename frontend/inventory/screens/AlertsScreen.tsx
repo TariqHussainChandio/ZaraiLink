@@ -2,10 +2,12 @@ import { FlashList } from '@shopify/flash-list';
 import { CircleCheck, Settings } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { RefreshControl, View } from 'react-native';
-import { Button, EmptyState, ListRow, ScreenState, StatusBadge } from '../../common/components';
+import { Button, EmptyState, ScreenState, StatusBadge } from '../../common/components';
+import { statusMeta } from '../../common/constants/status';
 import { type Theme, useTheme } from '../../theme';
 import { formatQuantity } from '../components/format';
 import { makeScreenStyles } from '../components/screenStyles';
+import { SpokenRow } from '../components/SpokenRow';
 import { useStockAlerts } from '../hooks/inventory';
 import { useLookups } from '../hooks/lookups';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
@@ -51,7 +53,17 @@ export function AlertsScreen({ navigation }: InventoryScreenProps<typeof INVENTO
           </View>
         }
         renderItem={({ item: alert }) => (
-          <ListRow
+          <SpokenRow
+            // "Out of stock" or "Low stock" leads the name, as the badge says it (A8).
+            label={[
+              alert.name,
+              statusMeta('stock', alert.status).label,
+              `${formatQuantity(alert.quantity, alert.unit)} left`,
+              `reorder at ${formatQuantity(alert.reorder_threshold)}`,
+              alert.location_id ? locationById.get(alert.location_id)?.name : null,
+            ]
+              .filter(Boolean)
+              .join(', ')}
             title={alert.name}
             meta={[
               alert.sku,

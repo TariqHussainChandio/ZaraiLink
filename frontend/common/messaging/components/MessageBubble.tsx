@@ -8,7 +8,7 @@ export interface MessageBubbleProps {
   isOwn: boolean;
   /** Signed URLs for `message.attachments`, keyed by storage path — resolved by the parent screen. */
   attachmentUrls: Record<string, string>;
-  /** The other person's name, read out by a screen reader on their messages ("From Ali, 10:30: ..."). */
+  /** The other person's name, read out by a screen reader on their messages ("Ali, 10:30: ..."). */
   senderName?: string;
 }
 
@@ -17,18 +17,18 @@ export function MessageBubble({ message, isOwn, attachmentUrls, senderName }: Me
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const time = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const from = isOwn ? 'you' : senderName || 'the other person';
+  const from = isOwn ? 'You' : senderName || 'The other person';
   const photoCount = message.attachments.length;
   const photos = photoCount > 0 ? `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}` : '';
   const content = [photos, message.body].filter(Boolean).join('. ');
 
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
-      {/* One focus stop per message, read as "From <name>, <time>: <text>". */}
+      {/* One focus stop per message, read as "You, <time>: <text>" or "<name>, <time>: <text>" (A8). */}
       <View
         style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}
         accessible
-        accessibilityLabel={`From ${from}, ${time}: ${content}`}
+        accessibilityLabel={`${from}, ${time}: ${content}`}
       >
         {message.attachments.length > 0 ? (
           <View style={styles.imagesRow}>

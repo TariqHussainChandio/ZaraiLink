@@ -105,12 +105,14 @@ function makeStyles({ colors, space, size, radius, borders, typography }: Theme)
     headline: { ...typography.headline, color: colors.ink },
     subtitle: { ...typography.caption, color: colors.ink2 },
     iconButton: { width: size.touchMin, height: size.touchMin, alignItems: 'center', justifyContent: 'center' },
+    // The badge grows with the text (A8: at 130% font a fixed 20 dp box covered the bell), and sits in the corner of the
+    // 48 dp target so a larger badge spreads outwards, not over the icon.
     count: {
       position: 'absolute',
-      top: space[1],
-      right: space[1],
+      top: 0,
+      right: 0,
       minWidth: size.countBadge,
-      height: size.countBadge,
+      minHeight: size.countBadge,
       paddingHorizontal: space[1],
       borderRadius: radius.pill,
       backgroundColor: colors.module.notifications,

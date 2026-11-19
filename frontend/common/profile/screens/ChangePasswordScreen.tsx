@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthError } from '@supabase/supabase-js';
+import { KeyRound, RotateCw } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, TextField } from '../../components';
+import { Banner, Button, TextField, useToast } from '../../components';
 import { useRequestReauthentication, useUpdatePassword } from '../hooks/profile';
 import { useTheme, type Theme } from '../../../theme';
 import { mapPasswordFlowErrorMessage } from '../../auth';
@@ -38,6 +39,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { mutateAsync: updatePassword } = useUpdatePassword();
   const reauthenticate = useRequestReauthentication();
+  const toast = useToast();
   const changePasswordSchema = useMemo(() => makeChangePasswordSchema(), []);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pendingPassword, setPendingPassword] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
   });
 
   const done = () => {
-    Alert.alert('Password updated', 'Your password has been changed.');
+    toast.success('Password changed');
     navigation.goBack();
   };
 
@@ -111,6 +113,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
         ) : null}
         <Button
           label="Confirm new password"
+          icon={KeyRound}
           loading={confirming}
           disabled={code.length !== 6}
           onPress={confirm}
@@ -118,6 +121,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
         />
         <Button
           label="Send a new code"
+          icon={RotateCw}
           variant="quiet"
           loading={reauthenticate.isPending}
           onPress={() => reauthenticate.mutate()}
@@ -168,6 +172,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
 
       <Button
         label="Update Password"
+        icon={KeyRound}
         loading={isSubmitting || reauthenticate.isPending}
         onPress={handleSubmit(submit)}
         style={styles.submit}

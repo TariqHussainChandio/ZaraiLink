@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { SettingsScreen } from './SettingsScreen';
@@ -26,9 +25,11 @@ beforeEach(() => {
     signOut: jest.fn(),
     refreshProfile: jest.fn().mockResolvedValue(undefined),
     profile: { notifications_enabled: true } as Profile,
+    // Reset before each test, not at the end of one: a store change while the screen is still mounted re-renders it
+    // outside act().
+    role: null,
   });
   useThemeStore.setState({ mode: 'system' });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -56,16 +57,16 @@ describe('SettingsScreen', () => {
     await waitFor(() => expect(refreshProfile).toHaveBeenCalledTimes(1));
   });
 
-  it('shows an alert when updating the notification setting fails', async () => {
+  it('shows an error toast and keeps the switch when updating the notification setting fails', async () => {
     mockUpdateProfile.mockRejectedValue(new Error('offline'));
     await renderWithQuery(<SettingsScreen navigation={makeNavigation()} route={{} as never} />);
 
     const notificationsSwitch = screen.getByRole('switch', { name: 'Notifications' });
     await fireEvent(notificationsSwitch, 'valueChange', false);
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Could not update notification setting', 'offline'),
-    );
+    expect(await screen.findByText('Notifications not changed. offline')).toBeTruthy();
+    // The profile still says enabled, so the switch stays on.
+    expect(screen.getByRole('switch', { name: 'Notifications' })).toBeChecked();
   });
 
   it('switches the appearance mode', async () => {
@@ -88,7 +89,6 @@ describe('SettingsScreen', () => {
     expect(screen.queryByText('Change Password')).toBeNull();
     await fireEvent.press(screen.getByText('Account security'));
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.AccountSecurity);
-    useAuthStore.setState({ role: null });
   });
 
   it('signs out when Sign Out is pressed', async () => {

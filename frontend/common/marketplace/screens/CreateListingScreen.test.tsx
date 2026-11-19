@@ -8,6 +8,7 @@ import {
 } from '../services/listingsService';
 import { fetchLinkableInventoryProducts } from '../services/inventoryProductsService';
 import { pickPhotos } from '../../../utils/photoPicker';
+import { MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../../state/authStore';
 import { useMarketplaceStore } from '../../../state/marketplaceStore';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
@@ -33,6 +34,7 @@ const mockFetchProducts = fetchLinkableInventoryProducts as jest.Mock;
 function makeNavigation() {
   return {
     goBack: jest.fn(),
+    popTo: jest.fn(),
   } as unknown as MarketplaceScreenProps<'CreateListing'>['navigation'];
 }
 
@@ -118,7 +120,8 @@ describe('CreateListingScreen', () => {
         images: ['https://cdn.example.com/photo1.jpg'],
       }),
     );
-    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    // Publishing lands on Browse, never back on the filled form.
+    expect(navigation.popTo).toHaveBeenCalledWith(MARKETPLACE_ROUTES.Browse);
   });
 
   it('keeps the reason on the screen when creating the listing fails', async () => {
@@ -136,7 +139,7 @@ describe('CreateListingScreen', () => {
 
     expect(await screen.findByText('Listing not published')).toBeTruthy();
     expect(screen.getByText('Server error')).toBeTruthy();
-    expect(navigation.goBack).not.toHaveBeenCalled();
+    expect(navigation.popTo).not.toHaveBeenCalled();
   });
 
   it("publishes an approved dealer's listing linked to the product they picked (D8)", async () => {

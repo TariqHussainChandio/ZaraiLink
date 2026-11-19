@@ -159,12 +159,9 @@ export function FilterBar({
         ))}
       </ScrollView>
 
-      <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)}>
+      {/* The title names the dialog for TalkBack and gives the sheet its header with the Close button (A8). */}
+      <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title="Filters">
         <ScrollView keyboardShouldPersistTaps="handled">
-          <Text style={styles.sheetTitle} accessibilityRole="header">
-            Filters
-          </Text>
-
           <View style={styles.priceRow}>
             <View style={styles.priceField}>
               <TextField
@@ -278,11 +275,6 @@ function makeStyles(
     },
     chipRow: {
       paddingBottom: space[3],
-    },
-    sheetTitle: {
-      ...typography.title,
-      color: colors.ink,
-      marginBottom: space[3],
     },
     priceRow: {
       flexDirection: 'row',

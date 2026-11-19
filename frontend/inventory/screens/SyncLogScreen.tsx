@@ -5,6 +5,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
 import { Button, Card, EmptyState, ListGroup, ListRow, ScreenState, Sheet, StatusBadge, useToast } from '../../common/components';
 import { APP_TABS, ORDERS_ROUTES } from '../../common/constants/routes';
+import { statusMeta } from '../../common/constants/status';
 import { useOrders } from '../../common/orders';
 import type { MarketRootParamList } from '../../navigation/stacks/AppNavigator';
 import { type Theme, useTheme } from '../../theme';
@@ -77,6 +78,21 @@ export function SyncLogScreen(_props: InventoryScreenProps<typeof INVENTORY_ROUT
     const listingTitle = entry.listing_id ? (titleById.get(entry.listing_id) ?? 'A listing no longer yours') : null;
     return (
       <Card style={styles.card}>
+        {/* One stop for TalkBack (A8): status, listing, order, time and any error; the button stays its own stop. */}
+        <View
+          accessible
+          accessibilityLabel={[
+            statusMeta('sync', entry.status).label,
+            listingTitle,
+            orderId ? `order ${shortOrderId(orderId)}` : null,
+            formatDateTime(entry.processed_at),
+            entry.attempts === 1 ? '1 attempt' : `${entry.attempts} attempts`,
+            entry.status === 'failed' ? entry.error : null,
+          ]
+            .filter(Boolean)
+            .join(', ')}
+          style={styles.facts}
+        >
         <View style={styles.line}>
           <StatusBadge kind="sync" status={entry.status} />
           <Text style={styles.caption}>{entry.attempts === 1 ? '1 attempt' : `${entry.attempts} attempts`}</Text>
@@ -88,6 +104,7 @@ export function SyncLogScreen(_props: InventoryScreenProps<typeof INVENTORY_ROUT
             .join(' · ')}
         </Text>
         {entry.status === 'failed' && entry.error ? <Text style={styles.error}>{entry.error}</Text> : null}
+        </View>
         {orderId ? (
           <Button
             label="View order"
@@ -185,5 +202,6 @@ function makeStyles(theme: Theme) {
     title: { ...theme.typography.bodyStrong, color: theme.colors.ink },
     error: { ...theme.typography.caption, color: theme.colors.status.danger.ink },
     sheet: { gap: theme.space[3] },
+    facts: { gap: theme.space[1] },
   };
 }

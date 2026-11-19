@@ -39,7 +39,7 @@ describe('PurchaseListScreen', () => {
     expect(await screen.findByText('INV-778')).toBeTruthy();
     // A purchase with no reference is named by its supplier.
     expect(await screen.findAllByText('Engro Fertilizers')).toHaveLength(1);
-    expect(screen.getAllByText(/Engro Fertilizers · 1 lines$/)).toHaveLength(2);
+    expect(screen.getAllByText(/Engro Fertilizers · 1 line$/)).toHaveLength(2);
     expect(api.fetchPurchases).toHaveBeenLastCalledWith(undefined);
     await fireEvent.press(screen.getByRole('button', { name: 'Received' }));
     await waitFor(() => expect(api.fetchPurchases).toHaveBeenLastCalledWith('received'));
@@ -83,6 +83,8 @@ describe('PurchaseFormScreen', () => {
         supplier_id: 'sup-1',
         reference: 'INV-901',
         notes: null,
+        // A new purchase is dated the dealer's own day, not the server's UTC day.
+        purchased_on: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         items: [{ product_id: 'prod-urea', location_id: 'loc-shop', quantity: 40, unit_cost: 3100 }],
       }, expect.stringMatching(/^zl-/)),
     );

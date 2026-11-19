@@ -11,6 +11,7 @@ import {
   Sheet,
   StatusBadge,
   TextField,
+  useToast,
 } from '../../common/components';
 import {
   BUSINESS_TYPE_LABELS,
@@ -45,6 +46,11 @@ interface Document {
   required_document: { label: string } | null;
 }
 
+/** What the document is, from the required-document catalogue; a file sent before the catalogue had it says so. */
+function documentLabel(document: Document): string {
+  return document.required_document?.label ?? 'Earlier document';
+}
+
 interface Section {
   title: string;
   rows: [string, string | null | undefined][];
@@ -73,6 +79,7 @@ export function ApplicationDetailScreen({
   const [reasonError, setReasonError] = useState<string | undefined>(undefined);
   const [outcome, setOutcome] = useState<ApplicationDecision | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const toast = useToast();
 
   const query = role === 'dealer' ? dealer : expert;
   if (!query.data) {
@@ -175,6 +182,8 @@ export function ApplicationDetailScreen({
               notes: text ?? '',
             });
       setOutcome(result);
+      // The banner below stays for the email's fate; the toast confirms the decision itself, which TalkBack announces.
+      toast.success(decision === 'approved' ? `${name || 'Application'} approved` : `${name || 'Application'} rejected`);
       await query.refetch();
     } catch (error) {
       setFailure(errorMessage(error));
@@ -202,7 +211,7 @@ export function ApplicationDetailScreen({
       if (document.mime_type?.startsWith('image/')) {
         navigation.navigate(ADMIN_HOME_ROUTES.DocumentViewer, {
           url,
-          title: document.file_name,
+          title: documentLabel(document),
         });
       } else {
         await Linking.openURL(url);
@@ -273,11 +282,11 @@ export function ApplicationDetailScreen({
         <View style={styles.documents}>
           {documents.map(document => (
             <View key={document.id} style={styles.document}>
-              <Text style={styles.term}>
-                {document.required_document?.label ?? 'Earlier document'}
-              </Text>
+              {/* The tile is named by the document type, so its View button reads "View Business licence" rather than
+                  the uploaded file's name (A8, A2); the file name stays visible underneath for the admin's own check.
+                  DocumentTile has no separate label prop yet (requested from zl-app-core). */}
               <DocumentTile
-                fileName={document.file_name}
+                fileName={documentLabel(document)}
                 mimeType={document.mime_type}
                 sizeBytes={document.size_bytes}
                 onView={() => open(document)}
@@ -286,6 +295,7 @@ export function ApplicationDetailScreen({
                   documentUrl.variables?.documentId === document.id
                 }
               />
+              <Text style={styles.term}>{`File: ${document.file_name}`}</Text>
             </View>
           ))}
         </View>

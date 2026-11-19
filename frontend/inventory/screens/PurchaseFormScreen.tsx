@@ -23,6 +23,7 @@ import {
   toNumberOrNull,
   toTextOrNull,
 } from '../components/formValues';
+import { localIsoDate } from '../components/format';
 import { makeScreenStyles } from '../components/screenStyles';
 import { Section } from '../components/Section';
 import { useEntryKey } from '../hooks/entryKey';
@@ -172,7 +173,8 @@ export function PurchaseFormScreen({
         toast.success('Purchase saved');
         navigation.goBack();
       } else {
-        const created = await save.mutateAsync({ input, key });
+        // Dated by the phone's own day: the server's default is the UTC day, a day early before 05:00 in Pakistan.
+        const created = await save.mutateAsync({ input: { ...input, purchased_on: localIsoDate() }, key });
         renew();
         toast.success('Purchase saved as a draft');
         navigation.replace(INVENTORY_ROUTES.PurchaseDetail, {

@@ -8,6 +8,7 @@ import { StatTile } from '../../common/components/dashboards/StatTile';
 import { ADMIN_HOME_ROUTES, ADMIN_TABS } from '../../common/constants/routes';
 import { ROLE_LABELS, ROLES } from '../../common/constants/roles';
 import { useAdminQueues, usePlatformStats } from '../hooks/admin';
+import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import type { AdminScreenProps, AdminTabParamList } from '../../navigation/stacks/AdminNavigator';
 
@@ -20,6 +21,7 @@ export function AdminDashboardScreen({ navigation }: AdminScreenProps<'Dashboard
   const { refetch } = platformStats;
   const queues = useAdminQueues();
   const refetchQueues = queues.refetch;
+  const firstName = useAuthStore(state => state.profile?.full_name?.trim().split(/\s+/)[0]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,6 +75,10 @@ export function AdminDashboardScreen({ navigation }: AdminScreenProps<'Dashboard
 
   return (
     <View style={styles.container}>
+      {/* The screen's first heading, outside the loading and error states so TalkBack always lands on it (A8). */}
+      <Text style={styles.greeting} accessibilityRole="header">
+        {firstName ? `Hello, ${firstName}` : 'Hello'}
+      </Text>
       <ScreenState
         query={platformStats}
         errorTitle="Couldn't load the dashboard"
@@ -161,6 +167,12 @@ function makeStyles({ colors, space, typography }: Theme) {
     },
     content: {
       padding: space[4],
+    },
+    greeting: {
+      ...typography.title,
+      color: colors.ink,
+      paddingHorizontal: space[4],
+      paddingTop: space[4],
     },
     statsRow: {
       flexDirection: 'row',

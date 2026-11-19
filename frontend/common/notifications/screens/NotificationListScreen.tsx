@@ -1,8 +1,9 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { Bell, CheckCheck } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { EmptyState, Spinner } from '../../components';
+import { ScreenState, useToast } from '../../components';
 import { NotificationRow } from '../components/NotificationRow';
 import { APP_TABS, MESSAGING_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
 import {
@@ -17,6 +18,12 @@ import { errorMessage } from '../../../utils/errorMessage';
 
 const ORDER_TYPES = new Set(['order_new', 'order_status_changed', 'payment_status_changed']);
 
+const EMPTY_LIST = {
+  title: 'No notifications yet',
+  description: 'News about your orders, messages and account will show here.',
+  icon: Bell,
+};
+
 export function NotificationListScreen() {
   const theme = useTheme();
   const accent = useRoleAccent();
@@ -26,7 +33,13 @@ export function NotificationListScreen() {
   // expert, admin) with different param lists — deep-linking below is best-effort per type and
   // no-ops harmlessly if the current tab bar doesn't have the target route.
   const navigation = useNavigation<any>();
-  const { data: notifications = [], isPending, error, refetch } = useNotifications(!!userId);
+  const toast = useToast();
+  const notificationsQuery = useNotifications(!!userId);
+  const { refetch } = notificationsQuery;
+  // With no signed-in user the query never runs; show the empty list instead of a skeleton that never ends.
+  const query = userId
+    ? notificationsQuery
+    : { ...notificationsQuery, data: notificationsQuery.data ?? [], isPending: false };
   const markNotificationRead = useMarkNotificationRead();
   const markEverythingRead = useMarkAllNotificationsRead();
 
@@ -71,57 +84,56 @@ export function NotificationListScreen() {
     try {
       await markEverythingRead.mutateAsync();
     } catch (err) {
-      Alert.alert('Could not mark notifications as read', errorMessage(err));
+      // Nothing to decide: the dots simply stay, so a short toast says why.
+      toast.error(`Couldn't mark all as read. ${errorMessage(err)}`);
     }
   };
 
-  if (isPending && userId) return <Spinner fullscreen />;
-  if (error && notifications.length === 0) {
-    return (
-      <EmptyState
-        title="Couldn't load notifications"
-        description={errorMessage(error)}
-        actionLabel="Retry"
-        onAction={() => refetch()}
-      />
-    );
-  }
-
-  const hasUnread = notifications.some(n => !n.read);
-
   return (
     <View style={styles.container}>
-      {hasUnread ? (
-        <TouchableOpacity onPress={onMarkAllRead} style={styles.markAllRow}>
-          <Text style={styles.markAllLabel}>Mark all as read</Text>
-        </TouchableOpacity>
-      ) : null}
-      <FlashList
-        data={notifications}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <NotificationRow notification={item} onPress={() => onPressNotification(item)} />
+      <ScreenState query={query} errorTitle="Couldn't load notifications" empty={EMPTY_LIST}>
+        {notifications => (
+          <>
+            {notifications.some(n => !n.read) ? (
+              <TouchableOpacity
+                onPress={onMarkAllRead}
+                style={styles.markAllRow}
+                disabled={markEverythingRead.isPending}
+                accessibilityRole="button"
+                accessibilityLabel="Mark all as read"
+                accessibilityState={{ disabled: markEverythingRead.isPending, busy: markEverythingRead.isPending }}
+              >
+                <CheckCheck size={theme.size.iconSm} color={accent.ink} />
+                <Text style={styles.markAllLabel}>Mark all as read</Text>
+              </TouchableOpacity>
+            ) : null}
+            <FlashList
+              data={notifications}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <NotificationRow notification={item} onPress={() => onPressNotification(item)} />
+              )}
+            />
+          </>
         )}
-        ListEmptyComponent={
-          <EmptyState
-            title="No notifications yet"
-            description="Updates about your activity will show up here."
-          />
-        }
-      />
+      </ScreenState>
     </View>
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight }: Theme, accent: Accent) {
+function makeStyles({ colors, space, typography, fontWeight, size }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.surface,
     },
     markAllRow: {
-      padding: space[3],
-      alignItems: 'flex-end',
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-end',
+      gap: space[1],
+      minHeight: size.touchMin,
+      paddingHorizontal: space[4],
     },
     markAllLabel: {
       ...typography.caption,

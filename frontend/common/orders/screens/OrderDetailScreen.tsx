@@ -51,6 +51,18 @@ const WHEN = new Intl.DateTimeFormat('en-PK', {
   minute: '2-digit',
 });
 
+/** What the toast says (and TalkBack announces) after each move, so a status change is never silent (A8). */
+const MOVED: Partial<Record<OrderStatus, string>> = {
+  confirmed: 'Order confirmed',
+  processing: 'Processing started',
+  ready: 'Order marked ready',
+  dispatched: 'Order dispatched',
+  completed: 'Order completed',
+  rejected: 'Order rejected',
+  cancelled: 'Order cancelled',
+  disputed: 'Dispute opened',
+};
+
 /** When each status was first reached, from the order's status history. */
 function reachedAt(
   history: OrderStatusHistoryEntry[],
@@ -90,6 +102,7 @@ export function OrderDetailScreen() {
     statusMutation.mutate(to, {
       onSuccess: () => {
         if (to === 'confirmed') hapticSuccess();
+        toast.success(MOVED[to] ?? `Order ${statusMeta('order', to).label.toLowerCase()}`);
         onDone?.();
       },
       // A shortage at dispatch (D6) arrives here with the API's message, and the order stays ready.
@@ -221,16 +234,24 @@ export function OrderDetailScreen() {
 
             <Card style={styles.itemsCard}>
               <Text style={styles.sectionTitle}>Items</Text>
-              {order.order_items.map(item => (
-                <View key={item.id} style={styles.itemRow}>
-                  <Text style={styles.itemLabel} numberOfLines={1}>
-                    {`${item.quantity} ${item.listing?.unit ?? ''} × ${item.listing?.title ?? 'Listing removed'}`}
-                  </Text>
-                  <Text style={styles.itemPrice}>
-                    {formatRs(item.unit_price * item.quantity)}
-                  </Text>
-                </View>
-              ))}
+              {order.order_items.map(item => {
+                const what = `${item.quantity} ${item.listing?.unit ?? ''} × ${item.listing?.title ?? 'Listing removed'}`;
+                const amount = formatRs(item.unit_price * item.quantity);
+                return (
+                  // One TalkBack stop per item: what was ordered and what it costs, read together (A8).
+                  <View
+                    key={item.id}
+                    style={styles.itemRow}
+                    accessible
+                    accessibilityLabel={`${what}, ${amount}`}
+                  >
+                    <Text style={styles.itemLabel} numberOfLines={1}>
+                      {what}
+                    </Text>
+                    <Text style={styles.itemPrice}>{amount}</Text>
+                  </View>
+                );
+              })}
               <View style={styles.summaryDivider} />
               <PriceBreakdown
                 subtotal={order.product_subtotal}
@@ -384,19 +405,29 @@ export function OrderDetailScreen() {
             {history.length > 0 ? (
               <Card style={styles.historyCard}>
                 <Text style={styles.sectionTitle}>Status History</Text>
-                {history.map(entry => (
-                  <View key={entry.id} style={styles.historyRow}>
-                    <Text style={styles.historyLabel}>
-                      {entry.from_status
-                        ? `${statusMeta('order', entry.from_status).label} → `
-                        : ''}
-                      {statusMeta('order', entry.to_status).label}
-                    </Text>
-                    <Text style={styles.historyDate}>
-                      {new Date(entry.created_at).toLocaleString()}
-                    </Text>
-                  </View>
-                ))}
+                {history.map(entry => {
+                  const to = statusMeta('order', entry.to_status).label;
+                  const from = entry.from_status
+                    ? statusMeta('order', entry.from_status).label
+                    : null;
+                  const when = WHEN.format(new Date(entry.created_at));
+                  return (
+                    // One stop per change, read as a sentence; the arrow means nothing to a screen reader (A8).
+                    <View
+                      key={entry.id}
+                      style={styles.historyRow}
+                      accessible
+                      accessibilityLabel={
+                        from ? `${from} to ${to}, ${when}` : `${to}, ${when}`
+                      }
+                    >
+                      <Text style={styles.historyLabel}>
+                        {from ? `${from} → ${to}` : to}
+                      </Text>
+                      <Text style={styles.historyDate}>{when}</Text>
+                    </View>
+                  );
+                })}
               </Card>
             ) : null}
 

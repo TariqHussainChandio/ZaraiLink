@@ -1,7 +1,7 @@
-import { Plus } from 'lucide-react-native';
+import { ArrowRight, Plus } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Badge, Banner, Button, Card, DocumentTile, Spinner } from '../../../components';
+import { Badge, Banner, Button, Card, DocumentTile, SkeletonList } from '../../../components';
 import { useTheme, type Theme } from '../../../../theme';
 import { pickApplicationDocument } from '../../../../utils/documentPicker';
 import { errorMessage } from '../../../../utils/errorMessage';
@@ -63,10 +63,15 @@ export function DocumentsStep({ role, userId, editable, onDone }: DocumentsStepP
     }
   };
 
-  if (required.isLoading || documents.isLoading) return <Spinner />;
+  if (required.isLoading || documents.isLoading) return <SkeletonList count={3} />;
   if (required.error || documents.error) {
     return (
-      <Banner tone="danger" actionLabel="Try again" onAction={() => Promise.all([required.refetch(), documents.refetch()])}>
+      <Banner
+        tone="danger"
+        title="Couldn't load your documents"
+        actionLabel={required.isFetching || documents.isFetching ? undefined : 'Retry'}
+        onAction={() => Promise.all([required.refetch(), documents.refetch()])}
+      >
         {errorMessage(required.error ?? documents.error)}
       </Banner>
     );
@@ -133,7 +138,7 @@ export function DocumentsStep({ role, userId, editable, onDone }: DocumentsStepP
         </Card>
       ) : null}
       {failure ? <Banner tone="danger">{failure}</Banner> : null}
-      {onDone ? <Button label="Continue to review" onPress={onDone} /> : null}
+      {onDone ? <Button label="Continue to review" icon={ArrowRight} onPress={onDone} /> : null}
     </View>
   );
 }

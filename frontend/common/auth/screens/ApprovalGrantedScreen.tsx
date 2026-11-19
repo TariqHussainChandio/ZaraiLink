@@ -1,3 +1,4 @@
+import { LogIn } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, Card, StatusBadge } from '../../components';
@@ -26,7 +27,7 @@ export function ApprovalGrantedScreen() {
           <StatusBadge kind="application" status="approved" />
         </View>
         <Text style={styles.description}>{`Sign in again to open your ${roleName} dashboard.`}</Text>
-        <Button label="Sign in again" onPress={signOut} fullWidth style={styles.action} />
+        <Button label="Sign in again" icon={LogIn} onPress={signOut} fullWidth style={styles.action} />
       </Card>
     </View>
   );

@@ -14,23 +14,38 @@ export interface StatTileProps {
   accent?: string;
 }
 
-/** One number that matters on a dashboard, with its unit and a plain note. Two to a row on phones. */
+/** One number that matters on a dashboard, with its unit and a plain note. Two to a row on phones. TalkBack reads it
+ * as one stop: "Stock units: 3,482 units".
+ *
+ * @example
+ * <StatTile label="Stock units" value={3482} unit="units" accent={theme.colors.module.orders} />
+ */
 export function StatTile({ label, value, unit, note, icon: Icon, accent }: StatTileProps) {
   const theme = useTheme();
   const role = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const mark = accent ?? role.mark;
+  const shown = typeof value === 'number' ? value.toLocaleString('en-PK') : value;
 
   return (
-    <View style={styles.tile} accessibilityLabel={`${label}: ${value}${unit ? ` ${unit}` : ''}`}>
+    // One stop that reads "label: value unit" (and the note), instead of three separate fragments.
+    <View
+      style={styles.tile}
+      accessible
+      accessibilityLabel={`${label}: ${shown}${unit ? ` ${unit}` : ''}${note ? `. ${note}` : ''}`}
+    >
       <View style={styles.head}>
-        {Icon ? <Icon color={mark} size={theme.size.iconSm} /> : <View testID="stat-tile-accent" style={[styles.dot, { backgroundColor: mark }]} />}
+        {Icon ? (
+          <Icon color={mark} size={theme.size.iconSm} />
+        ) : (
+          <View testID="stat-tile-accent" style={[styles.dot, { backgroundColor: mark }]} />
+        )}
         <Text style={styles.label}>{label}</Text>
       </View>
       <View style={styles.valueRow}>
         {/* A figure never breaks across lines: in a narrow tile it shrinks to fit instead. */}
         <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
-          {typeof value === 'number' ? value.toLocaleString('en-PK') : value}
+          {shown}
         </Text>
         {unit ? <Text style={styles.unit}>{unit}</Text> : null}
       </View>

@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { ListRow, StatusBadge } from '../../common/components';
+import { StatusBadge } from '../../common/components';
+import { statusMeta } from '../../common/constants/status';
 import { type Theme, useTheme } from '../../theme';
 import type { Movement } from '../types/inventory';
 import { formatDateTime, formatQuantity, formatSigned } from './format';
+import { SpokenRow } from './SpokenRow';
 
 export interface MovementRowProps {
   movement: Movement;
@@ -17,8 +19,21 @@ export function MovementRow({ movement, productName, locationName }: MovementRow
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const meta = [locationName, formatDateTime(movement.created_at), movement.reason].filter(Boolean).join(' · ');
+  // One stop for TalkBack (A8): "Local sale, Urea 50kg, out 4, now 26, Main shop, 10 Oct, 3:00 pm".
+  const label = [
+    statusMeta('movement', movement.source).label,
+    productName ?? 'Product',
+    `${movement.direction === 'in' ? 'in' : 'out'} ${formatQuantity(movement.quantity)}`,
+    `now ${formatQuantity(movement.quantity_after)}`,
+    locationName,
+    formatDateTime(movement.created_at),
+    movement.reason,
+  ]
+    .filter(Boolean)
+    .join(', ');
   return (
-    <ListRow
+    <SpokenRow
+      label={label}
       title={productName ?? 'Product'}
       meta={meta}
       leading={<StatusBadge kind="movement" status={movement.source} size="sm" />}

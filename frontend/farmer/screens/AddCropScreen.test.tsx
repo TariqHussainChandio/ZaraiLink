@@ -1,6 +1,5 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, within } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
 import { queryKeys } from '../../hooks/keys';
 import { AddCropScreen } from './AddCropScreen';
@@ -43,7 +42,6 @@ beforeEach(() => {
   mockFetchFarmCropById.mockReset();
   queryClient.clear();
   queryClient.setQueryData(queryKeys.marketplace.crops(), [{ id: 'wheat', name: 'Wheat', category: null }]);
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -80,13 +78,13 @@ describe('AddCropScreen — create mode', () => {
     expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
   });
 
-  it('shows an alert when creating the crop fails', async () => {
+  it('shows an error toast when creating the crop fails, and stays on the form', async () => {
     mockCreateFarmCrop.mockRejectedValue(new Error('Server unavailable'));
     const props = makeProps({ farmId: 'farm-1' });
     await renderWithQuery(<AddCropScreen {...props} />, queryClient);
     await fireEvent.press(screen.getByText('Add Crop'));
 
-    expect(Alert.alert).toHaveBeenCalledWith('Failed to save crop', 'Server unavailable');
+    expect(await screen.findByText('Crop not saved. Server unavailable')).toBeTruthy();
     expect(props.navigation.goBack).not.toHaveBeenCalled();
   });
 });
@@ -127,19 +125,35 @@ describe('AddCropScreen — edit mode', () => {
     expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
   });
 
-  it('removes the crop after confirming the alert', async () => {
+  it('asks in a sheet before removing, then removes the crop and goes back', async () => {
     mockFetchFarmCropById.mockResolvedValue(crop);
     mockDeleteFarmCrop.mockResolvedValue(undefined);
-    (Alert.alert as jest.Mock).mockImplementation((_title, _message, buttons) => {
-      buttons?.find((b: { text: string }) => b.text === 'Remove')?.onPress?.();
-    });
     const props = makeProps({ farmId: 'farm-1', cropId: 'crop-1' });
     await renderWithQuery(<AddCropScreen {...props} />, queryClient);
     await screen.findByDisplayValue('HD-2967');
 
     await fireEvent.press(screen.getByText('Remove Crop'));
+    // The first press only opens the confirmation; nothing is removed yet.
+    expect(mockDeleteFarmCrop).not.toHaveBeenCalled();
+
+    // The sheet's own Remove Crop button confirms.
+    await fireEvent.press(within(screen.getByLabelText('Remove this crop?')).getByText('Remove Crop'));
 
     expect(mockDeleteFarmCrop).toHaveBeenCalledWith('crop-1');
     expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Crop removed')).toBeTruthy();
+  });
+
+  it('keeps the crop when the sheet is dismissed with Keep Crop', async () => {
+    mockFetchFarmCropById.mockResolvedValue(crop);
+    const props = makeProps({ farmId: 'farm-1', cropId: 'crop-1' });
+    await renderWithQuery(<AddCropScreen {...props} />, queryClient);
+    await screen.findByDisplayValue('HD-2967');
+
+    await fireEvent.press(screen.getByText('Remove Crop'));
+    await fireEvent.press(screen.getByText('Keep Crop'));
+
+    expect(mockDeleteFarmCrop).not.toHaveBeenCalled();
+    expect(props.navigation.goBack).not.toHaveBeenCalled();
   });
 });

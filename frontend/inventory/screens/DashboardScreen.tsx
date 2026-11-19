@@ -2,20 +2,33 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ban, Boxes, Package, RefreshCw, TriangleAlert, Wallet } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
-import { Button, Card, ListGroup, ListRow, ScreenState, StatusBadge, useToast } from '../../common/components';
+import { Button, Card, ListGroup, ScreenState, StatusBadge, useToast } from '../../common/components';
+import { statusMeta } from '../../common/constants/status';
 import { BarChart } from '../../common/components/dashboards/BarChart';
 import { QuickActions } from '../../common/components/dashboards/QuickActions';
 import { StatTile } from '../../common/components/dashboards/StatTile';
 import { type Theme, useRoleAccent, useTheme } from '../../theme';
-import { formatDate, formatDay, formatMoney, formatQuantity } from '../components/format';
+import { formatDate, formatDay, formatMoney, formatQuantity, formatSpokenDay } from '../components/format';
 import { MovementRow } from '../components/MovementRow';
 import { makeScreenStyles } from '../components/screenStyles';
 import { Section } from '../components/Section';
+import { SpokenRow } from '../components/SpokenRow';
 import { inventoryErrorMessage } from '../hooks/errors';
 import { useInventoryDashboard, useRetrySync, useSyncLog } from '../hooks/inventory';
 import { useLookups } from '../hooks/lookups';
-import type { Movement } from '../types/inventory';
+import type { Dashboard, Movement } from '../types/inventory';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
+
+/**
+ * What TalkBack says for a trend chart (A8 run). The chart's own labels are days of the month, which read as bare
+ * numbers ("Highest: 18, 43"); this names the day: "Stock out, last 30 days: 61 in all. Highest: 43 on 18 October."
+ */
+function trendSummary(title: string, trend: Dashboard['trend'], pick: 'in' | 'out'): string | undefined {
+  const peak = trend.reduce<Dashboard['trend'][number] | null>((best, point) => (!best || point[pick] > best[pick] ? point : best), null);
+  if (!peak || peak[pick] <= 0) return undefined;
+  const total = trend.reduce((sum, point) => sum + point[pick], 0);
+  return `${title}, last 30 days: ${formatQuantity(total)} in all. Highest: ${formatQuantity(peak[pick])} on ${formatSpokenDay(peak.date)}.`;
+}
 
 /** SRDS §18: the dealer's stock at a glance — totals, the 30-day trend, recent activity, alerts and marketplace sync. */
 export function DashboardScreen({ navigation }: InventoryScreenProps<typeof INVENTORY_ROUTES.Dashboard>) {
@@ -110,9 +123,19 @@ export function DashboardScreen({ navigation }: InventoryScreenProps<typeof INVE
       <Section title="Last 30 days">
         <Card>
           <Text style={styles.overline}>Stock in</Text>
-          <BarChart data={inData} color={theme.colors.status.success.mark} emptyMessage="No stock came in" />
+          <BarChart
+            data={inData}
+            color={theme.colors.status.success.mark}
+            emptyMessage="No stock came in"
+            accessibilityLabel={trendSummary('Stock in', trend, 'in')}
+          />
           <Text style={styles.overline}>Stock out</Text>
-          <BarChart data={outData} color={accent.mark} emptyMessage="No stock went out" />
+          <BarChart
+            data={outData}
+            color={accent.mark}
+            emptyMessage="No stock went out"
+            accessibilityLabel={trendSummary('Stock out', trend, 'out')}
+          />
         </Card>
       </Section>
 
@@ -126,8 +149,9 @@ export function DashboardScreen({ navigation }: InventoryScreenProps<typeof INVE
         ) : (
           <ListGroup>
             {data.alerts.slice(0, 5).map(alert => (
-              <ListRow
+              <SpokenRow
                 key={`${alert.product_id}-${alert.location_id ?? 'all'}`}
+                label={`${alert.name}, ${statusMeta('stock', alert.status).label}, ${formatQuantity(alert.quantity, alert.unit)} left, reorder at ${formatQuantity(alert.reorder_threshold)}`}
                 title={alert.name}
                 meta={`${formatQuantity(alert.quantity, alert.unit)} · reorder at ${formatQuantity(alert.reorder_threshold)}`}
                 trailing={<StatusBadge kind="stock" status={alert.status} size="sm" />}
@@ -172,8 +196,9 @@ export function DashboardScreen({ navigation }: InventoryScreenProps<typeof INVE
         ) : (
           <ListGroup>
             {data.recent_purchases.map(purchase => (
-              <ListRow
+              <SpokenRow
                 key={purchase.id}
+                label={`${purchase.reference || 'Purchase'}, ${statusMeta('purchase', purchase.status).label}, ${formatDate(purchase.purchased_on)}`}
                 title={purchase.reference || 'Purchase'}
                 meta={formatDate(purchase.purchased_on)}
                 trailing={<StatusBadge kind="purchase" status={purchase.status} size="sm" />}

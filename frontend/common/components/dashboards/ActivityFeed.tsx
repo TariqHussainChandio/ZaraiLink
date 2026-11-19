@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { EmptyState } from '..';
+import { EmptyState } from '../EmptyState';
 import { useTheme, type Theme } from '../../../theme';
 
-export interface ActivityItem {
+interface ActivityItem {
   id: string;
   title: string;
   subtitle: string;
@@ -18,13 +18,20 @@ export interface ActivityFeedProps {
   emptyMessage: string;
 }
 
+/** A dashboard's recent activity: one row per item, a row that opens something reads as a button to TalkBack.
+ *
+ * @example
+ * <ActivityFeed title="Recent sales" emptyMessage="No sales yet" items={[{ id, title: 'Ali', subtitle: 'Completed', value: 'Rs 1,200', onPress }]} />
+ */
 export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        {title}
+      </Text>
       {items.length === 0 ? (
         <EmptyState title={emptyMessage} />
       ) : (
@@ -35,6 +42,10 @@ export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) 
             style={styles.row}
             onPress={item.onPress}
             disabled={!item.onPress}
+            // One TalkBack stop per row with its three parts in reading order; only a row that opens something is a button.
+            accessible
+            accessibilityRole={item.onPress ? 'button' : 'text'}
+            accessibilityLabel={[item.title, item.value, item.subtitle].filter(Boolean).join(', ')}
           >
             <View style={styles.itemHeaderRow}>
               <Text style={styles.itemTitle} numberOfLines={1}>
@@ -56,7 +67,7 @@ export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) 
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
+function makeStyles({ colors, space, size, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     container: {
       marginTop: space[6],
@@ -67,6 +78,8 @@ function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
       marginBottom: space[2],
     },
     row: {
+      minHeight: size.touchMin,
+      justifyContent: 'center',
       paddingVertical: space[2],
       borderBottomWidth: borders.hairline,
       borderBottomColor: colors.line,

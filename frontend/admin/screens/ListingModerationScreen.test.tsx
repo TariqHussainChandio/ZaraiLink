@@ -80,26 +80,65 @@ describe('ListingModerationScreen', () => {
     expect(screen.queryByText('active')).toBeNull();
   });
 
-  it('deactivates an active listing', async () => {
+  it('names each action after its listing', async () => {
+    mockFetchListings.mockResolvedValue([listing(), listing({ id: 'listing-2', title: 'Desi maize', status: 'inactive' })]);
+    await renderWithQuery(<ListingModerationScreen />);
+    await screen.findByText('Wheat Seeds');
+
+    expect(screen.getByRole('button', { name: 'Deactivate Wheat Seeds' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Activate Desi maize' })).toBeTruthy();
+  });
+
+  it('lets the title and the price wrap instead of cutting them off at large font sizes', async () => {
+    mockFetchListings.mockResolvedValue([listing({ title: 'Hybrid Desi maize seed, certified', price: 3950 })]);
+    await renderWithQuery(<ListingModerationScreen />);
+
+    const title = await screen.findByText('Hybrid Desi maize seed, certified');
+    const price = screen.getByText(/Rs 3,950\/kg/);
+    expect(title.props.numberOfLines).toBeUndefined();
+    expect(price.props.numberOfLines).toBeUndefined();
+  });
+
+  it('asks for confirmation before deactivating, then deactivates', async () => {
     mockFetchListings.mockResolvedValue([listing()]);
     mockUpdateListingStatus.mockResolvedValue(undefined);
     await renderWithQuery(<ListingModerationScreen />);
     await screen.findByText('Wheat Seeds');
 
-    await fireEvent.press(screen.getByText('Deactivate'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Deactivate Wheat Seeds' }));
+    // The row's button only asks; the sheet, named after the listing, decides.
+    expect(mockUpdateListingStatus).not.toHaveBeenCalled();
+    expect(screen.getByText(/Buyers stop seeing this listing/)).toBeTruthy();
+    expect(screen.getAllByText('Deactivate Wheat Seeds').length).toBeGreaterThan(0);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Deactivate listing' }));
 
     expect(mockUpdateListingStatus).toHaveBeenCalledWith('listing-1', 'inactive');
+    expect(await screen.findByText('Wheat Seeds deactivated')).toBeTruthy();
   });
 
-  it('activates an inactive listing', async () => {
+  it('backing out of the sheet leaves the listing as it was', async () => {
+    mockFetchListings.mockResolvedValue([listing()]);
+    await renderWithQuery(<ListingModerationScreen />);
+    await screen.findByText('Wheat Seeds');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Deactivate Wheat Seeds' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Not now' }));
+
+    expect(screen.queryByText(/Buyers stop seeing this listing/)).toBeNull();
+    expect(mockUpdateListingStatus).not.toHaveBeenCalled();
+  });
+
+  it('activates an inactive listing straight away, since that undoes a deactivation', async () => {
     mockFetchListings.mockResolvedValue([listing({ status: 'inactive' })]);
     mockUpdateListingStatus.mockResolvedValue(undefined);
     await renderWithQuery(<ListingModerationScreen />);
     await screen.findByText('Wheat Seeds');
 
-    await fireEvent.press(screen.getByText('Activate'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Activate Wheat Seeds' }));
 
     expect(mockUpdateListingStatus).toHaveBeenCalledWith('listing-1', 'active');
+    expect(await screen.findByText('Wheat Seeds activated')).toBeTruthy();
   });
 
   it('tells an admin without a second factor to set one up (the status route needs it)', async () => {
@@ -111,11 +150,12 @@ describe('ListingModerationScreen', () => {
     await renderWithQuery(<ListingModerationScreen />);
     await screen.findByText('Wheat Seeds');
 
-    await fireEvent.press(screen.getByText('Deactivate'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Deactivate Wheat Seeds' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Deactivate listing' }));
 
     // The refusal shows as a toast, in the words of the error code, and the listing keeps its state.
     expect(await screen.findByText('Could not update the listing. This action needs two-step verification.')).toBeTruthy();
-    expect(screen.getByText('Deactivate')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Deactivate Wheat Seeds' })).toBeTruthy();
   });
 
   it('hides the toggle action for sold listings', async () => {

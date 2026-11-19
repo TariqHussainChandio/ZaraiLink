@@ -91,7 +91,7 @@ describe('CropListScreen', () => {
     await renderWithQuery(<CropListScreen {...props} />);
     await screen.findByText('No crops recorded');
 
-    await fireEvent.press(screen.getByText('+ Add Crop'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Crop' }));
     expect(props.navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.AddCrop, { farmId: 'farm-1' });
   });
 });

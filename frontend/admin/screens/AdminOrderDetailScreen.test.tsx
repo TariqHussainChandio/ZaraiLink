@@ -166,10 +166,10 @@ describe('AdminOrderDetailScreen', () => {
     expect(screen.getByText(/ZaraiLink holds no money/)).toBeTruthy();
     expect(mockResolve).not.toHaveBeenCalled();
     await fireEvent.changeText(screen.getByLabelText('Reason'), '  Goods arrived spoiled  ');
-    await fireEvent.press(sheetButton('Refund the buyer'));
+    await fireEvent.press(sheetButton('Settle for the buyer'));
 
     expect(mockResolve).toHaveBeenCalledWith('order-1', 'refunded', 'Goods arrived spoiled');
-    expect(await screen.findByText('Dispute settled: the buyer is to be refunded.')).toBeTruthy();
+    expect(await screen.findByText('Dispute settled for the buyer. The seller refunds them directly.')).toBeTruthy();
     await waitFor(() => expect(screen.queryByText('Settle dispute')).toBeNull());
   });
 
@@ -195,7 +195,7 @@ describe('AdminOrderDetailScreen', () => {
 
     await fireEvent.press(screen.getByText('Settle dispute'));
     await fireEvent.changeText(screen.getByLabelText('Reason'), '   ');
-    await fireEvent.press(sheetButton('Refund the buyer'));
+    await fireEvent.press(sheetButton('Settle for the buyer'));
 
     expect(screen.getByText('Say why you settle it this way')).toBeTruthy();
     expect(mockResolve).not.toHaveBeenCalled();
@@ -220,7 +220,7 @@ describe('AdminOrderDetailScreen', () => {
 
     await fireEvent.press(screen.getByText('Settle dispute'));
     await fireEvent.changeText(screen.getByLabelText('Reason'), 'Goods arrived spoiled');
-    await fireEvent.press(sheetButton('Refund the buyer'));
+    await fireEvent.press(sheetButton('Settle for the buyer'));
 
     expect(await screen.findByText('This action needs two-step verification.')).toBeTruthy();
   });

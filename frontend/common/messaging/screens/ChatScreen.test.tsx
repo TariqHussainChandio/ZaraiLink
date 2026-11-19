@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ChatScreen } from './ChatScreen';
 import {
@@ -117,5 +118,26 @@ describe('ChatScreen', () => {
 
     expect(await screen.findByTestId('attachment-image-conv-1/seller-1/img.jpg')).toBeTruthy();
     expect(mockResolveAttachmentUrls).toHaveBeenCalledWith(['conv-1/seller-1/img.jpg']);
+  });
+
+  it('announces a message from the other person as it arrives, but not history or own sends (A8, F6)', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => undefined);
+    mockFetchMessages.mockResolvedValue([message()]);
+    mockSendMessage.mockResolvedValue(message({ id: 'm2', sender_id: 'buyer-1', body: 'Yes please!' }));
+    await renderWithQuery(<ChatScreen {...makeProps()} />);
+    await screen.findByText('Hello, is it still in stock?');
+    expect(announce).not.toHaveBeenCalled();
+
+    await fireEvent.changeText(screen.getByPlaceholderText('Type a message...'), 'Yes please!');
+    await fireEvent.press(screen.getByLabelText('Send message'));
+    await screen.findByText('Yes please!');
+    expect(announce).not.toHaveBeenCalled();
+
+    const onIncoming = mockUseRealtimeMessages.mock.calls.at(-1)![1] as (incoming: Message) => void;
+    await act(async () => onIncoming(message({ id: 'm3', body: 'Delivery tomorrow?' })));
+    expect(await screen.findByText('Delivery tomorrow?')).toBeTruthy();
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith('New message from Green Farms: Delivery tomorrow?');
+    announce.mockRestore();
   });
 });

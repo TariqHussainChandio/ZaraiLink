@@ -1,3 +1,4 @@
+import { Pencil, Settings, Store } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Avatar, Button, RoleBadge } from '../../components';
@@ -37,12 +38,14 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
 
       <Button
         label="Edit Profile"
+        icon={Pencil}
         onPress={() => navigation.navigate(PROFILE_ROUTES.EditProfile)}
         style={styles.action}
       />
       {profile.role === 'dealer' ? (
         <Button
           label="Business details"
+          icon={Store}
           variant="secondary"
           onPress={() => navigation.navigate(PROFILE_ROUTES.BusinessDetails)}
           style={styles.action}
@@ -50,6 +53,7 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
       ) : null}
       <Button
         label="Settings"
+        icon={Settings}
         variant="secondary"
         onPress={() => navigation.navigate(PROFILE_ROUTES.Settings)}
         style={styles.action}
@@ -60,7 +64,8 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
 
 function Row({ label, value, styles }: { label: string; value: string; styles: ReturnType<typeof makeStyles> }) {
   return (
-    <View style={styles.row}>
+    // One stop for TalkBack: the label and its value are read together.
+    <View style={styles.row} accessible accessibilityLabel={`${label}: ${value === '—' ? 'not set' : value}`}>
       <Text style={styles.rowLabel}>{label}</Text>
       <Text style={styles.rowValue}>{value}</Text>
     </View>

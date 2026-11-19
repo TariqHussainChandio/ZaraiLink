@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { AuthApiError } from '@supabase/supabase-js';
@@ -29,7 +28,6 @@ async function chooseNewPassword(password = 'secret123', confirm = password) {
 beforeEach(() => {
   mockUpdatePassword.mockReset();
   mockReauthenticate.mockReset();
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -67,7 +65,7 @@ describe('ChangePasswordScreen', () => {
 
     expect(mockUpdatePassword).toHaveBeenCalledWith('secret123');
     expect(mockReauthenticate).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('Password updated', 'Your password has been changed.');
+    expect(await screen.findByText('Password changed')).toBeTruthy();
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
 

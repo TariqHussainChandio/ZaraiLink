@@ -1,9 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Save } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Button, Chip, EmptyState, TextField, LocationPicker, Spinner } from '../../common/components';
+import {
+  Banner,
+  Button,
+  Chip,
+  LocationPicker,
+  ScreenState,
+  SkeletonList,
+  TextField,
+  useToast,
+} from '../../common/components';
 import { useOwnExpertProfile, useSaveExpertProfile } from '../hooks/experts';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
@@ -51,10 +61,14 @@ export function ExpertApplicationScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const { data: ownProfile, isLoading: loading, error, refetch } = useOwnExpertProfile(!!userId);
+  const profileQuery = useOwnExpertProfile(!!userId);
+  const { data: ownProfile, isLoading: loading, error } = profileQuery;
   const saveProfile = useSaveExpertProfile();
+  const toast = useToast();
   const [specializations, setSpecializations] = useState<ExpertSpecialization[]>([]);
-  const load = () => refetch();
+  const [specializationError, setSpecializationError] = useState<string | undefined>();
+  // A save that failed stays on screen beside the form, so the expert reads it before trying again.
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const applicationSchema = useMemo(() => buildApplicationSchema(), []);
 
   const {
@@ -101,6 +115,7 @@ export function ExpertApplicationScreen() {
   }, [ownProfile, reset]);
 
   const toggleSpecialization = (specialization: ExpertSpecialization) => {
+    setSpecializationError(undefined);
     setSpecializations(current =>
       current.includes(specialization) ? current.filter(s => s !== specialization) : [...current, specialization],
     );
@@ -108,8 +123,9 @@ export function ExpertApplicationScreen() {
 
   const onSubmit = async (values: ApplicationFormValues) => {
     if (!userId) return;
+    setSubmitError(null);
     if (specializations.length === 0) {
-      Alert.alert('Select at least one specialization');
+      setSpecializationError('Select at least one specialization');
       return;
     }
     try {
@@ -121,21 +137,26 @@ export function ExpertApplicationScreen() {
         institutionAffiliation: institutionAffiliation || undefined,
       };
       await saveProfile.mutateAsync({ input, exists: !!ownProfile });
-      Alert.alert('Profile updated');
+      toast.success('Profile updated');
     } catch (err) {
-      Alert.alert('Could not save', errorMessage(err));
+      setSubmitError(errorMessage(err));
     }
   };
 
-  if (loading) return <Spinner fullscreen />;
-  if (error && !ownProfile) {
+  if (loading || (error && !ownProfile)) {
     return (
-      <EmptyState
-        title="Couldn't load your application"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
+      <View style={styles.container}>
+        <ScreenState
+          // "No profile yet" (null) is a valid answer that opens an empty form; only a failed or first load lands here.
+          query={{ ...profileQuery, data: undefined }}
+          errorTitle="Couldn't load your application"
+          skeleton={
+            <View style={styles.content}>
+              <SkeletonList count={5} />
+            </View>
+          }
+        />
+      </View>
     );
   }
 
@@ -227,16 +248,32 @@ export function ExpertApplicationScreen() {
         onCityChange={value => setValue('city', value)}
       />
 
-      <Text style={styles.label}>Specializations</Text>
+      <Text style={styles.label} accessibilityRole="header">
+        Specializations
+      </Text>
       <View style={styles.chipsRow}>
         {SPECIALIZATION_OPTIONS.map(option => {
           const selected = specializations.includes(option.id);
           return <Chip key={option.id} label={option.label} selected={selected} onPress={() => toggleSpecialization(option.id)} />;
         })}
       </View>
+      {specializationError ? (
+        <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          {specializationError}
+        </Text>
+      ) : null}
+
+      {submitError ? (
+        <View style={styles.banner}>
+          <Banner tone="danger" title="Could not save">
+            {submitError}
+          </Banner>
+        </View>
+      ) : null}
 
       <Button
         label="Save changes"
+        icon={Save}
         loading={saveProfile.isPending}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
@@ -263,6 +300,14 @@ function makeStyles({ colors, space, typography }: Theme) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: space[2],
+      marginBottom: space[3],
+    },
+    error: {
+      ...typography.caption,
+      color: colors.status.danger.ink,
+      marginBottom: space[3],
+    },
+    banner: {
       marginBottom: space[3],
     },
     submit: {

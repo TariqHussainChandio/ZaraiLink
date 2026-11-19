@@ -2,7 +2,7 @@ import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { Check, ChevronDown, LogOut, MapPin, TriangleAlert } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ListGroup, ListRow, Sheet, TopAppBar } from '../../common/components';
+import { ListGroup, Sheet, TopAppBar } from '../../common/components';
 import { type Accent, type Theme, useRoleAccent, useTheme } from '../../theme';
 import { useBusinessName } from '../hooks/business';
 import { useStockAlerts } from '../hooks/inventory';
@@ -10,6 +10,7 @@ import { useSelectedLocation } from '../hooks/location';
 import { LOCATION_KIND_LABELS } from '../types/inventory';
 import { INVENTORY_ROUTES, type InventoryStackParamList } from '../types/navigation';
 import { useExitInventory } from './InventoryExit';
+import { SpokenRow } from './SpokenRow';
 
 /**
  * The app bar of each inventory tab's first screen (SRDS §16): the system's band and name, the dealer's business, the
@@ -63,8 +64,11 @@ export function InventoryShellHeader() {
       <Sheet visible={choosing} onClose={() => setChoosing(false)} title="Location">
         <ListGroup>
           {locations.map(item => (
-            <ListRow
+            // The chosen location is read as selected, not only marked with a check (A8).
+            <SpokenRow
               key={item.id}
+              label={[item.name, LOCATION_KIND_LABELS[item.kind], item.is_default ? 'default' : null].filter(Boolean).join(', ')}
+              selected={item.id === location?.id}
               title={item.name}
               meta={item.is_default ? `${LOCATION_KIND_LABELS[item.kind]} · Default` : LOCATION_KIND_LABELS[item.kind]}
               trailing={item.id === location?.id ? <Check color={accent.ink} size={theme.size.iconMd} /> : undefined}

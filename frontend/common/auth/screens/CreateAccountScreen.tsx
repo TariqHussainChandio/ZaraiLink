@@ -1,4 +1,4 @@
-import { ShoppingBag, Sprout, Stethoscope, Store, type LucideIcon } from 'lucide-react-native';
+import { LogIn, ShoppingBag, Sprout, Stethoscope, Store, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, ListGroup, ListRow } from '../../components';
@@ -40,7 +40,7 @@ export function CreateAccountScreen({ navigation }: AuthScreenProps<typeof AUTH_
       </ListGroup>
       <View style={styles.footer}>
         <Text style={styles.footerText}>Already have an account?</Text>
-        <Button label="Sign in" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
+        <Button label="Sign in" icon={LogIn} variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
       </View>
     </ScrollView>
   );

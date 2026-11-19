@@ -1,6 +1,5 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, within } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
 import { queryKeys } from '../../hooks/keys';
 import { FarmDetailScreen } from './FarmDetailScreen';
@@ -42,7 +41,6 @@ beforeEach(() => {
   mockDeleteFarm.mockReset();
   queryClient.clear();
   queryClient.setQueryData(queryKeys.referenceData.units(), [{ id: 'u1', code: 'acre', label: 'Acre', applies_to: 'area' }]);
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -84,7 +82,7 @@ describe('FarmDetailScreen', () => {
     expect(props.navigation.goBack).toHaveBeenCalledTimes(1);
   });
 
-  it('shows an alert when saving fails', async () => {
+  it('shows an error toast when saving fails, and stays on the form', async () => {
     mockFetchFarmById.mockResolvedValue(farm);
     mockUpdateFarm.mockRejectedValue(new Error('Server unavailable'));
     const props = makeProps();
@@ -93,24 +91,41 @@ describe('FarmDetailScreen', () => {
 
     await fireEvent.press(screen.getByText('Save Changes'));
 
-    expect(Alert.alert).toHaveBeenCalledWith('Failed to update farm', 'Server unavailable');
+    expect(await screen.findByText('Farm not saved. Server unavailable')).toBeTruthy();
     expect(props.navigation.goBack).not.toHaveBeenCalled();
   });
 
-  it('deletes the farm after confirming the alert and pops to top', async () => {
+  it('asks in a sheet before deleting, then deletes the farm and pops to top', async () => {
     mockFetchFarmById.mockResolvedValue(farm);
     mockDeleteFarm.mockResolvedValue(undefined);
-    (Alert.alert as jest.Mock).mockImplementation((_title, _message, buttons) => {
-      buttons?.find((b: { text: string }) => b.text === 'Delete')?.onPress?.();
-    });
     const props = makeProps();
     await renderWithQuery(<FarmDetailScreen {...props} />, queryClient);
     await screen.findByDisplayValue('Green Acres');
 
     await fireEvent.press(screen.getByText('Delete Farm'));
+    // The first press only opens the confirmation; nothing is deleted yet.
+    expect(screen.getByText('Delete this farm?')).toBeTruthy();
+    expect(mockDeleteFarm).not.toHaveBeenCalled();
+
+    // The sheet's own Delete Farm button confirms.
+    await fireEvent.press(within(screen.getByLabelText('Delete this farm?')).getByText('Delete Farm'));
 
     expect(mockDeleteFarm).toHaveBeenCalledWith('farm-1');
     expect(props.navigation.popToTop).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Farm deleted')).toBeTruthy();
+  });
+
+  it('keeps the farm when the sheet is dismissed with Keep Farm', async () => {
+    mockFetchFarmById.mockResolvedValue(farm);
+    const props = makeProps();
+    await renderWithQuery(<FarmDetailScreen {...props} />, queryClient);
+    await screen.findByDisplayValue('Green Acres');
+
+    await fireEvent.press(screen.getByText('Delete Farm'));
+    await fireEvent.press(screen.getByText('Keep Farm'));
+
+    expect(mockDeleteFarm).not.toHaveBeenCalled();
+    expect(props.navigation.popToTop).not.toHaveBeenCalled();
   });
 
   it('navigates to CropList for this farm', async () => {

@@ -33,7 +33,7 @@ import { renderTabBar, tabOptions } from '../tabOptions';
 import { ProfileNavigator, type ProfileStackParamList } from './ProfileNavigator';
 
 /** Every admin screen; each admin tab's stack registers the ones it holds. */
-export type AdminStackParamList = {
+type AdminStackParamList = {
   [ADMIN_HOME_ROUTES.Dashboard]: undefined;
   [ADMIN_HOME_ROUTES.Analytics]: undefined;
   [ADMIN_HOME_ROUTES.Notifications]: undefined;

@@ -1,6 +1,7 @@
+import { ArrowLeft } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button, EmptyState, Spinner, StatusBadge } from '../../components';
+import { Button, ScreenState, SkeletonList, StatusBadge } from '../../components';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { usePayment } from '../hooks/payments';
 import { useTheme, type Theme } from '../../../theme';
@@ -13,7 +14,8 @@ const RESULT_COPY: Record<PaymentStatus, { title: string; description: string }>
   successful: { title: 'Payment Confirmed', description: 'The seller has confirmed they received your payment.' },
   failed: { title: 'Payment Failed', description: 'This payment could not be completed.' },
   cancelled: { title: 'Payment Cancelled', description: 'This payment was cancelled.' },
-  refunded: { title: 'Payment Refunded', description: 'This payment has been refunded.' },
+  // BR-11: the seller paid the money back directly; ZaraiLink never held it, so it never refunds anything itself.
+  refunded: { title: 'Payment Returned', description: 'The seller returned this payment to you directly.' },
   pending: { title: 'Payment Pending', description: 'Still waiting for confirmation.' },
   processing: { title: 'Payment Processing', description: 'Still waiting for confirmation.' },
 };
@@ -22,17 +24,19 @@ export function PaymentResultScreen({ route, navigation }: OrdersScreenProps<'Pa
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { paymentId } = route.params;
-  const { data: payment, isPending, error, refetch } = usePayment(paymentId);
+  const paymentQuery = usePayment(paymentId);
+  const { data: payment } = paymentQuery;
 
-  if (isPending) return <Spinner fullscreen />;
-  if (error || !payment) {
+  if (!payment) {
     return (
-      <EmptyState
-        title="Couldn't load payment result"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={() => refetch()}
-      />
+      <View style={styles.stateContainer}>
+        <ScreenState
+          query={paymentQuery}
+          skeleton={<SkeletonList count={2} />}
+          empty={{ title: 'Payment not found' }}
+          errorTitle="Couldn't load payment result"
+        />
+      </View>
     );
   }
 
@@ -51,6 +55,7 @@ export function PaymentResultScreen({ route, navigation }: OrdersScreenProps<'Pa
       </Text>
       <Button
         label="Back to Order"
+        icon={ArrowLeft}
         onPress={() =>
           navigation.reset({
             index: 1,
@@ -68,6 +73,11 @@ export function PaymentResultScreen({ route, navigation }: OrdersScreenProps<'Pa
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
+    // The loading and error states fill the width; the centred column below would shrink them.
+    stateContainer: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.surface,

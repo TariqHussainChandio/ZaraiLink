@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { FileText, LogOut, RefreshCw, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, Card, StatusBadge } from '../../components';
@@ -81,14 +82,16 @@ export function ApplicationStatusScreen() {
       <View style={styles.actions}>
         <Button
           label={draft ? 'Complete your application' : rejected ? 'Update and resubmit' : 'View your application'}
+          icon={FileText}
           variant={draft || rejected ? 'primary' : 'secondary'}
           onPress={() => navigation.navigate(APPROVAL_ROUTES.ApplicationWizard)}
           fullWidth
         />
-        <Button label="Check again" variant="quiet" onPress={refresh} fullWidth />
-        <Button label="Sign out" variant="secondary" onPress={signOut} fullWidth />
+        <Button label="Check again" icon={RefreshCw} variant="quiet" onPress={refresh} fullWidth />
+        <Button label="Sign out" icon={LogOut} variant="secondary" onPress={signOut} fullWidth />
         <Button
           label="Delete account"
+          icon={Trash2}
           variant="quiet"
           onPress={() => navigation.navigate(APPROVAL_ROUTES.DeleteAccount)}
           fullWidth

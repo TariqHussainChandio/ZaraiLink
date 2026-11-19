@@ -63,8 +63,23 @@ describe('ApplicationDetailScreen (SRDS §12)', () => {
     expect(screen.getByText('NTN-4455')).toBeTruthy();
     expect(screen.getByText('Hyderabad, Sindh, Pakistan')).toBeTruthy();
     expect(screen.getByText('Business licence')).toBeTruthy();
-    expect(screen.getByText('licence.pdf')).toBeTruthy();
-    expect(screen.getByText('certificate.jpg')).toBeTruthy();
+    // The file names stay visible beside the document type, for the admin's own check.
+    expect(screen.getByText('File: licence.pdf')).toBeTruthy();
+    expect(screen.getByText('File: certificate.jpg')).toBeTruthy();
+  });
+
+  it('names each View button after the document type, not the uploaded file', async () => {
+    await renderFor('dealer');
+    await screen.findByText('Dealer Bilal');
+    expect(screen.getByRole('button', { name: 'View Business licence' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'View Business registration certificate' })).toBeTruthy();
+    expect(screen.queryByLabelText('View licence.pdf')).toBeNull();
+  });
+
+  it('names a document sent before the catalogue had its type as an earlier document', async () => {
+    (fetchDealerApplication as jest.Mock).mockResolvedValue(dealer({ dealer_documents: [{ ...pdf, required_document: null }] }));
+    await renderFor('dealer');
+    expect(await screen.findByRole('button', { name: 'View Earlier document' })).toBeTruthy();
   });
 
   it('opens a PDF in the phone’s viewer and a photo in the app, each from its own signed link', async () => {
@@ -73,13 +88,13 @@ describe('ApplicationDetailScreen (SRDS §12)', () => {
     (resolveDealerDocumentUrl as jest.Mock).mockImplementation((_d: string, id: string) => Promise.resolve(`https://signed/${id}`));
     await renderFor('dealer', navigate);
 
-    await fireEvent.press(await screen.findByLabelText('View licence.pdf'));
+    await fireEvent.press(await screen.findByLabelText('View Business licence'));
     await waitFor(() => expect(openURL).toHaveBeenCalledWith('https://signed/doc-pdf'));
     expect(resolveDealerDocumentUrl).toHaveBeenCalledWith('dealer-1', 'doc-pdf');
 
-    await fireEvent.press(screen.getByLabelText('View certificate.jpg'));
+    await fireEvent.press(screen.getByLabelText('View Business registration certificate'));
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.DocumentViewer, { url: 'https://signed/doc-img', title: 'certificate.jpg' }),
+      expect(navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.DocumentViewer, { url: 'https://signed/doc-img', title: 'Business registration certificate' }),
     );
     openURL.mockRestore();
   });
@@ -94,6 +109,8 @@ describe('ApplicationDetailScreen (SRDS §12)', () => {
     await fireEvent.press(screen.getByText('Approve application'));
     expect(decideDealerApplication).toHaveBeenCalledWith('dealer-1', 'approved', undefined);
     expect(await screen.findByText('The applicant has been emailed.')).toBeTruthy();
+    // The decision itself is confirmed by a toast, which TalkBack announces.
+    expect(screen.getByText('Dealer Bilal approved')).toBeTruthy();
   });
 
   it('backing out of the approval decides nothing', async () => {
@@ -117,6 +134,16 @@ describe('ApplicationDetailScreen (SRDS §12)', () => {
     await fireEvent.press(screen.getByText('Reject application'));
     await waitFor(() => expect(decideDealerApplication).toHaveBeenCalledWith('dealer-1', 'rejected', 'The business licence has expired.'));
     expect(await screen.findByText(/could not be sent/)).toBeTruthy();
+    expect(screen.getByText('Dealer Bilal rejected')).toBeTruthy();
+  });
+
+  it('confirms no decision with a toast when the API refuses it', async () => {
+    (decideDealerApplication as jest.Mock).mockRejectedValue(new Error('Server error'));
+    await renderFor('dealer');
+    await fireEvent.press(await screen.findByText('Approve'));
+    await fireEvent.press(screen.getByText('Approve application'));
+    expect(await screen.findByText('Server error')).toBeTruthy();
+    expect(screen.queryByText('Dealer Bilal approved')).toBeNull();
   });
 
   it('offers no decision on a draft or a decided application, and shows a rejection’s reason', async () => {
@@ -152,12 +179,13 @@ describe('ApplicationDetailScreen (SRDS §12)', () => {
     expect(screen.getByText('Sindh Agriculture University')).toBeTruthy();
     expect(screen.getByText('Plant Diseases')).toBeTruthy();
     expect(screen.getByText('Degree certificate')).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('View degree.pdf'));
+    await fireEvent.press(screen.getByLabelText('View Degree certificate'));
     await waitFor(() => expect(resolveExpertDocumentUrl).toHaveBeenCalledWith('expert-1', 'edoc'));
 
     await fireEvent.press(screen.getByText('Approve'));
     await fireEvent.press(screen.getByText('Approve application'));
     expect(reviewExpertVerification).toHaveBeenCalledWith('expert-1', 'approved', '');
+    expect(await screen.findByText('Dr Sana approved')).toBeTruthy();
     expect(fetchDealerApplication).not.toHaveBeenCalled();
   });
 });

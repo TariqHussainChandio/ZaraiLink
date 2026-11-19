@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { lightTheme } from '../../theme';
+import { Badge } from './Badge';
+import { StatusBadge } from './StatusBadge';
 import { ListGroup, ListRow } from './ListRow';
 
 describe('ListRow', () => {
@@ -12,10 +14,41 @@ describe('ListRow', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('is not a button when it opens nothing', async () => {
+  it('is not a button when it opens nothing, but is still read as one stop', async () => {
     await render(<ListRow title="Nadia Batool" meta="Basmati rice, 12 maunds" />);
     expect(screen.getByText('Nadia Batool')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
+    const row = screen.getByLabelText('Nadia Batool, Basmati rice, 12 maunds');
+    expect(row.props.accessible).toBe(true);
+  });
+
+  it('reads its status badge and figures as part of the one label (A8)', async () => {
+    await render(
+      <ListRow
+        title="Urea"
+        meta="UREA-1"
+        trailing={
+          <>
+            <Text>
+              {12} bags
+            </Text>
+            <StatusBadge kind="stock" status="low_stock" size="sm" />
+          </>
+        }
+        onPress={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Urea, UREA-1, 12 bags, Low stock' })).toBeTruthy();
+  });
+
+  it('reads a leading badge and a plain badge too, tappable or not', async () => {
+    await render(<ListRow title="Godown" leading={<StatusBadge kind="purchase" status="draft" size="sm" />} trailing={<Badge label="Default" size="sm" />} />);
+    expect(screen.getByLabelText('Godown, Draft, Default')).toBeTruthy();
+  });
+
+  it('takes a label from the caller when one is given', async () => {
+    await render(<ListRow title="Urea" trailing={<Text>12</Text>} accessibilityLabel="Urea, 12 bags in stock" />);
+    expect(screen.getByLabelText('Urea, 12 bags in stock')).toBeTruthy();
   });
 
   it('is at least a full row tall, so it is an easy target', async () => {

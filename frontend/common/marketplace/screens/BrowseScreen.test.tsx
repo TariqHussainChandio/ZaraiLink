@@ -90,7 +90,9 @@ beforeEach(() => {
 
 describe('BrowseScreen', () => {
   it('loads and renders listings on mount', async () => {
-    mockFetchListings.mockResolvedValue([listing()]);
+    // One page, then the empty page that ends the feed (beforeEach), as the API does. A page that never ends kept
+    // FlashList asking for the next one after the test was over (Jest lays the list out at zero height).
+    mockFetchListings.mockResolvedValueOnce([listing()]);
     await renderWithQuery(
       <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
     );
@@ -135,7 +137,7 @@ describe('BrowseScreen', () => {
   });
 
   it('navigates to ListingDetail when a listing is pressed', async () => {
-    mockFetchListings.mockResolvedValue([listing({ id: 'listing-42' })]);
+    mockFetchListings.mockResolvedValueOnce([listing({ id: 'listing-42' })]);
     const navigation = makeNavigation();
     await renderWithQuery(
       <BrowseScreen navigation={navigation} route={{} as never} />,
@@ -166,7 +168,7 @@ describe('BrowseScreen', () => {
     expect(await screen.findByText("Couldn't load listings")).toBeTruthy();
     expect(screen.queryByText('No connection to the server')).toBeNull();
 
-    mockFetchListings.mockResolvedValue([listing()]);
+    mockFetchListings.mockResolvedValueOnce([listing()]);
     await fireEvent.press(screen.getByText('Retry'));
     expect(await screen.findByText('Wheat seeds')).toBeTruthy();
   });
@@ -221,6 +223,25 @@ describe('BrowseScreen', () => {
     expect(
       screen.getByText('Showing the last copy saved on this phone.'),
     ).toBeTruthy();
+    expect(screen.getByText('Wheat seeds')).toBeTruthy();
+  });
+
+  it('does not keep requesting the next page after a page fails', async () => {
+    // The first page is full, so there may be a next one; asking for it fails. The list must not ask again and again.
+    mockFetchListings
+      .mockResolvedValueOnce([listing()])
+      .mockRejectedValue(
+        new ApiError({ status: 500, code: 'unknown', kind: 'server', message: 'Boom' }),
+      );
+    await renderWithQuery(
+      <BrowseScreen navigation={makeNavigation()} route={{} as never} />,
+    );
+
+    expect(await screen.findByText("Couldn't load listings")).toBeTruthy();
+    const callsAfterFailure = mockFetchListings.mock.calls.length;
+    await new Promise(resolve => setTimeout(resolve, 200));
+    expect(mockFetchListings.mock.calls.length).toBe(callsAfterFailure);
+    expect(callsAfterFailure).toBeLessThanOrEqual(2);
     expect(screen.getByText('Wheat seeds')).toBeTruthy();
   });
 });

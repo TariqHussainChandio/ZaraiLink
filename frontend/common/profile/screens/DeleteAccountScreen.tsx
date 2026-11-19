@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Trash2, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, TextField } from '../../components';
+import { Banner, Button, Sheet, TextField } from '../../components';
 import { useDeleteOwnAccount } from '../hooks/profile';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
@@ -34,27 +35,27 @@ export function DeleteAccountScreen() {
     defaultValues: { password: '' },
   });
 
-  const onSubmit = async (values: DeleteAccountFormValues) => {
+  // The password waits here while the confirmation sheet is open; it is the last check before the account goes.
+  const [confirmPassword, setConfirmPassword] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const onSubmit = (values: DeleteAccountFormValues) => {
     setSubmitError(null);
-    Alert.alert(
-      'Delete your account?',
-      'This cannot be undone. Are you sure you want to permanently delete your account?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteOwnAccount(values.password);
-              await signOut();
-            } catch (error) {
-              setSubmitError(errorMessage(error));
-            }
-          },
-        },
-      ],
-    );
+    setConfirmPassword(values.password);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmPassword === null) return;
+    setDeleting(true);
+    try {
+      await deleteOwnAccount(confirmPassword);
+      await signOut();
+    } catch (error) {
+      setConfirmPassword(null);
+      setSubmitError(errorMessage(error));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -78,22 +79,37 @@ export function DeleteAccountScreen() {
       />
 
       {submitError ? (
-
         <View style={styles.errorBanner}>
-
           <Banner tone="danger" title={submitError} />
-
         </View>
-
       ) : null}
 
       <Button
         label="Delete my account"
+        icon={Trash2}
         variant="danger"
         loading={isSubmitting}
         onPress={handleSubmit(onSubmit)}
         style={styles.submit}
       />
+
+      <Sheet
+        visible={confirmPassword !== null}
+        onClose={() => (deleting ? undefined : setConfirmPassword(null))}
+        title="Delete your account?"
+      >
+        <Text style={styles.sheetText}>This cannot be undone. Your account is deleted for good.</Text>
+        <View style={styles.sheetActions}>
+          <Button label="Delete" icon={Trash2} variant="danger" loading={deleting} onPress={confirmDelete} />
+          <Button
+            label="Cancel"
+            icon={X}
+            variant="secondary"
+            disabled={deleting}
+            onPress={() => setConfirmPassword(null)}
+          />
+        </View>
+      </Sheet>
     </View>
   );
 }
@@ -120,6 +136,14 @@ function makeStyles({ colors, space, typography }: Theme) {
     },
     submit: {
       marginTop: space[2],
+    },
+    sheetText: {
+      ...typography.body,
+      color: colors.ink2,
+      marginBottom: space[4],
+    },
+    sheetActions: {
+      gap: space[2],
     },
   });
 }

@@ -1,22 +1,24 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { Plus, Tractor } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Card, EmptyState, Spinner } from '../../common/components';
+import { Button, Card, ScreenState } from '../../common/components';
 import { HOME_ROUTES } from '../../common/constants/routes';
 import { useFarms } from '../hooks/farmer';
 import { useAuthStore } from '../../state/authStore';
-import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
+import { useTheme, type Theme } from '../../theme';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
+
+const AREA = new Intl.NumberFormat('en-PK', { maximumFractionDigits: 2 });
 
 export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
   const theme = useTheme();
-  const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const { data: farms = [], isPending, error, refetch } = useFarms(!!userId);
-  const loading = isPending && !!userId;
-  const load = () => refetch();
+  const farms = useFarms(!!userId);
+  const { refetch } = farms;
+  const newFarm = () => navigation.navigate(HOME_ROUTES.CreateFarm);
 
   useFocusEffect(
     useCallback(() => {
@@ -24,57 +26,49 @@ export function FarmListScreen({ navigation }: HomeScreenProps<'FarmList'>) {
     }, [userId, refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
-  if (error && farms.length === 0) {
-    return (
-      <EmptyState
-        title="Couldn't load farms"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <FlashList
-        data={farms}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => navigation.navigate(HOME_ROUTES.FarmDetail, { farmId: item.id })}
-          >
-            <Card style={styles.card}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.meta}>
-                {item.area
-                  ? `${item.area} ${item.land_unit ?? ''}`.trim()
-                  : 'Area not set'}
-              </Text>
-            </Card>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <EmptyState
-            title="No farms yet"
-            description="Add your first farm to get started."
-          />
-        }
-      />
-      <TouchableOpacity
-        accessibilityRole="button"
-        style={styles.fab}
-        onPress={() => navigation.navigate(HOME_ROUTES.CreateFarm)}
+      <ScreenState
+        // A disabled query (no signed-in user) stays pending forever; it is not loading, so it must not show a skeleton.
+        query={{ ...farms, isPending: farms.isPending && !!userId }}
+        errorTitle="Couldn't load farms"
+        empty={{
+          title: 'No farms yet',
+          description: 'Add your first farm to get started.',
+          icon: Tractor,
+        }}
       >
-        <Text style={styles.fabLabel}>+ New Farm</Text>
-      </TouchableOpacity>
+        {data => (
+          <FlashList
+            data={data}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => {
+              const area = item.area ? `${AREA.format(item.area)} ${item.land_unit ?? ''}`.trim() : 'Area not set';
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.name}, ${area}`}
+                  accessibilityHint="Opens this farm"
+                  onPress={() => navigation.navigate(HOME_ROUTES.FarmDetail, { farmId: item.id })}
+                  style={styles.row}
+                >
+                  <Card>
+                    <Text style={styles.name}>{item.name}</Text>
+                    <Text style={styles.meta}>{area}</Text>
+                  </Card>
+                </Pressable>
+              );
+            }}
+          />
+        )}
+      </ScreenState>
+      <Button label="New Farm" icon={Plus} size="lg" fullWidth={false} onPress={newFarm} style={styles.fab} />
     </View>
   );
 }
 
-function makeStyles({ colors, space, radius, typography, shadows }: Theme, accent: Accent) {
+function makeStyles({ colors, space, size, typography, shadows }: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -82,9 +76,10 @@ function makeStyles({ colors, space, radius, typography, shadows }: Theme, accen
     },
     list: {
       padding: space[4],
-      paddingBottom: space[12],
+      paddingBottom: space[12] + size.touchMin,
     },
-    card: {
+    row: {
+      minHeight: size.touchMin,
       marginBottom: space[3],
     },
     name: {
@@ -100,15 +95,7 @@ function makeStyles({ colors, space, radius, typography, shadows }: Theme, accen
       position: 'absolute',
       right: space[4],
       bottom: space[4],
-      backgroundColor: accent.fill,
-      paddingHorizontal: space[4],
-      paddingVertical: space[3],
-      borderRadius: radius.pill,
       ...shadows.elev2,
-    },
-    fabLabel: {
-      ...typography.label,
-      color: colors.onAccent,
     },
   });
 }

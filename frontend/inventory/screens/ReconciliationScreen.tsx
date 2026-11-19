@@ -40,8 +40,18 @@ export function ReconciliationScreen({ navigation }: InventoryScreenProps<typeof
   const renderRow = ({ item: row }: { item: ReconciliationReportRow }) => {
     const unit = productById.get(row.product_id)?.unit;
     const status = row.balanced ? 'balanced' : 'unbalanced';
+    const outBy = `Out by ${formatNet(row.current_stock - row.ledger_total)}${unit ? ` ${unit}` : ''}`;
+    // One stop per product for TalkBack (A8: about twenty before): the verdict and the stock first, then each term.
+    const spoken = [
+      `${row.name}: ${row.balanced ? 'Balanced' : outBy}, ${formatQuantity(row.current_stock, unit)} on hand`,
+      row.balanced ? null : `ledger total ${formatQuantity(row.ledger_total, unit)}`,
+      ...TERMS.map(term => `${term.label} ${formatNet(Number(row[term.key]))}`),
+    ]
+      .filter(Boolean)
+      .join(', ');
     return (
       <Card style={styles.card}>
+        <View accessible accessibilityLabel={spoken} style={styles.facts}>
         <View style={styles.row}>
           <View style={styles.grow}>
             <Text style={styles.name}>{row.name}</Text>
@@ -65,10 +75,9 @@ export function ReconciliationScreen({ navigation }: InventoryScreenProps<typeof
         </View>
         {row.balanced ? null : (
           // How far the stock is from what the ledger explains: positive means more on hand than the movements account for.
-          <Text style={[styles.body, styles.mismatch]}>
-            {`Out by ${formatNet(row.current_stock - row.ledger_total)}${unit ? ` ${unit}` : ''}`}
-          </Text>
+          <Text style={[styles.body, styles.mismatch]}>{outBy}</Text>
         )}
+        </View>
         {row.balanced ? null : (
           <Button
             label="See movement history"
@@ -127,6 +136,7 @@ function makeStyles(theme: Theme) {
     list: { padding: theme.space[4], paddingBottom: theme.space[12] },
     header: { gap: theme.space[3], marginBottom: theme.space[3] },
     card: { gap: theme.space[1], marginBottom: theme.space[3] },
+    facts: { gap: theme.space[1] },
     name: { ...theme.typography.bodyStrong, color: theme.colors.ink },
     line: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const },
     total: {

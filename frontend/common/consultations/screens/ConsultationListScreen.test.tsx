@@ -62,7 +62,7 @@ describe('ConsultationListScreen', () => {
     await renderWithQuery(<ConsultationListScreen />);
 
     expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
-    expect(screen.getByText('Dr. Ahsan')).toBeTruthy();
+    expect(screen.getByText('Dr. Ahsan · Crop not given')).toBeTruthy();
     expect(mockFetchForUser).toHaveBeenCalledTimes(1);
     expect(mockFetchForExpert).not.toHaveBeenCalled();
   });
@@ -73,7 +73,7 @@ describe('ConsultationListScreen', () => {
     await renderWithQuery(<ConsultationListScreen />);
 
     expect(await screen.findByText('Yellowing wheat leaves')).toBeTruthy();
-    expect(screen.getByText('Ali Raza')).toBeTruthy();
+    expect(screen.getByText('Ali Raza · Crop not given')).toBeTruthy();
     expect(mockFetchForExpert).toHaveBeenCalledTimes(1);
     expect(mockFetchForUser).not.toHaveBeenCalled();
   });

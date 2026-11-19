@@ -116,11 +116,13 @@ export function SelectField({
             data={filteredOptions}
             keyExtractor={item => item.id}
             style={styles.longList}
+            // Inside the Sheet's own scrolling body, the picker's list scrolls by itself on Android.
+            nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => renderOption(item)}
           />
         ) : (
-          <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+          <ScrollView style={styles.list} nestedScrollEnabled keyboardShouldPersistTaps="handled">
             {filteredOptions.length === 0 ? <EmptyState title="No results" /> : filteredOptions.map(item => renderOption(item))}
           </ScrollView>
         )}

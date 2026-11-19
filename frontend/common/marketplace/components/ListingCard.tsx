@@ -5,6 +5,7 @@ import { useTheme, type Theme } from '../../../theme';
 import type { ListingWithRelations } from '../types/marketplace';
 import { formatRs } from '../../../utils/money';
 import { statusMeta } from '../../constants/status';
+import { conditionLabel } from './listingCondition';
 
 export interface ListingCardProps {
   listing: ListingWithRelations;
@@ -15,6 +16,7 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const imageUri = listing.images[0];
+  const condition = conditionLabel(listing.condition);
   // One label for the whole card, so TalkBack reads the listing in one stop instead of each line in turn.
   const label = [
     listing.title,
@@ -23,6 +25,8 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
     listing.availability
       ? statusMeta('stock', listing.availability).label
       : null,
+    listing.brand,
+    condition,
   ]
     .filter(Boolean)
     .join(', ');
@@ -66,7 +70,7 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
             <StatusBadge kind="stock" status={listing.availability} size="sm" />
           </View>
         ) : null}
-        {listing.brand || listing.condition ? (
+        {listing.brand || condition ? (
           <View style={styles.chipRow}>
             {listing.brand ? (
               <View style={styles.chip}>
@@ -75,10 +79,10 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
                 </Text>
               </View>
             ) : null}
-            {listing.condition ? (
+            {condition ? (
               <View style={styles.chip}>
                 <Text style={styles.chipLabel} numberOfLines={1}>
-                  {listing.condition}
+                  {condition}
                 </Text>
               </View>
             ) : null}

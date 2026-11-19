@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../testUtils/renderWithProviders';
 import { queryKeys } from '../../hooks/keys';
@@ -25,7 +24,6 @@ beforeEach(() => {
   useAuthStore.setState({ user: { id: 'user-1' } as never });
   queryClient.clear();
   queryClient.setQueryData(queryKeys.referenceData.units(), [{ id: 'u1', code: 'acre', label: 'Acre', applies_to: 'area' }]);
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -68,9 +66,10 @@ describe('CreateFarmScreen', () => {
       city: null,
     });
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Farm added')).toBeTruthy();
   });
 
-  it('shows an alert when creating the farm fails', async () => {
+  it('shows an error toast when creating the farm fails, and stays on the form', async () => {
     mockCreateFarm.mockRejectedValue(new Error('Server unavailable'));
     const navigation = makeNavigation();
     await renderWithQuery(<CreateFarmScreen navigation={navigation} route={{} as never} />, queryClient);
@@ -78,7 +77,7 @@ describe('CreateFarmScreen', () => {
     await fireEvent.changeText(screen.getByLabelText('Farm name'), 'Green Acres');
     await fireEvent.press(screen.getByText('Create Farm'));
 
-    expect(Alert.alert).toHaveBeenCalledWith('Failed to create farm', 'Server unavailable');
+    expect(await screen.findByText('Farm not added. Server unavailable')).toBeTruthy();
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
 });

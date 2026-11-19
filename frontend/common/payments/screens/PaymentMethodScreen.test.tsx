@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { PaymentMethodScreen } from './PaymentMethodScreen';
@@ -33,7 +32,6 @@ beforeEach(() => {
   mockFetchPayment.mockReset();
   mockInitiate.mockReset();
   useAuthStore.setState({ user: { id: 'user-1' } as never });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -92,15 +90,17 @@ describe('PaymentMethodScreen', () => {
     });
   });
 
-  it('shows an alert when initiatePayment fails', async () => {
+  it('shows an error toast and stays on the method screen when initiatePayment fails', async () => {
     mockFetchOrder.mockResolvedValue({ total: 1500 });
     mockFetchPayment.mockResolvedValue(null);
     mockInitiate.mockRejectedValue(new Error('Gateway unavailable'));
-    await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
+    const props = makeProps();
+    await renderWithQuery(<PaymentMethodScreen {...props} />);
     await screen.findByText('Rs 1,500');
 
     await fireEvent.press(screen.getByText('Continue'));
 
-    expect(Alert.alert).toHaveBeenCalledWith('Could not start payment', 'Gateway unavailable');
+    expect(await screen.findByText('Gateway unavailable')).toBeTruthy();
+    expect(props.navigation.replace).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,4 @@
+import { LogOut, ShieldCheck } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, Card, TextField } from '../../components';
@@ -43,13 +44,14 @@ export function SecondFactorScreen() {
         ) : null}
         <Button
           label="Verify"
+          icon={ShieldCheck}
           onPress={submit}
           loading={verify.isPending}
           disabled={code.length !== 6}
           fullWidth
           style={styles.action}
         />
-        <Button label="Sign out" variant="quiet" onPress={signOut} fullWidth />
+        <Button label="Sign out" icon={LogOut} variant="quiet" onPress={signOut} fullWidth />
       </Card>
     </View>
   );

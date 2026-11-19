@@ -25,6 +25,13 @@ describe('StatusBadge', () => {
     expect(words.some(w => /held|escrow|release/.test(w))).toBe(false);
   });
 
+  it('never says the platform refunded anything: a refund is the seller paying the buyer directly (BR-11)', async () => {
+    expect(STATUS.order.refunded.label).toBe('Settled for buyer');
+    expect(STATUS.payment.refunded.label).toBe('Refunded by seller');
+    await render(<StatusBadge kind="order" status="refunded" />);
+    expect(screen.queryByText('Refunded')).toBeNull();
+  });
+
   it('draws a failure as the one solid block, with the on-accent text colour', async () => {
     await render(<StatusBadge kind="order" status="rejected" />);
     expect(colourOf(screen.getByText('Rejected'))).toBe(lightColors.onAccent);

@@ -10,6 +10,8 @@ export interface ConsultationMessageBubbleProps {
   isOwn: boolean;
   /** Signed URLs for `message.attachments`, keyed by storage path. */
   attachmentUrls: Record<string, string>;
+  /** The other person's name, read out by a screen reader on their messages ("Dr. Ahsan, 10:30: ..."). */
+  senderName?: string;
   onPressRecommendation?: (listingId: string) => void;
 }
 
@@ -17,40 +19,43 @@ export function ConsultationMessageBubble({
   message,
   isOwn,
   attachmentUrls,
+  senderName,
   onPressRecommendation,
 }: ConsultationMessageBubbleProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
+  const time = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const from = isOwn ? 'You' : senderName || 'The other person';
+  const photoCount = message.attachments.length;
+  const photos = photoCount > 0 ? `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}` : '';
+  const content = [photos, message.body].filter(Boolean).join('. ');
 
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
       <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-        {message.attachments.length > 0 ? (
-          <View style={styles.imagesRow}>
-            {message.attachments.map(path =>
-              attachmentUrls[path] ? (
-                <Image
-                  key={path}
-                  testID={`attachment-image-${path}`}
-                  source={{ uri: attachmentUrls[path] }}
-                  style={styles.attachmentImage}
-                  accessible
-                  accessibilityRole="image"
-                  accessibilityLabel="Photo attached to the message"
-                />
-              ) : (
-                <View
-                  key={path}
-                  style={[styles.attachmentImage, styles.attachmentPlaceholder]}
-                  accessible
-                  accessibilityLabel="Photo loading"
-                />
-              ),
-            )}
-          </View>
-        ) : null}
-        {message.body ? <Text style={[styles.body, isOwn && styles.bodyOwn]}>{message.body}</Text> : null}
+        {/* One focus stop for the message, read as "You, <time>: <text>" or "<name>, <time>: <text>", the same as a
+            chat bubble (A8). The recommended listing stays outside it: it is a button of its own, and an accessible
+            parent would swallow it. The time is in the label, so its visible line below is hidden from the reader. */}
+        <View accessible accessibilityLabel={`${from}, ${time}: ${content}`}>
+          {message.attachments.length > 0 ? (
+            <View style={styles.imagesRow}>
+              {message.attachments.map(path =>
+                attachmentUrls[path] ? (
+                  <Image
+                    key={path}
+                    testID={`attachment-image-${path}`}
+                    source={{ uri: attachmentUrls[path] }}
+                    style={styles.attachmentImage}
+                  />
+                ) : (
+                  <View key={path} style={[styles.attachmentImage, styles.attachmentPlaceholder]} />
+                ),
+              )}
+            </View>
+          ) : null}
+          {message.body ? <Text style={[styles.body, isOwn && styles.bodyOwn]}>{message.body}</Text> : null}
+        </View>
         {message.recommended_listing ? (
           <TouchableOpacity
             style={styles.recommendation}
@@ -71,8 +76,12 @@ export function ConsultationMessageBubble({
             </View>
           </TouchableOpacity>
         ) : null}
-        <Text style={[styles.time, isOwn && styles.timeOwn]}>
-          {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        <Text
+          style={[styles.time, isOwn && styles.timeOwn]}
+          importantForAccessibility="no"
+          accessibilityElementsHidden
+        >
+          {time}
         </Text>
       </View>
     </View>

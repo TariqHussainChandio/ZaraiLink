@@ -48,10 +48,11 @@ const DISPUTE_OUTCOMES: {
 }[] = [
   {
     value: 'refunded',
-    label: 'Refund the buyer',
+    // Worded like the order's status afterwards ("Settled for buyer", frontend/common/constants/status.ts).
+    label: 'Settle for the buyer',
     explain:
       'The buyer is right. The seller refunds the buyer directly; ZaraiLink holds no money.',
-    done: 'Dispute settled: the buyer is to be refunded.',
+    done: 'Dispute settled for the buyer. The seller refunds them directly.',
   },
   {
     value: 'completed',

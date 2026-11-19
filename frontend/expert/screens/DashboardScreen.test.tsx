@@ -9,6 +9,8 @@ import { useAuthStore } from '../../state/authStore';
 import type { ConsultationWithRelations, ExpertWithProfile } from '../types/expert';
 
 const mockNavigate = jest.fn();
+const mockSetOptions = jest.fn();
+const mockNavigation = { navigate: mockNavigate, setOptions: mockSetOptions };
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -20,7 +22,7 @@ jest.mock('@react-navigation/native', () => {
         effect();
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, []),
-    useNavigation: () => ({ navigate: mockNavigate }),
+    useNavigation: () => mockNavigation,
   };
 });
 
@@ -72,9 +74,21 @@ const consultation: ConsultationWithRelations = {
 describe('ExpertDashboardScreen', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
+    mockSetOptions.mockReset();
     mockFetchExpertProfile.mockReset();
     mockFetchConsultationsForExpert.mockReset();
     useAuthStore.setState({ user: { id: 'expert1' } as never });
+  });
+
+  it("titles the large app bar with a greeting by the expert's name (A8, F1)", async () => {
+    useAuthStore.setState({ user: { id: 'expert1' } as never, profile: { full_name: 'Dr. Ahsan' } as never });
+    mockFetchExpertProfile.mockResolvedValue(baseProfile);
+    mockFetchConsultationsForExpert.mockResolvedValue([]);
+    await renderWithQuery(<ExpertDashboardScreen />);
+
+    expect(await screen.findByText('No requests yet')).toBeTruthy();
+    expect(mockSetOptions).toHaveBeenCalledWith({ title: expect.stringMatching(/^Good (morning|afternoon|evening), Dr\. Ahsan$/) });
+    useAuthStore.setState({ profile: null });
   });
 
   it('shows the profile-completion banner when there is no expert profile yet', async () => {
@@ -146,15 +160,41 @@ describe('ExpertDashboardScreen', () => {
     expect(await screen.findByText('No requests yet')).toBeTruthy();
   });
 
-  it('shows a retryable error state when loading fails', async () => {
+  it('shows a retryable error state when both reads fail, and recovers on retry', async () => {
     mockFetchExpertProfile.mockRejectedValue(new Error('network down'));
-    mockFetchConsultationsForExpert.mockResolvedValue([]);
+    mockFetchConsultationsForExpert.mockRejectedValue(new Error('network down'));
     await renderWithQuery(<ExpertDashboardScreen />);
 
     expect(await screen.findByText("Couldn't load the dashboard")).toBeTruthy();
 
     mockFetchExpertProfile.mockResolvedValue(baseProfile);
+    mockFetchConsultationsForExpert.mockResolvedValue([]);
     await fireEvent.press(screen.getByText('Retry'));
     expect(await screen.findByText('No requests yet')).toBeTruthy();
+  });
+
+  it('does not ask an expert to complete a profile that only failed to load, and offers Retry', async () => {
+    mockFetchExpertProfile.mockRejectedValue(new Error('network down'));
+    mockFetchConsultationsForExpert.mockResolvedValue([]);
+    await renderWithQuery(<ExpertDashboardScreen />);
+
+    expect(await screen.findByText("Couldn't load your expert profile")).toBeTruthy();
+    expect(screen.queryByText('Complete your expert profile')).toBeNull();
+    // What did load is still shown.
+    expect(screen.getByText('No requests yet')).toBeTruthy();
+
+    mockFetchExpertProfile.mockResolvedValue({ ...baseProfile, verification_status: 'pending' });
+    await fireEvent.press(screen.getByText('Retry'));
+    expect(await screen.findByText('Application pending review')).toBeTruthy();
+    expect(screen.queryByText("Couldn't load your expert profile")).toBeNull();
+  });
+
+  it('does not say "No requests yet" when the requests only failed to load', async () => {
+    mockFetchExpertProfile.mockResolvedValue(baseProfile);
+    mockFetchConsultationsForExpert.mockRejectedValue(new Error('network down'));
+    await renderWithQuery(<ExpertDashboardScreen />);
+
+    expect(await screen.findByText("Couldn't load consultation requests")).toBeTruthy();
+    expect(screen.queryByText('No requests yet')).toBeNull();
   });
 });

@@ -109,7 +109,8 @@ describe('DiseaseResultScreen', () => {
     // The stored prediction row is history; the screen reads the report.
     expect(screen.queryByText('Stored name (history only)')).toBeNull();
     // Reviewed text: no draft marker.
-    expect(screen.queryByText('Draft, pending agronomist review')).toBeNull();
+    expect(screen.queryByText('Draft advice, not yet checked')).toBeNull();
+    expect(screen.queryByText(/pending agronomist review/i)).toBeNull();
   });
 
   it('shows the disclaimer from the report on every result (BR-13)', async () => {
@@ -118,15 +119,15 @@ describe('DiseaseResultScreen', () => {
     expect(await screen.findByText(/This is an AI suggestion, not a diagnosis/)).toBeTruthy();
   });
 
-  it('marks unreviewed knowledge text as a draft', async () => {
+  it('marks unreviewed knowledge text as a draft, saying "pending agronomist review" only once (A8)', async () => {
     const draft = report({
       review_status: 'pending_review',
       disclaimer: 'This is an AI suggestion, not a diagnosis. This advice has not yet been reviewed by an agricultural expert.',
     });
     mockFetchCase.mockResolvedValue(diseaseCase({ report: draft }));
     await renderWithQuery(<DiseaseResultScreen />);
-    expect(await screen.findByText('Draft, pending agronomist review')).toBeTruthy();
-    expect(screen.getByText('Pending agronomist review')).toBeTruthy();
+    expect(await screen.findByText('Draft advice, not yet checked')).toBeTruthy();
+    expect(screen.getAllByText(/pending agronomist review/i)).toHaveLength(1);
     expect(screen.getByText(/has not yet been reviewed/)).toBeTruthy();
   });
 

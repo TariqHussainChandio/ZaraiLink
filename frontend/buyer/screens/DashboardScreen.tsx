@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Card, EmptyState, Skeleton, SkeletonList } from '../../common/components';
+import { Card, ScreenState, Skeleton, SkeletonList } from '../../common/components';
 import { ActivityFeed } from '../../common/components/dashboards/ActivityFeed';
 import { QuickActions } from '../../common/components/dashboards/QuickActions';
 import { StatTile } from '../../common/components/dashboards/StatTile';
@@ -11,7 +11,7 @@ import {
   MARKETPLACE_ROUTES,
   ORDERS_ROUTES,
 } from '../../common/constants/routes';
-import { useOrders, type OrderStatus } from '../../common/orders';
+import { useOrders, type OrderStatus, type OrderWithItems } from '../../common/orders';
 import { useAuthStore } from '../../state/authStore';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../theme';
@@ -26,9 +26,8 @@ export function BuyerDashboardScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const tabNavigation = useAppTabNavigation();
-  const { data: orders = [], isPending: loading, error, refetch } = useOrders('buyer', !!userId);
-  const load = () => refetch();
+  const orders = useOrders('buyer', !!userId);
+  const { refetch } = orders;
 
   // Coming back to the dashboard shows orders placed or updated elsewhere.
   useFocusEffect(
@@ -37,34 +36,40 @@ export function BuyerDashboardScreen() {
     }, [userId, refetch]),
   );
 
-  if (error) {
-    return (
-      <EmptyState
-        title="Couldn't load your dashboard"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
+  const skeleton = (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.statsRow}>
+        <Card style={styles.statSkeletonCard}>
+          <Skeleton style={styles.statSkeletonValue} />
+          <Skeleton style={styles.statSkeletonLabel} />
+        </Card>
+        <Card style={styles.statSkeletonCard}>
+          <Skeleton style={styles.statSkeletonValue} />
+          <Skeleton style={styles.statSkeletonLabel} />
+        </Card>
+      </View>
+      <SkeletonList count={3} />
+    </ScrollView>
+  );
 
-  if (loading) {
-    return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.statsRow}>
-          <Card style={styles.statSkeletonCard}>
-            <Skeleton style={styles.statSkeletonValue} />
-            <Skeleton style={styles.statSkeletonLabel} />
-          </Card>
-          <Card style={styles.statSkeletonCard}>
-            <Skeleton style={styles.statSkeletonValue} />
-            <Skeleton style={styles.statSkeletonLabel} />
-          </Card>
-        </View>
-        <SkeletonList count={3} />
-      </ScrollView>
-    );
-  }
+  return (
+    <ScreenState
+      // A disabled query (no signed-in user) stays pending forever; it is not loading, so it must not show a skeleton.
+      query={{ ...orders, isPending: orders.isPending && !!userId }}
+      errorTitle="Couldn't load your dashboard"
+      skeleton={skeleton}
+      // No purchases is still a dashboard: the quick actions are how a new buyer starts.
+      isEmpty={() => false}
+    >
+      {data => <BuyerDashboardContent orders={data} />}
+    </ScreenState>
+  );
+}
+
+function BuyerDashboardContent({ orders }: { orders: OrderWithItems[] }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const tabNavigation = useAppTabNavigation();
 
   // Orders still moving towards the buyer; a rejected, expired or refunded order is over, not in progress.
   const pendingCount = orders.filter(order => IN_PROGRESS.includes(order.status)).length;

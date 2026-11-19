@@ -9,7 +9,7 @@ import { RegisterScreen } from '../../common/auth/screens/RegisterScreen';
 import { VerifyOtpScreen } from '../../common/auth/screens/VerifyOtpScreen';
 import type { RegistrableRole } from '../../common/constants/roles';
 
-export type AuthStackParamList = {
+type AuthStackParamList = {
   [AUTH_ROUTES.Login]: undefined;
   [AUTH_ROUTES.CreateAccount]: undefined;
   [AUTH_ROUTES.Register]: { role: RegistrableRole };

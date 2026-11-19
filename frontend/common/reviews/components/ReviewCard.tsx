@@ -5,6 +5,8 @@ import { RatingStars } from './RatingStars';
 import { useTheme, type Theme } from '../../../theme';
 import type { ReviewWithBuyer } from '../types/reviews';
 
+const WRITTEN = new Intl.DateTimeFormat('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+
 /**
  * One review. A hidden one reaches only its author (on their own order) and the admin (SRDS §14), so it says so: the
  * author learns why it is gone from the public pages instead of wondering, and is not offered to write it again.
@@ -12,6 +14,18 @@ import type { ReviewWithBuyer } from '../types/reviews';
 export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const name = review.buyer?.full_name || 'Unknown buyer';
+  const date = WRITTEN.format(new Date(review.created_at));
+  // The review read as one TalkBack stop: who, how many stars, when, and what they said, instead of an avatar, a name,
+  // a date and five stars in turn (A8 finding).
+  const label = [
+    name,
+    `${review.rating} out of 5 stars`,
+    date,
+    review.comment,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <Card style={styles.card}>
@@ -24,15 +38,17 @@ export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
           </Banner>
         </View>
       ) : null}
-      <View style={styles.header}>
-        <Avatar name={review.buyer?.full_name} uri={review.buyer?.avatar_url} size={theme.size.avatarSm} />
-        <View style={styles.headerText}>
-          <Text style={styles.name}>{review.buyer?.full_name || 'Unknown buyer'}</Text>
-          <Text style={styles.date}>{new Date(review.created_at).toLocaleDateString()}</Text>
+      <View accessible accessibilityLabel={label} testID="review-body">
+        <View style={styles.header}>
+          <Avatar name={review.buyer?.full_name} uri={review.buyer?.avatar_url} size={theme.size.avatarSm} />
+          <View style={styles.headerText}>
+            <Text style={styles.name}>{name}</Text>
+            <Text style={styles.date}>{date}</Text>
+          </View>
+          <RatingStars value={review.rating} />
         </View>
-        <RatingStars value={review.rating} />
+        {review.comment ? <Text style={styles.comment}>{review.comment}</Text> : null}
       </View>
-      {review.comment ? <Text style={styles.comment}>{review.comment}</Text> : null}
     </Card>
   );
 }

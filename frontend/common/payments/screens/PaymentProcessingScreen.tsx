@@ -1,7 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { ArrowLeft, RefreshCw } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button, Spinner, StatusBadge } from '../../components';
+import { Button, ScreenState, SkeletonList, StatusBadge } from '../../components';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { usePayment } from '../hooks/payments';
 import { useTheme, type Theme } from '../../../theme';
@@ -21,7 +22,8 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { paymentId } = route.params;
-  const { data: payment, refetch } = usePayment(paymentId);
+  const paymentQuery = usePayment(paymentId);
+  const { data: payment, refetch } = paymentQuery;
 
   // The seller decides a payment, so leaving the waiting screen is driven by the status the server reports.
   useEffect(() => {
@@ -37,7 +39,19 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
     }, [refetch]),
   );
 
-  if (!payment) return <Spinner fullscreen />;
+  // A skeleton while loading and an error Banner with Retry on failure, never a spinner that cannot end.
+  if (!payment) {
+    return (
+      <View style={styles.stateContainer}>
+        <ScreenState
+          query={paymentQuery}
+          skeleton={<SkeletonList count={2} />}
+          empty={{ title: 'Payment not found' }}
+          errorTitle="Couldn't load this payment"
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -49,9 +63,17 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
         {isPaymentMethod(payment.method) ? PAYMENT_METHOD_LABELS[payment.method] : payment.method}
       </Text>
       <Text style={styles.waiting}>{"Waiting for the seller to confirm payment receipt. You'll be able to track this from your order at any time."}</Text>
-      <Button label="Check Status" onPress={() => refetch()} variant="secondary" style={styles.action} />
+      <Button
+        label="Check Status"
+        icon={RefreshCw}
+        loading={paymentQuery.isFetching}
+        onPress={() => refetch()}
+        variant="secondary"
+        style={styles.action}
+      />
       <Button
         label="Back to Order"
+        icon={ArrowLeft}
         onPress={() =>
           navigation.reset({
             index: 1,
@@ -69,6 +91,11 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
+    // The loading and error states fill the width; the centred column below would shrink them.
+    stateContainer: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.surface,

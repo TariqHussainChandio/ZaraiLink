@@ -1,6 +1,7 @@
+import { ArrowRight } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Spinner } from '../../components';
+import { StyleSheet, Text, View } from 'react-native';
+import { Button, Card, ScreenState, SkeletonList, useToast } from '../../components';
 import { ORDERS_ROUTES } from '../../constants/routes';
 import { useOrderPaymentContext } from '../../orders';
 import { useInitiatePayment } from '../hooks/payments';
@@ -24,8 +25,10 @@ export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'Pa
   const { orderId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const [method, setMethod] = useState<PaymentMethod>('cod');
-  const { data: context } = useOrderPaymentContext(orderId);
+  const contextQuery = useOrderPaymentContext(orderId);
+  const context = contextQuery.data;
   const initiate = useInitiatePayment();
+  const toast = useToast();
   const orderTotal = context?.orderTotal ?? null;
   const existingPayment = context?.existingPayment;
 
@@ -41,25 +44,42 @@ export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'Pa
       const payment = await initiate.mutateAsync({ orderId, method });
       navigation.replace(ORDERS_ROUTES.PaymentProcessing, { paymentId: payment.id });
     } catch (error) {
-      Alert.alert('Could not start payment', errorMessage(error));
+      toast.error(errorMessage(error));
     }
   };
 
-  if (orderTotal === null || existingPayment) return <Spinner fullscreen />;
-
+  // ScreenState shows the skeleton while the order loads and an error Banner with Retry if it fails, so this screen
+  // never spins forever. With a payment already on record the effect above is replacing the screen; the skeleton holds.
+  const skeleton = <SkeletonList count={2} />;
   return (
     <View style={styles.container}>
-      <Text style={styles.total}>{formatRs(orderTotal)}</Text>
-      <Text style={styles.subtitle}>{"Choose how you'll pay for this order"}</Text>
+      <ScreenState query={contextQuery} skeleton={skeleton} errorTitle="Couldn't load this order">
+        {loaded =>
+          loaded.existingPayment ? (
+            skeleton
+          ) : (
+            <>
+              <Text style={styles.total}>{formatRs(loaded.orderTotal)}</Text>
+              <Text style={styles.subtitle}>{"Choose how you'll pay for this order"}</Text>
 
-      {METHOD_IDS.map(id => (
-        <Card key={id} style={styles.option} selected={method === id} onPress={() => setMethod(id)}>
-          <Text style={styles.optionLabel}>{PAYMENT_METHOD_LABELS[id]}</Text>
-          <Text style={styles.optionDescription}>{METHOD_DESCRIPTIONS[id]}</Text>
-        </Card>
-      ))}
+              {METHOD_IDS.map(id => (
+                <Card key={id} style={styles.option} selected={method === id} onPress={() => setMethod(id)}>
+                  <Text style={styles.optionLabel}>{PAYMENT_METHOD_LABELS[id]}</Text>
+                  <Text style={styles.optionDescription}>{METHOD_DESCRIPTIONS[id]}</Text>
+                </Card>
+              ))}
 
-      <Button label="Continue" loading={initiate.isPending} onPress={onSubmit} style={styles.submit} />
+              <Button
+                label="Continue"
+                icon={ArrowRight}
+                loading={initiate.isPending}
+                onPress={onSubmit}
+                style={styles.submit}
+              />
+            </>
+          )
+        }
+      </ScreenState>
     </View>
   );
 }

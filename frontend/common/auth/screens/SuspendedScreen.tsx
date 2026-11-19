@@ -1,6 +1,7 @@
+import { LogOut } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button } from '../../components';
+import { Button, StatusBadge } from '../../components';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 
@@ -11,10 +12,16 @@ export function SuspendedScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Account Suspended</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Account Suspended
+      </Text>
+      <View style={styles.badge}>
+        <StatusBadge kind="application" status="suspended" />
+      </View>
       <Text style={styles.description}>Your account has been suspended by an administrator. Contact support if you believe this is a mistake.</Text>
       <Button
         label="Sign Out"
+        icon={LogOut}
         variant="danger"
         onPress={signOut}
         style={styles.action}
@@ -36,6 +43,9 @@ function makeStyles({ colors, space, typography }: Theme) {
       ...typography.headline,
       color: colors.status.danger.mark,
       marginBottom: space[2],
+    },
+    badge: {
+      marginBottom: space[3],
     },
     description: {
       ...typography.body,

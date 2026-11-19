@@ -26,14 +26,14 @@ describe('PhoneInput', () => {
   it('converts an emptied field to null', async () => {
     const onChange = jest.fn();
     await render(<PhoneInput value="+923001234567" onChange={onChange} />);
-    fireEvent.changeText(screen.getByDisplayValue('+923001234567'), '');
+    await fireEvent.changeText(screen.getByDisplayValue('+923001234567'), '');
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
   it('passes through a non-empty edit', async () => {
     const onChange = jest.fn();
     await render(<PhoneInput value={null} onChange={onChange} />);
-    fireEvent.changeText(screen.getByPlaceholderText('+923001234567'), '+923001112223');
+    await fireEvent.changeText(screen.getByPlaceholderText('+923001234567'), '+923001112223');
     expect(onChange).toHaveBeenCalledWith('+923001112223');
   });
 });

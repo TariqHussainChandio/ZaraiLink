@@ -27,7 +27,7 @@ import { AddAssessmentSheet } from '../components/AddAssessmentSheet';
 import { AiAssessmentCard } from '../components/AiAssessmentCard';
 import { ConsultationMessageBubble } from '../components/ConsultationMessageBubble';
 import { ExpertAssessmentPanel } from '../components/ExpertAssessmentPanel';
-import { ChatInput } from '../../messaging';
+import { ChatInput, useAnnounceIncomingMessages } from '../../messaging';
 import { RatingStars } from '../../reviews';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
 import {
@@ -69,6 +69,12 @@ export function ConsultationDetailScreen() {
     [consultation, messages],
   );
   const { data: attachmentUrls = {} } = useConsultationAttachmentUrls(attachmentPaths);
+  // The thread has no live region, so a message from the other person is announced as it arrives (A8, E4). Called
+  // before the loading guards below, as a hook must be; the consultation may not have loaded yet.
+  const otherPersonName =
+    (consultation?.user_id === userId ? consultation?.expert?.full_name : consultation?.user?.full_name) ||
+    'the other person';
+  useAnnounceIncomingMessages(messagesQuery.data, userId, otherPersonName);
 
   const statusMutation = useUpdateConsultationStatus(consultationId);
   const send = useSendConsultationMessage(consultationId, userId);
@@ -204,6 +210,7 @@ export function ConsultationDetailScreen() {
               message={item}
               isOwn={item.sender_id === userId}
               attachmentUrls={attachmentUrls}
+              senderName={counterpartyName}
               onPressRecommendation={listingId =>
                 navigation
                   .getParent?.()

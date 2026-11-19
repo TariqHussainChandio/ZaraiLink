@@ -2,10 +2,12 @@ import { FlashList } from '@shopify/flash-list';
 import { ClipboardList, Plus } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
-import { Button, ChipRow, EmptyState, ListRow, ScreenState, StatusBadge } from '../../common/components';
+import { Button, ChipRow, EmptyState, ScreenState, StatusBadge } from '../../common/components';
+import { statusMeta } from '../../common/constants/status';
 import { type Theme, useTheme } from '../../theme';
-import { formatDate } from '../components/format';
+import { formatCount, formatDate } from '../components/format';
 import { makeScreenStyles } from '../components/screenStyles';
+import { SpokenRow } from '../components/SpokenRow';
 import { usePurchases, useSuppliers } from '../hooks/inventory';
 import type { PurchaseStatus } from '../types/inventory';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
@@ -45,20 +47,24 @@ export function PurchaseListScreen({ navigation }: InventoryScreenProps<typeof I
             <ChipRow options={FILTERS} value={filter} onChange={setFilter} />
           </View>
         }
-        renderItem={({ item: purchase }) => (
-          <ListRow
-            title={purchase.reference || (purchase.supplier_id ? supplierName.get(purchase.supplier_id) : null) || 'Purchase'}
-            meta={[
-              formatDate(purchase.purchased_on),
-              purchase.supplier_id ? supplierName.get(purchase.supplier_id) : null,
-              `${purchase.items?.length ?? 0} lines`,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
+        renderItem={({ item: purchase }) => {
+          const title =
+            purchase.reference || (purchase.supplier_id ? supplierName.get(purchase.supplier_id) : null) || 'Purchase';
+          const facts = [
+            formatDate(purchase.purchased_on),
+            purchase.supplier_id ? supplierName.get(purchase.supplier_id) : null,
+            formatCount(purchase.items?.length ?? 0, 'line', 'lines'),
+          ].filter(Boolean);
+          return (
+          <SpokenRow
+            label={[title, statusMeta('purchase', purchase.status).label, ...facts].join(', ')}
+            title={title}
+            meta={facts.join(' · ')}
             trailing={<StatusBadge kind="purchase" status={purchase.status} size="sm" />}
             onPress={() => navigation.navigate(INVENTORY_ROUTES.PurchaseDetail, { purchaseId: purchase.id })}
           />
-        )}
+          );
+        }}
         ListEmptyComponent={
           data ? (
             <EmptyState

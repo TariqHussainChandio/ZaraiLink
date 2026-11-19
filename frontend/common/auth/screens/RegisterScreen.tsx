@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft, LogIn, UserPlus } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -105,6 +106,7 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
         </Text>
         <Button
           label="Choose a different account type"
+          icon={ArrowLeft}
           variant="quiet"
           fullWidth={false}
           onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)}
@@ -178,7 +180,9 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
               onCityChange={value => setValue('city', value ?? '')}
             />
             {errors.country || errors.province || errors.city ? (
-              <Text style={styles.errorText}>Enter your country, province and city</Text>
+              <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="polite">
+                Enter your country, province and city
+              </Text>
             ) : null}
             {role === 'farmer' ? (
               <Controller
@@ -205,17 +209,14 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
         ) : null}
 
         {submitError ? (
-
           <View style={styles.errorBanner}>
-
             <Banner tone="danger" title={submitError} />
-
           </View>
-
         ) : null}
 
         <Button
           label="Create account"
+          icon={UserPlus}
           loading={isSubmitting}
           onPress={handleSubmit(onSubmit)}
           style={styles.submit}
@@ -223,7 +224,7 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account?</Text>
-          <Button label="Sign in" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
+          <Button label="Sign in" icon={LogIn} variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -1,3 +1,4 @@
+import { ArrowLeft, Mail, Send } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
@@ -76,7 +77,7 @@ export function ChangeEmailScreen() {
             error={fieldError}
           />
           {request.error ? <Banner tone="danger">{errorMessage(request.error)}</Banner> : null}
-          <Button label="Send codes" loading={request.isPending} onPress={send} />
+          <Button label="Send codes" icon={Send} loading={request.isPending} onPress={send} />
         </>
       ) : (
         <>
@@ -100,8 +101,8 @@ export function ChangeEmailScreen() {
             error={fieldError}
           />
           {confirm.error ? <Banner tone="danger">{errorMessage(confirm.error)}</Banner> : null}
-          <Button label="Change email" loading={confirm.isPending} onPress={finish} />
-          <Button label="Use a different address" variant="quiet" onPress={() => setSentTo(null)} />
+          <Button label="Change email" icon={Mail} loading={confirm.isPending} onPress={finish} />
+          <Button label="Use a different address" icon={ArrowLeft} variant="quiet" onPress={() => setSentTo(null)} />
         </>
       )}
     </ScrollView>

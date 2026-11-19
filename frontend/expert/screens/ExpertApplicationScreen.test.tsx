@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { ExpertApplicationScreen } from './ExpertApplicationScreen';
@@ -39,7 +38,6 @@ describe('ExpertApplicationScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useAuthStore.setState({ user: { id: 'expert1' } as never });
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -85,8 +83,12 @@ describe('ExpertApplicationScreen', () => {
     await fireEvent.changeText(await screen.findByLabelText('Qualifications'), 'PhD Agronomy, extension work');
 
     await fireEvent.press(screen.getByText('Save changes'));
-    expect(Alert.alert).toHaveBeenCalledWith('Select at least one specialization');
+    expect(await screen.findByText('Select at least one specialization')).toBeTruthy();
     expect(mockCreate).not.toHaveBeenCalled();
+
+    // Choosing one clears the message.
+    await fireEvent.press(screen.getByText('Crop Management'));
+    expect(screen.queryByText('Select at least one specialization')).toBeNull();
   });
 
   it('starts the profile when there is none yet', async () => {
@@ -123,15 +125,16 @@ describe('ExpertApplicationScreen', () => {
       yearsExperience: 10,
       institutionAffiliation: 'University of Agriculture Faisalabad',
     });
-    expect(Alert.alert).toHaveBeenCalledWith('Profile updated');
+    expect(await screen.findByText('Profile updated')).toBeTruthy();
   });
 
-  it('shows an error alert when saving fails', async () => {
+  it('keeps a danger banner on the form when saving fails', async () => {
     mockFetchExpertProfile.mockResolvedValue(existingProfile);
     mockUpdateExpertProfile.mockRejectedValue(new Error('Server unavailable'));
     await renderWithQuery(<ExpertApplicationScreen />);
 
     await fireEvent.press(await screen.findByText('Save changes'));
-    expect(Alert.alert).toHaveBeenCalledWith('Could not save', 'Server unavailable');
+    expect(await screen.findByText('Could not save')).toBeTruthy();
+    expect(screen.getByText('Server unavailable')).toBeTruthy();
   });
 });

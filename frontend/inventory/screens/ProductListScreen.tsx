@@ -2,10 +2,12 @@ import { FlashList } from '@shopify/flash-list';
 import { Package, Plus, Search } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
-import { Badge, Button, EmptyState, ListRow, ScreenState, StatusBadge, TextField } from '../../common/components';
+import { Badge, Button, EmptyState, ScreenState, StatusBadge, TextField } from '../../common/components';
+import { statusMeta } from '../../common/constants/status';
 import { type Theme, useTheme } from '../../theme';
 import { formatQuantity, productStatus } from '../components/format';
 import { makeScreenStyles } from '../components/screenStyles';
+import { SpokenRow } from '../components/SpokenRow';
 import { useProducts } from '../hooks/inventory';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
 
@@ -53,7 +55,15 @@ export function ProductListScreen({ navigation }: InventoryScreenProps<typeof IN
             contentContainerStyle={styles.list}
             refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />}
             renderItem={({ item: product }) => (
-              <ListRow
+              <SpokenRow
+                // The status is part of the button's name (A8), as the badge shows it.
+                label={[
+                  product.name,
+                  product.is_active ? statusMeta('stock', productStatus(product)).label : 'Inactive',
+                  `${formatQuantity(product.default_location_quantity, product.unit)} at the default location`,
+                  `${formatQuantity(product.total_quantity)} in total`,
+                  product.sku,
+                ].join(', ')}
                 title={product.name}
                 // The badge is the default location's (what alerts and the marketplace go by); the total sits beside it.
                 meta={`${product.sku} · ${formatQuantity(product.default_location_quantity, product.unit)} at default · ${formatQuantity(product.total_quantity)} in total`}

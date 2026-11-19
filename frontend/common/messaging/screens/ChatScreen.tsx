@@ -5,6 +5,7 @@ import { FlashList } from '@shopify/flash-list';
 import { ScreenState, useToast } from '../../components';
 import { ChatInput } from '../components/ChatInput';
 import { MessageBubble } from '../components/MessageBubble';
+import { useAnnounceIncomingMessages } from '../hooks/announceIncoming';
 import { useAttachmentUrls, useConversationMessages, useSendMessage } from '../hooks/messaging';
 import { useComposerInsets } from '../../../hooks/useComposerInsets';
 import { useAuthStore } from '../../../state/authStore';
@@ -24,6 +25,9 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   const attachmentPaths = useMemo(() => messages.flatMap(m => m.attachments), [messages]);
   const { data: attachmentUrls = {} } = useAttachmentUrls(attachmentPaths);
   const composer = useComposerInsets();
+  const senderName = otherUserName || 'the other person';
+  // The list has no live region, so a message from the other person is announced as it arrives (A8, F6).
+  useAnnounceIncomingMessages(conversation.data, userId, senderName);
 
   const onSend = async (body: string, images: PickedPhoto[]) => {
     if (!userId) return;

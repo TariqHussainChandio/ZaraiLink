@@ -53,12 +53,6 @@ export const ADMIN_TABS = {
   Profile: 'Profile',
 } as const;
 
-export const ROOT_ROUTES = {
-  Splash: 'Splash',
-  Auth: 'Auth',
-  App: 'App',
-} as const;
-
 export const MARKETPLACE_ROUTES = {
   Browse: 'Browse',
   ListingDetail: 'ListingDetail',

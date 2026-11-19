@@ -141,7 +141,7 @@ export function ListingFormFields({
         control={control}
         name="categoryId"
         render={({ field: { onChange, value } }) => (
-          <View style={styles.chipRow}>
+          <View style={styles.chipRow} testID="category-chips">
             {categories.map(category => (
               <Chip
                 key={category.id}
@@ -239,7 +239,7 @@ export function ListingFormFields({
       {crops.length > 0 ? (
         <>
           <Text style={styles.label}>Crop compatibility</Text>
-          <View style={styles.chipRow}>
+          <View style={styles.chipRow} testID="crop-chips">
             {crops.map(crop => {
               const selected = cropCompatibility.includes(crop.name);
               return (
@@ -314,9 +314,12 @@ function makeStyles({ colors, space, typography }: Theme) {
       color: colors.ink2,
       marginBottom: space[1],
     },
+    // A chip is 36 tall with a 6 px hitSlop on each side to reach the 48 touch minimum, so wrapped rows and neighbours
+    // need a 12 px gap or their touch areas overlap (A8 finding).
     chipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      gap: space[3],
       marginBottom: space[3],
     },
     row: {

@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { KeyRound, LogIn, UserPlus } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -50,7 +51,9 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Welcome back</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Welcome back
+        </Text>
         <Text style={styles.subtitle}>Sign in to your ZaraiLink account</Text>
 
         <Controller
@@ -85,27 +88,24 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
         />
 
         {submitError ? (
-
           <View style={styles.errorBanner}>
-
             <Banner tone="danger" title={submitError} />
-
           </View>
-
         ) : null}
 
         <Button
           label="Sign In"
+          icon={LogIn}
           loading={isSubmitting}
           onPress={handleSubmit(onSubmit)}
           style={styles.submit}
         />
 
         <View style={styles.links}>
-          <Button label="Forgot your password?" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)} />
+          <Button label="Forgot your password?" icon={KeyRound} variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)} />
           <View style={styles.footer}>
             <Text style={styles.footerText}>{"Don't have an account?"}</Text>
-            <Button label="Sign up" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)} />
+            <Button label="Sign up" icon={UserPlus} variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.CreateAccount)} />
           </View>
         </View>
       </ScrollView>

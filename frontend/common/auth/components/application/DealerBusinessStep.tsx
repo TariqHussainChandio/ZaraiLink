@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Save } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, type ChipOption, ChipRow, LocationPicker, Spinner, TextField } from '../../../components';
+import { Banner, Button, type ChipOption, ChipRow, LocationPicker, ScreenState, SkeletonList, TextField } from '../../../components';
 import { BUSINESS_TYPE_LABELS } from '../../../constants/labels';
 import { useTheme, type Theme } from '../../../../theme';
 import { errorMessage } from '../../../../utils/errorMessage';
@@ -39,7 +40,8 @@ export function DealerBusinessStep({
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { data: saved, isLoading } = useDealerApplication();
+  const application = useDealerApplication();
+  const saved = application.data;
   const save = useSaveDealerApplication();
   const schema = useMemo(() => makeSchema(), []);
   const {
@@ -93,7 +95,11 @@ export function DealerBusinessStep({
     if (stored) onDone();
   };
 
-  if (isLoading) return <Spinner />;
+  // Until the saved copy arrives (null when nothing was saved yet) the form waits: a blank form saved over a read that
+  // failed would erase what the applicant sent before.
+  if (saved === undefined) {
+    return <ScreenState query={application} skeleton={<SkeletonList count={4} />} errorTitle="Couldn't load your business details" />;
+  }
 
   return (
     <View style={styles.form}>
@@ -141,10 +147,12 @@ export function DealerBusinessStep({
         onCityChange={value => setValue('city', value ?? '', { shouldValidate: !!errors.city })}
       />
       {errors.country || errors.province || errors.city ? (
-        <Text style={styles.error}>Enter the country, province and city of your business</Text>
+        <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          Enter the country, province and city of your business
+        </Text>
       ) : null}
       {save.error ? <Banner tone="danger">{errorMessage(save.error)}</Banner> : null}
-      <Button label={submitLabel} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
+      <Button label={submitLabel} icon={Save} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
     </View>
   );
 }

@@ -22,6 +22,7 @@ export * from './Spinner';
 export * from './StaggeredItem';
 export * from './StatusBadge';
 export * from './StepIndicator';
+export * from './SwitchRow';
 export * from './TabBar';
 export * from './TextField';
 export * from './Toast';

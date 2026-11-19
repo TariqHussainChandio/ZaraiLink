@@ -106,7 +106,14 @@ export function ListingDetailScreen({
       ) : null}
 
       {listing.owner ? (
-        <View style={styles.sellerRow}>
+        // One stop that says whose listing this is; the avatar's initials ("AF") are not a stop of their own (A8). The
+        // listing API carries no seller rating (the reviews API lists a seller's reviews a page at a time, so an average
+        // of one page would be wrong), so none is shown here rather than an invented one.
+        <View
+          style={styles.sellerRow}
+          accessible
+          accessibilityLabel={`Seller: ${listing.owner.full_name || 'Unknown seller'}`}
+        >
           <Avatar
             name={listing.owner.full_name}
             uri={listing.owner.avatar_url}

@@ -1,3 +1,4 @@
+import { ArrowLeft, Check, RotateCw } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -6,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Button, TextField } from '../../components';
+import { Button, TextField, useToast } from '../../components';
 import {
   useResendRecoveryOtp,
   useResendSignupOtp,
@@ -27,6 +28,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
   const { mutateAsync: resendRecoveryOtp } = useResendRecoveryOtp();
   const { mutateAsync: resendSignupOtp } = useResendSignupOtp();
   const { purpose, email } = route.params;
+  const toast = useToast();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +72,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
       } else {
         await resendSignupOtp(email);
       }
+      toast.success('New code sent');
       setCooldown(RESEND_COOLDOWN_SECONDS);
       cooldownInterval.current = setInterval(() => {
         setCooldown(prev => {
@@ -107,7 +110,9 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.container}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {title}
+        </Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
 
         <TextField
@@ -124,6 +129,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
 
         <Button
           label="Verify"
+          icon={Check}
           loading={submitting}
           disabled={code.length !== 6}
           onPress={onVerify}
@@ -133,12 +139,13 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
         <View style={styles.links}>
           <Button
             label={cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
+            icon={RotateCw}
             variant="quiet"
             fullWidth={false}
             disabled={resending || cooldown > 0}
             onPress={onResend}
           />
-          <Button label={backLabel} variant="quiet" fullWidth={false} onPress={() => navigation.goBack()} />
+          <Button label={backLabel} icon={ArrowLeft} variant="quiet" fullWidth={false} onPress={() => navigation.goBack()} />
         </View>
       </View>
     </KeyboardAvoidingView>

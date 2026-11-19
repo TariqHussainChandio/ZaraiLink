@@ -38,3 +38,24 @@ describe('SkeletonList', () => {
     expect(children).toHaveLength(3);
   });
 });
+
+describe('Skeleton accessibility', () => {
+  it('says "Loading…" and is busy, as one stop per placeholder', async () => {
+    await render(<SkeletonCard />);
+    const card = screen.getAllByLabelText('Loading…');
+    expect(card).toHaveLength(1);
+    expect(card[0]?.props.accessibilityState).toEqual({ busy: true });
+  });
+
+  it('reads a whole loading list once, not once per row', async () => {
+    await render(<SkeletonList count={4} />);
+    expect(screen.getAllByLabelText('Loading…')).toHaveLength(1);
+  });
+
+  it('labels a lone block and a lone row too', async () => {
+    await render(<Skeleton />);
+    expect(screen.getAllByLabelText('Loading…')).toHaveLength(1);
+    await render(<SkeletonListItem />);
+    expect(screen.getAllByLabelText('Loading…')).toHaveLength(1);
+  });
+});

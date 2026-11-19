@@ -1,7 +1,7 @@
 import { CircleCheck } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, TextField, useToast } from '../../components';
+import { Button, Card, PriceBreakdown, TextField, useToast } from '../../components';
 import { useCheckout } from '../hooks/orders';
 import { useAuthStore } from '../../../state/authStore';
 import { useCartStore, type CartItem } from '../../../state/cartStore';
@@ -44,6 +44,9 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
     }, 0);
   }, [grouped, deliveryCharges]);
 
+  // With several sellers each order shows its own total above, so the footer names the sum of them all.
+  const totalLabel = grouped.size > 1 ? 'Total for all orders' : 'Total';
+
   const onConfirm = async () => {
     if (!userId) return;
     try {
@@ -72,16 +75,24 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
               <Text style={styles.sellerTitle}>
                 {`Order ${sellerItems.length} ${sellerItems.length === 1 ? 'item' : 'items'}`}
               </Text>
-              {sellerItems.map(item => (
-                <View key={item.listingId} style={styles.itemRow}>
-                  <Text style={styles.itemLabel} numberOfLines={1}>
-                    {`${item.quantity} × ${item.title}`}
-                  </Text>
-                  <Text style={styles.itemPrice}>
-                    {formatRs(item.price * item.quantity)}
-                  </Text>
-                </View>
-              ))}
+              {sellerItems.map(item => {
+                const what = `${item.quantity} × ${item.title}`;
+                const amount = formatRs(item.price * item.quantity);
+                return (
+                  // One TalkBack stop per item, the item and its amount together (A8).
+                  <View
+                    key={item.listingId}
+                    style={styles.itemRow}
+                    accessible
+                    accessibilityLabel={`${what}, ${amount}`}
+                  >
+                    <Text style={styles.itemLabel} numberOfLines={1}>
+                      {what}
+                    </Text>
+                    <Text style={styles.itemPrice}>{amount}</Text>
+                  </View>
+                );
+              })}
               <TextField
                 label="Delivery charge (optional)"
                 keyboardType="numeric"
@@ -91,27 +102,22 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
                   setDeliveryCharges(current => ({ ...current, [sellerId]: text }))
                 }
               />
+              {/* The shared breakdown: products, delivery and this order's total, one TalkBack stop per line, delivery
+                  on its own line (BR-09). */}
               <View style={styles.sellerSummary}>
-                <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Subtotal</Text>
-                  <Text style={styles.itemPrice}>
-                    {formatRs(subtotal)}
-                  </Text>
-                </View>
-                <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Delivery</Text>
-                  <Text style={styles.itemPrice}>
-                    {formatRs(delivery)}
-                  </Text>
-                </View>
+                <PriceBreakdown subtotal={subtotal} delivery={delivery} />
               </View>
             </Card>
           );
         })}
       </ScrollView>
       <View style={styles.footer}>
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
+        <View
+          style={styles.totalRow}
+          accessible
+          accessibilityLabel={`${totalLabel} ${formatRs(grandTotal)}`}
+        >
+          <Text style={styles.totalLabel}>{totalLabel}</Text>
           <Text style={styles.totalValue}>
             {formatRs(grandTotal)}
           </Text>

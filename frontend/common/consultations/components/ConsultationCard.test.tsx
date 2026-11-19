@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { ConsultationCard } from './ConsultationCard';
+import { ConsultationCard, requestAge } from './ConsultationCard';
 import type { ConsultationWithRelations } from '../../../expert/types/expert';
 
 const baseConsultation: ConsultationWithRelations = {
@@ -31,10 +31,32 @@ describe('ConsultationCard', () => {
     expect(screen.getByText('Dr. Ahsan · Wheat')).toBeTruthy();
   });
 
-  it('omits the crop suffix when the consultation has no crop', async () => {
+  it('says "Crop not given" when the consultation has no crop (A8, E1)', async () => {
     const consultation = { ...baseConsultation, crop: null };
     await render(<ConsultationCard consultation={consultation} counterpartyName="Dr. Ahsan" onPress={() => {}} />);
-    expect(screen.getByText('Dr. Ahsan')).toBeTruthy();
+    expect(screen.getByText('Dr. Ahsan · Crop not given')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Dr\. Ahsan, Crop not given\./ })).toBeTruthy();
+  });
+
+  it('shows how long ago the request was made, in the row and its label (A8, E1)', async () => {
+    jest.useFakeTimers({ now: new Date('2026-08-22T12:00:00.000Z') });
+    try {
+      await render(<ConsultationCard consultation={baseConsultation} counterpartyName="Dr. Ahsan" onPress={() => {}} />);
+      expect(screen.getByText(/^2 days ago · /)).toBeTruthy();
+      expect(screen.getByRole('button', { name: /2 days ago, / })).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('words the age at each scale', () => {
+    const now = new Date('2026-08-20T10:00:00.000Z');
+    expect(requestAge('2026-08-20T09:59:30.000Z', now)).toBe('Just now');
+    expect(requestAge('2026-08-20T09:59:00.000Z', now)).toBe('1 minute ago');
+    expect(requestAge('2026-08-20T07:00:00.000Z', now)).toBe('3 hours ago');
+    expect(requestAge('2026-08-19T10:00:00.000Z', now)).toBe('1 day ago');
+    expect(requestAge('2026-06-20T10:00:00.000Z', now)).toBe('2 months ago');
+    expect(requestAge('2024-08-20T10:00:00.000Z', now)).toBe('2 years ago');
   });
 
   it('calls onPress when tapped', async () => {

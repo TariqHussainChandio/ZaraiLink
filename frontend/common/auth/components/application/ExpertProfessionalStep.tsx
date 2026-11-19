@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Save } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, Chip, LocationPicker, Spinner, TextField } from '../../../components';
+import { Banner, Button, Chip, LocationPicker, ScreenState, SkeletonList, TextField } from '../../../components';
 import { SPECIALIZATION_LABELS } from '../../../constants/labels';
 import { useOwnExpertProfile, useSaveExpertProfile, type ExpertSpecialization } from '../../../../expert';
 import { useTheme, type Theme } from '../../../../theme';
@@ -37,7 +38,8 @@ type Values = z.infer<ReturnType<typeof makeSchema>>;
 export function ExpertProfessionalStep({ onDone }: { onDone: () => void }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { data: saved, isLoading } = useOwnExpertProfile(true);
+  const profile = useOwnExpertProfile(true);
+  const saved = profile.data;
   const save = useSaveExpertProfile();
   const [specializations, setSpecializations] = useState<ExpertSpecialization[]>([]);
   const [specializationError, setSpecializationError] = useState(false);
@@ -103,7 +105,11 @@ export function ExpertProfessionalStep({ onDone }: { onDone: () => void }) {
     if (stored) onDone();
   };
 
-  if (isLoading) return <Spinner />;
+  // Until the saved copy arrives (null when nothing was saved yet) the form waits: a blank form saved over a read that
+  // failed would erase what the applicant sent before.
+  if (saved === undefined) {
+    return <ScreenState query={profile} skeleton={<SkeletonList count={4} />} errorTitle="Couldn't load your details" />;
+  }
 
   const field = (name: keyof Values, label: string, extra: Partial<React.ComponentProps<typeof TextField>> = {}) => (
     <Controller
@@ -145,9 +151,13 @@ export function ExpertProfessionalStep({ onDone }: { onDone: () => void }) {
           <Chip key={id} label={SPECIALIZATION_LABELS[id]} selected={specializations.includes(id)} onPress={() => toggle(id)} />
         ))}
       </View>
-      {specializationError ? <Text style={styles.error}>Choose at least one specialization</Text> : null}
+      {specializationError ? (
+        <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          Choose at least one specialization
+        </Text>
+      ) : null}
       {save.error ? <Banner tone="danger">{errorMessage(save.error)}</Banner> : null}
-      <Button label="Save and continue" loading={save.isPending} onPress={handleSubmit(onSubmit)} />
+      <Button label="Save and continue" icon={Save} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
     </View>
   );
 }

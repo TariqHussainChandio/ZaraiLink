@@ -148,7 +148,9 @@ function ResultContent({
           {report.review_status === 'pending_review' ? (
             <View style={styles.reviewRow}>
               <StatusBadge kind="knowledge" status={report.review_status} size="sm" />
-              <Text style={styles.reviewText}>Draft, pending agronomist review</Text>
+              {/* The badge already says "Pending agronomist review"; the line beside it says what that means for the
+                  farmer, so the status is not read twice (A8). */}
+              <Text style={styles.reviewText}>Draft advice, not yet checked</Text>
             </View>
           ) : null}
 

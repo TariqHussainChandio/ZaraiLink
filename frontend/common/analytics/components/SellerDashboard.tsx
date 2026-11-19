@@ -160,9 +160,12 @@ export function SellerDashboard() {
         actions={[
           {
             label: '+ New Listing',
+            // initial: false keeps Browse under the form. Without it, opening the not-yet-mounted Market tab made New
+            // Listing the stack's only screen: no Back, and Browse unreachable until a restart (A8 finding).
             onPress: () =>
               tabNavigation?.navigate(APP_TABS.Marketplace, {
                 screen: MARKETPLACE_ROUTES.CreateListing,
+                initial: false,
               }),
           },
           {

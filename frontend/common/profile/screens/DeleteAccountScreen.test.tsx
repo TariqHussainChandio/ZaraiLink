@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { DeleteAccountScreen } from './DeleteAccountScreen';
@@ -20,11 +19,6 @@ const mockDeleteOwnAccount = deleteOwnAccount as jest.Mock;
 beforeEach(() => {
   mockDeleteOwnAccount.mockReset();
   mockSignOut.mockReset();
-  jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-});
-
-afterEach(() => {
-  jest.restoreAllMocks();
 });
 
 describe('DeleteAccountScreen', () => {
@@ -33,43 +27,47 @@ describe('DeleteAccountScreen', () => {
     await fireEvent.press(screen.getByText('Delete my account'));
 
     expect(await screen.findByText('Enter your password to confirm')).toBeTruthy();
-    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(screen.queryByText('Delete your account?')).toBeNull();
   });
 
-  it('shows a confirmation alert, then deletes the account and signs out on confirm', async () => {
+  it('asks in a confirmation sheet, then deletes the account and signs out on confirm', async () => {
     mockDeleteOwnAccount.mockResolvedValue(undefined);
-    const alertSpy = jest
-      .spyOn(Alert, 'alert')
-      .mockImplementation((_title, _message, buttons) => {
-        const confirm = buttons?.find(b => b.text === 'Delete');
-        confirm?.onPress?.();
-      });
 
     await renderWithQuery(<DeleteAccountScreen />);
     await fireEvent.changeText(screen.getByLabelText('Confirm your password'), 'secret123');
     await fireEvent.press(screen.getByText('Delete my account'));
 
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Delete your account?',
-      expect.any(String),
-      expect.any(Array),
-    );
+    // Nothing is deleted until the sheet's Delete is pressed.
+    expect(screen.getByText('Delete your account?')).toBeTruthy();
+    expect(mockDeleteOwnAccount).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('Delete'));
+
     expect(mockDeleteOwnAccount).toHaveBeenCalledWith('secret123');
     expect(mockSignOut).toHaveBeenCalledTimes(1);
   });
 
+  it('deletes nothing when the sheet is cancelled', async () => {
+    await renderWithQuery(<DeleteAccountScreen />);
+    await fireEvent.changeText(screen.getByLabelText('Confirm your password'), 'secret123');
+    await fireEvent.press(screen.getByText('Delete my account'));
+    await fireEvent.press(screen.getByText('Cancel'));
+
+    expect(screen.queryByText('Delete your account?')).toBeNull();
+    expect(mockDeleteOwnAccount).not.toHaveBeenCalled();
+    expect(mockSignOut).not.toHaveBeenCalled();
+  });
+
   it('shows an error and does not sign out when the wrong password is given', async () => {
     mockDeleteOwnAccount.mockRejectedValue(new Error('Incorrect password.'));
-    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
-      const confirm = buttons?.find(b => b.text === 'Delete');
-      confirm?.onPress?.();
-    });
 
     await renderWithQuery(<DeleteAccountScreen />);
     await fireEvent.changeText(screen.getByLabelText('Confirm your password'), 'wrong-password');
     await fireEvent.press(screen.getByText('Delete my account'));
+    await fireEvent.press(screen.getByText('Delete'));
 
     expect(await screen.findByText('Incorrect password.')).toBeTruthy();
+    expect(screen.queryByText('Delete your account?')).toBeNull();
     expect(mockSignOut).not.toHaveBeenCalled();
   });
 });

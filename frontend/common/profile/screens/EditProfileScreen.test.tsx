@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
@@ -61,7 +60,6 @@ beforeEach(() => {
   mockUpsertFarmerProfile.mockReset().mockResolvedValue(undefined);
   mockUpdateProfile.mockReset().mockResolvedValue(undefined);
   mockUploadAvatar.mockReset();
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -109,6 +107,8 @@ describe('EditProfileScreen', () => {
     mockFetchFarmerProfile.mockResolvedValue({ experience: '9 years', agricultural_info: 'Changed elsewhere' });
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.profile.farmer() });
+      // React Query tells the screen about the new copy on the next tick; let that land inside act() as well.
+      await new Promise(resolve => setTimeout(resolve, 0));
     });
 
     expect(screen.getByDisplayValue('12 years')).toBeTruthy();
@@ -133,6 +133,7 @@ describe('EditProfileScreen', () => {
       ),
     );
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Profile saved')).toBeTruthy();
   });
 
   it('also upserts the farmer profile when saving as a farmer', async () => {
@@ -165,7 +166,7 @@ describe('EditProfileScreen', () => {
     });
     await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
-    await fireEvent.press(screen.getByText('AK'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Change photo' }));
     await fireEvent.press(screen.getByText('Save Changes'));
 
     await waitFor(() =>
@@ -180,7 +181,7 @@ describe('EditProfileScreen', () => {
     );
   });
 
-  it('shows an alert when saving fails', async () => {
+  it('keeps a danger banner on the form when saving fails', async () => {
     mockUpdateProfile.mockRejectedValue(new Error('Network error'));
     useAuthStore.setState({ user: { id: 'user-1' } as never, profile: profile() });
     const navigation = makeNavigation();
@@ -188,9 +189,8 @@ describe('EditProfileScreen', () => {
 
     await fireEvent.press(screen.getByText('Save Changes'));
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Failed to update profile', 'Network error'),
-    );
+    expect(await screen.findByText('Profile not saved')).toBeTruthy();
+    expect(screen.getByText('Network error')).toBeTruthy();
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
 });
