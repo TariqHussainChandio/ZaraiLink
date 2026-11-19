@@ -313,6 +313,27 @@ def test_the_knowledge_base_needs_a_session(api_client):
     assert api_client("GET", "/api/v1/disease/knowledge").status_code == 401
 
 
+# --------------------------------------------------------------------------- the crops the scan offers (D16)
+
+
+@pytest.mark.parametrize("role", ROLES)
+def test_every_signed_in_role_reads_the_crops_the_model_knows(world, api_client, role):
+    # D16: the scan offers only the crops in the model's 38 classes; like the knowledge base it is reference data for
+    # any signed-in role, while creating a case and running the model stay farmer-only.
+    response = api_client("GET", "/api/v1/disease/crops", getattr(world, role).token)
+    assert response.status_code == 200, response.text
+    crops = response.json()["crops"]
+    keys = [crop["key"] for crop in crops]
+    assert len(crops) == 14
+    assert len(set(keys)) == 14
+    assert {"maize", "potato", "tomato"} <= set(keys)
+    assert [crop["name"] for crop in crops] == sorted(crop["name"] for crop in crops)
+
+
+def test_the_crops_need_a_session(api_client):
+    assert api_client("GET", "/api/v1/disease/crops").status_code == 401
+
+
 # --------------------------------------------------------------------------- AI isolation (SRDS §53.39)
 
 

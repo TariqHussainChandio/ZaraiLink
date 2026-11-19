@@ -1,6 +1,25 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-10-18): testing stage, phase by phase.** Phases A4–A8 and B0–B5 were first written as code only
+> **Status (2026-11-19): final integration for submission, on branch `integration/final`.**
+> - **A8 (local accessibility pass)** committed `ff45ac9`; the B6 leftovers (local-only release build switch, IMS
+>   airplane-mode steps) `01ca422`.
+> - **Rate Board redesign merged** (`0eeda13`, D15–D17) onto B1–B5, A5–A7 and the local A8 work: merge `f1047c3`.
+>   The teammate's look everywhere, the behaviour built since kept (A4/B3 dispatch, A5 context, A6 report, A7 audit,
+>   B4/B5 inventory). Inventory: B4 wins over the pre-B4 screens; the dealer dashboard opens the inventory system only
+>   for an approved dealer. Toast and Snackbar, and ScreenState and QueryState, both stay for now (one of each is
+>   follow-up work). OpenAPI, the client and the authorization snapshot regenerated (`/disease/crops`: any signed-in role).
+> - **D18 guest browsing** built (in the working tree for the maintainer's review): the market is open without an
+>   account, checkout and messaging ask for one, and the cart survives sign-in. Proven on the emulator against the real
+>   stack, guest to placed order.
+> - **Checks:** tsc, eslint, Jest 2202, backend unit 1021, reality gate; backend real stack 601 passed, 0 failed (the
+>   first run's 7 failures were tests left behind by B3, A6 and A7 renames, plus 5 operations no test called, among them
+>   the merged `/disease/crops`; tests updated, no assertion weakened); fresh debug and release builds walked on the
+>   Pixel 8 emulator (guest to placed order).
+> - **Not done:** hosted deployment of the API and the hosted `db push` (A4–B5 migrations), release signing and EAS,
+>   Sentry and backups (G5, G3), the per-role TalkBack and dark-mode pass, usability testing with real users, B6's
+>   fresh-context attack, the agronomist's review of the disease texts.
+
+> **Earlier status (2026-10-18): testing stage, phase by phase.** Phases A4–A8 and B0–B5 were first written as code only
 > (2026-10-10/11, the maintainer's call); since 2026-10-11 each is tested, security-checked by a fresh-context verifier,
 > walked on the emulator (since 2026-10-12, after a fresh rebuild) and committed, one commit per phase on
 > `phases/b1-b5` (draft PR #36, merging after B5).
@@ -206,6 +225,7 @@ Agreed before the phase that needs them. Each has a contract test, so a lane can
 | D15 | The design source is the Rate Board design system (https://claude.ai/artifact/TszKUgaoe99eChm1KYw5TD). Field, paper, board, chalk and ink; Barlow Semi Condensed for titles and figures, Atkinson Hyperlegible Next for text; crisp corners; the board green is the brand; ripples, no entrance animations. It replaces D14's visual design; the SRDS §44 role and module colours are unchanged | **Decided** 2026-11-08 (maintainer) |
 | D16 | The disease scan offers only the crops the model knows (`backend/app/ai/checkpoints/class_names.json`); any other crop goes to an expert with the photo, and a photo predicted as another crop gets the advisory and the expert action, not a report (BR-13) | **Decided** 2026-11-08 (maintainer) |
 | D17 | An admin role change is confirmed in a sheet that states its consequence (an approved dealer or expert returns to pending); the app does not offer making someone an admin | **Decided** 2026-11-08 (maintainer) |
+| D18 | Anyone who installs the app may browse the marketplace, open listings and fill a cart without an account; checking out and messaging a seller ask for sign-in or registration, and the cart goes with the guest into that account. Only public reads are open (the API already served them without a token); every write still needs an account | **Decided** 2026-11-19 (maintainer); built the same day |
 
 ## 7. Outside services and gates
 

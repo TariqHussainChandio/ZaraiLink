@@ -257,7 +257,8 @@ def test_the_required_documents_are_an_audited_admin_setting(world, api_client, 
         )
     logs = api_client("GET", "/api/v1/admin/audit-logs?target_entity=required_documents", world.admin.token).json()
     actions = sorted(e["action"] for e in logs if e["target_id"] == document_id)
-    assert actions[:2] == ["required_document_created", "required_document_updated"]
+    # The create and the retirement, each audited by the database under its SRDS §51 name (A7).
+    assert actions[:2] == ["required_document_changed", "required_document_changed"]
     assert all(e["actor_id"] == world.admin.id for e in logs if e["target_id"] == document_id)
 
 

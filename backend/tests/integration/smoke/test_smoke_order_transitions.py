@@ -18,8 +18,11 @@ def _place_order(world, api_client) -> str:
     return checkout.json()[0]["id"]
 
 
-def _move(api_client, order_id: str, token: str, to: str):
-    return api_client("PATCH", f"/api/v1/orders/{order_id}/status", token, json={"to": to})
+def _move(api_client, order_id: str, token: str, to: str, reason: str | None = None):
+    body: dict = {"to": to}
+    if reason is not None:
+        body["reason"] = reason
+    return api_client("PATCH", f"/api/v1/orders/{order_id}/status", token, json=body)
 
 
 def test_the_buyer_cannot_make_the_sellers_moves_but_the_seller_can(world, api_client):
@@ -51,7 +54,10 @@ def test_only_the_buyer_disputes_and_only_an_admin_resolves(world, api_client):
     # neither side can settle the dispute in their own favour
     assert _move(api_client, order_id, world.farmer.token, "completed").status_code == 403
     assert _move(api_client, order_id, world.buyer.token, "refunded").status_code == 403
-    assert _move(api_client, order_id, world.admin.token, "refunded").status_code == 204
+    # The admin settles only with a reason both parties read (A7, SRDS §14); without one the move is refused.
+    assert _move(api_client, order_id, world.admin.token, "refunded").status_code == 422
+    settled = _move(api_client, order_id, world.admin.token, "refunded", reason="Goods arrived damaged; refunded.")
+    assert settled.status_code == 204, settled.text
 
 
 def test_either_side_can_cancel_a_pending_order(world, api_client):

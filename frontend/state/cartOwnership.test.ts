@@ -89,6 +89,26 @@ describe('the cart follows its owner (B3 verification, cart leak)', () => {
     expect(useCartStore.getState().items).toEqual([]);
   });
 
+  it("goes with a guest into the account they sign in to (D18)", () => {
+    act(() => useAuthStore.setState({ user: null, role: null, status: 'unauthenticated' }));
+    act(() => useCartStore.getState().addItem(line, 2));
+    expect(useCartStore.getState().ownerId).toBeNull();
+
+    signInAs('buyer-b');
+    expect(useCartStore.getState()).toMatchObject({ ownerId: 'buyer-b', items: [{ ...line, quantity: 2 }] });
+  });
+
+  it("keeps a guest's cart saved on the device for whoever signs in next", async () => {
+    await AsyncStorage.setItem(
+      'zarailink-cart',
+      JSON.stringify({ state: { items: [{ ...line, quantity: 3 }], ownerId: null }, version: 1 }),
+    );
+    // A cold start: the saved cart is read while the session is still being restored, then the session lands.
+    await act(() => useCartStore.persist.rehydrate());
+    signInAs('buyer-b');
+    expect(useCartStore.getState()).toMatchObject({ ownerId: 'buyer-b', items: [{ ...line, quantity: 3 }] });
+  });
+
   it("keeps the same user's cart when the session is known before the saved cart is read (cold start)", async () => {
     // A fresh app start: new modules (and so a new device storage mock), the saved cart written first, and the session
     // landing before the store has finished reading it.

@@ -2,11 +2,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { House, MessageCircle, Receipt, ScanLine, Stethoscope, Store, User } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { APP_TABS } from '../../common/constants/routes';
 import type { Role } from '../../common/constants/roles';
 import { InventoryNavigator } from '../../inventory';
 import { useAuthStore } from '../../state/authStore';
+import { useCheckoutIntent } from '../../state/checkoutIntentStore';
 import { RoleScopeProvider } from '../../theme';
 import { AccountUnavailableScreen } from '../AccountUnavailableScreen';
 import { renderTabBar, tabOptions } from '../tabOptions';
@@ -56,8 +57,14 @@ function isMarketRole(role: Role | null): role is MarketRole {
 //   Buyer:  Home · Market · Orders · Experts · Account
 //   Dealer: Home · Market · Orders · Messages · Account (Home carries the inventory system's card)
 function MarketTabs({ role }: { role: MarketRole }) {
+  // A guest who asked to check out lands on Market, where the cart they filled reopens (D18; MarketplaceNavigator).
+  const [resumeCheckout] = useState(() => useCheckoutIntent.getState().pending);
   return (
-    <Tab.Navigator tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      tabBar={renderTabBar}
+      screenOptions={{ headerShown: false }}
+      initialRouteName={resumeCheckout ? APP_TABS.Marketplace : APP_TABS.Home}
+    >
       <Tab.Screen
         name={APP_TABS.Home}
         component={HomeNavigator}

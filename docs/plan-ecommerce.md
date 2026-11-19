@@ -752,6 +752,13 @@ emulator against the real API.
 
 **Exit:** accessibility script passes on the emulator; usability results recorded.
 
+> **Status (2026-11-19): built, partly proven.** Two A8 efforts are merged: the local accessibility pass (`ff45ac9`:
+> screen-reader names, one stop per row, announcements, 48 dp) and the teammate's Rate Board redesign (`0eeda13`, D15–D17),
+> merge `f1047c3`. Jest, tsc, eslint and the reality gate pass; a fresh debug build ran on the emulator (farmer home,
+> guest market, listing, cart, sign-in, checkout). Not done: the accessibility script (`docs/process/accessibility-script.md`)
+> per role, the dark-mode pass per screen, and the usability test with real farmers, buyers and dealers. D18 (guest
+> browsing) was added in the same stage.
+
 ### A9 — Hardening and release
 
 | Lane | Tasks |

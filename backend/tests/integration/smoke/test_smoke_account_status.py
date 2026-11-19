@@ -68,10 +68,17 @@ def test_a_pending_dealer_is_refused_through_both_doors_and_an_approved_one_is_n
     allowed = api_client("GET", "/api/v1/dealer/inventory", approved)
     assert allowed.status_code == 200, allowed.text
 
-    # PostgREST with the same sessions: row-level security gives the same answer.
-    store = rest("POST", "dealer_stores", pending, body={"dealer_id": pending_id, "name": "Pending store"})
+    # PostgREST with the same sessions: row-level security gives the same answer. The dealer's own storage locations
+    # (inventory_locations, B1) replaced the old dealer_stores table, dropped in B3 (20261022090000_inventory_sync.sql).
+    store = rest("POST", "inventory_locations", pending, body={"dealer_id": pending_id, "name": "Pending store"})
     assert refused_by_rls(store), store.text
-    store = rest("POST", "dealer_stores", approved, body={"dealer_id": approved_id, "name": "Approved store"})
+    # A dealer's first location is their default one (purchase_atomic_writes: a dealer always has one default).
+    store = rest(
+        "POST",
+        "inventory_locations",
+        approved,
+        body={"dealer_id": approved_id, "name": "Approved store", "is_default": True},
+    )
     assert store.status_code == 201, store.text
     listing = rest("POST", "listings", pending, body={"owner_id": pending_id, "title": "Urea", "price": 50})
     assert refused_by_rls(listing), listing.text
@@ -82,8 +89,11 @@ def test_a_pending_dealer_is_refused_through_both_doors_and_an_approved_one_is_n
 
 
 def test_a_buyer_cannot_open_a_dealer_store_through_postgrest(world):
-    # Before A3a the dealer tables checked only the owner, so any role could create a store for themselves.
-    store = rest("POST", "dealer_stores", world.buyer.token, body={"dealer_id": world.buyer.id, "name": "Not mine"})
+    # Before A3a the dealer tables checked only the owner, so any role could create a store for themselves. The store is
+    # now an inventory location (B1); it still demands an approved dealer.
+    store = rest(
+        "POST", "inventory_locations", world.buyer.token, body={"dealer_id": world.buyer.id, "name": "Not mine"}
+    )
     assert refused_by_rls(store), store.text
 
 

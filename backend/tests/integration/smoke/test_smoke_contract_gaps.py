@@ -70,6 +70,28 @@ def test_dealer_store_supplier_and_inventory_updates(world, api_client):
     )
     assert adjusted.status_code == 200, adjusted.text
 
+    # The legacy routes' deletes (served by the inventory system since B3), on rows made here, so the world keeps
+    # its own.
+    assert api_client("DELETE", f"/api/v1/dealer/suppliers/{supplier_id}", d).status_code == 204
+    spare_store = api_client("POST", "/api/v1/dealer/stores", d, json={"name": "Spare store"})
+    assert spare_store.status_code in (200, 201), spare_store.text
+    assert api_client("DELETE", f"/api/v1/dealer/stores/{spare_store.json()['id']}", d).status_code == 204
+    spare_listing = api_client(
+        "POST",
+        "/api/v1/marketplace/listings",
+        d,
+        json={"title": "Spare urea", "price": 100.0, "unit": "bag", "quantity": 5, "category_id": world.category_id},
+    )
+    assert spare_listing.status_code in (200, 201), spare_listing.text
+    spare_row = api_client(
+        "POST",
+        "/api/v1/dealer/inventory",
+        d,
+        json={"listing_id": spare_listing.json()["id"], "stock_quantity": 0, "unit": "bag", "min_stock_threshold": 1},
+    )
+    assert spare_row.status_code in (200, 201), spare_row.text
+    assert api_client("DELETE", f"/api/v1/dealer/inventory/{spare_row.json()['id']}", d).status_code == 204
+
 
 def test_payment_read_and_failure(world, api_client):
     order_id = api_client(

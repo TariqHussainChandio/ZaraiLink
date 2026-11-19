@@ -4,6 +4,11 @@ Every requirement in [`docs/srds.md`](../srds.md), where it stands today, the ph
 proves it. Written in Plan A phase A0 (2026-09-27) against `main` at the merge of PR #11. Keep it current: a phase
 that changes a row updates it in the same change, together with the [feature register](feature-register.md).
 
+**Addition beyond the SRDS (2026-11-19, decision D18):** the SRDS does not say whether browsing needs an account. The
+app now lets anyone browse the marketplace and fill a cart; checkout and messaging still require sign-in, and every
+role, approval and server-side authorization rule below is unchanged (SRDS §53 rule 40). Evidence: the feature
+register row "Market open to anyone; account asked for at checkout".
+
 **Status:** **Met** — proven by the test named. **Met, untested** — the code does it, but no test proves that
 exact path yet; the phase named adds one. **Partial** — part of the requirement works. **Not yet** — nothing, or something
 the SRDS contradicts. Phases are in [`docs/plan-ecommerce.md`](../plan-ecommerce.md) (A0–A9) and

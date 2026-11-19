@@ -1,3 +1,4 @@
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { ShoppingCart } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -6,8 +7,12 @@ import { CartItemRow } from '../components/CartItemRow';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useCartListings } from '../hooks/orders';
 import { currentPrice, groupBySeller, productsTotal, sellerLabel } from '../utils/cartGroups';
+import { useAuthStore } from '../../../state/authStore';
 import { useCartStore } from '../../../state/cartStore';
+import { useCheckoutIntent } from '../../../state/checkoutIntentStore';
+import { useSignInPrompt } from '../../../navigation/useSignInPrompt';
 import { useTheme, type Theme } from '../../../theme';
+import type { AppTabParamList } from '../../../navigation/stacks/AppNavigator';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { formatRs } from '../../../utils/money';
 
@@ -21,6 +26,19 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
   const listings = useCartListings(items.map(item => item.listingId));
   const groups = groupBySeller(items);
   const total = productsTotal(items, listings);
+  const signedIn = useAuthStore(state => state.user !== null);
+  const requestCheckout = useCheckoutIntent(state => state.request);
+  const promptSignIn = useSignInPrompt();
+
+  // A guest keeps the cart and signs in or creates an account first; the signed-in app then reopens this cart (D18).
+  const goToCheckout = () => {
+    if (signedIn) {
+      navigation.navigate(MARKETPLACE_ROUTES.Checkout);
+      return;
+    }
+    requestCheckout();
+    promptSignIn(navigation.getParent<BottomTabNavigationProp<AppTabParamList>>(), 'Sign in to place your order', 'Your cart is kept. New here? Create an account: farmers, buyers and dealers can buy.');
+  };
 
   if (items.length === 0) {
     return (
@@ -47,7 +65,7 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
             </View>
           }
         >
-          <Button label="Go to checkout" size="lg" onPress={() => navigation.navigate(MARKETPLACE_ROUTES.Checkout)} />
+          <Button label={signedIn ? 'Go to checkout' : 'Sign in to check out'} size="lg" onPress={goToCheckout} />
         </StickyActionBar>
       }
     >

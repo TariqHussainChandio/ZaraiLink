@@ -194,13 +194,17 @@ proves it on the real stack.
 
 ## UI/UX rollout (A8, brought forward: Rate Board, D15)
 
-Everything in this section is proven by Jest, tsc, eslint and the reality gate only. No row has run on an emulator, a
-device or the real stack (FastAPI plus local Supabase), so none is `Works` for users yet. The audit that drove it is
-103 findings across 78 screens (2026-11-08); the design system is the Rate Board artifact named in plan decision D15.
+Merged on 2026-11-19 onto B1–B5, A5–A7 and the local A8 accessibility pass (`integration/final`, merge `f1047c3`).
+After the merge: tsc, eslint, Jest (2202 passed), backend unit (1021) and the reality gate pass, and a fresh debug build
+ran on the Pixel 8 emulator against the real API and local Supabase. That device run covered the farmer home, the guest
+market, a listing, the cart, sign-in and checkout (rows below say which); every other screen is still Jest-only until
+the per-role walk. The audit that drove it is 103 findings across 78 screens (2026-11-08); the design system is the
+Rate Board artifact named in plan decision D15.
 
 | Capability | Status | Evidence and cause | Fix phase |
 |---|---|---|---|
-| New theme, fonts and shared components (rate plate, quantity stepper, snackbar, confirm sheet, code field, photo viewer, screen scaffold, query state) | Unverified | Jest and contrast tests pass; not run on a device: ripple clipping, keyboard handling in sheets, Barlow loading from the expo-font plugin, pinch zoom, TalkBack, 130% font | A8 |
+| New theme, fonts and shared components (rate plate, quantity stepper, snackbar, confirm sheet, code field, photo viewer, screen scaffold, query state) | Works (device, partly) | Jest and contrast tests pass. Seen on the emulator (2026-11-19, fresh debug build): Barlow titles and figures load, rate plates, the quantity stepper, the snackbar with "View cart", the sticky checkout bar, the farmer home in dark and the market in light. Not yet checked: pinch zoom, keyboard in sheets, TalkBack, 130% font. Toast and Snackbar, and ScreenState and QueryState, both stay after the merge (one of each is follow-up work) | A8 |
+| Market open to anyone; account asked for at checkout (D18) | Works (device + real stack) | Signed out, the app opens on a guest shell (Market and Sign in tabs). On the emulator after clearing the app's data (a fresh install): browse, a listing, add to cart, "Sign in to check out" opened sign-in with "Sign in to place your order, Your cart is kept"; signing in as a buyer opened the buyer shell on the same cart (2 bags, Rs 7,800) and the order was placed (cash on delivery, pending). The real API answers listings, a listing, categories, crops and a listing's reviews with 200 without a token, and checkout with 401. A guest's cart is adopted by the account that signs in; another user's is still dropped; an expert or admin sign-in forgets the checkout (D9). Message seller asks a guest to sign in. Jest: `GuestNavigator.integration.test.tsx`, `checkoutIntentStore.test.ts`, `cartOwnership.test.ts`, `CartScreen.test.tsx` | D18 |
 | Screens rebuilt on the new components (all roles) | Unverified | Jest only. Needs the emulator pass for each role in light and dark | A8 |
 | Disease scan limited to the 14 crops the model knows (D16) | Works (API unit tests); screens Unverified | `GET /api/v1/disease/crops`, `chosen_crop` on predict, `crop_matches` in the response; 47 backend tests. A crop mismatch is not stored (needs a column from `zl-db`). The model still cannot reject a non-leaf photo (H8) | A6, A8 |
 | Admin role change confirmed with its consequence, no Admin option (D17) | Unverified | Jest only. The role-change API stores no reason, so the audit row carries none | A8 |

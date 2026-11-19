@@ -444,6 +444,16 @@
    "farmer"
   ]
  },
+ "GET /api/v1/disease/crops": {
+  "kind": "auth",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
  "GET /api/v1/disease/knowledge": {
   "kind": "auth",
   "roles": [

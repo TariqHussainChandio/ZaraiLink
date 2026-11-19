@@ -35,7 +35,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def two_confirmed_users():
-    """Signs up two throwaway users, confirms and logs both in, deletes both afterwards."""
+    """Signs up two throwaway farmers, confirms and logs both in, deletes both afterwards."""
     anon = {"apikey": ANON_KEY, "Authorization": f"Bearer {ANON_KEY}"}
     service = {"apikey": SERVICE_KEY, "Authorization": f"Bearer {SERVICE_KEY}"}
     users = []
@@ -44,7 +44,11 @@ def two_confirmed_users():
         for _ in range(2):
             email = f"storage-test-{uuid.uuid4().hex[:10]}@example.test"
             password = "Passw0rd!123"
-            signup = http.post("/auth/v1/signup", headers=anon, json={"email": email, "password": password, "data": {}})
+            # Farmers: since A6 only an approved, unsuspended farmer uploads disease photos
+            # (20261022080000_ai_advisory.sql), so the folder check is proven for the one role the bucket admits.
+            signup = http.post(
+                "/auth/v1/signup", headers=anon, json={"email": email, "password": password, "data": {"role": "farmer"}}
+            )
             assert signup.status_code == 200, signup.text
             user_id = signup.json().get("id") or signup.json()["user"]["id"]
             http.put(

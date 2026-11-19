@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { MARKETPLACE_ROUTES } from '../../common/constants/routes';
 import { BrowseScreen } from '../../common/marketplace/screens/BrowseScreen';
 import { CartScreen } from '../../common/orders/screens/CartScreen';
@@ -8,6 +8,8 @@ import { CheckoutScreen } from '../../common/orders/screens/CheckoutScreen';
 import { CreateListingScreen } from '../../common/marketplace/screens/CreateListingScreen';
 import { EditListingScreen } from '../../common/marketplace/screens/EditListingScreen';
 import { ListingDetailScreen } from '../../common/marketplace/screens/ListingDetailScreen';
+import { useAuthStore } from '../../state/authStore';
+import { useCheckoutIntent } from '../../state/checkoutIntentStore';
 import { browseActions, cartAction } from '../headerActions';
 import { stackOptionsWithActions } from '../stackHeader';
 
@@ -29,9 +31,33 @@ const MARKET_STACK_OPTIONS = stackOptionsWithActions({
   [MARKETPLACE_ROUTES.ListingDetail]: cartAction,
 });
 
+/**
+ * After a guest pressed "Sign in to check out" and then signed in (D18), the signed-in shell opens on this tab and the
+ * cart is pushed over Browse once Browse is shown, so Back still reaches the market. Decided once, as this stack mounts:
+ * only the signed-in shell's stack takes the wish; the guest's own stack is still mounted for a moment after sign-in and
+ * must not take it on its way out.
+ */
+function useResumeCheckout(): boolean {
+  const [resume] = useState(
+    () => useAuthStore.getState().status === 'authenticated' && useCheckoutIntent.getState().take(),
+  );
+  return resume;
+}
+
 export function MarketplaceNavigator() {
+  const resume = useResumeCheckout();
+  const resumed = useRef(false);
   return (
-    <Stack.Navigator screenOptions={MARKET_STACK_OPTIONS}>
+    <Stack.Navigator
+      screenOptions={MARKET_STACK_OPTIONS}
+      screenListeners={({ navigation, route }) => ({
+        focus: () => {
+          if (!resume || resumed.current || route.name !== MARKETPLACE_ROUTES.Browse) return;
+          resumed.current = true;
+          navigation.navigate(MARKETPLACE_ROUTES.Cart);
+        },
+      })}
+    >
       <Stack.Screen
         name={MARKETPLACE_ROUTES.Browse}
         component={BrowseScreen}

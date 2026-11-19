@@ -15,6 +15,7 @@ import { RootNavigator } from './frontend/navigation/stacks/RootNavigator';
 import { configureGeneratedClient } from './frontend/services/api/client';
 import { useAuthStore } from './frontend/state/authStore';
 import { connectCartToAuth } from './frontend/state/cartStore';
+import { connectCheckoutIntentToAuth } from './frontend/state/checkoutIntentStore';
 import { connectMarketplaceToAuth } from './frontend/state/marketplaceStore';
 import {
   darkColors,
@@ -69,11 +70,14 @@ function App() {
     // The cart is saved on the device; it follows its owner so the next account on the phone starts empty.
     const disconnectCart = connectCartToAuth();
     const disconnectFilters = connectMarketplaceToAuth();
+    // A guest's "Go to checkout" survives the sign-in that follows, and is forgotten for an account that cannot buy.
+    const disconnectCheckoutIntent = connectCheckoutIntentToAuth();
     return () => {
       unsubscribe();
       disconnectQueryManagers();
       disconnectCart();
       disconnectFilters();
+      disconnectCheckoutIntent();
     };
   }, []);
 

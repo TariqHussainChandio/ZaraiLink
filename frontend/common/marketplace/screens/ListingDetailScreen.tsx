@@ -24,6 +24,7 @@ import { useAuthStore } from '../../../state/authStore';
 import { useCartStore } from '../../../state/cartStore';
 import { navigateInTab } from '../../../navigation/navigateInTab';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
+import { useSignInPrompt } from '../../../navigation/useSignInPrompt';
 import { useTheme, type Theme } from '../../../theme';
 import { errorMessage } from '../../../utils/errorMessage';
 import { hapticTap } from '../../../utils/haptics';
@@ -97,8 +98,14 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
     });
   };
 
+  const promptSignIn = useSignInPrompt();
   const messageSeller = async () => {
-    if (!userId || !listing?.owner) return;
+    if (!listing?.owner) return;
+    // A guest may look but needs an account to talk to a seller (D18); the button says so and opens sign-in.
+    if (!userId) {
+      promptSignIn(tabs, 'Sign in to message the seller', `You can come back to ${listing.title} from the market.`);
+      return;
+    }
     try {
       // A5: the conversation records the listing it started from; the database refuses one with no shared context.
       const conversation = await openConversation.mutateAsync({
@@ -218,7 +225,12 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
             ) : null}
 
             {!isOwner && listing.owner ? (
-              <Button label="Message seller" variant="secondary" loading={openConversation.isPending} onPress={messageSeller} />
+              <Button
+                label={userId ? 'Message seller' : 'Sign in to message the seller'}
+                variant="secondary"
+                loading={openConversation.isPending}
+                onPress={messageSeller}
+              />
             ) : null}
 
             <View style={styles.section}>

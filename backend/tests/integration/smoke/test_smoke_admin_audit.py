@@ -454,6 +454,13 @@ def test_moderating_a_consultation_is_audited(world, api_client):
         # A closed or cancelled consultation is no longer open: a second moderation is refused and leaves no row.
         with _no_audit_row(_rows_for_target(consultation_id)):
             assert _patch(api_client, world, path, action="close", reason="again").status_code == 422
+        # The admin's detail view shows the outcome and its reason; nobody else reaches it.
+        detail = api_client("GET", f"/api/v1/admin/consultations/{consultation_id}", world.admin.token)
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["status"] == status
+        assert (
+            api_client("GET", f"/api/v1/admin/consultations/{consultation_id}", world.expert.token).status_code == 403
+        )
 
 
 # --- the disease knowledge base (A6)

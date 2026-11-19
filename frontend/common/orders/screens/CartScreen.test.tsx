@@ -4,7 +4,10 @@ import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { CartScreen } from './CartScreen';
 import { fetchListingById } from '../../marketplace/services/listingsService';
 import { useCartStore, type CartItem } from '../../../state/cartStore';
-import { MARKETPLACE_ROUTES } from '../../constants/routes';
+import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
+import { useLoginNotice } from '../../auth';
+import { useAuthStore } from '../../../state/authStore';
+import { useCheckoutIntent } from '../../../state/checkoutIntentStore';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
 jest.mock('../../marketplace/services/listingsService', () => ({
@@ -42,6 +45,9 @@ function makeNavigation() {
 }
 
 beforeEach(() => {
+  useAuthStore.setState({ user: null, status: 'unauthenticated' });
+  useCheckoutIntent.setState({ pending: false });
+  useLoginNotice.getState().clear();
   useCartStore.setState({ items: [] });
   mockFetchListingById.mockReset();
   mockFetchListingById.mockImplementation(async (id: string) => {
@@ -128,11 +134,27 @@ describe('CartScreen', () => {
     expect(useCartStore.getState().items).toEqual([expect.objectContaining({ listingId: 'listing-1', quantity: 4 })]);
   });
 
-  it('goes to checkout', async () => {
+  it('goes to checkout when signed in', async () => {
+    useAuthStore.setState({ user: { id: 'buyer-1' } as never, status: 'authenticated' });
     useCartStore.setState({ items: [item()] });
     const navigation = makeNavigation();
     await renderWithQuery(<CartScreen navigation={navigation} route={{} as never} />);
     await fireEvent.press(screen.getByRole('button', { name: 'Go to checkout' }));
     expect(navigation.navigate).toHaveBeenCalledWith(MARKETPLACE_ROUTES.Checkout);
+    expect(useCheckoutIntent.getState().pending).toBe(false);
+  });
+
+  it('sends a guest to sign in, keeping the cart and the wish to check out (D18)', async () => {
+    useCartStore.setState({ items: [item()] });
+    const tabNavigate = jest.fn();
+    const navigation = { navigate: jest.fn(), getParent: () => ({ navigate: tabNavigate }) } as unknown as MarketplaceScreenProps<'Cart'>['navigation'];
+    await renderWithQuery(<CartScreen navigation={navigation} route={{} as never} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign in to check out' }));
+
+    expect(navigation.navigate).not.toHaveBeenCalledWith(MARKETPLACE_ROUTES.Checkout);
+    expect(tabNavigate).toHaveBeenCalledWith(APP_TABS.Profile);
+    expect(useCheckoutIntent.getState().pending).toBe(true);
+    expect(useLoginNotice.getState().notice?.title).toBe('Sign in to place your order');
+    expect(useCartStore.getState().items).toHaveLength(1);
   });
 });

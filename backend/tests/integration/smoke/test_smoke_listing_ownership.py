@@ -96,7 +96,8 @@ def test_an_admin_moderates_the_status_only_with_a_second_factor(world, api_clie
 
     allowed = api_client("PATCH", path, world.admin.token, json={"status": "inactive"})
     assert allowed.status_code == 204, allowed.text
-    assert [row["action"] for row in audit_rows(listing_id)] == ["update_listing_status"]
+    # Audited by the database under its SRDS §51 name (A7, 20261023080000_admin_moderation.sql).
+    assert [row["action"] for row in audit_rows(listing_id)] == ["product_moderated"]
 
     missing = api_client(
         "PATCH", f"/api/v1/marketplace/listings/{uuid.uuid4()}/status", world.admin.token, json={"status": "inactive"}
