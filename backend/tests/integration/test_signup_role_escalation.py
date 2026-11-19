@@ -55,19 +55,17 @@ def _signup_and_read_back_role(requested_role: str | None) -> str:
         data["role"] = requested_role
 
     with httpx.Client(base_url=LOCAL_URL, timeout=30) as http:
-        signup = http.post(
-            "/auth/v1/signup",
-            headers=anon,
-            json={"email": email, "password": password, "data": data},
+        # The metadata goes in exactly as a client's sign-up sends it (`data` there is `user_metadata` here), and the
+        # same `handle_new_user` trigger reads it. The account is created confirmed through the admin API because the
+        # stack sends real email (Gmail): a public sign-up would mail a code to this made-up address.
+        created = http.post(
+            "/auth/v1/admin/users",
+            headers=service,
+            json={"email": email, "password": password, "email_confirm": True, "user_metadata": data},
         )
-        assert signup.status_code == 200, signup.text
-        body = signup.json()
-        user_id = body.get("id") or body["user"]["id"]
+        assert created.status_code == 200, created.text
+        user_id = created.json()["id"]
         try:
-            # Email delivery is not what is under test, so confirm through the admin API.
-            http.put(
-                f"/auth/v1/admin/users/{user_id}", headers=service, json={"email_confirm": True}
-            ).raise_for_status()
             token = http.post(
                 "/auth/v1/token?grant_type=password", headers=anon, json={"email": email, "password": password}
             ).json()["access_token"]

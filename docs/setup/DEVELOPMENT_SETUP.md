@@ -40,8 +40,11 @@ npx supabase status -o env
 ```
 
 `status` prints `API_URL`, `ANON_KEY`, and `SERVICE_ROLE_KEY`. These are the public demo keys for a
-local stack. They only work against it. Mail sent by Auth (signup codes, password reset) is caught by
-the local mail inbox at `http://127.0.0.1:54324`, so no email account is needed for development.
+local stack. They only work against it. There is no local mail inbox: Auth email (sign-up and recovery codes) goes
+out through the project's Gmail sender (`[auth.email.smtp]` in `supabase/config.toml`), so `supabase start` needs
+`SUPABASE_AUTH_SMTP_USER`, `SUPABASE_AUTH_SMTP_PASS` (a Google app password) and `SUPABASE_AUTH_SMTP_ADMIN_EMAIL` in
+the git-ignored `supabase/.env`. Sign up with an address you can open, or create confirmed test accounts through the
+Auth admin API, which sends nothing (see `logins.md`, kept out of git).
 
 To start again from a clean database: `npx supabase db reset`. To stop: `npx supabase stop`.
 
@@ -278,7 +281,7 @@ asks before applying. The MCP server has no tool for Auth settings. The Supabase
 | `.env` change has no effect | Values are read when Metro starts; restart it with `npm start -- --clear` |
 | `npm run android` fails while generating the project | Run `npm run prebuild:clean`; check `node -v` is 22.11 or newer |
 | Taking a photo asks for camera permission | Expected: the Expo picker needs it (the old picker did not) |
-| Sign-up email never arrives | Open the local mail inbox at `http://127.0.0.1:54324` |
+| Sign-up email never arrives | Check the spam folder, then `supabase/.env` (the Gmail app password) and the hourly limit (`[auth.rate_limit] email_sent`) |
 | An admin's document link does not open on the emulator | The API signs links with its own Supabase address (`127.0.0.1:54321`); run `adb reverse tcp:54321 tcp:54321` |
-| No decision email in the local inbox | Start the API with `EMAIL_ENABLED=true SMTP_HOST=127.0.0.1 SMTP_PORT=54325 SMTP_STARTTLS=false` (A3b; `backend/.env.example`) |
+| No approval or rejection email | `EMAIL_ENABLED=true` and the Gmail `SMTP_*` values in `backend/.env` (`backend/.env.example`); test runs keep email off |
 | Metro crashes with `ENOENT` on Windows | The watcher; `metro.config.js` already excludes native build output |

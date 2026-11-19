@@ -18,7 +18,8 @@ Load these skills for domain guidance: `fastapi-backend-engineer`, `senior-react
 ## Lane rules
 
 - A conversation always carries its context (listing, order, consultation); the database refuses any other.
-- Email goes through the backend email service; locally to Mailpit. Hosted email is Blocked until gate G1.
+- Email goes through the backend email service and the project's Gmail sender (gate G1), locally and hosted; there is
+  no local mail catcher, so tests keep email off and never sign up through the public endpoint.
 
 ## Before you start
 

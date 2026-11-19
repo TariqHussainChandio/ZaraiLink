@@ -84,13 +84,10 @@ def backend_url():
         # The default 200/minute per caller would throttle the property-based contract test (hundreds of requests as one
         # user) into 429s. The limiter itself is proven separately, on its own server (test_smoke_proxy_headers.py).
         "RATE_LIMIT_DEFAULT": "100000/minute",
-        # The decision emails go to the mail catcher of the stack (Mailpit); test_smoke_applications.py reads them.
-        "EMAIL_ENABLED": "true",
-        "SMTP_HOST": "127.0.0.1",
-        "SMTP_PORT": "54325",
-        "SMTP_STARTTLS": "false",
-        # Mailpit takes no login. A developer's backend/.env may hold a real sender's account (G1); it must not be
-        # offered to the mail catcher, or every send fails.
+        # Email goes through the real Gmail sender only (there is no local mail catcher), so a test run must never send
+        # any: the decision routes still run and report `email_delivered: false`. The wording of each email is proven
+        # by tests/common/notifications/test_emails.py; delivery by the maintainer's live check (G1).
+        "EMAIL_ENABLED": "false",
         "SMTP_USERNAME": "",
         "SMTP_PASSWORD": "",
     }

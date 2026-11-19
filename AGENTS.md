@@ -137,8 +137,8 @@ colour for a role comes from `useRoleAccent()`, which each shell sets, and a sta
   build; `npx expo install --check` lists the mismatches and `--fix` applies them. Dependabot ignores them.
 - Expo replaces only the literal `process.env.EXPO_PUBLIC_NAME`. Destructuring or computed access reads
   `undefined` on the device. `frontend/config/env.ts` is the one place that reads them and validates the result.
-- To test a deep link, run the real flow: request the reset in the app, read the email from the local mail
-  catcher, open its link. A made-up `?code=` proves nothing: with no stored PKCE verifier, supabase-js rejects it
+- To test a deep link, run the real flow: request the reset in the app, read the email in a real inbox
+  (there is no local mail catcher; Gmail sends it), open its link. A made-up `?code=` proves nothing: with no stored PKCE verifier, supabase-js rejects it
   locally, so the app shows nothing and the server sees nothing, whether or not the link was delivered.
 - JavaScript `console` output does not reach `adb logcat` in this React Native version, in debug or release.
   Prove app behaviour by what the screen shows, by gateway or backend logs, or through React Native DevTools.
