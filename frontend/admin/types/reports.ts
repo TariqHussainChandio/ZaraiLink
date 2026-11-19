@@ -1,7 +1,7 @@
 export type ReportTargetType = 'product' | 'user' | 'review' | 'message' | 'expert' | 'listing';
 export type ReportStatus = 'open' | 'investigating' | 'resolved' | 'dismissed';
 
-export interface Report {
+interface Report {
   id: string;
   reporter_id: string;
   target_type: ReportTargetType;

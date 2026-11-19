@@ -1,4 +1,4 @@
-"""P5 (item 4): RFC 9457 (`application/problem+json`) error responses, registered once at the
+"""RFC 9457 (`application/problem+json`) error responses, registered once at the
 FastAPI level. Every existing `raise HTTPException(status_code=..., detail=...)` call site across
 the service layer needs no change — FastAPI's own exception handling already routes every
 HTTPException through whichever handler is registered for it, so swapping the handler reshapes

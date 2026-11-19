@@ -14,7 +14,7 @@ from app.auth.dependencies import AuthenticatedUser
 from app.config.settings import settings
 
 # Security fix C2: the server used to fetch whatever URL the client sent (a blind SSRF, confirmed
-# in the P0 baseline). The image now always comes from our own private storage bucket, addressed
+# by the first security baseline). The image now always comes from our own private storage bucket, addressed
 # by a path the caller must own — never a client-chosen host. Every failure in that path (object
 # missing, too large, not a real image) maps to this one generic message, so a response can never
 # be used to tell those cases apart from the outside.
@@ -272,7 +272,7 @@ async def predict(user: AuthenticatedUser, disease_case_id: str, chosen_crop: st
 
     try:
         # A CPU-bound forward pass: run in a worker thread so it cannot stall every other request on the
-        # event loop (P5 item 2, "inference moves to a threadpool"). torch releases the GIL while computing.
+        # event loop (inference runs in a threadpool). torch releases the GIL while computing.
         class_label, confidence = await asyncio.to_thread(get_classifier().predict, image_bytes)
     except ModelUnavailableError as exc:
         raise await _fail(case_id, _FAILURE_MODEL_UNAVAILABLE, 503, _MODEL_UNAVAILABLE_DETAIL) from exc

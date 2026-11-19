@@ -30,7 +30,7 @@ export interface Order {
   updated_at: string;
 }
 
-export interface OrderItem {
+interface OrderItem {
   id: string;
   order_id: string;
   listing_id: string | null;

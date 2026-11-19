@@ -18,7 +18,7 @@ async def send_message(user: AuthenticatedUser, conversation_id: str, body: str,
     # non-participant's insert at the database as a 42501 (insufficient_privilege), which
     # postgrest-py raises as an APIError — left uncaught, that's an unhandled exception, so
     # FastAPI's default handler turns it into a 500 instead of the 403 a non-participant should
-    # see. Found by the real-stack smoke matrix (P5a), which is the first test to call this as a
+    # see. Found by the real-stack smoke tests, the first to call this as a
     # genuine non-participant rather than mocking the repository layer.
     try:
         return await repo.send_message(user.access_token, conversation_id, user.id, body, attachments)

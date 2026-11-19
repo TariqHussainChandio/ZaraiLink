@@ -88,7 +88,7 @@ class DiseaseClassifier:
         return settings.model_classes[int(index.item())], float(confidence.item())
 
 
-# P5 (item 3): loading used to happen at *import time* (a bare `classifier = DiseaseClassifier()`
+# Loading used to happen at *import time* (a bare `classifier = DiseaseClassifier()`
 # here), which meant importing this module — which every disease-related import chain does,
 # transitively including plenty of tests that never touch a classifier — paid the full checkpoint
 # load cost (and, before the real weights existed, built a MobileNetV2 graph) before the app even

@@ -1,4 +1,4 @@
-"""P5 (item 4): structured (JSON) logs carrying the current request id, using stdlib `logging`
+"""Structured (JSON) logs carrying the current request id, using stdlib `logging`
 only — the codebase has zero structured-logging today (`ai/engine.py`/`config/settings.py` use plain
 `logging`, nothing else), and a formatter is all this need (JSON lines, one field for correlation)
 actually requires. `structlog` would be a new dependency for capability not yet needed; adopt it

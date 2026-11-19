@@ -11,7 +11,7 @@ export interface Message {
   created_at: string;
 }
 
-export interface ConversationParticipant {
+interface ConversationParticipant {
   id: string;
   full_name: string;
   avatar_url: string | null;

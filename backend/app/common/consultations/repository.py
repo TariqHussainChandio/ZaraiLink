@@ -4,13 +4,13 @@ from app.common.pagination import page_range
 from app.common.rows import as_rows, first_row
 from app.database.supabase_client import get_user_scoped_client
 
-# Security/correctness fix N2 (standardization plan, P0 baseline / P5a "Backend repair"):
+# Why the expert embed takes two hops:
 # `consultations.expert_id` references `experts(id)`, not `profiles(id)` directly (Postgres
 # constraint `consultations_expert_id_fkey`) — deliberately, so a consultation can only ever be
 # assigned to a real registered expert, not any profile. The old single-hop embed
 # `profiles!consultations_expert_id_fkey(...)` asked PostgREST to reach `profiles` through a FK
 # that doesn't point there, which PostgREST can't resolve (PGRST200) — confirmed as the exact
-# cause of 4 crashing read routes in the P0 baseline. Retargeting the FK to `profiles` directly
+# cause of 4 crashing read routes. Retargeting the FK to `profiles` directly
 # would fix the query but weaken that integrity guarantee, so the fix instead follows the real
 # two-hop chain (`consultations -> experts -> profiles`, via `experts`' own `experts_id_fkey` to
 # `profiles`) and _flatten_expert() below collapses the extra nesting back to the original flat

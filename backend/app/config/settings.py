@@ -69,8 +69,8 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
 
     # Outgoing email (common/email.py): the approval and rejection emails of SRDS §8, §9 and §11, sent through the
-    # project's Gmail sender (gate G1, docs/process/briefs/g1-smtp.md). Off unless the environment turns it on, so a test
-    # run or an unconfigured machine never emails anyone. The account and its app password come only from the
+    # project's Gmail sender (gate G1, docs/process/briefs/g1-smtp.md). Off unless the environment turns it on, so a
+    # test run or an unconfigured machine never emails anyone. The account and its app password come only from the
     # environment (backend/.env, or the host's secrets); the password never has a default.
     email_enabled: bool = False
     smtp_host: str = "smtp.gmail.com"

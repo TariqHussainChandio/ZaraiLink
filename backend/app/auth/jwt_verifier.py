@@ -1,4 +1,4 @@
-"""P4 (4A.2): local JWT verification against Supabase's JWKS endpoint, replacing the per-request
+"""Local JWT verification against Supabase's JWKS endpoint, replacing the per-request
 `GET /auth/v1/user` call in `auth/dependencies.py`. `PyJWKClient` caches keys and refreshes automatically
 on an unknown `kid` (e.g. after a key rotation) — see its own `PyJWKClientCache`. A JWKS-fetch
 failure (Supabase unreachable) raises `JWKSUnavailableError`, which `auth/dependencies.py` maps to a 503,
@@ -43,7 +43,7 @@ class VerifiedClaims:
     sub: str
     email: str | None
     # "aal1" (password/OTP only) or "aal2" (a second factor, e.g. TOTP, has also been verified
-    # this session) — P4 (4A.4), used to gate admin writes. Supabase always sets this claim once
+    # this session), used to gate admin writes. Supabase always sets this claim once
     # MFA is available on the project, defaulting to "aal1" for a session with no second factor.
     aal: str | None = None
     # When the user last signed in (the latest `amr` timestamp, Unix seconds). A refresh keeps it, so it tells a real

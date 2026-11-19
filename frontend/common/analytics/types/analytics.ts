@@ -1,11 +1,4 @@
-export interface ListingView {
-  id: string;
-  listing_id: string;
-  viewer_id: string | null;
-  created_at: string;
-}
-
-export interface PopularProduct {
+interface PopularProduct {
   listingId: string;
   title: string;
   unitsSold: number;
@@ -13,7 +6,7 @@ export interface PopularProduct {
 }
 
 /** `month` is formatted "YYYY-MM". */
-export interface MonthlyPoint {
+interface MonthlyPoint {
   month: string;
   value: number;
 }

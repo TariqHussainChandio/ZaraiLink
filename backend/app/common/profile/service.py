@@ -13,7 +13,7 @@ async def update_profile(user: AuthenticatedUser, patch: dict) -> None:
 
 
 async def delete_own_account(user: AuthenticatedUser, password: str) -> None:
-    """P4 (4A.5). Order matters and is deliberate:
+    """Deletes the caller's account. Order matters and is deliberate:
 
     1. Re-authenticate (password confirm) — a stolen, still-valid access token alone is not
        enough to permanently delete an account.

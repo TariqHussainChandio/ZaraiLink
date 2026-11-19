@@ -42,8 +42,3 @@ def maybe_row(response: _HasData) -> Row | None:
 def row_or_none(response: _HasData | None) -> Row | None:
     """The object a `.maybe_single()` query returns (None for no match, or for no response at all)."""
     return cast(Row | None, response.data) if response else None
-
-
-def rpc_row(response: _HasData) -> Row:
-    """The single object a Postgres function returning one row (or jsonb object) gives back."""
-    return cast(Row, response.data)

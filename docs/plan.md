@@ -152,7 +152,8 @@ role's dashboard numbers, until a phase splits it per role), frontend `common/re
 `common/reference_data`) and frontend `testUtils/`. Folders with no code yet appear in the phase that fills them:
 backend `buyer/`, `storage/` and `inventory/` (B0 carves it out of `dealer/`), and frontend
 `common/{forms,validation,formatting,error-handling,loading,permissions,api}` (A2). The explicit old-to-new file
-list is `scripts/a1/moves.json`, kept for porting older branches (A3, B0).
+list was `scripts/a1/moves.json`, used to port older branches (A3, B0); the one-off A1 and A2 scripts were removed on
+2026-11-20 and remain in the git history.
 
 ## 3. Lanes and agents
 

@@ -68,7 +68,7 @@ class ViewCountsRequest(BaseModel):
     listing_ids: list[str]
 
 
-# ---- response models (P7 7A)
+# ---- response models (typed, so the published OpenAPI document matches the responses)
 
 
 class Category(BaseModel):
