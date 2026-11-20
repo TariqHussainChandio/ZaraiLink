@@ -160,6 +160,14 @@ colour for a role comes from `useRoleAccent()`, which each shell sets, and a sta
 - Testing Library's `fireEvent` is async (since v13; the project is on v14). An un-awaited press overlaps the next `act()` and every later test in
   the file fails with "Unable to find", far from the cause.
 - Fast Refresh can leave a style change unapplied on the device. Before judging a layout fix, relaunch the app.
+- A machine clock a few seconds behind Supabase's makes a just-issued access token look "not yet valid (iat)" to
+  PyJWT, so every request straight after sign-in got a 401 and the app signed the user out, while older sessions
+  kept working. `jwt_verifier.py` allows 30 seconds of skew (`CLOCK_SKEW_LEEWAY_SECONDS`); keep a leeway on any
+  token check.
+- On a phone over USB, `expo run:android` opens the dev client at the PC's Wi-Fi address; if the phone cannot reach
+  it the screen stays white. `adb reverse tcp:8081 tcp:8081` and `tcp:8000`, then open
+  `exp+zarailink://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081`. `--device` takes the device name
+  (its model), not the adb serial.
 - Never start Metro with `CI=1`: Expo then turns off file watching, and Metro keeps serving the bundle it cached
   before, so the device runs old code while every check of the source passes. To confirm what the device runs, fetch
   `http://127.0.0.1:8081/index.bundle?platform=android&dev=true&minify=false` and search it for the change.

@@ -25,6 +25,12 @@ from app.config.settings import settings
 # environment doesn't crash import of this module.
 _jwk_client: PyJWKClient | None = None
 
+# Clock skew allowed between this server and Supabase Auth when checking `iat`, `nbf` and `exp`. PyJWT refuses a
+# token issued "in the future", so with this machine's clock 2-3 seconds behind Supabase's, a token used straight after
+# sign-in was rejected as "not yet valid (iat)"; the app read the 401 as a dead session and signed the user out. A few
+# seconds of drift is normal between hosts; 30 seconds covers it without meaningfully extending an expired token.
+CLOCK_SKEW_LEEWAY_SECONDS = 30
+
 
 class JWKSUnavailableError(RuntimeError):
     """The JWKS endpoint could not be reached or returned no usable key — a Supabase-side outage
@@ -90,6 +96,7 @@ def verify_access_token(token: str) -> VerifiedClaims:
             signing_key.key,
             algorithms=[signing_key.algorithm_name],
             audience="authenticated",
+            leeway=CLOCK_SKEW_LEEWAY_SECONDS,
             options={"require": ["exp", "sub", "aud"]},
         )
     except jwt.PyJWTError as exc:
