@@ -1,6 +1,6 @@
 # common/profile (app)
 
-View and edit the profile, settings, password change, second-factor enrolment and account deletion.
+View and edit the profile, settings, password change, the optional two-step verification and account deletion. The admin's Account is read-only apart from the password (D19).
 
 - **Owner lane:** `zl-accounts` (docs/plan.md §3)
 - **SRDS:** §13

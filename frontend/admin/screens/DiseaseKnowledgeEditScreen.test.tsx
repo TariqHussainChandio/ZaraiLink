@@ -129,13 +129,13 @@ describe('DiseaseKnowledgeEditScreen', () => {
 
   it('keeps a refusal from the server on screen', async () => {
     mockFetchEntry.mockResolvedValue(entry());
-    mockReview.mockRejectedValue(new Error('This action requires a verified second factor (MFA).'));
+    mockReview.mockRejectedValue(new Error('Insufficient role'));
     await renderWithQuery(<DiseaseKnowledgeEditScreen {...props} />);
     await screen.findByText(LABEL);
 
     await fireEvent.press(screen.getByText('Mark reviewed'));
     await fireEvent.press(screen.getByText('Confirm review'));
 
-    expect(await screen.findByText(/second factor/)).toBeTruthy();
+    expect(await screen.findByText(/Insufficient role/)).toBeTruthy();
   });
 });

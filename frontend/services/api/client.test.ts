@@ -106,7 +106,6 @@ describe('apiFetch: the error contract, replayed from real backend responses', (
     ['validation_failed', 422, 'validation'],
     ['insufficient_stock', 422, 'validation'],
     ['insufficient_role', 403, 'forbidden'],
-    ['mfa_required', 403, 'forbidden'],
     ['idempotency_key_reused', 422, 'validation'],
   ])('%s becomes an ApiError with its code, status and kind', async (name, status, kind) => {
     globalThis.fetch = jest.fn(() => Promise.resolve(fromFixture(name))) as never;
@@ -237,7 +236,7 @@ describe('apiFetch: account suspended and other 403s (P4 4B.2, kept)', () => {
     expect(signOut).not.toHaveBeenCalled();
   });
 
-  it.each(['insufficient_role', 'mfa_required'])('does not treat %s as a suspension', async name => {
+  it.each(['insufficient_role'])('does not treat %s as a suspension', async name => {
     globalThis.fetch = jest.fn(() => Promise.resolve(fromFixture(name))) as never;
     await settle(apiFetch('/api/v1/admin/stats'));
     expect(useAuthStore.getState().status).toBe('authenticated');

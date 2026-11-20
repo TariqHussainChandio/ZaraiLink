@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends
 from app.auth.dependencies import (
     AuthenticatedUser,
     require_admin,
-    require_admin_aal2,
     require_expert_any_status,
 )
 from app.common.pagination import Page, paginate
@@ -77,7 +76,7 @@ async def list_experts_for_admin(
 async def review_verification(
     expert_id: str,
     request: ReviewVerificationRequest,
-    user: AuthenticatedUser = Depends(require_admin_aal2),
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> dict:
     return await service.review_verification(user, expert_id, request.decision, request.notes)
 

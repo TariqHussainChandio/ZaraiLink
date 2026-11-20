@@ -7,6 +7,7 @@ export * from './Chip';
 export * from './CodeField';
 export * from './ConfirmSheet';
 export * from './DocumentTile';
+export * from './Dropdown';
 export * from './EmptyState';
 export * from './ErrorBoundary';
 export * from './ListRow';

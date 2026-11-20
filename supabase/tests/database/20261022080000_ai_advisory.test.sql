@@ -86,8 +86,8 @@ select tests.expect(tests.fx('F'), $$delete from public.disease_knowledge where 
   'err:42501', 'disease_knowledge: a farmer cannot delete a row');
 select tests.expect(tests.fx('A'), $$insert into public.disease_knowledge (class_label, crop, disease, advisory) values ('X___y', 'X', 'y', 'z')$$,
   'err:42501', 'disease_knowledge: an admin without a second factor cannot add a row');
-select tests.expect(tests.fx('A'), $$update public.disease_knowledge set review_status = 'reviewed' where class_label = 'Tomato___healthy'$$,
-  'n:0', 'disease_knowledge: nor edit one at aal1');
+select tests.expect(tests.fx('D2'), $$update public.disease_knowledge set review_status = 'reviewed' where class_label = 'Tomato___healthy'$$,
+  'n:0', 'disease_knowledge: nor does a non-admin edit one');
 select tests.expect(tests.fx('A'), $$delete from public.disease_knowledge where class_label = 'Tomato___healthy'$$,
   'err:42501', 'disease_knowledge: nor delete one at aal1');
 -- Edit only: the 38 classes are fixed by the model, so no client adds or removes one, not even an aal2 admin (BR-15
@@ -150,9 +150,9 @@ select tests.expect(tests.fx('A'), $$update public.disease_knowledge set advisor
 select is((select row(review_status, reviewed_by, reviewed_at, advisory)::text from public.disease_knowledge where class_label = 'Apple___healthy'),
   row('pending_review', null::uuid, null::timestamptz, 'Backend edit.')::text,
   'disease_knowledge review: and lands as pending_review with the new text');
--- Refused writes leave no audit row: one matches no row (aal1), one fails its check constraint (aal2).
-select tests.expect(tests.fx('A'), $$update public.disease_knowledge set advisory = 'x' where class_label = 'Potato___healthy'$$,
-  'n:0', 'disease_knowledge audit: an aal1 edit changes nothing');
+-- Refused writes leave no audit row: one matches no row (a non-admin), one fails its check constraint (the admin).
+select tests.expect(tests.fx('D2'), $$update public.disease_knowledge set advisory = 'x' where class_label = 'Potato___healthy'$$,
+  'n:0', 'disease_knowledge audit: a non-admin edit changes nothing');
 select tests.expect(tests.fx('A'), $$update public.disease_knowledge set review_status = 'bogus' where class_label = 'Potato___healthy'$$,
   'err:23514', 'disease_knowledge audit: an invalid aal2 edit fails', 'aal2');
 select is((select count(*)::int from public.audit_logs where id not in (select id from audit_seen) and metadata->>'class_label' = 'Potato___healthy'), 0,

@@ -85,7 +85,7 @@ select tests.expect(tests.fx('B'), 'insert into public.experts (id) values (' ||
 select tests.expect(tests.fx('S'), 'insert into public.experts (id) values (' || tests.l('S') || ')', 'err:42501', 'experts: a suspended user cannot');
 select tests.expect(tests.fx('E'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:1', 'experts: the expert updates their record');
 select tests.expect(tests.fx('B'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:0', 'experts: another user cannot');
-select tests.expect(tests.fx('A'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:0', 'experts: an admin without a second factor cannot (20260928090000)');
+select tests.expect(tests.fx('D2'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:0', 'experts: a non-admin (D19: the admin needs no second factor) cannot (20260928090000)');
 select tests.expect(tests.fx('A'), 'update public.experts set updated_at = now() where id = ' || tests.l('E'), 'n:1', 'experts: an admin with a second factor can', 'aal2');
 alter table public.experts disable trigger guard_experts_verification_status;
 update public.experts set verification_status = 'approved' where id = tests.fx('E');
@@ -126,7 +126,7 @@ select tests.expect(tests.fx('A'), 'select id from public.reports where id = ' |
 select tests.expect(tests.fx('B2'), 'insert into public.reports (reporter_id, target_type, target_id, reason) values (' || tests.l('B2') || ', ' || quote_literal('user') || ',' || tests.l('F') || $$, 'abuse')$$, 'n:1', 'reports: a user files one');
 select tests.expect(tests.fx('B'), 'insert into public.reports (reporter_id, target_type, target_id, reason) values (' || tests.l('B2') || ', ' || quote_literal('user') || ',' || tests.l('F') || $$, 'forged')$$, 'err:42501', 'reports: cannot file one as someone else');
 select tests.expect(tests.fx('S'), 'insert into public.reports (reporter_id, target_type, target_id, reason) values (' || tests.l('S') || ', ' || quote_literal('user') || ',' || tests.l('F') || $$, 'suspended')$$, 'err:42501', 'reports: a suspended user cannot');
-select tests.expect(tests.fx('A'), $$update public.reports set status = 'investigating' where id = $$ || tests.l('REP1'), 'n:0', 'reports: an admin without a second factor cannot act');
+select tests.expect(tests.fx('D2'), $$update public.reports set status = 'investigating' where id = $$ || tests.l('REP1'), 'n:0', 'reports: a non-admin (D19: the admin needs no second factor) cannot act');
 select tests.expect(tests.fx('A'), $$update public.reports set status = 'investigating' where id = $$ || tests.l('REP1'), 'n:1', 'reports: an admin with a second factor acts', 'aal2');
 select tests.expect(tests.fx('B'), $$update public.reports set status = 'dismissed' where id = $$ || tests.l('REP1'), 'n:0', 'reports: the reporter cannot resolve their own report');
 

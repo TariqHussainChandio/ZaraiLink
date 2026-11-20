@@ -180,8 +180,8 @@ async def fetch_reviews_for_expert(expert_id: str) -> list[dict]:
 
 
 # Moderation reads and writes run on the admin's own token, never the service role: the select policy shows an admin
-# every review (hidden ones too, to restore them) and reviews_admin_update with guard_reviews_update lets only an admin
-# with a second factor change the three hidden_* columns (SRDS §14, admin_mfa_enforcement).
+# every review (hidden ones too, to restore them) and reviews_admin_update with guard_reviews_update lets only the admin
+# change the three hidden_* columns (SRDS §14).
 
 
 async def fetch_review_for_moderation(access_token: str, review_id: str) -> dict | None:

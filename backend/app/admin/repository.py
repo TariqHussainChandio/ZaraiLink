@@ -202,8 +202,8 @@ async def fetch_disease_knowledge_entry(access_token: str, class_label: str) -> 
 
 
 async def update_disease_knowledge(access_token: str, class_label: str, fields: dict) -> dict:
-    # The update policy requires is_admin_aal2(): a token without a second factor matches no row, which first_row()
-    # turns into a 404 rather than a silent success.
+    # The update policy admits only the admin: any other token matches no row, which first_row() turns into a 404
+    # rather than a silent success.
     client = await get_user_scoped_client(access_token)
     response = await client.table("disease_knowledge").update(fields).eq("class_label", class_label).execute()
     return first_row(response)

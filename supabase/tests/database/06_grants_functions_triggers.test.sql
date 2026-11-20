@@ -198,7 +198,7 @@ select tests.expect(tests.fx('F'), $$update public.messages set body = 'edited' 
 select tests.expect(tests.fx('F'), 'update public.messages set sender_id = ' || tests.l('F') || ' where id = ' || tests.l('M1'), 'err:42501', 'guard_messages_updates: nobody can change the sender (column grant)');
 select tests.approval_world();
 select tests.expect(tests.fx('PE0'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE0'), 'err:42501', 'guard_experts_verification_status: an expert cannot approve themselves');
-select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'n:0', 'experts_update_own_or_admin: an admin without a second factor cannot decide (20260928090000)');
+select tests.expect(tests.fx('D2'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'n:0', 'experts_update_own_or_admin: a non-admin (D19: the admin needs no second factor) cannot decide (20260928090000)');
 select tests.expect(tests.fx('A'), $$update public.experts set verification_status = 'approved' where id = $$ || tests.l('PE'), 'err:42501', 'guard_experts_verification_status: nor can an admin with a second factor, directly; decide_account_status() decides (20261005080000)', 'aal2');
 
 -- notification triggers: the event reaches the right person --------------------------------------------------

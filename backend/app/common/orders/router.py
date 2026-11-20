@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Header, Query
 
 from app.auth.dependencies import (
     AuthenticatedUser,
-    require_admin_aal2,
+    require_admin,
     require_authenticated_user,
     require_marketplace_buyer,
 )
@@ -76,11 +76,11 @@ async def update_order_status(
     await service.update_order_status(user, order_id, request.to, request.reason)
 
 
-# An admin cancels an order before dispatch, with a reason (SRDS §14). An admin write, so a second factor is needed, as
-# for every other admin write (admin_mfa_enforcement). No money moves through the platform (BR-11). Audited (BR-15).
+# An admin cancels an order before dispatch, with a reason (SRDS §14). No second factor (D19). No money moves through
+# the platform (BR-11). Audited (BR-15).
 # The admin's other order action, resolving a dispute, goes through PATCH /orders/{id}/status (see update_order_status).
 @admin_router.post("/{order_id}/cancel", response_model=OrderWithItems)
 async def cancel_order_as_admin(
-    order_id: str, request: AdminCancelOrderRequest, user: AuthenticatedUser = Depends(require_admin_aal2)
+    order_id: str, request: AdminCancelOrderRequest, user: AuthenticatedUser = Depends(require_admin)
 ) -> dict:
     return await service.cancel_order_as_admin(user, order_id, request.reason)

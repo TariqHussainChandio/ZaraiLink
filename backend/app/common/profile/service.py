@@ -4,8 +4,17 @@ from app.auth.dependencies import AuthenticatedUser, forget_profile
 from app.common.errors import AppHTTPException
 from app.common.profile import repository as repo
 
+# D19: the admin's details are set by the system (docs/process/admin-bootstrap-runbook.md). The admin changes the
+# password (an Auth call from the app) and preferences only; guard_profiles_role refuses the same fields again
+# (20261120080000_sole_admin_no_mfa.sql).
+ADMIN_FIXED_FIELDS = frozenset(
+    {"full_name", "phone", "location", "avatar_url", "country", "province", "city", "village", "street"}
+)
+
 
 async def update_profile(user: AuthenticatedUser, patch: dict) -> None:
+    if user.role == "admin" and ADMIN_FIXED_FIELDS & patch.keys():
+        raise AppHTTPException(403, "The admin account's details are set by the system.", "forbidden")
     # `role`/`is_suspended` are simply not fields on ProfileUpdateRequest (common/profile/schemas.py) —
     # a self-service profile update has no way to even attempt setting them, on top of
     # `guard_profiles_role`'s own trigger-level block for `role` specifically.
@@ -32,6 +41,9 @@ async def delete_own_account(user: AuthenticatedUser, password: str) -> None:
     no channel to re-authenticate through yet — rejected explicitly rather than silently skipping
     the check.
     """
+    if user.role == "admin":
+        # D19: the platform's one admin; deleting it would leave nobody to run the platform.
+        raise AppHTTPException(403, "The admin account cannot be deleted.", "forbidden")
     if not user.email:
         raise HTTPException(status_code=422, detail="Account deletion needs an email to confirm your password.")
     if not await repo.reauthenticate(user.email, password):

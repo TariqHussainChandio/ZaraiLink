@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.auth.dependencies import AuthenticatedUser, require_admin_aal2, require_authenticated_user
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_authenticated_user
 from app.common.messaging import service
 from app.common.messaging.schemas import (
     Conversation,
@@ -62,5 +62,5 @@ async def get_message(message_id: str, user: AuthenticatedUser = Depends(require
 
 
 @router.patch("/messages/{message_id}/redact", status_code=204)
-async def redact_message(message_id: str, user: AuthenticatedUser = Depends(require_admin_aal2)) -> None:
+async def redact_message(message_id: str, user: AuthenticatedUser = Depends(require_admin)) -> None:
     await service.redact_message(user, message_id)

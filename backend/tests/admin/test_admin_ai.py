@@ -18,8 +18,7 @@ from app.main import app
 
 client = TestClient(app)
 
-ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok", aal="aal2")
-ADMIN_AAL1 = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok", aal="aal1")
+ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok")
 FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access_token="tok2")
 
 ENTRY = {
@@ -108,7 +107,7 @@ async def test_ai_activity_with_nothing_predicted_has_a_zero_share():
 def test_ai_activity_route_is_admin_only(as_user):
     as_user(FARMER)
     assert client.get("/api/v1/admin/ai-activity").status_code == 403
-    as_user(ADMIN_AAL1)  # a read: the role is enough, no second factor needed
+    as_user(ADMIN)  # a read: the role is enough
     with (
         patch("app.admin.service.repo.fetch_disease_cases_since", new=AsyncMock(return_value=[])),
         patch("app.admin.service.repo.fetch_ai_referrals_since", new=AsyncMock(return_value=[])),
@@ -124,7 +123,7 @@ def test_ai_activity_route_is_admin_only(as_user):
 def test_the_knowledge_list_and_entry_are_admin_reads(as_user):
     as_user(FARMER)
     assert client.get("/api/v1/admin/disease-knowledge").status_code == 403
-    as_user(ADMIN_AAL1)
+    as_user(ADMIN)
     with patch("app.admin.service.repo.fetch_disease_knowledge", new=AsyncMock(return_value=[ENTRY])):
         listed = client.get("/api/v1/admin/disease-knowledge")
     assert listed.status_code == 200, listed.text
@@ -216,17 +215,6 @@ async def test_reviewing_records_this_admin_as_reviewer_and_leaves_the_audit_to_
     assert fields["reviewed_by"] == ADMIN.id
     assert datetime.fromisoformat(fields["reviewed_at"]) <= datetime.now(UTC)
     audit.assert_not_awaited()
-
-
-def test_knowledge_writes_need_a_second_factor(as_user):
-    as_user(ADMIN_AAL1)
-    with patch("app.admin.service.repo.update_disease_knowledge", new=AsyncMock()) as update:
-        patched = client.patch("/api/v1/admin/disease-knowledge/X", json={"advisory": "x"})
-        reviewed = client.post("/api/v1/admin/disease-knowledge/X/review")
-    assert patched.status_code == 403
-    assert patched.json()["code"] == "mfa_required"
-    assert reviewed.status_code == 403
-    update.assert_not_awaited()
 
 
 def test_a_blank_advisory_or_a_blank_line_is_a_422(as_user):

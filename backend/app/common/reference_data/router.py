@@ -2,7 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from app.auth.dependencies import AuthenticatedUser, require_admin_aal2
+from app.auth.dependencies import AuthenticatedUser, require_admin
 from app.common.pagination import Page, paginate
 from app.common.reference_data import service
 from app.common.reference_data.repository import RefDataTable
@@ -38,7 +38,7 @@ async def list_rows(table: RefDataTable, page: Page = Depends(paginate)) -> list
 async def create_row(
     table: RefDataTable,
     row: dict[str, Any],
-    user: AuthenticatedUser = Depends(require_admin_aal2),
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> dict:
     return await service.create_row(user, table, row)
 
@@ -48,7 +48,7 @@ async def update_row(
     table: RefDataTable,
     row_id: str,
     patch: dict[str, Any],
-    user: AuthenticatedUser = Depends(require_admin_aal2),
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> None:
     await service.update_row(user, table, row_id, patch)
 
@@ -57,6 +57,6 @@ async def update_row(
 async def delete_row(
     table: RefDataTable,
     row_id: str,
-    user: AuthenticatedUser = Depends(require_admin_aal2),
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> None:
     await service.delete_row(user, table, row_id)

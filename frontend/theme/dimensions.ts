@@ -51,6 +51,10 @@ export const size = {
   composerMax: 120,
   /** The tallest a list inside a sheet grows before it scrolls. */
   sheetListMax: 320,
+  /** The narrowest a dropdown opens, so a short field's options stay readable. */
+  dropdownMinWidth: 200,
+  /** The side menu's width on a phone; it never covers more than menuMaxShare of the screen. */
+  menuWidth: 304,
   /** The two-factor setup QR code: large enough for an authenticator app to read at arm's length. */
   qrCode: 200,
   /** The dot on a tab or bell that marks something new. */

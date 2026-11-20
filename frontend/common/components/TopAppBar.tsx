@@ -24,6 +24,9 @@ export interface TopAppBarProps {
   actions?: AppBarAction[];
   /** The stack's actions for this screen (navigation/stackHeader.tsx). */
   right?: React.ReactNode;
+  /** In the back arrow's place on a tab's first screen, such as the admin's menu button (D19). Ignored when there is a
+   * back arrow: an inner screen goes back. */
+  left?: React.ReactNode;
   /** large: tab roots, with a headline title; inventory: every screen of the dealer's inventory system (SRDS §15–§17). */
   variant?: 'default' | 'large' | 'inventory';
 }
@@ -56,7 +59,7 @@ export function IconButton({ icon: Icon, label, onPress, count, countLabel = unr
 
 /** Names the screen and holds back and up to three actions. The inventory variant marks the Dealer Inventory
  * Management System as a separate app: a dealer band on top and an "Inventory system" kicker above the title. */
-export function TopAppBar({ title, subtitle, onBack, actions = [], right, variant = 'default' }: TopAppBarProps) {
+export function TopAppBar({ title, subtitle, onBack, actions = [], right, left, variant = 'default' }: TopAppBarProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const insets = useInsets();
@@ -67,7 +70,7 @@ export function TopAppBar({ title, subtitle, onBack, actions = [], right, varian
       {/* Below the status bar, not behind it: the strip is part of the app bar. */}
       {variant === 'inventory' ? <View style={styles.band} /> : null}
       <View style={styles.row}>
-        {onBack ? <IconButton icon={ArrowLeft} label="Back" onPress={onBack} /> : <View style={styles.inset} />}
+        {onBack ? <IconButton icon={ArrowLeft} label="Back" onPress={onBack} /> : (left ?? <View style={styles.inset} />)}
         <View style={styles.titleBox}>
           {variant === 'inventory' ? (
             <View style={styles.system}>

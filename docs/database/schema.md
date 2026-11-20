@@ -1231,6 +1231,7 @@ Indexes:
 - `CREATE INDEX profiles_application_queue_idx ON public.profiles USING btree (role, application_submitted_at) WHERE ((account_status = 'pending'::account_status) AND (application_submitted_at IS NOT NULL))`
 - `CREATE INDEX profiles_review_queue_idx ON public.profiles USING btree (role, created_at) WHERE (account_status <> 'approved'::account_status)`
 - `CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)`
+- `CREATE UNIQUE INDEX profiles_single_admin ON public.profiles USING btree ((true)) WHERE (role = 'admin'::user_role)`
 
 | Policy | Command | Using | With check |
 |---|---|---|---|

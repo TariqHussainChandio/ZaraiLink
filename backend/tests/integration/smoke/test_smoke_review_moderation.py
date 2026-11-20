@@ -1,8 +1,8 @@
 """A7 (SRDS §14 "moderate reviews", §51, BR-15): an admin hides a review with a reason and can restore it; nobody
 deletes one. Real FastAPI over HTTP on the local Supabase stack, real users, two-user proofs throughout.
 
-Allowed: the admin with a second factor (aal2) hides and restores, each leaving one `review_moderated` audit row.
-Refused: the same admin without the second factor (aal1), the review's author, the seller it is about, a stranger and an
+Allowed: the admin (no second factor since D19) hides and restores, each leaving one `review_moderated` audit row.
+Refused: the review's author, the seller it is about, a stranger and an
 anonymous caller; none of them leaves an audit row. While hidden, the review is missing from every public read (by id,
 by order, by listing, by seller, and so from every rating average built on those lists), and also from the seller's
 view; its author still sees it on their own order, with the reason. Restoring brings it back everywhere.
@@ -84,15 +84,12 @@ def _listing_and_seller_reviews(api_client, world, token: str | None = None) -> 
     return by_listing, by_seller
 
 
-def test_only_an_admin_with_a_second_factor_hides_a_review(
-    world, api_client, matrix_actors, make_actor, reviewed_order
-):
+def test_only_the_admin_hides_a_review(world, api_client, make_actor, reviewed_order):
     review_id = reviewed_order["review_id"]
     path = f"/api/v1/reviews/{review_id}/hide"
     _, _, stranger_token = make_actor("buyer")
 
     refusals = {
-        "admin without a second factor": (matrix_actors["admin_aal1"], 403, "mfa_required"),
         "the review's author": (world.buyer.token, 403, "insufficient_role"),
         "the seller it is about": (world.farmer.token, 403, "insufficient_role"),
         "a stranger": (stranger_token, 403, "insufficient_role"),
@@ -190,9 +187,7 @@ def test_a_hidden_review_leaves_every_public_read_and_comes_back_on_restore(worl
     assert changes == ["hide", "restore"]
 
 
-def test_restore_is_refused_without_a_second_factor_and_for_a_visible_review(
-    world, api_client, matrix_actors, reviewed_order
-):
+def test_restore_is_refused_to_a_non_admin_and_for_a_visible_review(world, api_client, reviewed_order):
     review_id = reviewed_order["review_id"]
     path = f"/api/v1/reviews/{review_id}/restore"
 
@@ -204,7 +199,7 @@ def test_restore_is_refused_without_a_second_factor_and_for_a_visible_review(
         api_client("PATCH", f"/api/v1/reviews/{review_id}/hide", world.admin.token, json={"reason": REASON}).status_code
         == 200
     )
-    for token, status in ((matrix_actors["admin_aal1"], 403), (world.buyer.token, 403), (world.farmer.token, 403)):
+    for token, status in ((world.buyer.token, 403), (world.farmer.token, 403)):
         assert api_client("PATCH", path, token).status_code == status
     assert _review_row(review_id, world.admin.token)["hidden_reason"] == REASON
     assert [row["metadata"]["change"] for row in _audit_rows(review_id)] == ["hide"]
@@ -213,10 +208,9 @@ def test_restore_is_refused_without_a_second_factor_and_for_a_visible_review(
     assert sorted(row["metadata"]["change"] for row in _audit_rows(review_id)) == ["hide", "restore"]
 
 
-def test_the_moderation_list_is_for_the_admin_only(world, api_client, matrix_actors):
-    # A read: the admin role is enough, with or without the second factor.
+def test_the_moderation_list_is_for_the_admin_only(world, api_client):
+    # A read: the admin role is enough.
     assert api_client("GET", "/api/v1/reviews/admin", world.admin.token).status_code == 200
-    assert api_client("GET", "/api/v1/reviews/admin", matrix_actors["admin_aal1"]).status_code == 200
     assert api_client("GET", "/api/v1/reviews/admin", world.buyer.token).status_code == 403
     assert api_client("GET", "/api/v1/reviews/admin", world.farmer.token).status_code == 403
     assert api_client("GET", "/api/v1/reviews/admin").status_code == 401

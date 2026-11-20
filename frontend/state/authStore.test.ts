@@ -311,8 +311,16 @@ describe('useAuthStore: account status', () => {
   });
 });
 
-// A3a verification round 1, H1: an admin with an authenticator gives the second factor before the console opens.
-describe('useAuthStore: the admin second factor', () => {
+// D19: two-step verification is optional sign-in protection for everyone but the admin, who never has one to give.
+describe('useAuthStore: the optional second factor', () => {
+  // The default (no factor) again afterwards, so later suites are not asked for a code.
+  afterEach(() => {
+    mockedSupabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
+      data: { currentLevel: 'aal1', nextLevel: 'aal1', currentAuthenticationMethods: [] },
+      error: null,
+    } as never);
+  });
+
   async function signIn(role: string, levels: { currentLevel: string; nextLevel: string }) {
     mockedSupabase.auth.getSession.mockResolvedValue({ data: { session }, error: null });
     mockProfile({ ...profileRow, role, account_status: 'approved' });
@@ -324,26 +332,26 @@ describe('useAuthStore: the admin second factor', () => {
     return unsubscribe;
   }
 
-  it('asks an admin who signed in with the password only for the code', async () => {
-    const unsubscribe = await signIn('admin', { currentLevel: 'aal1', nextLevel: 'aal2' });
+  it('asks a farmer who turned it on and signed in with the password only for the code', async () => {
+    const unsubscribe = await signIn('farmer', { currentLevel: 'aal1', nextLevel: 'aal2' });
     await waitFor(() => expect(useAuthStore.getState().status).toBe('secondFactor'));
     unsubscribe();
   });
 
-  it('opens the console once the session has used the second factor', async () => {
-    const unsubscribe = await signIn('admin', { currentLevel: 'aal2', nextLevel: 'aal2' });
+  it('opens the shell once the session has used the second factor', async () => {
+    const unsubscribe = await signIn('buyer', { currentLevel: 'aal2', nextLevel: 'aal2' });
     await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
     unsubscribe();
   });
 
-  it('opens the console for an admin with no authenticator yet (they set one up in Settings)', async () => {
-    const unsubscribe = await signIn('admin', { currentLevel: 'aal1', nextLevel: 'aal1' });
+  it('opens the shell for someone who never turned it on', async () => {
+    const unsubscribe = await signIn('dealer', { currentLevel: 'aal1', nextLevel: 'aal1' });
     await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
     unsubscribe();
   });
 
-  it('never asks anyone but an admin', async () => {
-    const unsubscribe = await signIn('farmer', { currentLevel: 'aal1', nextLevel: 'aal2' });
+  it('never asks the admin, even with a factor left from before D19', async () => {
+    const unsubscribe = await signIn('admin', { currentLevel: 'aal1', nextLevel: 'aal2' });
     await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
     expect(mockedSupabase.auth.mfa.getAuthenticatorAssuranceLevel).not.toHaveBeenCalled();
     unsubscribe();

@@ -136,7 +136,7 @@ describe('ConsultationModerationDetailScreen', () => {
 
   it('shows a refusal in the banner', async () => {
     mockFetch.mockResolvedValue(consultation());
-    mockModerate.mockRejectedValue(new ApiError({ status: 403, code: 'mfa_required', kind: 'forbidden', message: 'MFA required' }));
+    mockModerate.mockRejectedValue(new ApiError({ status: 403, code: 'forbidden', kind: 'forbidden', message: 'Forbidden' }));
     await renderWithQuery(<ConsultationModerationDetailScreen {...props} />);
     await screen.findByText('Yellow leaves on wheat');
 
@@ -144,6 +144,6 @@ describe('ConsultationModerationDetailScreen', () => {
     await fireEvent.changeText(screen.getByLabelText('Reason'), 'Duplicate');
     await fireEvent.press(screen.getByText('Close consultation'));
 
-    expect(await screen.findByText('This action needs two-step verification.')).toBeTruthy();
+    expect(await screen.findByText('Your account cannot do this.')).toBeTruthy();
   });
 });

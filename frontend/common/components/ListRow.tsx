@@ -1,6 +1,6 @@
 import { ChevronRight, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { type GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { statusMeta } from '../constants/status';
 import { type Accent, type Theme, useRoleAccent, useTheme } from '../../theme';
 import { Badge } from './Badge';
@@ -18,8 +18,8 @@ export interface ListRowProps {
   trailing?: React.ReactNode;
   /** A StatusBadge, shown under the meta. */
   status?: React.ReactNode;
-  /** Opens a screen: a chevron marks it. */
-  onPress?: () => void;
+  /** Opens a screen, or a menu at the press (D19): a chevron marks it. The press event says where the finger was. */
+  onPress?: (event: GestureResponderEvent) => void;
   /** Replaces the spoken label. Rarely needed: by default the row is one stop that reads its title, metadata, status and
    * the words of its leading and trailing content (badges, figures), in order. */
   accessibilityLabel?: string;

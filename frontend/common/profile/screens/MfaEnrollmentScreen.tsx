@@ -16,11 +16,9 @@ import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavig
 
 type ScreenState = 'loading' | 'enrolled' | 'not-enrolled' | 'enrolling';
 
-// P4 (4A.4). Only meaningful for admins today — every admin *write* endpoint requires a verified
-// second factor (auth/dependencies.py:require_admin_aal2, plus the matching RLS check) — but any account
-// can reach and use this screen; it isn't gated to the admin role here, since a second factor is
-// never a bad idea and other roles may need it once P5's authorization matrix widens what it
-// covers.
+// Optional sign-in protection for farmers, buyers, dealers and experts (D19): once on, the app asks for a code from the
+// authenticator app after the password at every sign-in (authStore). The admin has no second factor and never sees this
+// screen.
 export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -114,7 +112,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
   return (
     <ScreenScaffold>
       <Text style={styles.subtitle}>
-        Admin actions that change data, such as suspending a user or verifying an expert, need a code from your authenticator app as well as your password.
+        Optional. When it is on, signing in asks for a code from your authenticator app as well as your password, so your password alone is not enough.
       </Text>
 
       {error ?? loadErrorMessage ? (
@@ -175,7 +173,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
         visible={confirmingOff}
         onClose={() => setConfirmingOff(false)}
         title="Turn off two-step verification?"
-        message="Approvals, suspensions and other admin decisions stop working until you set it up again. Anyone with your password could then sign in."
+        message="Signing in will ask for your password only. Anyone with your password could then sign in."
         confirmLabel="Turn off"
         keepLabel="Keep it on"
         destructive

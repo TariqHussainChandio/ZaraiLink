@@ -24,9 +24,7 @@ def _mock_no_expiry_sweep():
 
 
 BUYER = AuthenticatedUser(id="buyer-1", email="b@x.com", role="buyer", access_token="tok")
-ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok3", aal="aal2")
-# The same admin before the second factor was verified this session: may read, may not write (admin_mfa_enforcement).
-ADMIN_AAL1 = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok3-aal1", aal="aal1")
+ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok3")
 SELLER_A = "seller-a"
 SELLER_B = "seller-b"
 
@@ -420,22 +418,7 @@ async def test_update_status_rejects_non_participant_admin_on_wrong_transition_e
     assert exc_info.value.status_code == 422
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize("to", ["refunded", "completed"])
-async def test_an_admin_without_a_second_factor_cannot_resolve_a_dispute(to):
-    # A dispute decision is an admin write: like every other one it needs aal2, even though the route is the
-    # participants' status route. Nothing is written and nothing is audited.
-    order = {"id": "o-1", "buyer_id": BUYER.id, "seller_id": SELLER_A, "status": "disputed"}
-    with (
-        _order_in_status_for(order) as mock_update,
-        patch("app.common.orders.service.log_admin_action", new_callable=AsyncMock, create=True) as mock_audit,
-        pytest.raises(HTTPException) as exc_info,
-    ):
-        await service.update_order_status(ADMIN_AAL1, "o-1", to)
-    assert exc_info.value.status_code == 403
-    assert exc_info.value.code == "mfa_required"
-    mock_update.assert_not_called()
-    mock_audit.assert_not_awaited()
+
 
 
 @pytest.mark.asyncio
@@ -545,10 +528,10 @@ def _signed_in_as(user: AuthenticatedUser):
 
 @pytest.mark.parametrize(
     ("user", "code"),
-    [(ADMIN_AAL1, "mfa_required"), (BUYER, "insufficient_role"), (SELLER_USER, "insufficient_role")],
-    ids=["admin-without-second-factor", "buyer", "seller"],
+    [(BUYER, "insufficient_role"), (SELLER_USER, "insufficient_role")],
+    ids=["buyer", "seller"],
 )
-def test_the_cancel_route_refuses_all_but_an_admin_with_a_second_factor(user, code):
+def test_the_cancel_route_refuses_all_but_the_admin(user, code):
     with _signed_in_as(user), patch("app.common.orders.router.service.cancel_order_as_admin") as cancel:
         response = client.post("/api/v1/admin/orders/o-1/cancel", json={"reason": "Seller unreachable"})
     assert response.status_code == 403

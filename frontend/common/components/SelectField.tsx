@@ -1,20 +1,20 @@
 import { Check, ChevronDown, CircleAlert } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme, type Theme, useRoleAccent, type Accent } from '../../theme';
+import { type AnchorRect, Dropdown, measureAnchor } from './Dropdown';
 import { EmptyState } from './EmptyState';
-import { Sheet } from './Sheet';
 import { Spinner } from './Spinner';
 
 /**
  * Up to this many options render in a plain ScrollView; a longer list is virtualised with FlashList.
  *
- * Why two paths: FlashList v2 sizes its render window from the measured height of its own outer view. Inside the
- * Sheet that view has no height of its own (only a `maxHeight`), so it measured 0, FlashList rendered no rows, and the
- * empty content kept it at 0: on Android the picker showed no options and no empty text (B3 verification, N1). A
- * ScrollView with `maxHeight` grows with its rows up to the cap, which is what a short picker needs; a long one gets a
- * fixed height, the bounded parent FlashList requires.
+ * Why two paths: FlashList v2 sizes its render window from the measured height of its own outer view. In a box with
+ * only a `maxHeight` that view measured 0, FlashList rendered no rows, and the empty content kept it at 0: on Android
+ * the picker showed no options and no empty text (B3 verification, N1). A ScrollView with `maxHeight` grows with its
+ * rows up to the cap, which is what a short picker needs; a long one gets a fixed height, the bounded parent FlashList
+ * requires.
  */
 const VIRTUALISE_ABOVE = 50;
 
@@ -36,7 +36,8 @@ export interface SelectFieldProps {
 }
 
 /** Units, categories, provinces and cities always come from a select, never free text. It shares TextField's label and
- * box, and a chevron says it opens a list. */
+ * box, and a chevron says it opens a list; the list opens right under the field (D19), or above it near the bottom of
+ * the screen. A long list gets a search box. */
 export function SelectField({
   label,
   placeholder = 'Select...',
@@ -52,7 +53,10 @@ export function SelectField({
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<AnchorRect | null | undefined>(undefined);
   const [query, setQuery] = useState('');
+  const fieldRef = useRef<View>(null);
+  const showSearch = searchable && options.length >= theme.components.dropdown.searchFrom;
 
   const selectedLabel = options.find(option => option.id === value)?.label ?? null;
 
@@ -65,6 +69,13 @@ export function SelectField({
   const close = () => {
     setOpen(false);
     setQuery('');
+  };
+
+  // Opens at once, then places itself at the field as soon as the field is measured (the list is hidden until then).
+  const openList = () => {
+    setAnchor(undefined);
+    setOpen(true);
+    measureAnchor(fieldRef.current).then(setAnchor, () => setAnchor(null));
   };
 
   const renderOption = (item: SelectOption) => (
@@ -88,14 +99,15 @@ export function SelectField({
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <Pressable
+        ref={fieldRef}
         style={[styles.field, error && styles.fieldError, disabled && styles.fieldDisabled]}
         disabled={disabled || loading}
-        onPress={() => setOpen(true)}
+        onPress={openList}
         android_ripple={{ color: theme.colors.ripple }}
         accessibilityRole="button"
         accessibilityLabel={[label, selectedLabel ?? placeholder].filter(Boolean).join(', ')}
         accessibilityHint={error}
-        accessibilityState={{ disabled: disabled || loading }}
+        accessibilityState={{ disabled: disabled || loading, expanded: open }}
       >
         <Text style={selectedLabel ? styles.value : styles.placeholder} numberOfLines={1}>
           {loading ? 'Loading…' : (selectedLabel ?? placeholder)}
@@ -109,36 +121,43 @@ export function SelectField({
         </View>
       ) : null}
 
-      {/* The list scrolls itself (FlashList), so the sheet's own scrolling body is switched off. */}
-      <Sheet visible={open} onClose={close} title={label ?? 'Choose an option'} scroll={false}>
-        {searchable ? (
-          <TextInput
-            style={styles.search}
-            placeholder="Search"
-            placeholderTextColor={theme.colors.ink3}
-            value={query}
-            onChangeText={setQuery}
-            autoFocus
-          />
-        ) : null}
-        {loading ? (
-          <Spinner />
-        ) : filteredOptions.length > VIRTUALISE_ABOVE ? (
-          <FlashList
-            data={filteredOptions}
-            keyExtractor={item => item.id}
-            style={styles.longList}
-            // Inside the Sheet's own scrolling body, the picker's list scrolls by itself on Android.
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => renderOption(item)}
-          />
-        ) : (
-          <ScrollView style={styles.list} nestedScrollEnabled keyboardShouldPersistTaps="handled">
-            {filteredOptions.length === 0 ? <EmptyState title="No results" /> : filteredOptions.map(item => renderOption(item))}
-          </ScrollView>
-        )}
-      </Sheet>
+      <Dropdown
+        visible={open}
+        anchor={anchor}
+        onClose={close}
+        label={label ?? 'Choose an option'}
+        header={
+          showSearch ? (
+            <TextInput
+              style={styles.search}
+              placeholder="Search"
+              placeholderTextColor={theme.colors.ink3}
+              value={query}
+              onChangeText={setQuery}
+              accessibilityLabel={`Search ${label ?? 'options'}`}
+              autoFocus
+            />
+          ) : null
+        }
+      >
+        {listMaxHeight =>
+          loading ? (
+            <Spinner />
+          ) : filteredOptions.length > VIRTUALISE_ABOVE ? (
+            <FlashList
+              data={filteredOptions}
+              keyExtractor={item => item.id}
+              style={{ height: listMaxHeight }}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => renderOption(item)}
+            />
+          ) : (
+            <ScrollView style={[styles.list, { maxHeight: listMaxHeight }]} keyboardShouldPersistTaps="handled">
+              {filteredOptions.length === 0 ? <EmptyState title="No results" /> : filteredOptions.map(item => renderOption(item))}
+            </ScrollView>
+          )
+        }
+      </Dropdown>
     </View>
   );
 }
@@ -199,16 +218,11 @@ function makeStyles({ colors, space, radius, typography, size, borders, componen
       paddingHorizontal: space[3],
       ...typography.bodyLg,
       color: colors.ink,
-      marginBottom: space[3],
+      marginBottom: space[1],
     },
-    // Grows with its rows up to the cap, then scrolls.
+    // Grows with its rows up to the room the dropdown has, then scrolls.
     list: {
-      maxHeight: size.sheetListMax,
       flexGrow: 0,
-    },
-    // FlashList needs a parent with a real height (see VIRTUALISE_ABOVE).
-    longList: {
-      height: size.sheetListMax,
     },
     option: {
       flexDirection: 'row',
@@ -216,8 +230,8 @@ function makeStyles({ colors, space, radius, typography, size, borders, componen
       justifyContent: 'space-between',
       gap: space[2],
       minHeight: size.touchMin,
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
+      paddingHorizontal: space[3],
+      borderRadius: radius.xs,
     },
     optionLabel: {
       ...typography.body,

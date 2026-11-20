@@ -43,7 +43,7 @@ function codeFrom(label: string): string {
 /**
  * The documents dealers and experts are asked for (SRDS §7: "the exact required documents should be configurable").
  * An entry is never deleted, only retired, because sent documents point at it; every change is audited by the database
- * (BR-15) and needs the second factor. The API stores no reason for a change, so none is asked.
+ * (BR-15). The API stores no reason for a change, so none is asked.
  */
 export function RequiredDocumentsScreen() {
   const theme = useTheme();

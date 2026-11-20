@@ -78,8 +78,8 @@ export async function updateUserRole(profileId: string, newRole: Role): Promise<
 }
 
 /**
- * Decides a submitted dealer application (A3a, A3b; SRDS §8, §12). Needs a second factor; the decision and its audit row
- * are one database transaction. A rejection's reason is what the dealer reads on their Application Status screen and
+ * Decides a submitted dealer application (A3a, A3b; SRDS §8, §12). The decision and its audit row are one database
+ * transaction. A rejection's reason is what the dealer reads on their Application Status screen and
  * in the email sent after the decision; `email_delivered` says whether that email went out.
  */
 export async function decideDealerApplication(
@@ -171,7 +171,7 @@ export async function cancelOrderAsAdmin(orderId: string, reason: string): Promi
 
 /**
  * Settles a disputed order (SRDS §14). The platform holds no money (BR-11): "refunded" records the outcome, and any
- * refund is paid by the seller to the buyer off the platform. Needs a second factor; the API writes the audit entry as
+ * refund is paid by the seller to the buyer off the platform. The API writes the audit entry as
  * "Order Administrative Action" (BR-15). The order status route is the one the API offers for it. The reason is
  * required (422 without it) and stored on the order as `admin_action_reason`, for the buyer and the seller to read.
  */
@@ -179,7 +179,7 @@ export async function resolveDisputeAsAdmin(orderId: string, outcome: DisputeOut
   return apiFetch(`/api/v1/orders/${orderId}/status`, { method: 'PATCH', body: { to: outcome, reason } });
 }
 
-// ---- consultations (SRDS §14). Moderation needs a second factor and is audited by the API (BR-15).
+// ---- consultations (SRDS §14). Moderation is audited by the API (BR-15).
 
 export async function fetchConsultationsForAdmin(
   filter: { status?: ConsultationStatus; olderThanDays?: number } = {},
@@ -197,8 +197,8 @@ export async function moderateConsultation(consultationId: string, body: Moderat
   return apiFetch(`/api/v1/admin/consultations/${consultationId}/moderate`, { method: 'PATCH', body });
 }
 
-// ---- reviews (SRDS §14). An admin hides a review with a reason, or restores it; nothing is deleted. Both need a
-// second factor and are audited by the API (BR-15).
+// ---- reviews (SRDS §14). An admin hides a review with a reason, or restores it; nothing is deleted. Both are
+// audited by the API (BR-15).
 
 export async function fetchReviewsForModeration(): Promise<ReviewWithBuyer[]> {
   return apiFetch('/api/v1/reviews/admin', { query: { include_hidden: true } });

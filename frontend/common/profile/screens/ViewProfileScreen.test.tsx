@@ -7,6 +7,15 @@ import { useAuthStore } from '../../../state/authStore';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 import type { Profile } from '../../types/profile';
 
+// The optional two-step row reads the account's factor from Supabase Auth: faked at the service edge, none enrolled.
+jest.mock('../../auth/services/mfaService', () => ({
+  getVerifiedTotpFactorId: jest.fn(() => Promise.resolve(null)),
+  enrollTotp: jest.fn(),
+  verifyTotpEnrollment: jest.fn(),
+  unenrollTotp: jest.fn(),
+  verifySecondFactor: jest.fn(),
+}));
+
 const profile = (overrides: Partial<Profile> = {}): Profile =>
   ({
     id: 'user-1',
@@ -123,5 +132,36 @@ describe('ViewProfileScreen', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.DeleteAccount);
+  });
+
+  it('offers everyone but the admin the optional two-step verification', async () => {
+    useAuthStore.setState({ profile: profile(), role: 'farmer', user: { email: 'ahmed@example.com' } as never });
+    const navigation = makeNavigation();
+    await renderWithQuery(<ViewProfileScreen navigation={navigation} route={{} as never} />);
+    expect(await screen.findByText('Off (optional)')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Two-step verification'));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.MfaEnrollment);
+  });
+
+  // D19: the one admin's details are set by the system; only the password changes.
+  it("shows the admin who they are, read-only, with the password, appearance and sign out and nothing else", async () => {
+    useAuthStore.setState({
+      profile: profile({ role: 'admin', full_name: 'Platform Admin', street: 'Somewhere' }),
+      role: 'admin',
+      user: { email: 'admin@example.com' } as never,
+      signOut: jest.fn(),
+    });
+    const navigation = makeNavigation();
+    await renderWithQuery(<ViewProfileScreen navigation={navigation} route={{} as never} />);
+
+    expect(screen.getByText('Platform Admin')).toBeTruthy();
+    expect(screen.getByText('admin@example.com')).toBeTruthy();
+    expect(screen.getByText('Appearance')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
+    for (const absent of ['Edit profile', 'Phone', 'Place', 'Address', 'Somewhere', 'Two-step verification', 'Delete account', 'Account security']) {
+      expect(screen.queryByText(absent)).toBeNull();
+    }
+    await fireEvent.press(screen.getByText('Password'));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.ChangePassword);
   });
 });

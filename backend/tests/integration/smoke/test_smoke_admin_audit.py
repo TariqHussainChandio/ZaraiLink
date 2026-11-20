@@ -1,6 +1,6 @@
 """A7 (SRDS §14, §51; BR-15) — every admin write leaves exactly one `audit_logs` row, under its §51 name.
 
-Each case performs the real admin action as a real admin (aal2: every admin write needs a second factor) and then reads
+Each case performs the real admin action as the real admin (a password-only session: no second factor since D19) and then reads
 `audit_logs` back with the service role. The assertion is strict: the action adds exactly one row for that target, the
 row carries the SRDS §51 event name (`audit_events.py`, held by the `audit_logs.action` foreign key since
 20261023080000_admin_moderation.sql), and the actor is the admin who acted. Finer detail (create, update, delete, hide,
@@ -43,7 +43,7 @@ for _name, _value in (
         os.environ.setdefault(_name, _value)
 
 try:
-    from app.auth.dependencies import declared_roles, require_admin_aal2
+    from app.auth.dependencies import declared_roles
     from app.main import app
 except ValidationError:
     app = None
@@ -537,7 +537,7 @@ def _walk(dependant):
 
 def _admin_reachable(route) -> bool:
     calls = list(_walk(route.dependant))
-    return require_admin_aal2 in calls or any("admin" in declared_roles.get(call, ()) for call in calls)
+    return any("admin" in declared_roles.get(call, ()) for call in calls)
 
 
 def test_every_admin_write_route_is_covered_or_explicitly_not_audited():

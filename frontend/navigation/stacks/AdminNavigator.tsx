@@ -3,6 +3,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BadgeCheck, Flag, LayoutDashboard, ScrollText, User } from 'lucide-react-native';
 import React from 'react';
+import { AdminMenuButton } from '../../admin';
 import { AiActivityScreen } from '../../admin/screens/AiActivityScreen';
 import { AdminAnalyticsScreen } from '../../admin/screens/AnalyticsScreen';
 import { ApplicationDetailScreen } from '../../admin/screens/ApplicationDetailScreen';
@@ -27,7 +28,7 @@ import { ADMIN_HOME_ROUTES, ADMIN_TABS } from '../../common/constants/routes';
 import { NotificationListScreen } from '../../common/notifications/screens/NotificationListScreen';
 import { RoleScopeProvider } from '../../theme';
 import { notificationsAction } from '../headerActions';
-import { stackOptionsWithActions, stackScreenOptions } from '../stackHeader';
+import { stackOptionsWithActions, stackOptionsWithLeading } from '../stackHeader';
 import { renderTabBar, tabOptions } from '../tabOptions';
 import { ProfileNavigator, type ProfileStackParamList } from './ProfileNavigator';
 
@@ -62,8 +63,18 @@ export type AdminScreenProps<RouteName extends keyof AdminStackParamList> = Nati
 
 const Stack = createNativeStackNavigator<AdminStackParamList>();
 
+// The admin's side menu (D19) opens from the first screen of every admin tab, in the back arrow's place.
+const menuAction = () => <AdminMenuButton />;
+
 // Overview: platform figures, analytics, notifications and the AI module (A6; SRDS §37).
-const OVERVIEW_STACK_OPTIONS = stackOptionsWithActions({ [ADMIN_HOME_ROUTES.Dashboard]: notificationsAction });
+const OVERVIEW_STACK_OPTIONS = stackOptionsWithActions(
+  { [ADMIN_HOME_ROUTES.Dashboard]: notificationsAction },
+  'marketplace',
+  { [ADMIN_HOME_ROUTES.Dashboard]: menuAction },
+);
+const APPROVALS_STACK_OPTIONS = stackOptionsWithLeading({ [ADMIN_HOME_ROUTES.Approvals]: menuAction });
+const MODERATION_STACK_OPTIONS = stackOptionsWithLeading({ [ADMIN_HOME_ROUTES.ModerationHub]: menuAction });
+const AUDIT_STACK_OPTIONS = stackOptionsWithLeading({ [ADMIN_HOME_ROUTES.AuditLogs]: menuAction });
 
 function OverviewNavigator() {
   return (
@@ -85,7 +96,7 @@ function OverviewNavigator() {
 // Approvals (A3b; SRDS §12): dealer and expert applications, each read with its documents before the decision.
 function ApprovalsNavigator() {
   return (
-    <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Navigator screenOptions={APPROVALS_STACK_OPTIONS}>
       <Stack.Screen name={ADMIN_HOME_ROUTES.Approvals} component={ApprovalsScreen} options={{ title: 'Approvals' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.ApplicationDetail} component={ApplicationDetailScreen} options={{ title: 'Application' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.RequiredDocuments} component={RequiredDocumentsScreen} options={{ title: 'Required documents' }} />
@@ -96,7 +107,7 @@ function ApprovalsNavigator() {
 // Moderation: users, listings, reports, orders, consultations, reviews and the admin-managed lists, from one hub (SRDS §14).
 function ModerationNavigator() {
   return (
-    <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Navigator screenOptions={MODERATION_STACK_OPTIONS}>
       <Stack.Screen name={ADMIN_HOME_ROUTES.ModerationHub} component={ModerationScreen} options={{ title: 'Moderation' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.UserManagement} component={UserManagementScreen} options={{ title: 'Users' }} />
       <Stack.Screen name={ADMIN_HOME_ROUTES.ListingModeration} component={ListingModerationScreen} options={{ title: 'Listings' }} />
@@ -119,7 +130,7 @@ function ModerationNavigator() {
 // Audit: every admin action, logged (BR-15).
 function AuditNavigator() {
   return (
-    <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Navigator screenOptions={AUDIT_STACK_OPTIONS}>
       <Stack.Screen name={ADMIN_HOME_ROUTES.AuditLogs} component={AuditLogScreen} options={{ title: 'Audit' }} />
     </Stack.Navigator>
   );
@@ -142,7 +153,7 @@ const AUDIT_TAB = tabOptions('Audit', ScrollText);
 const ACCOUNT_TAB = tabOptions('Account', User);
 
 // The admin's shell (the approved design system's "Role shells"): Overview · Approvals · Moderation · Audit · Account, in
-// the admin slate.
+// the admin slate, and the side menu (D19) that reaches every admin screen from any tab.
 export function AdminNavigator() {
   return (
     <RoleScopeProvider scope="admin">

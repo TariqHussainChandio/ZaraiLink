@@ -135,7 +135,7 @@ describe('AdminOrderDetailScreen', () => {
 
   it('shows a refusal in the banner, in the words of its error code', async () => {
     mockFetchOrder.mockResolvedValue(detail());
-    mockCancel.mockRejectedValue(new ApiError({ status: 403, code: 'mfa_required', kind: 'forbidden', message: 'MFA required' }));
+    mockCancel.mockRejectedValue(new ApiError({ status: 403, code: 'forbidden', kind: 'forbidden', message: 'Forbidden' }));
     await renderWithQuery(<AdminOrderDetailScreen {...props} />);
     await screen.findByText('Buyer Bilal');
 
@@ -143,7 +143,7 @@ describe('AdminOrderDetailScreen', () => {
     await fireEvent.changeText(screen.getByLabelText('Reason'), 'Fraud report');
     await fireEvent.press(sheetButton('Cancel order'));
 
-    expect(await screen.findByText('This action needs two-step verification.')).toBeTruthy();
+    expect(await screen.findByText('Your account cannot do this.')).toBeTruthy();
   });
 
   it('shows a retry state when the order cannot be loaded', async () => {
@@ -214,7 +214,7 @@ describe('AdminOrderDetailScreen', () => {
 
   it('shows a refused settlement in the banner', async () => {
     mockFetchOrder.mockResolvedValue(detail({ status: 'disputed' }));
-    mockResolve.mockRejectedValue(new ApiError({ status: 403, code: 'mfa_required', kind: 'forbidden', message: 'MFA required' }));
+    mockResolve.mockRejectedValue(new ApiError({ status: 403, code: 'forbidden', kind: 'forbidden', message: 'Forbidden' }));
     await renderWithQuery(<AdminOrderDetailScreen {...props} />);
     await screen.findByText('Buyer Bilal');
 
@@ -222,6 +222,6 @@ describe('AdminOrderDetailScreen', () => {
     await fireEvent.changeText(screen.getByLabelText('Reason'), 'Goods arrived spoiled');
     await fireEvent.press(sheetButton('Settle for the buyer'));
 
-    expect(await screen.findByText('This action needs two-step verification.')).toBeTruthy();
+    expect(await screen.findByText('Your account cannot do this.')).toBeTruthy();
   });
 });

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.admin import service
 from app.auth.dependencies import AuthenticatedUser, get_current_user
+from app.common.errors import AppHTTPException
 from app.main import app
 
 client = TestClient(app)
@@ -16,6 +17,7 @@ FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access
 @pytest.mark.asyncio
 async def test_update_user_role_writes_the_role_and_leaves_the_audit_to_the_database():
     with (
+        patch("app.admin.service.repo.fetch_profile_role", new=AsyncMock(return_value="buyer")),
         patch("app.admin.service.repo.update_profile_role") as mock_update,
         patch("app.admin.service.log_admin_action", new=AsyncMock(), create=True) as mock_log,
     ):
@@ -24,6 +26,55 @@ async def test_update_user_role_writes_the_role_and_leaves_the_audit_to_the_data
     mock_update.assert_called_once_with(ADMIN.access_token, "user-1", "dealer")
     # The database writes the audit row in the same transaction (20261023080000); the service writes none of its own.
     mock_log.assert_not_awaited()
+
+
+# --- D19: one admin, whose role and access are fixed
+
+
+@pytest.mark.asyncio
+async def test_the_admin_accounts_role_is_fixed():
+    with (
+        patch("app.admin.service.repo.fetch_profile_role", new=AsyncMock(return_value="admin")),
+        patch("app.admin.service.repo.update_profile_role") as mock_update,
+        pytest.raises(AppHTTPException) as exc_info,
+    ):
+        await service.update_user_role(ADMIN, "admin-1", "buyer")
+    assert exc_info.value.status_code == 409
+    mock_update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_role_change_on_a_missing_account_is_a_404():
+    with (
+        patch("app.admin.service.repo.fetch_profile_role", new=AsyncMock(return_value=None)),
+        patch("app.admin.service.repo.update_profile_role") as mock_update,
+        pytest.raises(AppHTTPException) as exc_info,
+    ):
+        await service.update_user_role(ADMIN, "nobody", "buyer")
+    assert exc_info.value.status_code == 404
+    mock_update.assert_not_called()
+
+
+def test_nobody_is_made_an_admin_through_the_api():
+    app.dependency_overrides[get_current_user] = lambda: ADMIN
+    try:
+        with patch("app.admin.router.service.update_user_role") as mock_change:
+            response = client.patch("/api/v1/admin/users/user-1/role", json={"role": "admin"})
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+    assert response.status_code == 422
+    mock_change.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_the_admin_cannot_suspend_themselves():
+    with (
+        patch("app.admin.service.repo.set_profile_suspended") as mock_suspend,
+        pytest.raises(AppHTTPException) as exc_info,
+    ):
+        await service.set_profile_suspended(ADMIN, ADMIN.id, True)
+    assert exc_info.value.status_code == 409
+    mock_suspend.assert_not_called()
 
 
 @pytest.mark.asyncio

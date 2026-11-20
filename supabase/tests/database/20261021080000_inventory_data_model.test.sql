@@ -26,6 +26,7 @@ declare
 begin
   -- Public signup never makes an admin (handle_new_user): promote as the owner with the role guard paused.
   alter table public.profiles disable trigger guard_profiles_role;
+  update public.profiles set role = 'buyer' where role = 'admin';  -- one admin, ever (20261120080000)
   update public.profiles set role = 'admin' where id = adm;
   alter table public.profiles enable trigger guard_profiles_role;
   perform tests.approve(array[a, b]);

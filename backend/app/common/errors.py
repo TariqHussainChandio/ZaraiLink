@@ -21,7 +21,6 @@ ErrorCode = Literal[
     "account_not_approved",
     "sign_in_again",
     "insufficient_role",
-    "mfa_required",
     "incorrect_password",
     "forbidden",
     "not_found",

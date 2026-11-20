@@ -2,7 +2,7 @@
 
 Covers the routes that had no unit test: the dashboard queues, the audit log with its §51 labels and filter, the audit
 event names, consultation moderation and the order administrative actions. The repositories are patched, so these prove
-the gates (admin role, second factor on writes) and what reaches the service. The audit row of every write here is
+the gates (the admin role; no second factor since D19) and what reaches the service. The audit row of every write here is
 written by the database in the same transaction (20261023080000), so these assert the service writes none of its own.
 The real audit rows are proven on the real stack in tests/integration/smoke/test_smoke_admin_audit.py.
 """
@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from postgrest.exceptions import APIError
 
 from app.admin import service
-from app.auth.dependencies import AuthenticatedUser, get_current_user, require_admin_aal2
+from app.auth.dependencies import AuthenticatedUser, get_current_user, require_admin
 from app.common.audit_events import AuditEvent
 from app.common.consultations import service as consultations_service
 from app.common.errors import AppHTTPException
@@ -26,9 +26,8 @@ from app.main import app
 
 client = TestClient(app)
 
-ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok", aal="aal2")
-ADMIN_AAL1 = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok", aal="aal1")
-FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access_token="tok2", aal="aal2")
+ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok")
+FARMER = AuthenticatedUser(id="farmer-1", email="f@x.com", role="farmer", access_token="tok2")
 
 QUEUES = {
     "pending_dealer_applications": 2,
@@ -102,28 +101,24 @@ def test_every_admin_route_rejects_a_non_admin(as_user):
         assert response.json()["code"] == "insufficient_role", f"{method} {path}: {response.text}"
 
 
-def test_every_admin_write_needs_a_second_factor(as_user):
-    """Two users in one: the same admin without a verified second factor is refused on every admin write."""
-    as_user(ADMIN_AAL1)
+def test_every_admin_write_needs_the_admin_role_and_no_second_factor():
+    """D19: every admin write demands the admin role, and nothing more; the one admin needs no second factor."""
     writes = [(m, p, d) for m, p, _, d in _admin_routes() if m != "GET"]
     assert writes, "no admin writes found"
     for method, path, dependant in writes:
-        assert require_admin_aal2 in list(_calls(dependant)), f"{method} {path} does not demand a second factor"
-        response = client.request(method, _concrete(path), json={})
-        assert response.status_code == 403, f"{method} {path} let an aal1 admin write: {response.status_code}"
-        assert response.json()["code"] == "mfa_required", f"{method} {path}: {response.text}"
+        assert require_admin in list(_calls(dependant)), f"{method} {path} does not demand the admin role"
 
 
 # --- the dashboard queues
 
 
-def test_queues_are_an_admin_read_without_a_second_factor(as_user):
-    as_user(ADMIN_AAL1)
+def test_queues_are_an_admin_read(as_user):
+    as_user(ADMIN)
     with patch("app.admin.router.service.fetch_queue_counts", new=AsyncMock(return_value=QUEUES)) as fetch:
         response = client.get("/api/v1/admin/queues")
     assert response.status_code == 200, response.text
     assert response.json() == QUEUES
-    fetch.assert_awaited_once_with(ADMIN_AAL1)
+    fetch.assert_awaited_once_with(ADMIN)
 
 
 @pytest.mark.asyncio
@@ -160,15 +155,15 @@ async def test_each_audit_row_carries_its_section_51_label():
 
 
 def test_the_audit_log_route_passes_the_action_filter(as_user):
-    as_user(ADMIN_AAL1)
+    as_user(ADMIN)
     with patch("app.admin.router.service.fetch_audit_logs", new=AsyncMock(return_value=[])) as fetch:
         response = client.get("/api/v1/admin/audit-logs?action=review_moderated&target_entity=reviews")
     assert response.status_code == 200, response.text
-    fetch.assert_awaited_once_with(ADMIN_AAL1, "reviews", None, "review_moderated")
+    fetch.assert_awaited_once_with(ADMIN, "reviews", None, "review_moderated")
 
 
 def test_the_audit_log_route_refuses_a_malformed_action(as_user):
-    as_user(ADMIN_AAL1)
+    as_user(ADMIN)
     with patch("app.admin.router.service.fetch_audit_logs", new=AsyncMock(return_value=[])) as fetch:
         response = client.get("/api/v1/admin/audit-logs", params={"action": "User Suspended"})
     assert response.status_code == 422
@@ -178,7 +173,7 @@ def test_the_audit_log_route_refuses_a_malformed_action(as_user):
 @pytest.mark.parametrize("name", ["made_up", "suspend_user", "delete_review"])
 def test_the_audit_log_route_refuses_a_name_outside_the_section_51_vocabulary(as_user, name):
     """A made-up or pre-§51 name is a 422, not an empty page that would read as "nothing of that kind happened"."""
-    as_user(ADMIN_AAL1)
+    as_user(ADMIN)
     with patch("app.admin.router.service.fetch_audit_logs", new=AsyncMock(return_value=[])) as fetch:
         response = client.get("/api/v1/admin/audit-logs", params={"action": name})
     assert response.status_code == 422, response.text
@@ -186,19 +181,19 @@ def test_the_audit_log_route_refuses_a_name_outside_the_section_51_vocabulary(as
 
 
 def test_every_section_51_name_is_accepted_by_the_audit_log_filter(as_user):
-    as_user(ADMIN_AAL1)
+    as_user(ADMIN)
     with patch("app.admin.router.service.fetch_audit_logs", new=AsyncMock(return_value=[])):
         for name in get_args(AuditEvent):
             assert client.get("/api/v1/admin/audit-logs", params={"action": name}).status_code == 200, name
 
 
 def test_the_audit_event_names_are_an_admin_read(as_user):
-    as_user(ADMIN_AAL1)
+    as_user(ADMIN)
     with patch("app.admin.service.repo.fetch_audit_event_names", new=AsyncMock(return_value=NAMES)) as fetch:
         response = client.get("/api/v1/admin/audit-events")
     assert response.status_code == 200, response.text
     assert response.json() == NAMES
-    fetch.assert_awaited_once_with(ADMIN_AAL1.access_token)
+    fetch.assert_awaited_once_with(ADMIN.access_token)
 
 
 # --- consultation moderation (SRDS §14)
@@ -207,11 +202,11 @@ CONSULTATION = {"id": "c-1", "status": "requested", "moderation_reason": None, "
 
 
 def test_the_consultation_list_passes_its_filters(as_user):
-    as_user(ADMIN_AAL1)
+    as_user(ADMIN)
     with patch("app.common.consultations.router.service.fetch_for_admin", new=AsyncMock(return_value=[])) as fetch:
         response = client.get("/api/v1/admin/consultations?status=requested&older_than_days=7")
     assert response.status_code == 200, response.text
-    fetch.assert_awaited_once_with(ADMIN_AAL1, "requested", 7)
+    fetch.assert_awaited_once_with(ADMIN, "requested", 7)
 
 
 def test_moderating_a_consultation_needs_a_known_action_and_a_reason(as_user):
@@ -343,8 +338,8 @@ async def test_an_order_cancellation_the_database_refuses_is_not_audited():
 
 
 def test_the_admin_order_list_passes_the_status_filter(as_user):
-    as_user(ADMIN_AAL1)
+    as_user(ADMIN)
     with patch("app.admin.router.service.fetch_all_orders", new=AsyncMock(return_value=[])) as fetch:
         response = client.get("/api/v1/admin/orders?status=disputed")
     assert response.status_code == 200, response.text
-    fetch.assert_awaited_once_with(ADMIN_AAL1, "disputed")
+    fetch.assert_awaited_once_with(ADMIN, "disputed")

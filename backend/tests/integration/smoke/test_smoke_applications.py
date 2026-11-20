@@ -207,12 +207,10 @@ def test_an_expert_application_reaches_the_queue_only_once_submitted(world, api_
     assert decided.json()["email_delivered"] is False
 
 
-def test_the_required_documents_are_an_audited_admin_setting(world, api_client, make_actor, matrix_actors):
+def test_the_required_documents_are_an_audited_admin_setting(world, api_client, make_actor):
     code = f"smoke_{uuid.uuid4().hex[:8]}"
     entry = {"role": "dealer", "code": code, "label": "Smoke tax certificate", "is_required": False}
     assert api_client("POST", "/api/v1/admin/required-documents", world.dealer.token, json=entry).status_code == 403
-    no_mfa = api_client("POST", "/api/v1/admin/required-documents", matrix_actors["admin_aal1"], json=entry)
-    assert no_mfa.status_code == 403, no_mfa.text
     created = api_client("POST", "/api/v1/admin/required-documents", world.admin.token, json=entry)
     assert created.status_code == 201, created.text
     document_id = created.json()["id"]

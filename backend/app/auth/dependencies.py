@@ -26,7 +26,6 @@ class AuthenticatedUser:
     email: str | None
     role: Role
     access_token: str
-    aal: str | None = None
     account_status: AccountStatus = "approved"
 
 
@@ -143,7 +142,6 @@ async def _authenticate(token: str) -> AuthenticatedUser:
         email=claims.email,
         role=profile.role,
         access_token=token,
-        aal=claims.aal,
         account_status=profile.account_status,
     )
 
@@ -223,14 +221,3 @@ require_marketplace_buyer = require_role("farmer", "buyer", "dealer")
 require_expert_any_status = require_role_any_status("expert")
 # A3b: a pending or rejected dealer fills in and sends their application.
 require_dealer_any_status = require_role_any_status("dealer")
-
-
-async def require_admin_aal2(user: AuthenticatedUser = Depends(require_admin)) -> AuthenticatedUser:
-    """The small set of admin *write* endpoints (suspend/promote a user, resolve a
-    report, verify an expert, redact a message) need a second factor verified this session, not
-    just the admin role — matching the same requirement enforced at the RLS layer (see
-    supabase/migrations/*_admin_mfa_enforcement.sql). Admin *reads* stay at aal1; only writes use
-    this dependency instead of plain require_admin."""
-    if user.aal != "aal2":
-        raise AppHTTPException(403, "This action requires a verified second factor (MFA).", "mfa_required")
-    return user

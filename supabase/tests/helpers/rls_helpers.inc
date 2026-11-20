@@ -92,6 +92,8 @@ begin
   -- Public signup can never make an admin (handle_new_user), so promote as the owner, with the role guard
   -- trigger paused for this one statement; the whole thing is rolled back with the test.
   alter table public.profiles disable trigger guard_profiles_role;
+  -- One admin, ever (20261120080000): a local database may already hold one; retire it inside this rolled-back test.
+  update public.profiles set role = 'buyer' where role = 'admin';
   update public.profiles set role = 'admin' where id = a;
   alter table public.profiles enable trigger guard_profiles_role;
   update public.profiles set is_suspended = true where id = s;

@@ -43,7 +43,7 @@ select tests.expect(tests.fx('B'), 'insert into public.messages (conversation_id
 select tests.expect(tests.fx('F'), 'update public.messages set read_at = now() where id = ' || tests.l('M1'), 'n:1', 'messages: a participant marks a message read');
 select tests.expect(tests.fx('B2'), 'update public.messages set read_at = now() where id = ' || tests.l('M1'), 'n:0', 'messages: a stranger updates nothing');
 -- A7 (G1): a redaction writes exactly the API's marker; the wider cases are in 20261023080000_admin_moderation.test.sql.
-select tests.expect(tests.fx('A'), $$update public.messages set body = '[removed by moderator]' where id = $$ || tests.l('M1'), 'n:0', 'messages: an admin without a second factor cannot redact');
+select tests.expect(tests.fx('D2'), $$update public.messages set body = '[removed by moderator]' where id = $$ || tests.l('M1'), 'n:0', 'messages: a non-admin (D19: the admin needs no second factor) cannot redact');
 select tests.expect(tests.fx('A'), $$update public.messages set body = '[redacted]' where id = $$ || tests.l('M1'), 'err:42501', 'messages: an admin cannot write other words as a redaction', 'aal2');
 select tests.expect(tests.fx('A'), $$update public.messages set body = '[removed by moderator]' where id = $$ || tests.l('M1'), 'n:1', 'messages: an admin with a second factor redacts', 'aal2');
 
@@ -66,7 +66,7 @@ select tests.expect(tests.fx('S'), 'insert into public.consultations (user_id, e
 select tests.expect(tests.fx('B'), $$update public.consultations set subject = 'Edited' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: the subject cannot be rewritten after the request');
 select tests.expect(tests.fx('E'), $$update public.consultations set subject = 'Edited by expert' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: nor by the expert');
 -- A7: the admin reaches a consultation only with a second factor, and then the guard still refuses a rewrite.
-select tests.expect(tests.fx('A'), $$update public.consultations set subject = 'Edited by admin' where id = $$ || tests.l('CONS1'), 'n:0', 'consultations: an admin without a second factor does not reach it');
+select tests.expect(tests.fx('D2'), $$update public.consultations set subject = 'Edited by admin' where id = $$ || tests.l('CONS1'), 'n:0', 'consultations: a non-admin (D19: the admin needs no second factor) does not reach it');
 select tests.expect(tests.fx('A'), $$update public.consultations set subject = 'Edited by admin' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: nor by an admin', 'aal2');
 select tests.expect(tests.fx('B2'), $$update public.consultations set subject = 'Hijack' where id = $$ || tests.l('CONS1'), 'n:0', 'consultations: a stranger updates nothing');
 

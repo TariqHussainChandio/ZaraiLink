@@ -119,7 +119,7 @@ describe('MfaEnrollmentScreen', () => {
 
     // One tap does nothing but ask.
     expect(mockUnenroll).not.toHaveBeenCalled();
-    expect(await screen.findByText(/Approvals, suspensions and other admin decisions stop working/)).toBeTruthy();
+    expect(await screen.findByText(/Signing in will ask for your password only/)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Keep it on' }));
     expect(mockUnenroll).not.toHaveBeenCalled();
   });

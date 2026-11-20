@@ -49,6 +49,27 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
   const edit = () => navigation.navigate(PROFILE_ROUTES.EditProfile);
   const icon = (Icon: typeof Mail) => <Icon color={theme.colors.ink2} size={theme.size.iconMd} strokeWidth={theme.size.iconStroke} />;
 
+  // D19: the admin's details are set by the system, so their Account shows who they are, read-only, and the password.
+  if (profile.role === 'admin') {
+    return (
+      <ScreenScaffold>
+        <View style={styles.header}>
+          <Avatar name={profile.full_name} uri={profile.avatar_url} role={profile.role} size={theme.size.avatarLg} ring />
+          <View style={styles.who}>
+            <Text style={styles.name}>{profile.full_name || 'Administrator'}</Text>
+            <View style={styles.badge}>
+              <RoleBadge role={profile.role} />
+            </View>
+          </View>
+        </View>
+        <ListGroup>
+          <ListRow title="Email" meta={email ?? 'Not available'} leading={icon(Mail)} />
+        </ListGroup>
+        <AccountSections navigate={route => navigation.navigate(route)} />
+      </ScreenScaffold>
+    );
+  }
+
   return (
     <ScreenScaffold>
       <View style={styles.header}>

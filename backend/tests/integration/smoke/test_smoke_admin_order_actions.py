@@ -5,9 +5,9 @@
 * Resolve a dispute (PATCH /api/v1/orders/{id}/status on a disputed order, to completed or refunded): only on a
   disputed order, never by a participant, and always with a reason both parties read (admin_action_reason).
 
-Each is allowed for an admin with a second factor (aal2) and leaves exactly one `order_administrative_action` audit row,
-its kind in metadata.change. Refused: the same admin without the second factor (aal1), the buyer, the seller, a
-stranger and an anonymous caller; a cancel after dispatch; a resolution of an order that is not disputed. A refused
+Each is allowed for the admin (a password-only session: no second factor since D19) and leaves exactly one
+`order_administrative_action` audit row, its kind in metadata.change. Refused: the buyer, the seller, a stranger and an
+anonymous caller; a cancel after dispatch; a resolution of an order that is not disputed. A refused
 action changes nothing and leaves no audit row.
 """
 
@@ -70,11 +70,10 @@ def order_in(world, api_client):
 
 
 @pytest.fixture
-def refusers(world, matrix_actors, make_actor) -> dict[str, tuple[str | None, int, str | None]]:
-    """Everyone but the aal2 admin: (token, expected status, expected error code)."""
+def refusers(world, make_actor) -> dict[str, tuple[str | None, int, str | None]]:
+    """Everyone but the admin: (token, expected status, expected error code)."""
     _, _, stranger_token = make_actor("buyer")
     return {
-        "admin without a second factor": (matrix_actors["admin_aal1"], 403, "mfa_required"),
         "the buyer": (world.buyer.token, 403, None),
         "the seller": (world.farmer.token, 403, None),
         "a stranger": (stranger_token, 403, None),
@@ -163,7 +162,7 @@ def test_only_an_admin_with_a_second_factor_resolves_a_dispute_and_it_is_audited
         assert refused.status_code == status, f"{who}: {refused.status_code} {refused.text}"
         if code:
             assert refused.json()["code"] == code, who
-    # Even the aal2 admin settles nothing without a reason both parties can read.
+    # Even the admin settles nothing without a reason both parties can read.
     no_reason = api_client("PATCH", path, world.admin.token, json={"to": "completed"})
     assert no_reason.status_code == 422, no_reason.text
     assert no_reason.json()["code"] == "validation_failed"

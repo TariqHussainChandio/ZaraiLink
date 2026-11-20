@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.auth.dependencies import AuthenticatedUser, require_admin, require_admin_aal2, require_authenticated_user
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_authenticated_user
 from app.common.consultations import service
 from app.common.consultations.schemas import (
     Consultation,
@@ -119,8 +119,8 @@ async def create_assessment(
 
 
 # Admin oversight of consultations (SRDS §14): a second router so the admin's routes sit under /api/v1/admin with the
-# rest of the admin surface, while the code stays with the consultation module that owns the table. Reads need the
-# admin role; the moderation write also needs a second factor this session, as every admin write does.
+# rest of the admin surface, while the code stays with the consultation module that owns the table. Reads and the
+# moderation write need the admin role (no second factor, D19).
 admin_router = APIRouter(prefix="/api/v1/admin/consultations", tags=["admin"])
 
 
@@ -143,6 +143,6 @@ async def admin_get(consultation_id: str, user: AuthenticatedUser = Depends(requ
 async def admin_moderate(
     consultation_id: str,
     request: ModerateConsultationRequest,
-    user: AuthenticatedUser = Depends(require_admin_aal2),
+    user: AuthenticatedUser = Depends(require_admin),
 ) -> dict:
     return await service.moderate(user, consultation_id, request.action, request.reason)

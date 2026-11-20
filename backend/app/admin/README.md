@@ -1,6 +1,6 @@
 # admin (API)
 
-Platform stats, users (suspend, change role), reports, the audit log and platform orders. Every admin write is audit-logged (BR-15) and needs a second factor.
+Platform stats, users (suspend, change role), reports, the audit log and platform orders. Every admin write is audit-logged (BR-15). There is one admin, with no second factor (D19): no role change makes or unmakes an admin, and the admin cannot be suspended.
 
 - **Owner lane:** `zl-admin` (docs/plan.md §3)
 - **SRDS:** §12, §14, §51

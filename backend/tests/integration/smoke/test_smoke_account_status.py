@@ -2,7 +2,7 @@
 
 Dealers and experts sign up pending (profiles.account_status, migration 20261005080000). These tests drive real users
 through both doors, FastAPI and Supabase PostgREST with the user's own session, and require the same answer: a pending
-dealer is refused and an approved one allowed; nobody approves themselves; an admin decides only with a second factor,
+dealer is refused and an approved one allowed; nobody approves themselves; only the admin decides (no second factor since D19),
 and every decision leaves its audit row; a rejection carries a reason the applicant reads and may answer by
 resubmitting; and a session from before the approval must sign in again.
 """
@@ -97,29 +97,27 @@ def test_a_buyer_cannot_open_a_dealer_store_through_postgrest(world):
     assert refused_by_rls(store), store.text
 
 
-def test_nobody_approves_themselves_and_an_admin_decides_only_with_a_second_factor(
-    make_applicant, api_client, world, matrix_actors
-):
+def test_nobody_approves_themselves_and_only_the_admin_decides(make_applicant, api_client, world, matrix_actors):
     pending_id, _, pending = make_applicant("dealer")
     self_approval = rest("PATCH", "profiles", pending, f"id=eq.{pending_id}", {"account_status": "approved"})
     assert refused_by_rls(self_approval), self_approval.text
     # Not even the admin decides by a direct write: no audit row would follow it.
     direct = rest("PATCH", "profiles", world.admin.token, f"id=eq.{pending_id}", {"account_status": "approved"})
     assert refused_by_rls(direct), direct.text
-    no_mfa = api_client(
+    by_farmer = api_client(
         "PATCH",
         f"/api/v1/admin/users/{pending_id}/account-status",
-        matrix_actors["admin_aal1"],
+        matrix_actors["farmer"],
         json={"status": "approved"},
     )
-    assert no_mfa.status_code == 403, no_mfa.text
-    assert no_mfa.json()["code"] == "mfa_required"
+    assert by_farmer.status_code == 403, by_farmer.text
+    assert by_farmer.json()["code"] == "insufficient_role"
     via_own_session = api_client(
         "PATCH", f"/api/v1/admin/users/{pending_id}/account-status", pending, json={"status": "approved"}
     )
     assert via_own_session.status_code == 403, via_own_session.text
     assert own_profile(pending, pending_id)["account_status"] == "pending"
-    # The allowed path: the admin with a second factor.
+    # The allowed path: the admin, on a password-only session (D19).
     assert decide(api_client, world, pending_id, "approved").status_code == 200
 
 

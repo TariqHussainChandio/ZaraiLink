@@ -15,8 +15,7 @@ client = TestClient(app)
 
 BUYER = AuthenticatedUser(id="buyer-1", email="b@x.com", role="buyer", access_token="tok")
 OTHER_BUYER = AuthenticatedUser(id="buyer-2", email="b2@x.com", role="buyer", access_token="tok2")
-ADMIN_AAL1 = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok-a1", aal="aal1")
-ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok-a2", aal="aal2")
+ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok-a2")
 
 COMPLETED_ORDER = {
     "id": "order-1",
@@ -160,7 +159,7 @@ async def test_moderating_a_missing_review_is_404_and_writes_nothing(moderate):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("code", "status"), [("42501", 403), ("23514", 422)])
 async def test_a_database_refusal_is_a_clear_error_and_leaves_no_audit_row(code, status):
-    # guard_reviews_update: 42501 without a second factor (or an edit beyond the hidden_* columns), 23514 without a
+    # guard_reviews_update: 42501 for anyone but the admin (or an edit beyond the hidden_* columns), 23514 without a
     # reason.
     refusal = APIError({"message": "refused", "code": code})
     with _moderating(VISIBLE_REVIEW, error=refusal) as (_write, audit), pytest.raises(HTTPException) as exc_info:
@@ -210,10 +209,10 @@ def test_a_review_cannot_be_deleted_by_anyone():
 @pytest.mark.parametrize("path", ["/api/v1/reviews/review-1/hide", "/api/v1/reviews/review-1/restore"])
 @pytest.mark.parametrize(
     ("user", "status", "code"),
-    [(ADMIN_AAL1, 403, "mfa_required"), (BUYER, 403, "insufficient_role")],
-    ids=["admin-without-second-factor", "buyer"],
+    [(BUYER, 403, "insufficient_role")],
+    ids=["buyer"],
 )
-def test_moderation_needs_an_admin_with_a_second_factor(path, user, status, code):
+def test_moderation_needs_the_admin(path, user, status, code):
     with (
         _as(user),
         patch("app.common.reviews.router.service.hide_review") as hide,
@@ -260,14 +259,14 @@ def test_the_moderation_list_is_admin_only(user, status):
 
 def test_the_moderation_list_is_a_read_so_the_admin_role_is_enough():
     with (
-        _as(ADMIN_AAL1),
+        _as(ADMIN),
         patch(
             "app.common.reviews.router.service.fetch_reviews_for_moderation", AsyncMock(return_value=[HIDDEN_REVIEW])
         ) as fetch,
     ):
         response = client.get("/api/v1/reviews/admin?include_hidden=true")
     assert response.status_code == 200, response.text
-    fetch.assert_awaited_once_with(ADMIN_AAL1, True)
+    fetch.assert_awaited_once_with(ADMIN, True)
 
 
 # --- every public read leaves a hidden review out --------------------------------------------

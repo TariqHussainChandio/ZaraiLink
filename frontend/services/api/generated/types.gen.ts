@@ -3720,7 +3720,7 @@ export type PredictionRecord = {
  * RFC 9457 problem details. `code` is a stable machine-readable identifier; `title` is English text.
  */
 export type ProblemDetail = {
-    code: 'bad_request' | 'unauthenticated' | 'token_invalid' | 'auth_unavailable' | 'account_suspended' | 'account_not_approved' | 'sign_in_again' | 'insufficient_role' | 'mfa_required' | 'incorrect_password' | 'forbidden' | 'not_found' | 'conflict' | 'idempotency_in_progress' | 'idempotency_key_reused' | 'payload_too_large' | 'validation_failed' | 'insufficient_stock' | 'listing_unavailable' | 'invalid_transition' | 'application_incomplete' | 'application_locked' | 'rate_limited' | 'service_unavailable' | 'server_error';
+    code: 'bad_request' | 'unauthenticated' | 'token_invalid' | 'auth_unavailable' | 'account_suspended' | 'account_not_approved' | 'sign_in_again' | 'insufficient_role' | 'incorrect_password' | 'forbidden' | 'not_found' | 'conflict' | 'idempotency_in_progress' | 'idempotency_key_reused' | 'payload_too_large' | 'validation_failed' | 'insufficient_stock' | 'listing_unavailable' | 'invalid_transition' | 'application_incomplete' | 'application_locked' | 'rate_limited' | 'service_unavailable' | 'server_error';
     detail?: string | null;
     errors?: Array<{
         loc?: Array<string | number>;
@@ -5279,7 +5279,7 @@ export type UpdateUserRoleRequest = {
     /**
      * Role
      */
-    role: 'admin' | 'expert' | 'dealer' | 'farmer' | 'buyer';
+    role: 'expert' | 'dealer' | 'farmer' | 'buyer';
 };
 
 /**

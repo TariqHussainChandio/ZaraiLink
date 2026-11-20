@@ -2,9 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { PROFILE_ROUTES } from '../../common/constants/routes';
-import { AccountSecurityScreen } from '../../common/profile/screens/AccountSecurityScreen';
 import { BusinessDetailsScreen } from '../../dealer/screens/BusinessDetailsScreen';
-import { ChangeEmailScreen } from '../../common/profile/screens/ChangeEmailScreen';
 import { ChangePasswordScreen } from '../../common/profile/screens/ChangePasswordScreen';
 import { DeleteAccountScreen } from '../../common/profile/screens/DeleteAccountScreen';
 import { EditProfileScreen } from '../../common/profile/screens/EditProfileScreen';
@@ -21,8 +19,6 @@ export type ProfileStackParamList = {
   [PROFILE_ROUTES.Settings]: undefined;
   [PROFILE_ROUTES.ChangePassword]: undefined;
   [PROFILE_ROUTES.MfaEnrollment]: undefined;
-  [PROFILE_ROUTES.AccountSecurity]: undefined;
-  [PROFILE_ROUTES.ChangeEmail]: undefined;
   [PROFILE_ROUTES.BusinessDetails]: undefined;
   [PROFILE_ROUTES.DeleteAccount]: undefined;
   [PROFILE_ROUTES.DesignCatalogue]: undefined;
@@ -62,16 +58,6 @@ export function ProfileNavigator() {
         name={PROFILE_ROUTES.MfaEnrollment}
         component={MfaEnrollmentScreen}
         options={{ title: 'Two-step verification' }}
-      />
-      <Stack.Screen
-        name={PROFILE_ROUTES.AccountSecurity}
-        component={AccountSecurityScreen}
-        options={{ title: 'Account security' }}
-      />
-      <Stack.Screen
-        name={PROFILE_ROUTES.ChangeEmail}
-        component={ChangeEmailScreen}
-        options={{ title: 'Change email' }}
       />
       <Stack.Screen
         name={PROFILE_ROUTES.BusinessDetails}

@@ -7,6 +7,11 @@ There is no signup path to the `admin` role, and there must never be one — see
 
 This is the only supported way to create or promote an admin.
 
+**There is exactly one admin (D19, `20261120080000_sole_admin_no_mfa.sql`).** The unique index `profiles_single_admin`
+refuses a second admin row by any path, this runbook's included. To replace the admin, retire the old one in the same
+transaction (below). The admin's name, phone, photo and address are set here, by the maintainer: the app never edits
+them, and the admin changes only the password. The admin needs no second factor.
+
 ## Prerequisites
 
 - A profile must already exist for the target user (they sign up normally first, through the app,
@@ -31,15 +36,23 @@ intentionally out-of-band runbook.
 
 ## Local stack (Docker)
 
+Create the login first if it does not exist locally (the Auth admin API sends no email), with the role `buyer`, then
+promote it. On a local database a real-stack test run may have left a smoke admin (`smoke-…@example.test`); retire it
+in the same transaction.
+
 ```bash
 npx supabase status -o env   # prints DB_URL among other values
 psql "$DB_URL" -c "
 begin;
 set local session_replication_role = replica;
-update public.profiles set role = 'admin' where id = '<known-user-uuid>';
+update public.profiles set role = 'buyer' where role = 'admin' and id <> '<known-user-uuid>';
+update public.profiles set role = 'admin', full_name = '<the admin''s name>' where id = '<known-user-uuid>';
 commit;
 "
 ```
+
+The real-stack suite then runs as this admin when `ZARAILINK_ADMIN_EMAIL` and `ZARAILINK_ADMIN_PASSWORD` are set in the
+shell for the run (never in a file): `docs/setup/DEVELOPMENT_SETUP.md`.
 
 ## Hosted project
 
@@ -52,6 +65,8 @@ without that user or, worse, promote the wrong id if ids ever collide across env
 ```sql
 begin;
 set local session_replication_role = replica;
+-- One admin (D19): demote a previous admin first, if this replaces one.
+update public.profiles set role = 'buyer' where role = 'admin' and id <> '<known-user-uuid>';
 update public.profiles set role = 'admin' where id = '<known-user-uuid>';
 commit;
 ```
@@ -66,8 +81,8 @@ account you intended (`select id, full_name, role from public.profiles where id 
 - Record who was promoted, when, and why in your own notes (not in the repo — this is exactly the
   kind of operational detail that should not become admin-account discovery material once the repo
   is public).
-- Admin MFA enrolment (TOTP, plan phase P4) should happen before the account does any admin write,
-  once that phase lands — until then, protect the credentials for this account like any other
-  high-privilege secret.
+- The admin has no second factor (D19, which replaced P4's admin MFA): protect the password like any other
+  high-privilege secret. If an earlier admin enrolled a TOTP factor, remove it
+  (`delete from auth.mfa_factors where user_id = '<known-user-uuid>';`), so nothing asks for it.
 - Every admin write is audit-logged (BR-15) regardless of how the account was created, so
   subsequent actions are traceable even though the promotion step itself is not.

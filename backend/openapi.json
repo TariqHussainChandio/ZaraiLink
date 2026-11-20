@@ -6966,7 +6966,6 @@
               "account_not_approved",
               "sign_in_again",
               "insufficient_role",
-              "mfa_required",
               "incorrect_password",
               "forbidden",
               "not_found",
@@ -9819,7 +9818,6 @@
         "properties": {
           "role": {
             "enum": [
-              "admin",
               "expert",
               "dealer",
               "farmer",
@@ -11732,7 +11730,7 @@
     },
     "/api/v1/admin/queues": {
       "get": {
-        "description": "The moderation queue counts for the dashboard (SRDS §14). A read, so no second factor and no audit row.",
+        "description": "The moderation queue counts for the dashboard (SRDS §14). A read, so no audit row.",
         "operationId": "admin_get_admin_queues",
         "parameters": [],
         "responses": {

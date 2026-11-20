@@ -228,10 +228,6 @@ async def update_order_status(user: AuthenticatedUser, order_id: str, to: str, r
     is_admin_resolving_dispute = user.role == "admin" and order["status"] == "disputed"
     if not is_participant and not is_admin_resolving_dispute:
         raise HTTPException(status_code=403, detail="Not a participant in this order")
-    if is_admin_resolving_dispute and user.aal != "aal2":
-        # A dispute decision is an admin write, so it needs a second factor like every other one (require_admin_aal2,
-        # admin_mfa_enforcement). This route is open to participants, so the check is here rather than on the route.
-        raise AppHTTPException(403, "This action requires a verified second factor (MFA).", "mfa_required")
 
     from_status = order["status"]
     if to not in ALLOWED_TRANSITIONS.get(from_status, []):

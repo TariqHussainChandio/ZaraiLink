@@ -17,7 +17,7 @@ const WRITTEN = new Intl.DateTimeFormat('en-PK', { day: 'numeric', month: 'short
 
 /**
  * Every review, hidden ones included (SRDS §14). The admin hides a review with a reason or restores it; nothing is
- * deleted. Both need two-step verification and are audited by the API (BR-15); a refusal shows in the banner.
+ * deleted. Both are audited by the API (BR-15); a refusal shows in the banner.
  */
 export function ReviewModerationScreen() {
   const theme = useTheme();
@@ -63,7 +63,7 @@ export function ReviewModerationScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* A refused hide or restore (two-step verification needed) stays on screen until the next try. */}
+      {/* A refused hide or restore stays on screen until the next try. */}
       {failure ? (
         <View style={styles.banner}>
           <Banner tone="danger">{failure}</Banner>

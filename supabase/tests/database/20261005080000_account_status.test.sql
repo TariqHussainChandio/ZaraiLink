@@ -104,7 +104,7 @@ select tests.expect(tests.fx('PE'), 'insert into public.consultation_messages (c
 
 -- decide_account_status: only an admin with a second factor, only a pending dealer or expert -------------------------
 select tests.expect(tests.fx('D'), 'select public.decide_account_status(' || tests.l('PD') || $$, 'approved')$$, 'err:42501', 'decide: a dealer cannot decide');
-select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PD') || $$, 'approved')$$, 'err:42501', 'decide: an admin without a second factor cannot');
+select tests.expect(tests.fx('D2'), 'select public.decide_account_status(' || tests.l('PD') || $$, 'approved')$$, 'err:42501', 'decide: a non-admin (D19: the admin needs no second factor) cannot');
 select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PD') || $$, 'rejected', 'no')$$, 'err:23514', 'decide: a rejection needs a reason of 10 characters', 'aal2');
 select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('F') || $$, 'approved')$$, 'err:23514', 'decide: farmers are not reviewed', 'aal2');
 select tests.expect(tests.fx('A'), 'select public.decide_account_status(' || tests.l('PE0') || $$, 'approved')$$, 'err:23514', 'decide: an expert who has not submitted cannot be approved (20261012080000)', 'aal2');

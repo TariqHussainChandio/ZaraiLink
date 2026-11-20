@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, model_validator
 from app.common.audit_events import AuditEvent
 
 Role = Literal["admin", "expert", "dealer", "farmer", "buyer"]
+# D19: there is one admin, made by the system; a role change never makes or unmakes an admin.
+AssignableRole = Literal["expert", "dealer", "farmer", "buyer"]
 ReportStatus = Literal["open", "investigating", "resolved", "dismissed"]
 AccountStatus = Literal["pending", "approved", "rejected"]
 
@@ -41,7 +43,7 @@ class SuspendUserRequest(BaseModel):
 
 
 class UpdateUserRoleRequest(BaseModel):
-    role: Role
+    role: AssignableRole
 
 
 class ReporterRef(BaseModel):

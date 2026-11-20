@@ -33,6 +33,11 @@ export const components = {
     duration: { message: 6000, withAction: 10000 },
   },
   banner: { padding: space[4], gap: space[3], radius: radius.md },
+  /** A dropdown opens at the field it belongs to (D19), `gap` from it, never closer than `margin` to the screen's edge;
+   * its list grows to `maxHeight` and then scrolls; a search box appears above `searchFrom` options. */
+  dropdown: { gap: space[1], margin: space[2], radius: radius.sm, padding: space[1], maxHeight: size.sheetListMax, searchFrom: 9 },
+  /** The admin's side menu (D19): at most this share of the screen's width, so the screen behind still shows. */
+  menu: { width: size.menuWidth, maxShare: 0.85, padding: space[4], groupGap: space[1] },
   tab: { pill: { width: 56, height: 30 } },
   /** How far a hit area is extended around a control smaller than touchMin. */
   hitSlop: (controlSize: number) => Math.max(0, Math.ceil((size.touchMin - controlSize) / 2)),

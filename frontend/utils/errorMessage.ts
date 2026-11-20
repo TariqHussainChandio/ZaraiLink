@@ -16,7 +16,6 @@ export const ERROR_CODE_MESSAGES: Record<ErrorCode, string> = {
   account_not_approved: 'Your application is waiting for an administrator.',
   sign_in_again: 'Your account was approved. Sign in again to continue.',
   insufficient_role: 'Your account cannot do this.',
-  mfa_required: 'This action needs two-step verification.',
   incorrect_password: 'That password is not correct.',
   forbidden: 'Your account cannot do this.',
   not_found: 'That could not be found. It may have been removed.',

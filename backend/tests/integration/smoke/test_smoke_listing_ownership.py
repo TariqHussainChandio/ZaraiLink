@@ -1,6 +1,6 @@
 """Write scope for listings and expert applications (migration 20260928090000; BR-06, BR-15).
 
-Only the owner edits or removes a listing; an admin moderates its status, with a second factor, through the audited
+Only the owner edits or removes a listing; the admin moderates its status (no second factor, D19) through the audited
 route; an expert's application starts pending. Each test drives real users through the API and through Supabase
 PostgREST with the same sessions, and requires both doors to refuse what the other refuses.
 """
@@ -85,13 +85,13 @@ def test_only_the_owner_edits_or_removes_a_listing(world, api_client, make_actor
     assert removed.status_code == 204, removed.text
 
 
-def test_an_admin_moderates_the_status_only_with_a_second_factor(world, api_client, matrix_actors):
+def test_only_the_admin_moderates_the_status(world, api_client):
     listing_id = new_listing(api_client, world)
     path = f"/api/v1/marketplace/listings/{listing_id}/status"
 
-    refused = api_client("PATCH", path, matrix_actors["admin_aal1"], json={"status": "inactive"})
+    refused = api_client("PATCH", path, world.buyer.token, json={"status": "inactive"})
     assert refused.status_code == 403, refused.text
-    assert refused.json()["code"] == "mfa_required"
+    assert refused.json()["code"] == "insufficient_role"
     assert audit_rows(listing_id) == []
 
     allowed = api_client("PATCH", path, world.admin.token, json={"status": "inactive"})
@@ -107,7 +107,7 @@ def test_an_admin_moderates_the_status_only_with_a_second_factor(world, api_clie
 
 def test_direct_database_writes_obey_the_same_scope(world, api_client):
     listing_id = new_listing(api_client, world)
-    admin = world.admin.token  # aal2
+    admin = world.admin.token
 
     price = rest("PATCH", "listings", admin, f"id=eq.{listing_id}", {"price": 1})
     assert refused_by_database(price), price.text

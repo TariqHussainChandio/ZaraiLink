@@ -8,6 +8,15 @@ import { useThemeStore } from '../../../state/themeStore';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 import type { Profile } from '../../types/profile';
 
+// The optional two-step row reads the account's factor from Supabase Auth: faked at the service edge, none enrolled.
+jest.mock('../../auth/services/mfaService', () => ({
+  getVerifiedTotpFactorId: jest.fn(() => Promise.resolve(null)),
+  enrollTotp: jest.fn(),
+  verifyTotpEnrollment: jest.fn(),
+  unenrollTotp: jest.fn(),
+  verifySecondFactor: jest.fn(),
+}));
+
 function makeNavigation() {
   return { navigate: jest.fn() } as unknown as ProfileScreenProps<'Settings'>['navigation'];
 }
@@ -53,13 +62,16 @@ describe('SettingsScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.ChangePassword);
   });
 
-  it('sends an admin to Account security, which holds email, password and two-step verification (A3b)', async () => {
+  // D19: the one admin changes the password only; no two-step verification and no Delete account.
+  it('gives the admin the password and sign out, without two-step verification or Delete account', async () => {
     useAuthStore.setState({ role: 'admin' });
     const navigation = makeNavigation();
     await renderWithQuery(<SettingsScreen navigation={navigation} route={{} as never} />);
-    expect(screen.queryByText('Password')).toBeNull();
-    await fireEvent.press(screen.getByText('Account security'));
-    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.AccountSecurity);
+    await fireEvent.press(screen.getByText('Password'));
+    expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.ChangePassword);
+    expect(screen.queryByText('Two-step verification')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete account' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
   });
 
   it('signs out with an ordinary secondary button, never the red one (AU-08)', async () => {

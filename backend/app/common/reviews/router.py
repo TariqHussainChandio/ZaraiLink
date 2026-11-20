@@ -4,7 +4,6 @@ from app.auth.dependencies import (
     AuthenticatedUser,
     get_optional_user,
     require_admin,
-    require_admin_aal2,
     require_authenticated_user,
 )
 from app.common.pagination import Page, paginate
@@ -91,15 +90,15 @@ async def create_consultation_review(
     return await service.create_consultation_review(user, request.consultation_id, request.rating, request.comment)
 
 
-# Moderation writes (SRDS §14): a review is hidden with a reason and can be restored; it is never deleted. Like every
-# admin write they need a second factor, matching reviews_admin_update (is_admin_aal2). Audited (BR-15).
+# Moderation writes (SRDS §14): a review is hidden with a reason and can be restored; it is never deleted. Only the
+# admin, matching reviews_admin_update. Audited (BR-15).
 @router.patch("/{review_id}/hide", response_model=Review)
 async def hide_review(
-    review_id: str, request: HideReviewRequest, user: AuthenticatedUser = Depends(require_admin_aal2)
+    review_id: str, request: HideReviewRequest, user: AuthenticatedUser = Depends(require_admin)
 ) -> dict:
     return await service.hide_review(user, review_id, request.reason)
 
 
 @router.patch("/{review_id}/restore", response_model=Review)
-async def restore_review(review_id: str, user: AuthenticatedUser = Depends(require_admin_aal2)) -> dict:
+async def restore_review(review_id: str, user: AuthenticatedUser = Depends(require_admin)) -> dict:
     return await service.restore_review(user, review_id)

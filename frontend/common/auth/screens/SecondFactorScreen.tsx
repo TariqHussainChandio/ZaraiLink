@@ -6,10 +6,9 @@ import { AuthScreen } from '../components/AuthScreen';
 import { mapMfaErrorMessage } from './mapAuthError';
 
 /**
- * The second factor at sign-in, for an admin with an authenticator (A3a verification, H1). Every admin write (approve,
- * reject, suspend, moderate) needs a session that has used it (aal2, required by FastAPI and the database alike), so the
- * console opens only after the code. A correct code makes Supabase issue the stronger session, which the auth store
- * picks up from its own listener.
+ * The second factor at sign-in, for anyone who turned on two-step verification in their Account (optional; the admin
+ * has none, D19). Their shell opens only after the code. A correct code makes Supabase issue the stronger session, which
+ * the auth store picks up from its own listener.
  */
 export function SecondFactorScreen() {
   const signOut = useAuthStore(state => state.signOut);

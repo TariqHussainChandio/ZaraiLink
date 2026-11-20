@@ -76,7 +76,7 @@ function changesOf(entry: DiseaseKnowledgeEntry, draft: Draft): DiseaseKnowledge
 /**
  * One disease knowledge entry (SRDS §37). Saving a reviewed entry sends it back to pending review, so a changed text
  * is never shown to farmers as reviewed; "Mark reviewed" records that a qualified agronomist checked it. Both writes
- * are audited by the API as "AI Configuration Changed" (BR-15) and may ask for two-step verification.
+ * are audited by the API as "AI Configuration Changed" (BR-15).
  */
 export function DiseaseKnowledgeEditScreen({ route }: AdminScreenProps<typeof ADMIN_HOME_ROUTES.DiseaseKnowledgeEdit>) {
   const { classLabel } = route.params;
@@ -183,7 +183,7 @@ export function DiseaseKnowledgeEditScreen({ route }: AdminScreenProps<typeof AD
       ))}
       <TextField label="Advice for farmers" multiline value={draft.advisory} onChangeText={set('advisory')} error={errors.advisory} />
 
-      {/* A refusal (two-step verification needed, or a limit) stays on screen next to the form it concerns. */}
+      {/* A refusal (a limit, or the server's) stays on screen next to the form it concerns. */}
       {failure ? <Banner tone="danger">{failure}</Banner> : null}
 
       <Button label="Save" icon={Save} onPress={save} disabled={!dirty || review.isPending} loading={update.isPending} />

@@ -15,8 +15,9 @@ function StackHeader({
   options,
   back,
   actions,
+  leading,
   system,
-}: NativeStackHeaderProps & { actions: AppBarActions; system: StackSystem }) {
+}: NativeStackHeaderProps & { actions: AppBarActions; leading: AppBarActions; system: StackSystem }) {
   const title = typeof options.headerTitle === 'string' ? options.headerTitle : (options.title ?? route.name);
   // `back` is set on every inner screen, and on the first screen of a stack opened over another one (farmers' and
   // buyers' full-screen Messages: native-stack passes the parent's Back down), where goBack closes the overlay. A tab's
@@ -25,8 +26,9 @@ function StackHeader({
   // header did; it is still an inner screen, so it keeps the inner title rather than the large tab-root title.
   const onBack = options.headerBackVisible === false || !back ? undefined : navigation.goBack;
   const right = actions[route.name]?.();
+  const left = leading[route.name]?.();
   const variant = system === 'inventory' ? 'inventory' : back ? 'default' : 'large';
-  return <TopAppBar title={title} variant={variant} onBack={onBack} right={right} />;
+  return <TopAppBar title={title} variant={variant} onBack={onBack} right={right} left={left} />;
 }
 
 /** Every stack draws the design system's app bar: large on a tab's first screen, with back on the rest. A screen's
@@ -36,8 +38,14 @@ function StackHeader({
 export function stackOptionsWithActions(
   actions: AppBarActions,
   system: StackSystem = 'marketplace',
+  leading: AppBarActions = {},
 ): NativeStackNavigationOptions {
-  return { header: props => <StackHeader {...props} actions={actions} system={system} /> };
+  return { header: props => <StackHeader {...props} actions={actions} leading={leading} system={system} /> };
+}
+
+/** A stack's leading slot, by route name: the admin's menu button on each tab's first screen (D19). */
+export function stackOptionsWithLeading(leading: AppBarActions, actions: AppBarActions = {}): NativeStackNavigationOptions {
+  return stackOptionsWithActions(actions, 'marketplace', leading);
 }
 
 /** A stack whose screens have no app-bar actions. */

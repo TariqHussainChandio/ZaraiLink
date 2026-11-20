@@ -48,8 +48,8 @@ const WHEN = new Intl.DateTimeFormat('en-PK', {
 
 /**
  * One consultation as the admin moderates it (SRDS §14): who asked whom about what, the AI report it started from (if
- * any, advisory only: BR-13), and Close or Cancel with a reason the farmer and the expert read. Moderation needs two-step
- * verification and is audited by the API as "Consultation Moderated" (BR-15, SRDS §51).
+ * any, advisory only: BR-13), and Close or Cancel with a reason the farmer and the expert read. Moderation is audited by
+ * the API as "Consultation Moderated" (BR-15, SRDS §51).
  */
 export function ConsultationModerationDetailScreen({
   route,

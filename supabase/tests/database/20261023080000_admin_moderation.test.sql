@@ -103,8 +103,8 @@ select tests.expect(tests.fx('A'), $$delete from public.audit_event_names where 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 -- REV1: seller F, author B. Who may hide it.
-select tests.expect(tests.fx('A'), $$update public.reviews set hidden_at = now(), hidden_reason = 'Abusive' where id = $$ || tests.l('REV1'),
-  'n:0', 'reviews: an admin without a second factor cannot hide a review');
+select tests.expect(tests.fx('D2'), $$update public.reviews set hidden_at = now(), hidden_reason = 'Abusive' where id = $$ || tests.l('REV1'),
+  'n:0', 'reviews: a non-admin (D19: the admin needs no second factor) cannot hide a review');
 select tests.expect(tests.fx('B'), $$update public.reviews set hidden_at = now(), hidden_reason = 'Mine' where id = $$ || tests.l('REV1'),
   'n:0', 'reviews: the author cannot hide it');
 select tests.expect(tests.fx('F'), $$update public.reviews set hidden_at = now(), hidden_reason = 'Unfair' where id = $$ || tests.l('REV1'),
@@ -143,7 +143,7 @@ select is((select hidden_reason from public.reviews where id = tests.fx('REV1'))
 select tests.expect(tests.fx('A'), $$update public.reviews set comment = 'edited' where id = $$ || tests.l('REV1'), 'err:42501', 'reviews: the admin cannot edit the comment (column grant)', 'aal2');
 
 -- Restoring clears all three moderation columns, whatever the client sends.
-select tests.expect(tests.fx('A'), $$update public.reviews set hidden_at = null where id = $$ || tests.l('REV1'), 'n:0', 'reviews: an admin without a second factor cannot restore it');
+select tests.expect(tests.fx('D2'), $$update public.reviews set hidden_at = null where id = $$ || tests.l('REV1'), 'n:0', 'reviews: a non-admin (D19: the admin needs no second factor) cannot restore it');
 select tests.expect(tests.fx('B'), $$update public.reviews set hidden_at = null, hidden_reason = null, hidden_by = null where id = $$ || tests.l('REV1'), 'n:0', 'reviews: nor can its author');
 select tests.expect(tests.fx('A'), $$update public.reviews set hidden_at = null, hidden_reason = 'left over' where id = $$ || tests.l('REV1'), 'n:1', 'reviews: the admin with a second factor restores it', 'aal2');
 select is((select row(hidden_at, hidden_reason, hidden_by)::text from public.reviews where id = tests.fx('REV1')), '(,,)', 'reviews: restoring clears the time, the reason and the admin');
@@ -196,8 +196,8 @@ begin
 end $$;
 
 -- Cancelling before dispatch.
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'cancelled', admin_action_reason = 'Fraud report' where id = $$ || tests.l('OA_PEND'),
-  'n:0', 'admin cancel: without a second factor the admin does not reach a pending order');
+select tests.expect(tests.fx('D2'), $$update public.orders set status = 'cancelled', admin_action_reason = 'Fraud report' where id = $$ || tests.l('OA_PEND'),
+  'n:0', 'admin cancel: a non-admin does not reach a pending order');
 select tests.expect(tests.fx('A'), $$update public.orders set status = 'cancelled' where id = $$ || tests.l('OA_PEND'),
   'err:23514', 'admin cancel: never without a reason', 'aal2');
 select tests.expect(tests.fx('A'), $$update public.orders set status = 'cancelled', admin_action_reason = '  ' where id = $$ || tests.l('OA_PEND'),
@@ -234,10 +234,10 @@ select tests.expect(tests.fx('A'), $$update public.orders set delivery_charge = 
   'err:42501', 'admin: cannot change the charges while cancelling (BR-09)', 'aal2');
 
 -- Resolving a dispute: a second-factor admin write since A7 (A0 allowed it at aal1), always with a reason.
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OA_DISPUTED'),
-  'n:0', 'admin dispute: an admin without a second factor does not reach a disputed order');
-select tests.expect(tests.fx('A'), $$update public.orders set status = 'refunded', admin_action_reason = 'x' where id = $$ || tests.l('OA_DISPUTED'),
-  'n:0', 'admin dispute: nor with a reason');
+select tests.expect(tests.fx('D2'), $$update public.orders set status = 'completed' where id = $$ || tests.l('OA_DISPUTED'),
+  'n:0', 'admin dispute: a non-admin (D19: the admin needs no second factor) does not reach a disputed order');
+select tests.expect(tests.fx('D2'), $$update public.orders set status = 'refunded', admin_action_reason = 'x' where id = $$ || tests.l('OA_DISPUTED'),
+  'n:0', 'admin dispute: nor does a non-admin with a reason');
 select is((select status::text from public.orders where id = tests.fx('OA_DISPUTED')), 'disputed', 'admin dispute: the aal1 attempts left it disputed');
 select tests.expect(tests.fx('B'), $$update public.orders set status = 'refunded' where id = $$ || tests.l('OA_DISPUTED'),
   'err:42501', 'admin dispute: the buyer cannot settle it (the second user of the proof)');
@@ -284,10 +284,10 @@ begin
   end loop;
 end $$;
 
-select tests.expect(tests.fx('A'), $$update public.consultations set status = 'cancelled', moderation_reason = 'Abuse' where id = $$ || tests.l('CA_REQ'),
-  'n:0', 'consultation moderation: not without a second factor (the admin does not reach the row)');
-select tests.expect(tests.fx('A'), $$update public.consultations set status = 'cancelled' where id = $$ || tests.l('CA_REQ'),
-  'n:0', 'consultation moderation: and without one the admin takes no requester step either');
+select tests.expect(tests.fx('D2'), $$update public.consultations set status = 'cancelled', moderation_reason = 'Abuse' where id = $$ || tests.l('CA_REQ'),
+  'n:0', 'consultation moderation: a non-admin does not reach the row');
+select tests.expect(tests.fx('D2'), $$update public.consultations set status = 'cancelled' where id = $$ || tests.l('CA_REQ'),
+  'n:0', 'consultation moderation: nor does a non-admin take no requester step either');
 select tests.expect(tests.fx('A'), $$update public.consultations set status = 'cancelled' where id = $$ || tests.l('CA_REQ'),
   'err:23514', 'consultation moderation: never without a reason', 'aal2');
 select tests.expect(tests.fx('A'), $$update public.consultations set status = 'cancelled', moderation_reason = repeat('x', 501) where id = $$ || tests.l('CA_REQ'),
@@ -411,7 +411,7 @@ select is((select row(previous_state, new_state)::text from tests.audit_last()),
   'audit profiles: the role before and after');
 select tests.audit_mark();
 select tests.expect(tests.fx('B'), $$update public.profiles set full_name = 'Renamed' where id = $$ || tests.l('B'), 'n:1', 'audit profiles: a buyer edits their own profile');
-select tests.expect(tests.fx('A'), 'update public.profiles set is_suspended = true where id = ' || tests.l('F2'), 'n:0', 'audit profiles: an admin without a second factor suspends nobody');
+select tests.expect(tests.fx('D2'), 'update public.profiles set is_suspended = true where id = ' || tests.l('F2'), 'n:0', 'audit profiles: a non-admin (D19: the admin needs no second factor) suspends nobody');
 select is(tests.audit_new(), '', 'audit profiles: neither the buyer''s own edit nor the refused suspension writes a row');
 
 -- listings: moderation of another user's listing
@@ -529,19 +529,15 @@ reset role;
 select ok((select created_at > now() - interval '1 minute' from public.audit_logs where target_entity = 'pgtap-dated'),
   'audit_logs: the service role still writes the self-deletion row, and its time is the database''s, not the 2020 it sent');
 
--- F6: a suspended admin is no admin.
-do $$
-declare a2 uuid := tests.make_user('A2', 'buyer');
-begin
-  alter table public.profiles disable trigger guard_profiles_role;
-  update public.profiles set role = 'admin', is_suspended = true where id = a2;
-  alter table public.profiles enable trigger guard_profiles_role;
-end $$;
-select tests.expect(tests.fx('A2'), $$insert into public.categories (name, slug) values ('Suspended cat', 'suspended-cat')$$,
+-- F6: a suspended admin is no admin. There is one admin (20261120080000), so the owner suspends A for these checks and
+-- lifts it after; no user session can suspend the admin.
+update public.profiles set is_suspended = true where id = tests.fx('A');
+select tests.expect(tests.fx('A'), $$insert into public.categories (name, slug) values ('Suspended cat', 'suspended-cat')$$,
   'err:42501', 'suspended admin: cannot add a category, even with a second factor', 'aal2');
-select tests.expect(tests.fx('A2'), 'select id from public.audit_logs', 'rows:0', 'suspended admin: reads no audit log', 'aal2');
-select tests.expect(tests.fx('A2'), 'update public.profiles set is_suspended = true where id = ' || tests.l('F'), 'n:0', 'suspended admin: suspends nobody', 'aal2');
-select tests.expect(tests.fx('A'), 'select id from public.audit_logs', 'rows:' || (select count(*) from public.audit_logs), 'suspended admin: while the active admin reads the whole log');
+select tests.expect(tests.fx('A'), 'select id from public.audit_logs', 'rows:0', 'suspended admin: reads no audit log', 'aal2');
+select tests.expect(tests.fx('A'), 'update public.profiles set is_suspended = true where id = ' || tests.l('F'), 'n:0', 'suspended admin: suspends nobody', 'aal2');
+update public.profiles set is_suspended = false where id = tests.fx('A');
+select tests.expect(tests.fx('A'), 'select id from public.audit_logs', 'rows:' || (select count(*) from public.audit_logs), 'suspended admin: once active again, the admin reads the whole log');
 
 -- ---------------------------------------------------------------------------------------------------------------------
 -- 6. The dashboard's queue counts
@@ -768,7 +764,7 @@ select tests.expect(tests.fx('A'), 'insert into public.expert_specializations (e
 select tests.expect(tests.fx('A'), 'insert into public.expert_specializations (expert_id, specialization) values (' || tests.l('E') || $$, 'soil_management')$$, 'err:42501', 'expert_specializations: nor with a second factor (no admin write path)', 'aal2');
 select tests.expect(tests.fx('A'), $$delete from public.expert_specializations where specialization = 'soil_management' and expert_id = $$ || tests.l('E'), 'n:0', 'expert_specializations: an admin without a second factor cannot delete one');
 select tests.expect(tests.fx('A'), $$delete from public.expert_specializations where specialization = 'soil_management' and expert_id = $$ || tests.l('E'), 'n:0', 'expert_specializations: nor with a second factor (no admin write path)', 'aal2');
-select tests.expect(tests.fx('A'), $$update public.consultations set status = 'closed', moderation_reason = 'Stale' where id = $$ || tests.l('CA_CLOSED'), 'n:0', 'consultations: an admin without a second factor does not reach one');
+select tests.expect(tests.fx('D2'), $$update public.consultations set status = 'closed', moderation_reason = 'Stale' where id = $$ || tests.l('CA_CLOSED'), 'n:0', 'consultations: a non-admin (D19: the admin needs no second factor) does not reach one');
 
 -- ---------------------------------------------------------------------------------------------------------------------
 -- 9. What an admin's direct write may change (migration section 8; A7 re-verification G1-G4)
@@ -805,14 +801,9 @@ select tests.expect(tests.fx('A'), $$update public.messages set body = '[removed
 select tests.expect(tests.fx('F'), 'update public.messages set read_at = now() where id = ' || tests.l('M_G'),
   'n:1', 'G2: the recipient still marks it read');
 
--- G3: no admin changes their own role or suspension; another admin does.
-do $$
-declare a3 uuid := tests.make_user('A3', 'buyer');
-begin
-  alter table public.profiles disable trigger guard_profiles_role;
-  update public.profiles set role = 'admin' where id = a3;
-  alter table public.profiles enable trigger guard_profiles_role;
-end $$;
+-- G3: the admin changes neither their own role nor suspension (there is no other admin to do it, 20261120080000); the
+-- admin still suspends anyone else.
+select tests.make_user('A3', 'buyer');
 select tests.expect(tests.fx('A'), $$update public.profiles set role = 'buyer' where id = $$ || tests.l('A'),
   'err:42501', 'G3: an admin cannot change their own role', 'aal2');
 select tests.expect(tests.fx('A'), 'update public.profiles set is_suspended = true where id = ' || tests.l('A'),
@@ -820,10 +811,10 @@ select tests.expect(tests.fx('A'), 'update public.profiles set is_suspended = tr
 select tests.expect(tests.fx('B'), 'update public.profiles set is_suspended = true where id = ' || tests.l('B'),
   'err:42501', 'G3: a user cannot suspend themselves either');
 select tests.expect(tests.fx('B'), $$update public.profiles set role = 'admin' where id = $$ || tests.l('B'),
-  'err:P0001', 'G3: a user''s own role change is still refused by the role guard');
+  'err:42501', 'G3: a user''s own promotion to admin is still refused by the role guard');
 select tests.audit_mark();
 select tests.expect(tests.fx('A'), 'update public.profiles set is_suspended = true where id = ' || tests.l('A3'),
-  'n:1', 'G3: another admin suspends A3', 'aal2');
+  'n:1', 'G3: the admin suspends A3', 'aal2');
 select is(tests.audit_new('A3'), 'user_suspended profiles - A T', 'G3: and that is audited');
 
 -- G4: no row when nothing the action is about changed.

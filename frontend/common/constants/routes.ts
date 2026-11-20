@@ -148,11 +148,8 @@ export const PROFILE_ROUTES = {
   EditProfile: 'EditProfile',
   Settings: 'Settings',
   ChangePassword: 'ChangePassword',
-  // P4 (4A.4, admin-only) and (4A.5, every role).
+  // Optional two-step verification for everyone but the admin (D19).
   MfaEnrollment: 'MfaEnrollment',
-  // A3b, admin only: email, password and two-step verification together, and the email change itself.
-  AccountSecurity: 'AccountSecurity',
-  ChangeEmail: 'ChangeEmail',
   // A3: a dealer reads and updates their business details from their profile (the application's business step).
   BusinessDetails: 'ProfileBusinessDetails',
   DeleteAccount: 'DeleteAccount',

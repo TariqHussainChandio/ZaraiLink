@@ -98,13 +98,13 @@ describe('ReviewModerationScreen', () => {
 
   it('shows a refusal in the banner and keeps the review as it was', async () => {
     mockFetch.mockResolvedValue([HIDDEN]);
-    mockRestore.mockRejectedValue(new ApiError({ status: 403, code: 'mfa_required', kind: 'forbidden', message: 'MFA required' }));
+    mockRestore.mockRejectedValue(new ApiError({ status: 403, code: 'forbidden', kind: 'forbidden', message: 'Forbidden' }));
     await renderWithQuery(<ReviewModerationScreen />);
     await screen.findByText('Rude seller');
 
     await fireEvent.press(screen.getByText('Restore'));
 
-    expect(await screen.findByText('This action needs two-step verification.')).toBeTruthy();
+    expect(await screen.findByText('Your account cannot do this.')).toBeTruthy();
     expect(screen.getByText('Hidden: Abusive language')).toBeTruthy();
   });
 

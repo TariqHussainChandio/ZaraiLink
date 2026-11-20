@@ -1,6 +1,6 @@
 # common/auth (app)
 
-Sign-in, registration, the email code step, password reset, the splash and suspended screens, and the second-factor (TOTP) hooks. Sessions come from Supabase Auth.
+Sign-in, registration, the email code step, password reset, the splash and suspended screens, and the hooks for the optional two-step verification (TOTP; never the admin, D19). Sessions come from Supabase Auth.
 
 - **Owner lane:** `zl-accounts` (docs/plan.md §3)
 - **SRDS:** §4–§7, §10, §13

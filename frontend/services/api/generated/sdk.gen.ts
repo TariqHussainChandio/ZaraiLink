@@ -184,7 +184,7 @@ export const ordersCancelOrderAsAdmin = <ThrowOnError extends boolean = false>(o
 /**
  * Get Admin Queues
  *
- * The moderation queue counts for the dashboard (SRDS §14). A read, so no second factor and no audit row.
+ * The moderation queue counts for the dashboard (SRDS §14). A read, so no audit row.
  */
 export const adminGetAdminQueues = <ThrowOnError extends boolean = false>(options?: Options<AdminGetAdminQueuesData, ThrowOnError>): RequestResult<AdminGetAdminQueuesResponses, AdminGetAdminQueuesErrors, ThrowOnError> => (options?.client ?? client).get<AdminGetAdminQueuesResponses, AdminGetAdminQueuesErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],

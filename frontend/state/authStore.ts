@@ -22,8 +22,8 @@ type AuthStatus =
   | 'passwordRecovery'
   | 'awaitingApproval'
   | 'approvalGranted'
-  // An admin with an authenticator who has signed in with the password only: every admin write needs the second
-  // factor (aal2), so the code is asked for before the console opens (A3a verification, H1).
+  // Someone who turned on two-step verification (optional, never the admin: D19) and has signed in with the password
+  // only: the code is asked for before their shell opens.
   | 'secondFactor'
   // Signed in, but the profile that decides the shell could not be read and none is remembered for this user on the
   // device (offline cold start), or the server refused or failed the read. The app shows that it cannot check the
@@ -120,7 +120,9 @@ async function shellStateFor(result: ProfileResult): Promise<ShellState> {
     return { profile: null, role: null, status: 'accountUnavailable', unavailableReason: result.reason, deviceAccount: null };
   }
   const account = result.source === 'server' ? result.profile : result.remembered;
-  const secondFactor = account.role === 'admin' && !account.is_suspended && (await needsSecondFactor());
+  // Two-step verification is optional sign-in protection for everyone but the admin, who has none (D19): anyone who
+  // turned it on is asked for the code before their shell opens.
+  const secondFactor = account.role !== 'admin' && !account.is_suspended && (await needsSecondFactor());
   return {
     profile: result.source === 'server' ? result.profile : null,
     role: account.role,

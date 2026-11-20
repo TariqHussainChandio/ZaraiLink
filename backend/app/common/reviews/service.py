@@ -86,10 +86,10 @@ async def fetch_reviews_for_moderation(user: AuthenticatedUser, include_hidden: 
 
 
 def _raise_moderation_refusal(exc: APIError) -> None:
-    # guard_reviews_update: 42501 for anyone but an admin with a second factor (or an edit beyond the hidden_* columns),
+    # guard_reviews_update: 42501 for anyone but the admin (or an edit beyond the hidden_* columns),
     # 23514 for a hide without a reason. Anything else stays the generic database error.
     if exc.code == "42501":
-        raise HTTPException(status_code=403, detail="Only an admin with a second factor can moderate a review") from exc
+        raise HTTPException(status_code=403, detail="Only the admin can moderate a review") from exc
     if exc.code == "23514":
         raise HTTPException(status_code=422, detail="Hiding a review needs a reason") from exc
     raise exc

@@ -41,6 +41,7 @@ declare
   la uuid; la2 uuid; lb uuid; pa1 uuid; pa2 uuid; pa3 uuid; pa4 uuid; pb uuid; pn uuid; l uuid; v record;
 begin
   alter table public.profiles disable trigger guard_profiles_role;
+  update public.profiles set role = 'buyer' where role = 'admin';  -- one admin, ever (20261120080000)
   update public.profiles set role = 'admin' where id = adm;
   alter table public.profiles enable trigger guard_profiles_role;
   perform tests.approve(array[a, b, n, sd]);

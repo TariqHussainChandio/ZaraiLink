@@ -66,8 +66,8 @@ function fileFacts(document: Document): string {
 /**
  * One dealer or expert application, as SRDS §12 lists it (D4): who applied and where it stands, the documents named by
  * what they are (each opens in a zoomable viewer, or the phone's PDF viewer), the business or professional details, and the
- * decision in a bar at the bottom. Approving or rejecting needs the second factor and writes the audit row with the
- * decision; the applicant is emailed after it (SRDS §9).
+ * decision in a bar at the bottom. Approving or rejecting writes the audit row with the decision (no second factor, D19);
+ * the applicant is emailed after it (SRDS §9).
  */
 export function ApplicationDetailScreen({ route }: AdminScreenProps<typeof ADMIN_HOME_ROUTES.ApplicationDetail>) {
   const { role, id } = route.params;

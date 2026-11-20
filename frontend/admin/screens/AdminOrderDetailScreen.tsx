@@ -76,9 +76,8 @@ function reachedAt(
 
 /**
  * One order as the admin sees it (SRDS §14): what was bought, by whom, its timeline and payment, and the admin's
- * cancellation with a reason both parties read, and the settlement of a dispute. Both need two-step verification and are
- * audited by the API as "Order Administrative Action" (BR-15); a refusal (no second factor, or the order moved on) shows
- * in the banner.
+ * cancellation with a reason both parties read, and the settlement of a dispute. Both are audited by the API as "Order
+ * Administrative Action" (BR-15); a refusal (the order moved on) shows in the banner.
  */
 export function AdminOrderDetailScreen({
   route,

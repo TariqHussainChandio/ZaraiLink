@@ -176,13 +176,14 @@ describe('UserManagementScreen', () => {
     await renderWithQuery(<UserManagementScreen />);
 
     await fireEvent.press(await screen.findByText('Dealer Bilal'));
-    await fireEvent.press(await screen.findByText('Change role'));
-    expect(await screen.findByText('Change role for Dealer Bilal')).toBeTruthy();
-    expect(screen.queryByText('Admin')).toBeNull();
+    // One menu at the row (D19): the other roles and the suspension.
+    expect(await screen.findByText('Change to farmer')).toBeTruthy();
+    expect(screen.getByText('Suspend Dealer Bilal')).toBeTruthy();
+    expect(screen.queryByText('Change to admin')).toBeNull();
     // Their current role is not a choice.
-    expect(screen.queryByRole('button', { name: 'Dealer' })).toBeNull();
+    expect(screen.queryByText('Change to dealer')).toBeNull();
 
-    await fireEvent.press(screen.getByText('Farmer'));
+    await fireEvent.press(screen.getByText('Change to farmer'));
     expect(await screen.findByText('Change Dealer Bilal to farmer?')).toBeTruthy();
     expect(screen.getByText(/lose their dealer approval, and with it selling and inventory access/)).toBeTruthy();
     expect(mockUpdateUserRole).not.toHaveBeenCalled();
@@ -196,8 +197,7 @@ describe('UserManagementScreen', () => {
     await renderWithQuery(<UserManagementScreen />);
 
     await fireEvent.press(await screen.findByText('Farmer Sana'));
-    await fireEvent.press(await screen.findByText('Change role'));
-    await fireEvent.press(screen.getByText('Dealer'));
+    await fireEvent.press(await screen.findByText('Change to dealer'));
 
     expect(await screen.findByText(/goes back to Under review/)).toBeTruthy();
   });

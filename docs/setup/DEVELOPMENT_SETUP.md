@@ -170,6 +170,9 @@ cd backend
 export LOCAL_SUPABASE_URL=http://127.0.0.1:54321
 export LOCAL_SUPABASE_ANON_KEY=<ANON_KEY>
 export LOCAL_SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY>
+# Optional: run as the platform's one admin (D19) instead of a promoted throwaway; set for the run only, never in a file.
+export ZARAILINK_ADMIN_EMAIL=<the admin's email>
+export ZARAILINK_ADMIN_PASSWORD=<the admin's password>
 uv run pytest tests/integration -rxs
 ```
 

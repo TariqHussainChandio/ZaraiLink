@@ -35,12 +35,22 @@ async def fetch_all_profiles(
 
 
 async def set_profile_suspended(user: AuthenticatedUser, profile_id: str, is_suspended: bool) -> None:
+    # D19: nobody suspends the one admin; the admin suspending themselves would lock the platform.
+    if profile_id == user.id:
+        raise AppHTTPException(409, "The admin account cannot be suspended", "conflict")
     await repo.set_profile_suspended(user.access_token, profile_id, is_suspended)
     forget_profile(profile_id)
     # The audit row is written atomically by the database (20261023080000).
 
 
 async def update_user_role(user: AuthenticatedUser, profile_id: str, new_role: str) -> None:
+    # D19: the admin's own role is fixed (the schema already keeps "admin" out of new_role); guard_profiles_role refuses
+    # both again in the database.
+    role = await repo.fetch_profile_role(user.access_token, profile_id)
+    if role is None:
+        raise AppHTTPException(404, "No such account", "not_found")
+    if role == "admin":
+        raise AppHTTPException(409, "The admin account's role is fixed", "conflict")
     await repo.update_profile_role(user.access_token, profile_id, new_role)
     forget_profile(profile_id)
     # The audit row is written atomically by the database (20261023080000).
@@ -205,8 +215,8 @@ def _utc_day(timestamp: str) -> str:
     return datetime.fromisoformat(timestamp).astimezone(UTC).date().isoformat()
 
 
-# --- disease knowledge base (A6; SRDS §37). The advisory text the AI report shows. The table's policies already demand
-# is_admin_aal2() for a write; the routes demand it too so the refusal is a clear 403 before any query. Every write is
+# --- disease knowledge base (A6; SRDS §37). The advisory text the AI report shows. The table's policies admit only the
+# admin for a write; the routes demand the role too so the refusal is a clear 403 before any query. Every write is
 # audited as "AI Configuration Changed" (SRDS §51, BR-15) by the table's trigger, not here (see below).
 
 

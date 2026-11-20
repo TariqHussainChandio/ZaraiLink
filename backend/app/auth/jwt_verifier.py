@@ -42,10 +42,6 @@ class TokenVerificationError(RuntimeError):
 class VerifiedClaims:
     sub: str
     email: str | None
-    # "aal1" (password/OTP only) or "aal2" (a second factor, e.g. TOTP, has also been verified
-    # this session), used to gate admin writes. Supabase always sets this claim once
-    # MFA is available on the project, defaulting to "aal1" for a session with no second factor.
-    aal: str | None = None
     # When the user last signed in (the latest `amr` timestamp, Unix seconds). A refresh keeps it, so it tells a real
     # sign-in from a refreshed session: an approved dealer or expert must sign in again after the decision (A3a).
     signed_in_at: int | None = None
@@ -103,6 +99,4 @@ def verify_access_token(token: str) -> VerifiedClaims:
     if not sub:
         raise TokenVerificationError("Token has no subject claim")
 
-    return VerifiedClaims(
-        sub=sub, email=claims.get("email"), aal=claims.get("aal"), signed_in_at=_signed_in_at(claims.get("amr"))
-    )
+    return VerifiedClaims(sub=sub, email=claims.get("email"), signed_in_at=_signed_in_at(claims.get("amr")))
