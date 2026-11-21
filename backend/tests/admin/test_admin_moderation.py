@@ -2,7 +2,8 @@
 
 Covers the routes that had no unit test: the dashboard queues, the audit log with its §51 labels and filter, the audit
 event names, consultation moderation and the order administrative actions. The repositories are patched, so these prove
-the gates (the admin role; no second factor since D19) and what reaches the service. The audit row of every write here is
+the gates (the admin role; no second factor since D19) and what reaches the service. The audit row of every write here
+is
 written by the database in the same transaction (20261023080000), so these assert the service writes none of its own.
 The real audit rows are proven on the real stack in tests/integration/smoke/test_smoke_admin_audit.py.
 """

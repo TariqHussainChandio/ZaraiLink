@@ -1,7 +1,8 @@
 """P5 (item 10) — role x route authorization matrix, generated from the real dependency tree.
 
 Every route is classified by walking FastAPI's own `route.dependant` for `get_current_user`, the
-`require_role(...)` dependencies (their roles are read from `auth.declared_roles`), and each is probed as every role over real HTTP with real tokens.
+`require_role(...)` dependencies (their roles are read from `auth.declared_roles`), and each is probed as every role
+over real HTTP with real tokens.
 
 Deriving the expectation from the route alone cannot notice a route whose requirement was weakened (the
 independent P5 verification swapped `require_dealer` for any-authenticated and the matrix stayed green), so
@@ -198,4 +199,3 @@ def test_authorization_matrix(method, path, kind, roles, any_status, matrix_acto
             else:
                 assert response.status_code == 403, f"{method} {path} as {actor} -> {response.status_code}"
                 assert response.json()["code"] == "account_not_approved", response.text
-

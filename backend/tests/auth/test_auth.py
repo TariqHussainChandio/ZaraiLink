@@ -14,7 +14,6 @@ import pytest
 from fastapi import HTTPException
 
 from app.auth.dependencies import (
-    AuthenticatedUser,
     _profile_cache,
     forget_profile,
     get_bearer_token,

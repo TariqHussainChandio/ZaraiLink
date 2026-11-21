@@ -418,9 +418,6 @@ async def test_update_status_rejects_non_participant_admin_on_wrong_transition_e
     assert exc_info.value.status_code == 422
 
 
-
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status", ["pending", "confirmed", "processing", "ready", "dispatched", "completed"])
 async def test_an_admin_cannot_resolve_an_order_that_is_not_disputed(status):

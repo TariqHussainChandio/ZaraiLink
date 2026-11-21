@@ -2,7 +2,8 @@
 
 Dealers and experts sign up pending (profiles.account_status, migration 20261005080000). These tests drive real users
 through both doors, FastAPI and Supabase PostgREST with the user's own session, and require the same answer: a pending
-dealer is refused and an approved one allowed; nobody approves themselves; only the admin decides (no second factor since D19),
+dealer is refused and an approved one allowed; nobody approves themselves; only the admin decides (no second factor
+since D19),
 and every decision leaves its audit row; a rejection carries a reason the applicant reads and may answer by
 resubmitting; and a session from before the approval must sign in again.
 """

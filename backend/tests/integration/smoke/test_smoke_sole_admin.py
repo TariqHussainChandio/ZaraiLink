@@ -39,13 +39,19 @@ def test_the_admin_writes_without_a_second_factor_and_a_farmer_does_not(world, a
     target_id, _, _ = make_actor("buyer")
     assert _claims(world.admin.token)["aal"] == "aal1", "the admin's session must be password-only for this proof"
 
-    by_farmer = api_client("PATCH", f"/api/v1/admin/users/{target_id}/suspend", world.farmer.token, json={"is_suspended": True})
+    by_farmer = api_client(
+        "PATCH", f"/api/v1/admin/users/{target_id}/suspend", world.farmer.token, json={"is_suspended": True}
+    )
     assert by_farmer.status_code == 403, by_farmer.text
     assert by_farmer.json()["code"] == "insufficient_role"
 
-    by_admin = api_client("PATCH", f"/api/v1/admin/users/{target_id}/suspend", world.admin.token, json={"is_suspended": True})
+    by_admin = api_client(
+        "PATCH", f"/api/v1/admin/users/{target_id}/suspend", world.admin.token, json={"is_suspended": True}
+    )
     assert by_admin.status_code == 204, by_admin.text
-    restored = api_client("PATCH", f"/api/v1/admin/users/{target_id}/suspend", world.admin.token, json={"is_suspended": False})
+    restored = api_client(
+        "PATCH", f"/api/v1/admin/users/{target_id}/suspend", world.admin.token, json={"is_suspended": False}
+    )
     assert restored.status_code == 204, restored.text
 
 
@@ -56,7 +62,12 @@ def test_the_database_admits_the_admin_at_aal1_and_refuses_a_farmer(world, backe
         "POST",
         "/reports",
         world.buyer.token,
-        json={"reporter_id": world.buyer.id, "target_type": "listing", "target_id": world.farmer_listing_id, "reason": "smoke D19"},
+        json={
+            "reporter_id": world.buyer.id,
+            "target_type": "listing",
+            "target_id": world.farmer_listing_id,
+            "reason": "smoke D19",
+        },
     )
     assert report.status_code == 201, report.text
     report_id = report.json()[0]["id"]
@@ -74,7 +85,9 @@ def test_the_database_admits_the_admin_at_aal1_and_refuses_a_farmer(world, backe
 def test_nobody_is_made_an_admin(world, api_client, make_actor):
     target_id, _, target_token = make_actor("buyer")
 
-    through_api = api_client("PATCH", f"/api/v1/admin/users/{target_id}/role", world.admin.token, json={"role": "admin"})
+    through_api = api_client(
+        "PATCH", f"/api/v1/admin/users/{target_id}/role", world.admin.token, json={"role": "admin"}
+    )
     assert through_api.status_code == 422, through_api.text
 
     by_admin = _rest("PATCH", f"/profiles?id=eq.{target_id}", world.admin.token, json={"role": "admin"})
@@ -86,9 +99,13 @@ def test_nobody_is_made_an_admin(world, api_client, make_actor):
 def test_the_admin_accounts_role_access_and_details_are_fixed(world, api_client):
     role = api_client("PATCH", f"/api/v1/admin/users/{world.admin.id}/role", world.admin.token, json={"role": "buyer"})
     assert role.status_code == 409, role.text
-    suspend = api_client("PATCH", f"/api/v1/admin/users/{world.admin.id}/suspend", world.admin.token, json={"is_suspended": True})
+    suspend = api_client(
+        "PATCH", f"/api/v1/admin/users/{world.admin.id}/suspend", world.admin.token, json={"is_suspended": True}
+    )
     assert suspend.status_code == 409, suspend.text
-    details = api_client("PATCH", "/api/v1/profile", world.admin.token, json={"phone": "+923001234567", "street": "Mall Road"})
+    details = api_client(
+        "PATCH", "/api/v1/profile", world.admin.token, json={"phone": "+923001234567", "street": "Mall Road"}
+    )
     assert details.status_code == 403, details.text
 
     # The database refuses the same, past FastAPI.

@@ -84,7 +84,7 @@ def test_the_admin_is_refused_on_every_inventory_endpoint(admin_sessions, dealer
         response = api_client(method, path, token, **({"json": body} if body is not None else {}))
         assert response.status_code == 403, f"{method} {path} as the admin -> {response.status_code}"
         assert response.json()["code"] == "insufficient_role", f"{method} {path}: {response.text}"
-    assert fingerprint(dealer.id) == before, f"the refused admin changed the dealer's inventory"
+    assert fingerprint(dealer.id) == before, "the refused admin changed the dealer's inventory"
     # The allowed path, same rows: the owner still reads their product.
     assert ok(api_client("GET", f"{INV}/products/{dealer.ids['product']}", dealer.token))["id"] == dealer.ids["product"]
 
@@ -175,7 +175,7 @@ def test_the_admin_lists_no_inventory_export(admin_sessions, dealer):
     )
     assert listed.status_code in (200, 400, 403, 404), listed.text
     if listed.status_code == 200:
-        assert listed.json() == [], f"the admin listed the dealer's exports"
+        assert listed.json() == [], "the admin listed the dealer's exports"
 
 
 def test_no_inventory_policy_mentions_an_admin():
@@ -199,10 +199,7 @@ def test_no_inventory_policy_mentions_an_admin():
 
 def _admin_writes() -> list[tuple[str, str]]:
     return sorted(
-        (method, route.path)
-        for route in api_routes(app)
-        if _admits_admin(route)
-        for method in route.methods - {"GET"}
+        (method, route.path) for route in api_routes(app) if _admits_admin(route) for method in route.methods - {"GET"}
     )
 
 
