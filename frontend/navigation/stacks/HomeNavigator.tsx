@@ -12,7 +12,7 @@ import { CropListScreen } from '../../farmer/screens/CropListScreen';
 import { FarmDetailScreen } from '../../farmer/screens/FarmDetailScreen';
 import { FarmListScreen } from '../../farmer/screens/FarmListScreen';
 import { DealerAnalyticsScreen } from '../../dealer/screens/AnalyticsScreen';
-import { InventoryAlertsSection } from '../../dealer/components/InventoryAlertsSection';
+import { InventoryAlertsSection } from '../../dealer';
 import { BusinessDetailsScreen } from '../../dealer/screens/BusinessDetailsScreen';
 import { NotificationListScreen } from '../../common/notifications/screens/NotificationListScreen';
 import { DiseaseProcessingScreen } from '../../ai/screens/DiseaseProcessingScreen';
