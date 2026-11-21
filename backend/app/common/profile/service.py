@@ -5,11 +5,9 @@ from app.common.errors import AppHTTPException
 from app.common.profile import repository as repo
 
 # D19: the admin's details are set by the system (docs/process/admin-bootstrap-runbook.md). The admin changes the
-# password (an Auth call from the app) and preferences only; guard_profiles_role refuses the same fields again
-# (20261120080000_sole_admin_no_mfa.sql).
-ADMIN_FIXED_FIELDS = frozenset(
-    {"full_name", "phone", "location", "avatar_url", "country", "province", "city", "village", "street"}
-)
+# password (an Auth call from the app), preferences and, since D20, their photo; guard_profiles_role refuses the same
+# fields again (20261122090000_admin_profile_photo.sql).
+ADMIN_FIXED_FIELDS = frozenset({"full_name", "phone", "location", "country", "province", "city", "village", "street"})
 
 
 async def update_profile(user: AuthenticatedUser, patch: dict) -> None:

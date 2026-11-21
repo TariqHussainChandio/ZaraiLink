@@ -1,6 +1,13 @@
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React from 'react';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { type ParamListBase, useNavigation } from '@react-navigation/native';
+import { ArrowLeft } from 'lucide-react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { IconButton } from '../../common/components';
+import { ProfilePhoto } from '../../common/profile';
+import { type Theme, useTheme } from '../../theme';
 import { PROFILE_ROUTES } from '../../common/constants/routes';
 import { BusinessDetailsScreen } from '../../dealer/screens/BusinessDetailsScreen';
 import { ChangePasswordScreen } from '../../common/profile/screens/ChangePasswordScreen';
@@ -28,16 +35,41 @@ export type ProfileScreenProps<RouteName extends keyof ProfileStackParamList> =
   NativeStackScreenProps<ProfileStackParamList, RouteName>;
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
-// Development builds only: the design catalogue, A2's evidence that every component follows the design system.
-const PROFILE_STACK_OPTIONS = stackOptionsWithActions({ [PROFILE_ROUTES.ViewProfile]: designCatalogueAction });
 
-export function ProfileNavigator() {
+/** The Account's leading corner (D20): the person's photo (tap to view it or Edit photo), beside their name as the bar's
+ * title. The admin, who has no bottom bar, gets Back to the Overview in front of it. */
+function ProfileHeaderLeading({ back }: { back: boolean }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const tabs = useNavigation().getParent<BottomTabNavigationProp<ParamListBase>>();
   return (
-    <Stack.Navigator screenOptions={PROFILE_STACK_OPTIONS}>
+    <View style={styles.leading}>
+      {back ? <IconButton icon={ArrowLeft} label="Back to the Overview" onPress={() => tabs?.navigate('Home')} /> : null}
+      <ProfilePhoto compact />
+    </View>
+  );
+}
+const profileLeading = () => <ProfileHeaderLeading back={false} />;
+const adminProfileLeading = () => <ProfileHeaderLeading back />;
+
+/** The Account's app bar (D20): photo and name, no "Account" title, no bell and no menu. Development builds keep the
+ * design catalogue button, A2's evidence that every component follows the design system. */
+export function profileStackOptions(adminBack = false): NativeStackNavigationOptions {
+  return stackOptionsWithActions({ [PROFILE_ROUTES.ViewProfile]: designCatalogueAction }, 'marketplace', {
+    [PROFILE_ROUTES.ViewProfile]: adminBack ? adminProfileLeading : profileLeading,
+  });
+}
+const PROFILE_STACK_OPTIONS = profileStackOptions();
+
+/** `screenOptions`: a shell's own app bar for the account screens (the admin's, with Back to the Overview, D20). */
+export function ProfileNavigator({ screenOptions = PROFILE_STACK_OPTIONS }: { screenOptions?: NativeStackNavigationOptions }) {
+  return (
+    <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
         name={PROFILE_ROUTES.ViewProfile}
         component={ViewProfileScreen}
-        options={{ title: 'Account' }}
+        // The bar's title becomes the person's name (useNameTitle), beside their photo.
+        options={{ title: 'Account', headerLargeTitle: false }}
       />
       <Stack.Screen
         name={PROFILE_ROUTES.EditProfile}
@@ -74,4 +106,10 @@ export function ProfileNavigator() {
       ) : null}
     </Stack.Navigator>
   );
+}
+
+function makeStyles({ space }: Theme) {
+  return StyleSheet.create({
+    leading: { flexDirection: 'row', alignItems: 'center', gap: space[1], paddingLeft: space[2] },
+  });
 }

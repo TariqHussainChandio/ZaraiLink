@@ -8,7 +8,7 @@ import { DesignCatalogueScreen } from './DesignCatalogueScreen';
 describe('DesignCatalogueScreen', () => {
   it('renders every section, including the components new in Rate Board', async () => {
     await renderWithProviders(<DesignCatalogueScreen />);
-    for (const title of ['Type', 'Rate plates', 'Buttons', 'Fields', 'Quantity', 'Banners and feedback', 'Loading, failed, waiting, empty', 'Sheets and action bar']) {
+    for (const title of ['Type', 'Prices', 'Buttons', 'Fields', 'Quantity', 'Banners and feedback', 'Loading, failed, waiting, empty', 'Sheets and action bar']) {
       expect(screen.getByRole('header', { name: title })).toBeTruthy();
     }
     expect(screen.getByText('Waiting for connection')).toBeTruthy();

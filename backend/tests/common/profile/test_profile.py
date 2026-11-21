@@ -24,13 +24,21 @@ async def test_update_profile_writes_only_to_callers_own_row():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("field", ["full_name", "phone", "street", "city", "avatar_url"])
+@pytest.mark.parametrize("field", ["full_name", "phone", "street", "city"])
 async def test_the_admins_details_are_set_by_the_system(field):
-    # D19: the admin changes the password and preferences only; the details are predefined.
+    # D19: the admin changes the password, preferences and (D20) the photo only; the other details are predefined.
     with patch("app.common.profile.service.repo.update_profile") as mock_update, pytest.raises(AppHTTPException) as exc:
         await service.update_profile(ADMIN, {field: "x"})
     assert exc.value.status_code == 403
     mock_update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_the_admin_changes_their_photo():
+    # D20: every user changes their own profile photo, the admin included.
+    with patch("app.common.profile.service.repo.update_profile") as mock_update:
+        await service.update_profile(ADMIN, {"avatar_url": "https://example.test/a.jpg"})
+    mock_update.assert_called_once_with(ADMIN.access_token, ADMIN.id, {"avatar_url": "https://example.test/a.jpg"})
 
 
 @pytest.mark.asyncio

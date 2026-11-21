@@ -1,6 +1,6 @@
 import { type ThemeColors, darkColors, lightColors } from './colors';
 
-// Every pairing the design system (D15, Rate Board) relies on, held to WCAG 2 in both themes: text 4.5:1, icons, control borders and the
+// Every pairing the design system (D15, Rate Board, with D20's olive and earth-brown brand) relies on, held to WCAG 2 in both themes: text 4.5:1, icons, control borders and the
 // focus ring 3:1. A token changed to a value that fails here would make some screen unreadable in the field.
 function channel(hex: string, at: number): number {
   const c = parseInt(hex.slice(at, at + 2), 16) / 255;
@@ -24,7 +24,7 @@ const grounds: [string, (c: ThemeColors) => string][] = [
   ['surface', c => c.surface],
   ['surfaceSunken', c => c.surfaceSunken],
 ];
-const accents = ['brand', 'farmer', 'buyer', 'dealer', 'expert', 'admin', 'ai'] as const;
+const accents = ['brand', 'farmer', 'buyer', 'dealer', 'expert', 'admin', 'ai', 'inventory'] as const;
 const tones = ['info', 'success', 'warning', 'neutral', 'danger'] as const;
 
 const pairs: Pair[] = [];
@@ -50,8 +50,15 @@ for (const t of tones) {
   pairs.push([`${t}.mark on surface`, c => c.status[t].mark, c => c.surface, 3]);
   pairs.push([`${t}.ink on surface`, c => c.status[t].ink, c => c.surface, 4.5]);
 }
-// The rate plate: chalk on the board (no control ever sits on one).
+// The brand panel: text on the board (no control ever sits on one).
 pairs.push(['onBoard on board', c => c.onBoard, c => c.board, 4.5]);
+// D20: every app bar is olive, with its title and icons on it; earth brown is text (prices) on paper and field.
+pairs.push(['onAppBar on appBar', c => c.onAppBar, c => c.appBar, 4.5]);
+pairs.push(['onAccent on secondary.fill', c => c.onAccent, c => c.secondary.fill, 4.5]);
+pairs.push(['secondary.ink on surface', c => c.secondary.ink, c => c.surface, 4.5]);
+pairs.push(['secondary.ink on ground', c => c.secondary.ink, c => c.ground, 4.5]);
+pairs.push(['secondary.ink on secondary.soft', c => c.secondary.ink, c => c.secondary.soft, 4.5]);
+pairs.push(['secondary.mark on surface', c => c.secondary.mark, c => c.surface, 3]);
 pairs.push(['boardInk2 on board', c => c.boardInk2, c => c.board, 4.5]);
 pairs.push(['onAccent on danger.fill', c => c.onAccent, c => c.status.danger.fill, 4.5]);
 pairs.push(['rating on surface', c => c.rating, c => c.surface, 3]);

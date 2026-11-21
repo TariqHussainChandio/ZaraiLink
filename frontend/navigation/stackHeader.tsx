@@ -1,6 +1,8 @@
 import type { NativeStackHeaderProps, NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import React from 'react';
 import { TopAppBar } from '../common/components';
+import { ROLE_LABELS } from '../common/constants/roles';
+import { useAuthStore } from '../state/authStore';
 
 /** A stack's app-bar actions, by route name: each renders the actions for that screen. */
 export type AppBarActions = Partial<Record<string, () => React.ReactNode>>;
@@ -16,8 +18,10 @@ function StackHeader({
   back,
   actions,
   leading,
+  below,
   system,
-}: NativeStackHeaderProps & { actions: AppBarActions; leading: AppBarActions; system: StackSystem }) {
+}: NativeStackHeaderProps & { actions: AppBarActions; leading: AppBarActions; below: AppBarActions; system: StackSystem }) {
+  const role = useAuthStore(state => (state.status === 'authenticated' ? state.role : null));
   const title = typeof options.headerTitle === 'string' ? options.headerTitle : (options.title ?? route.name);
   // `back` is set on every inner screen, and on the first screen of a stack opened over another one (farmers' and
   // buyers' full-screen Messages: native-stack passes the parent's Back down), where goBack closes the overlay. A tab's
@@ -27,8 +31,25 @@ function StackHeader({
   const onBack = options.headerBackVisible === false || !back ? undefined : navigation.goBack;
   const right = actions[route.name]?.();
   const left = leading[route.name]?.();
-  const variant = system === 'inventory' ? 'inventory' : back ? 'default' : 'large';
-  return <TopAppBar title={title} variant={variant} onBack={onBack} right={right} left={left} />;
+  const under = below[route.name]?.();
+  // D20: a person's bar (a home screen or the Account, marked headerLargeTitle: false) keeps the title, their name, in the
+  // row beside their photo, with their role on the line beneath it.
+  const personBar = options.headerLargeTitle === false && !back;
+  // D20: every bar has the home bar's compact height, the title in the row; the large title below the row is retired.
+  const variant = system === 'inventory' ? 'inventory' : 'default';
+  const subtitle = personBar && role ? ROLE_LABELS[role] : undefined;
+  return (
+    <TopAppBar
+      title={title}
+      subtitle={subtitle}
+      variant={variant}
+      onBack={onBack}
+      right={right}
+      left={left}
+      below={under}
+      centered={options.headerTitleAlign === 'center'}
+    />
+  );
 }
 
 /** Every stack draws the design system's app bar: large on a tab's first screen, with back on the rest. A screen's
@@ -39,13 +60,9 @@ export function stackOptionsWithActions(
   actions: AppBarActions,
   system: StackSystem = 'marketplace',
   leading: AppBarActions = {},
+  below: AppBarActions = {},
 ): NativeStackNavigationOptions {
-  return { header: props => <StackHeader {...props} actions={actions} leading={leading} system={system} /> };
-}
-
-/** A stack's leading slot, by route name: the admin's menu button on each tab's first screen (D19). */
-export function stackOptionsWithLeading(leading: AppBarActions, actions: AppBarActions = {}): NativeStackNavigationOptions {
-  return stackOptionsWithActions(actions, 'marketplace', leading);
+  return { header: props => <StackHeader {...props} actions={actions} leading={leading} below={below} system={system} /> };
 }
 
 /** A stack whose screens have no app-bar actions. */

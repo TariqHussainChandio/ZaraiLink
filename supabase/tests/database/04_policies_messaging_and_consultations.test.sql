@@ -60,8 +60,8 @@ select tests.expect(tests.fx('B'), 'select id from public.consultations where id
 select tests.expect(tests.fx('E'), 'select id from public.consultations where id = ' || tests.l('CONS1'), 'rows:1', 'consultations: the expert reads it');
 select tests.expect(tests.fx('A'), 'select id from public.consultations where id = ' || tests.l('CONS1'), 'rows:1', 'consultations: an admin reads it');
 select tests.expect(tests.fx('B2'), 'select id from public.consultations where id = ' || tests.l('CONS1'), 'rows:0', 'consultations: a stranger does not');
-select tests.expect(tests.fx('B'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('B') || ',' || tests.l('E') || $$, 'New question')$$, 'n:1', 'consultations: a user requests one from a verified expert');
-select tests.expect(tests.fx('B'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('B2') || ',' || tests.l('E') || $$, 'Forged')$$, 'err:42501', 'consultations: cannot request as someone else');
+select tests.expect(tests.fx('F'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('F') || ',' || tests.l('E') || $$, 'New question')$$, 'n:1', 'consultations: a farmer requests one from a verified expert (D20: farmers only)');
+select tests.expect(tests.fx('F'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('F2') || ',' || tests.l('E') || $$, 'Forged')$$, 'err:42501', 'consultations: cannot request as someone else');
 select tests.expect(tests.fx('S'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('S') || ',' || tests.l('E') || $$, 'Suspended')$$, 'err:42501', 'consultations: a suspended user cannot');
 select tests.expect(tests.fx('B'), $$update public.consultations set subject = 'Edited' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: the subject cannot be rewritten after the request');
 select tests.expect(tests.fx('E'), $$update public.consultations set subject = 'Edited by expert' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultations: nor by the expert');
@@ -71,9 +71,9 @@ select tests.expect(tests.fx('A'), $$update public.consultations set subject = '
 select tests.expect(tests.fx('B2'), $$update public.consultations set subject = 'Hijack' where id = $$ || tests.l('CONS1'), 'n:0', 'consultations: a stranger updates nothing');
 
 -- consultation guard (guard_consultations_update, consultations_insert_requester) ------------------------
-select tests.expect(tests.fx('B'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('B') || ',' || tests.l('E2') || $$, 'To a pending expert')$$, 'err:42501', 'consultations: cannot be requested from an expert who is not verified');
-select tests.expect(tests.fx('B'), 'insert into public.consultations (user_id, subject) values (' || tests.l('B') || $$, 'No expert')$$, 'err:42501', 'consultations: nor without an expert');
-select tests.expect(tests.fx('B'), 'insert into public.consultations (user_id, expert_id, subject, status) values (' || tests.l('B') || ',' || tests.l('E') || $$, 'Already done', 'resolved')$$, 'err:42501', 'consultations: a request cannot start in any status but requested');
+select tests.expect(tests.fx('F'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('F') || ',' || tests.l('E2') || $$, 'To a pending expert')$$, 'err:42501', 'consultations: cannot be requested from an expert who is not verified');
+select tests.expect(tests.fx('F'), 'insert into public.consultations (user_id, subject) values (' || tests.l('F') || $$, 'No expert')$$, 'err:42501', 'consultations: nor without an expert');
+select tests.expect(tests.fx('F'), 'insert into public.consultations (user_id, expert_id, subject, status) values (' || tests.l('F') || ',' || tests.l('E') || $$, 'Already done', 'resolved')$$, 'err:42501', 'consultations: a request cannot start in any status but requested');
 select tests.expect(tests.fx('E'), 'insert into public.consultations (user_id, expert_id, subject) values (' || tests.l('E') || ',' || tests.l('E') || $$, 'Myself')$$, 'err:42501', 'consultations: an expert cannot consult themselves');
 select tests.expect(tests.fx('B2'), $$update public.consultations set status = 'accepted' where id = $$ || tests.l('CONS1'), 'n:0', 'consultation guard: a stranger changes nothing');
 select tests.expect(tests.fx('B'), $$update public.consultations set status = 'accepted' where id = $$ || tests.l('CONS1'), 'err:42501', 'consultation guard: the requester cannot accept their own request');

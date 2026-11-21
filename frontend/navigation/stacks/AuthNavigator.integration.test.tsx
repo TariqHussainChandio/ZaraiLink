@@ -35,8 +35,9 @@ describe('Auth flow: register -> verify OTP', () => {
       </NavigationContainer>,
     );
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeTruthy();
-    await fireEvent.press(screen.getByText('Create account'));
+    // D20: the stack opens on the welcome page, whose Sign up leads to the four account types.
+    expect(await screen.findByRole('header', { name: 'Your ZaraiLink account' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign up' }));
     // SRDS §4: the four account types first, then the chosen one's form (A3b).
     await fireEvent.press(await screen.findByText('Dealer'));
     expect(await screen.findByText('Create a dealer account')).toBeTruthy();

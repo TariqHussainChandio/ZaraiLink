@@ -39,6 +39,8 @@ function order(id: string, status: string, title: string, quantity: number, unit
 }
 
 const analytics = {
+  totalSales: 50000,
+  bestSellers: [{ listingId: 'l1', title: 'Sona Urea', unitsSold: 40, revenue: 30000 }],
   activeListings: 6,
   pendingOrders: 1,
   readyToDispatch: 1,
@@ -64,38 +66,23 @@ beforeEach(() => {
   (fetchDealerAnalytics as jest.Mock).mockResolvedValue(analytics);
 });
 
-describe('DealerDashboardScreen', () => {
-  it('leads with what is waiting and lists each item that needs the dealer', async () => {
+describe('DealerDashboardScreen (D20: the marketplace shop, and only that)', () => {
+  it("shows the shop's figures, each opening what it counts", async () => {
     await renderWithProviders(<DealerDashboardScreen />);
-    expect(await screen.findByText('1 order to dispatch')).toBeTruthy();
-    expect(screen.getByText('Needs you')).toBeTruthy();
-    expect(screen.getByText('Dispatch 20 bags of Sona Urea')).toBeTruthy();
-    expect(screen.getByText('Confirm 4 bottles of Karate, 1 L')).toBeTruthy();
-    expect(await screen.findByText('2 items are running low')).toBeTruthy();
+    expect(await screen.findByLabelText(/^Total sales: Rs 50,000/)).toBeTruthy();
+    expect(screen.getByLabelText(/^Orders: 4/)).toBeTruthy();
+    expect(screen.getByLabelText(/^To confirm: 1/)).toBeTruthy();
+    expect(screen.getByLabelText(/^To dispatch: 1/)).toBeTruthy();
+    expect(screen.getByLabelText(/^Listings: 6/)).toBeTruthy();
+    expect(screen.queryByText('Products')).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText(/^To dispatch: 1/));
+    expect(mockTabNavigate).toHaveBeenCalledWith('Orders', { screen: 'OrderHistory', params: undefined, initial: false });
+    await fireEvent.press(screen.getByLabelText(/^Listings: 6/));
+    expect(mockNavigate).toHaveBeenCalledWith('MyListings');
   });
 
-  it('opens the order behind a "Needs you" row inside the Orders tab', async () => {
-    await renderWithProviders(<DealerDashboardScreen />);
-    await fireEvent.press(await screen.findByText('Dispatch 20 bags of Sona Urea'));
-    expect(mockTabNavigate).toHaveBeenCalledWith('Orders', { screen: 'OrderDetail', params: { orderId: 'o1' }, initial: false });
-  });
-
-  it('shows one Inventory system card that opens the inventory system, with low stock as a badge', async () => {
-    await renderWithProviders(<DealerDashboardScreen />);
-    expect((await screen.findAllByText('Low stock')).length).toBe(2);
-    await fireEvent.press(screen.getByText('Open inventory system'));
-    expect(mockNavigate).toHaveBeenCalledWith('InventorySystem');
-  });
-
-  it('shows no inventory entry and no low-stock row to a dealer who is not approved (B4, BR-03/04)', async () => {
-    useAuthStore.setState({ profile: { id: 'dealer-1', role: 'dealer', account_status: 'pending', is_suspended: false } as never });
-    await renderWithProviders(<DealerDashboardScreen />);
-    expect(await screen.findByText('Dispatch 20 bags of Sona Urea')).toBeTruthy();
-    expect(screen.queryByText('Open inventory system')).toBeNull();
-    expect(screen.queryByText('2 items are running low')).toBeNull();
-  });
-
-  it('calls the shop "Listings", never "Products", and sums this month\'s completed sales', async () => {
+  it('lists the best sellers and sums the completed sales of this month', async () => {
     const now = new Date().toISOString();
     (fetchOrdersForUser as jest.Mock).mockResolvedValue([
       order('o3', 'completed', 'DAP', 5, 'bags', { updated_at: now }),
@@ -103,27 +90,37 @@ describe('DealerDashboardScreen', () => {
       order('o5', 'completed', 'DAP', 5, 'bags', { updated_at: '2020-01-01T00:00:00Z' }),
     ]);
     await renderWithProviders(<DealerDashboardScreen />);
-    expect(await screen.findByText('Listings')).toBeTruthy();
-    expect(screen.queryByText('Products')).toBeNull();
-    expect(await screen.findByText('Rs 24,800 from 2 orders')).toBeTruthy();
-    expect(await screen.findByText('6 active listings')).toBeTruthy();
+    expect(await screen.findByLabelText(/^This month: Rs 24,800, 2 completed orders/)).toBeTruthy();
+    expect(screen.getByText('Sona Urea')).toBeTruthy();
+    expect(screen.getByText('40 units sold · Rs 30,000')).toBeTruthy();
   });
 
-  it('shows an error Banner and a dash, never zero, when the orders fail to load', async () => {
-    (fetchOrdersForUser as jest.Mock).mockRejectedValue(new Error('network down'));
+  it('starts a listing from the shop', async () => {
     await renderWithProviders(<DealerDashboardScreen />);
-    expect(await screen.findByText("Couldn't load your orders")).toBeTruthy();
-    expect(screen.getByText('Orders did not load')).toBeTruthy();
-    expect(screen.queryByText('Nothing needs you right now')).toBeNull();
-    expect(screen.queryByText(/\b0 /)).toBeNull();
+    await fireEvent.press(await screen.findByRole('button', { name: 'New listing' }));
+    expect(mockTabNavigate).toHaveBeenCalledWith('Marketplace', { screen: 'CreateListing', params: undefined, initial: false });
   });
 
-  it('shows an error Banner when the shop figures fail, and does not claim stock is fine', async () => {
+  it('shows no alerts, no stock figures, no inventory entry and no business name: those live elsewhere', async () => {
+    await renderWithProviders(<DealerDashboardScreen />);
+    await screen.findByLabelText(/^Listings: 6/);
+    for (const absent of ['Alerts', 'Needs you', 'Dispatch 20 bags of Sona Urea', '2 items are running low', 'Open inventory system', 'Green Inputs']) {
+      expect(screen.queryByText(absent)).toBeNull();
+    }
+  });
+
+  it('shows an error Banner and a dash, never zero, when the figures fail to load', async () => {
     (fetchDealerAnalytics as jest.Mock).mockRejectedValue(new Error('network down'));
     await renderWithProviders(<DealerDashboardScreen />);
     expect(await screen.findByText("Couldn't load your shop figures")).toBeTruthy();
-    expect(await screen.findByText('Stock figures are not available right now.')).toBeTruthy();
-    expect(screen.queryByText('Nothing is running low')).toBeNull();
+    expect(await screen.findByLabelText(/^To dispatch: not available/)).toBeTruthy();
+  });
+
+  it('shows an error Banner when the orders fail to load', async () => {
+    (fetchOrdersForUser as jest.Mock).mockRejectedValue(new Error('network down'));
+    await renderWithProviders(<DealerDashboardScreen />);
+    expect(await screen.findByText("Couldn't load your orders")).toBeTruthy();
+    expect(await screen.findByLabelText(/^This month: not available/)).toBeTruthy();
   });
 
   it('asks a dealer approved before A3b, with no business details, to add them', async () => {
@@ -135,7 +132,7 @@ describe('DealerDashboardScreen', () => {
 
   it('says nothing about business details once they are saved', async () => {
     await renderWithProviders(<DealerDashboardScreen />);
-    await screen.findByText('Green Inputs');
+    await screen.findByLabelText(/^Listings: 6/);
     expect(screen.queryByText('Add your business details')).toBeNull();
   });
 });

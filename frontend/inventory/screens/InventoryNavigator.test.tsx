@@ -102,7 +102,7 @@ describe('the approved dealer', () => {
   it('opens the inventory system from the dashboard tile and leaves it with "Back to ZaraiLink"', async () => {
     await signIn('dealer');
     await renderTree(<AppNavigator />);
-    await fireEvent.press(await screen.findByText('Open inventory system'));
+    await fireEvent.press(await screen.findByLabelText('Open inventory system'));
 
     // Its own app bar (the business name, the location switcher) and its own tabs, apart from the marketplace's.
     expect(await screen.findByText('Ali Traders')).toBeTruthy();
@@ -111,14 +111,14 @@ describe('the approved dealer', () => {
     expect(await screen.findByLabelText('Products: 3')).toBeTruthy();
 
     await fireEvent.press(screen.getAllByRole('button', { name: 'Back to ZaraiLink' })[0]!);
-    expect(await screen.findByText('Open inventory system')).toBeTruthy();
+    expect(await screen.findByLabelText('Open inventory system')).toBeTruthy();
     expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'Messages', 'Account']);
   });
 
   it('switches the location from the app bar', async () => {
     await signIn('dealer');
     await renderTree(<AppNavigator />);
-    await fireEvent.press(await screen.findByText('Open inventory system'));
+    await fireEvent.press(await screen.findByLabelText('Open inventory system'));
     await fireEvent.press(await screen.findByLabelText('Location: Main shop. Change location'));
     await fireEvent.press(within(screen.getByLabelText('Location')).getByText('Back godown'));
     expect(await screen.findByLabelText('Location: Back godown. Change location')).toBeTruthy();
@@ -128,7 +128,7 @@ describe('the approved dealer', () => {
     api.fetchLocations.mockResolvedValue([]);
     await signIn('dealer');
     await renderTree(<AppNavigator />);
-    await fireEvent.press(await screen.findByText('Open inventory system'));
+    await fireEvent.press(await screen.findByLabelText('Open inventory system'));
     await fireEvent.press(await screen.findByLabelText('Add a location'));
     expect(await screen.findByText('Default location')).toBeTruthy();
   });
@@ -139,7 +139,7 @@ describe('everyone else', () => {
     await signIn(role);
     await renderTree(<AppNavigator />);
     await screen.findAllByRole('tab');
-    expect(screen.queryByText('Open inventory system')).toBeNull();
+    expect(screen.queryByLabelText('Open inventory system')).toBeNull();
     expect(navigationRef.getRootState()?.routeNames).not.toContain('InventorySystem');
     // A navigation to it by name is simply not handled: the shell stays, nothing crashes, nothing loads.
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -154,7 +154,7 @@ describe('everyone else', () => {
     await signIn('dealer', 'pending');
     await renderTree(<AppNavigator />);
     await screen.findAllByRole('tab');
-    expect(screen.queryByText('Open inventory system')).toBeNull();
+    expect(screen.queryByLabelText('Open inventory system')).toBeNull();
     await act(async () => navigationRef.navigate('InventorySystem'));
     expect(await screen.findByText('Inventory Management is for approved dealers')).toBeTruthy();
     expect(api.fetchDashboard).not.toHaveBeenCalled();
@@ -166,8 +166,10 @@ describe('everyone else', () => {
   ] as const)('the %s’s own shell has no inventory route', async (role, Shell) => {
     await signIn(role);
     await renderTree(<Shell />);
-    await screen.findAllByRole('tab');
-    expect(screen.queryByText('Open inventory system')).toBeNull();
+    // The admin has no bottom bar since D20; the Menu bar under the app bar says the shell is up.
+    if (role === 'admin') await screen.findByRole('button', { name: /^Menu/ });
+    else await screen.findAllByRole('tab');
+    expect(screen.queryByLabelText('Open inventory system')).toBeNull();
     expect(JSON.stringify(navigationRef.getRootState()?.routeNames)).not.toContain('Inventory');
   });
 

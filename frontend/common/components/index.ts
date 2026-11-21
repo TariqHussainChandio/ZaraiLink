@@ -19,7 +19,7 @@ export * from './PhotoViewer';
 export * from './PriceBreakdown';
 export * from './QuantityStepper';
 export * from './QueryState';
-export * from './RatePlate';
+export * from './Price';
 export * from './RoleBadge';
 export * from './ScreenScaffold';
 export * from './ScreenState';

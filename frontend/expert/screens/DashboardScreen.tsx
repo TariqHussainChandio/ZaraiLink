@@ -13,11 +13,14 @@ import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { errorMessage } from '../../utils/errorMessage';
+import { useNameTitle } from '../../hooks/useNameTitle';
 
 /** The expert's Requests tab: only the requests nobody has answered yet, the most urgent and longest waiting first, each
  * with what an answer needs (who, which crop, how many photos) and Accept or Decline right on the card. Cases that are
  * already open live in the Cases tab. */
 export function ExpertDashboardScreen() {
+  // D20: the app bar names whose account this is.
+  useNameTitle();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const snackbar = useSnackbar();

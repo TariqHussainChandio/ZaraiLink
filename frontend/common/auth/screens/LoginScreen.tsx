@@ -9,12 +9,13 @@ import { useResendSignupOtp, useSignIn } from '../hooks/auth';
 import { AuthScreen } from '../components/AuthScreen';
 import { useLoginNotice } from '../state/loginNotice';
 import { useTheme, type Theme } from '../../../theme';
+import { emailSchema } from '../../validation/email';
 import { isEmailNotConfirmed, isSendRateLimited, mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
 // Sign-in checks only that a password was given: an account may predate today's rules, and Supabase decides.
 const loginSchema = z.object({
-  email: z.string().trim().email('Enter a valid email'),
+  email: emailSchema,
   password: z.string().min(1, 'Enter your password'),
 });
 
@@ -83,7 +84,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   };
 
   return (
-    <AuthScreen brand title="Sign in">
+    <AuthScreen brand title="Log in" onBack={navigation.goBack}>
       {notice ? (
         <Banner tone={notice.tone} title={notice.title}>
           {notice.message}
@@ -145,7 +146,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
       ) : null}
       {submitError ? <Banner tone="danger" title={submitError} /> : null}
 
-      <Button label="Sign in" size="lg" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+      <Button label="Log in" size="lg" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
 
       <View style={styles.links}>
         <Button label="Forgot password?" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)} />

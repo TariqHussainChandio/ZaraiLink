@@ -22,7 +22,8 @@ function splitByDay(notifications: Notification[], now: Date) {
   };
 }
 
-export function NotificationListScreen() {
+/** `header`: alerts from elsewhere shown above the notifications, in the same list (a dealer's stock alerts, D20). */
+export function NotificationListScreen({ header }: { header?: React.ReactNode } = {}) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
@@ -96,6 +97,7 @@ export function NotificationListScreen() {
 
   return (
     <ScreenScaffold onRefresh={pull} refreshing={pulling}>
+      {header}
       <QueryState
         query={query}
         isEmpty={notifications.length === 0}

@@ -1,9 +1,10 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChartColumn, Camera, Clock, Package, Plus, Stethoscope, Tractor, Truck } from 'lucide-react-native';
+import { ChartColumn, Camera, Clock, MessageCircle, Package, Stethoscope, Tractor, Truck, Wheat } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, Card, ListGroup, ListRow, ListRowIcon, ScreenScaffold, Skeleton } from '../../common/components';
+import { QuickActions } from '../../common/components/dashboards/QuickActions';
 import { StatTile } from '../../common/components/dashboards/StatTile';
 import { useFarmerAnalytics } from '../../common/analytics';
 import { APP_TABS, CONSULTATIONS_ROUTES, HOME_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../common/constants/routes';
@@ -14,7 +15,7 @@ import { useAuthStore } from '../../state/authStore';
 import { RoleScopeProvider, useRoleAccent, useTheme, type Accent, type Theme } from '../../theme';
 import { errorMessage } from '../../utils/errorMessage';
 import { formatRs } from '../../utils/money';
-import { useGreetingTitle } from '../hooks/greeting';
+import { useNameTitle } from '../../hooks/useNameTitle';
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -27,8 +28,8 @@ export function FarmerDashboardScreen() {
   const tabs = useAppTabNavigation();
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const query = useFarmerAnalytics(!!userId);
-  // The greeting heading (A8, F1) is the large app bar's title: a screen-reader user hears whose home this is first.
-  useGreetingTitle();
+  // D20: the app bar names whose account this is (no greeting), beside their photo.
+  useNameTitle();
   const { data: stats, isPending, isError, error, refetch, isRefetching } = query;
 
   // The dashboard summarises what changed elsewhere, so it refreshes every time it comes back into view.
@@ -45,6 +46,8 @@ export function FarmerDashboardScreen() {
   const openOrders = () => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderHistory);
   const openConsultations = () => navigateInTab(tabs, APP_TABS.Consultations, CONSULTATIONS_ROUTES.ConsultationList);
   const sellProduce = () => navigateInTab(tabs, APP_TABS.Marketplace, MARKETPLACE_ROUTES.CreateListing);
+  // Farmers reach their conversations full-screen over the tabs (AppNavigator), not through a tab of their own.
+  const openMessages = () => tabs?.navigate(APP_TABS.Messages);
 
   // `stats` is undefined while loading or when the first load failed: figures are then unknown, never 0.
   const needs = stats
@@ -55,17 +58,8 @@ export function FarmerDashboardScreen() {
       ].filter(need => need.count > 0)
     : [];
 
-  let situation: string;
-  if (isPending) situation = 'Loading your farm';
-  else if (!stats) situation = 'Your numbers are not available';
-  else if (needs.length > 0) situation = `${plural(needs.length, 'thing needs', 'things need')} you`;
-  else situation = "You're up to date";
-
   return (
     <ScreenScaffold onRefresh={reload} refreshing={isRefetching && !isPending} testID="farmer-dashboard">
-      <Text style={styles.situation} accessibilityRole="header">
-        {situation}
-      </Text>
 
       {isError ? (
         <Banner tone="danger" title="Couldn't load your numbers" actionLabel="Try again" onAction={reload}>
@@ -77,24 +71,29 @@ export function FarmerDashboardScreen() {
         <ScanCard onTakePhoto={takePhoto} />
       </RoleScopeProvider>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Needs you</Text>
-        {isPending ? (
-          <Skeleton style={styles.skeleton} />
-        ) : !stats ? (
-          <Text style={styles.empty}>We could not check what is waiting. Try again.</Text>
-        ) : needs.length === 0 ? (
-          <Text style={styles.empty}>Nothing is waiting for you.</Text>
-        ) : (
+      {/* D20: only what is waiting shows here, as alerts; a quiet day shows no "Nothing is waiting" line. */}
+      {isPending ? (
+        <Skeleton style={styles.skeleton} />
+      ) : needs.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Needs you</Text>
           <ListGroup>
             {needs.map(need => (
               <ListRow key={need.key} title={need.title} meta={need.meta} leading={<ListRowIcon icon={need.icon} />} onPress={need.onPress} />
             ))}
           </ListGroup>
-        )}
-      </View>
+        </View>
+      ) : null}
 
-      <Button label="Sell produce" variant="secondary" size="lg" icon={Plus} onPress={sellProduce} />
+      {/* D20: the farmer's main tasks as picture tiles, a large icon over one or two plain words. */}
+      <QuickActions
+        actions={[
+          { label: 'Sell crop', icon: Wheat, onPress: sellProduce },
+          { label: 'My orders', icon: Package, onPress: openOrders },
+          { label: 'Ask an expert', icon: Stethoscope, onPress: openConsultations },
+          { label: 'Messages', icon: MessageCircle, onPress: openMessages },
+        ]}
+      />
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your numbers</Text>
@@ -147,10 +146,8 @@ function ScanCard({ onTakePhoto }: { onTakePhoto: () => void }) {
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    situation: { ...typography.display, color: colors.ink },
     section: { gap: space[2] },
     sectionTitle: { ...typography.title, color: colors.ink },
-    empty: { ...typography.body, color: colors.ink2 },
     skeleton: { width: '100%', height: space[12] },
     tiles: { flexDirection: 'row', gap: space[3] },
   });

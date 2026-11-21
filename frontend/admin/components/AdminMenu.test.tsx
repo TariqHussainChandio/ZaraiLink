@@ -4,7 +4,7 @@ import { ADMIN_HOME_ROUTES, ADMIN_TABS, PROFILE_ROUTES } from '../../common/cons
 import { useAuthStore } from '../../state/authStore';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { fetchAdminQueues } from '../services/adminService';
-import { AdminMenu, AdminMenuButton } from './AdminMenu';
+import { AdminMenu, AdminMenuBar } from './AdminMenu';
 
 const mockTabsNavigate = jest.fn();
 let mockRouteName: string = ADMIN_HOME_ROUTES.Dashboard;
@@ -28,16 +28,19 @@ beforeEach(() => {
   });
 });
 
-describe('AdminMenu (D19)', () => {
-  it('opens from the menu button, which counts what is waiting', async () => {
-    await renderWithQuery(<AdminMenuButton />);
+describe('AdminMenu (D19, a dropdown since D20)', () => {
+  it('drops down from the Menu bar, which counts what is waiting (D20)', async () => {
+    await renderWithQuery(<AdminMenuBar />);
     // 3 applications + 4 reports + 1 dispute.
-    await fireEvent.press(await screen.findByRole('button', { name: 'Open the menu, 8 waiting' }));
-    expect(screen.getByText('ZaraiLink admin')).toBeTruthy();
+    const bar = await screen.findByRole('button', { name: 'Menu, 8 waiting' });
+    expect(bar.props.accessibilityState.expanded).toBe(false);
+    await fireEvent.press(bar, { nativeEvent: { pageY: 140, locationY: 20 } });
+    expect(screen.getByRole('button', { name: 'Menu, 8 waiting' }).props.accessibilityState.expanded).toBe(true);
+    expect(screen.getByLabelText('Admin menu')).toBeTruthy();
   });
 
   it('starts with the current screen’s group open and the others closed, each opening like a dropdown', async () => {
-    await renderWithQuery(<AdminMenu onClose={() => {}} currentRoute={ADMIN_HOME_ROUTES.Dashboard} />);
+    await renderWithQuery(<AdminMenu onClose={() => {}} currentRoute={ADMIN_HOME_ROUTES.Dashboard} top={0} />);
     expect(screen.getByRole('menuitem', { name: 'Analytics' })).toBeTruthy();
     expect(screen.queryByRole('menuitem', { name: 'Users' })).toBeNull();
 
@@ -49,7 +52,7 @@ describe('AdminMenu (D19)', () => {
   });
 
   it('lists every admin screen across its groups', async () => {
-    await renderWithQuery(<AdminMenu onClose={() => {}} currentRoute={ADMIN_HOME_ROUTES.Dashboard} />);
+    await renderWithQuery(<AdminMenu onClose={() => {}} currentRoute={ADMIN_HOME_ROUTES.Dashboard} top={0} />);
     for (const title of ['Approvals', 'People and marketplace', 'Platform setup', 'Audit', 'Account']) {
       await fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${title}`) }));
     }
@@ -64,7 +67,7 @@ describe('AdminMenu (D19)', () => {
   it('opens a screen in its own tab, closing itself first', async () => {
     const onClose = jest.fn();
     mockRouteName = ADMIN_HOME_ROUTES.AuditLogs;
-    await renderWithQuery(<AdminMenu onClose={onClose} currentRoute={ADMIN_HOME_ROUTES.AuditLogs} />);
+    await renderWithQuery(<AdminMenu onClose={onClose} currentRoute={ADMIN_HOME_ROUTES.AuditLogs} top={0} />);
     await fireEvent.press(screen.getByRole('button', { name: /^People and marketplace/ }));
     await fireEvent.press(await screen.findByRole('menuitem', { name: /^Disputed orders/ }));
     expect(onClose).toHaveBeenCalled();
@@ -76,14 +79,14 @@ describe('AdminMenu (D19)', () => {
   });
 
   it('marks the screen the admin is on', async () => {
-    await renderWithQuery(<AdminMenu onClose={() => {}} currentRoute={ADMIN_HOME_ROUTES.AuditLogs} />);
+    await renderWithQuery(<AdminMenu onClose={() => {}} currentRoute={ADMIN_HOME_ROUTES.AuditLogs} top={0} />);
     expect(screen.getByRole('menuitem', { name: 'Audit log' }).props.accessibilityState.selected).toBe(true);
   });
 
   it('changes the password and signs out from the Account group', async () => {
     const signOut = jest.fn();
     useAuthStore.setState({ signOut });
-    await renderWithQuery(<AdminMenu onClose={() => {}} currentRoute={ADMIN_HOME_ROUTES.Dashboard} />);
+    await renderWithQuery(<AdminMenu onClose={() => {}} currentRoute={ADMIN_HOME_ROUTES.Dashboard} top={0} />);
     await fireEvent.press(screen.getByRole('button', { name: /^Account/ }));
     await fireEvent.press(screen.getByRole('menuitem', { name: 'Change password' }));
     expect(mockTabsNavigate).toHaveBeenCalledWith(ADMIN_TABS.Profile, { screen: PROFILE_ROUTES.ChangePassword, params: undefined, initial: false });

@@ -94,7 +94,7 @@ beforeEach(() => {
 });
 
 describe('ListingDetailScreen', () => {
-  it('loads and renders the listing with its price plate, seller, town and reviews', async () => {
+  it('loads and renders the listing with its price, seller, town and reviews', async () => {
     useAuthStore.setState({ user: { id: 'buyer-1' } as never });
     mockFetchListingById.mockResolvedValue(listing({ location: { country: 'Pakistan', province: 'Punjab', city: 'Sargodha' } }));
     mockFetchReviewsForListing.mockResolvedValue([review]);

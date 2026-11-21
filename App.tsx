@@ -52,9 +52,9 @@ function AppShell() {
 
   return (
     <NavigationContainer linking={linking} theme={buildNavigationTheme(isDark)}>
-      {/* The status bar's icons follow the app's own light/dark choice (Settings), not the phone's: left to the phone,
-          a dark phone showing the light app drew white icons on white. */}
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      {/* Light icons by default: every app bar and the splash are olive (D20). The light sign-in pages switch them to dark
+          while they are in front (useStatusBarStyle), following the app's own light/dark choice, not the phone's. */}
+      <StatusBar barStyle="light-content" />
       {/* The offline banner is part of the layout, above the navigator, so it never covers an app bar or Back. */}
       <OfflineFrame>
         <RootNavigator />

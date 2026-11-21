@@ -23,7 +23,7 @@ import {
   PriceBreakdown,
   QuantityStepper,
   QueryState,
-  RatePlate,
+  Price,
   RoleBadge,
   ScreenScaffold,
   SelectField,
@@ -99,11 +99,11 @@ export function DesignCatalogueScreen() {
           ))}
         </Section>
 
-        <Section title="Rate plates" styles={styles}>
-          <RatePlate amount={4250} unit="per 40 kg" size="xl" />
+        <Section title="Prices" styles={styles}>
+          <Price amount={4250} unit="per 40 kg" size="xl" />
           <View style={styles.row}>
-            <RatePlate amount={12500} unit="per 50 kg bag" size="lg" />
-            <RatePlate amount={3980} unit="per litre" size="md" />
+            <Price amount={12500} unit="per 50 kg bag" size="lg" />
+            <Price amount={3980} unit="per litre" size="md" />
           </View>
         </Section>
 
@@ -278,7 +278,7 @@ export function DesignCatalogueScreen() {
             <Button label="Open a confirm sheet" variant="secondary" fullWidth={false} onPress={() => setConfirmOpen(true)} />
           </View>
           <Card pad="none">
-            <StickyActionBar leading={<RatePlate amount={14250} unit="Total with delivery" size="md" />}>
+            <StickyActionBar leading={<Price amount={14250} unit="Total with delivery" size="md" />}>
               <Button label="Place order" size="lg" />
             </StickyActionBar>
           </Card>

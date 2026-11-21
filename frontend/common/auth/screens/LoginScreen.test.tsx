@@ -1,3 +1,4 @@
+import { EMAIL_MESSAGE } from '../../validation/email';
 import React from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
@@ -37,7 +38,7 @@ describe('LoginScreen', () => {
   it('puts the brand on top and the title in the header role', async () => {
     await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.getByText('ZaraiLink')).toBeTruthy();
-    expect(screen.getByRole('header', { name: 'Sign in' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Log in' })).toBeTruthy();
   });
 
   it('submits email + password and calls signIn', async () => {
@@ -45,7 +46,7 @@ describe('LoginScreen', () => {
     await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'farmer@example.com');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'secret123');
-    await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Log in' }));
 
     expect(mockSignIn).toHaveBeenCalledWith({ email: 'farmer@example.com', password: 'secret123' });
   });
@@ -55,7 +56,7 @@ describe('LoginScreen', () => {
     await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), '  farmer@example.com ');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'secret123');
-    await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Log in' }));
 
     expect(mockSignIn).toHaveBeenCalledWith({ email: 'farmer@example.com', password: 'secret123' });
   });
@@ -72,7 +73,7 @@ describe('LoginScreen', () => {
     await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'farmer@example.com');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'wrongpass');
-    await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Log in' }));
 
     expect(await screen.findByText('Incorrect email or password.')).toBeTruthy();
     expect(screen.queryByText('Invalid login credentials')).toBeNull();
@@ -83,7 +84,7 @@ describe('LoginScreen', () => {
     await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'farmer@example.com');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'secret123');
-    await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Log in' }));
 
     expect(await screen.findByText('No connection. Check your internet, then try again.')).toBeTruthy();
   });
@@ -92,8 +93,8 @@ describe('LoginScreen', () => {
     await renderWithQuery(<LoginScreen navigation={makeNavigation()} route={{} as never} />);
     await fireEvent.changeText(screen.getByLabelText('Email'), 'not-an-email');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'secret123');
-    await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
-    expect((await screen.findAllByText('Enter a valid email')).length).toBeGreaterThan(0);
+    await fireEvent.press(screen.getByRole('button', { name: 'Log in' }));
+    expect((await screen.findAllByText(EMAIL_MESSAGE)).length).toBeGreaterThan(0);
     expect(mockSignIn).not.toHaveBeenCalled();
   });
 
@@ -113,7 +114,7 @@ describe('LoginScreen', () => {
       await renderWithQuery(<LoginScreen navigation={navigation} route={{} as never} />);
       await fireEvent.changeText(screen.getByLabelText('Email'), 'ali@example.com');
       await fireEvent.changeText(screen.getByLabelText('Password'), 'secret123');
-      await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Log in' }));
       return navigation;
     }
 

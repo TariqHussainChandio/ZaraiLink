@@ -70,9 +70,9 @@ describe('stack header over the tabs', () => {
 });
 
 describe('stack header', () => {
-  it('gives the first screen the large title and no Back', async () => {
+  it('gives the first screen the same compact title as every bar, and no Back (D20)', async () => {
     await renderStack();
-    expect(screen.getByRole('header', { name: 'Orders' })).toHaveStyle({ fontSize: typography.headline.fontSize });
+    expect(screen.getByRole('header', { name: 'Orders' })).toHaveStyle({ fontSize: typography.titleBar.fontSize });
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
   });
 

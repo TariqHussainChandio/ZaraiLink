@@ -1,4 +1,4 @@
-import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { parsePhoneNumberFromString, validatePhoneNumberLength } from 'libphonenumber-js';
 import React, { useState } from 'react';
 import { TextField } from './TextField';
 
@@ -13,6 +13,14 @@ export interface PhoneInputProps {
 
 const E164_PATTERN = /^\+[1-9]\d{6,14}$/;
 const DEFAULT_COUNTRY = 'PK';
+/** What a phone number is typed with: digits, a leading + for the country code, and the spaces, dashes and brackets
+ * people group digits with. */
+const PHONE_CHARACTERS = /^[+\d\s()-]*$/;
+/** E.164 allows 15 digits; with a + and grouping, no real number needs more characters than this. */
+const PHONE_MAX_CHARACTERS = 20;
+
+const digitCount = (text: string) => text.replace(/\D/g, '').length;
+const isValidNumber = (text: string) => parsePhoneNumberFromString(text, DEFAULT_COUNTRY)?.isValid() === true;
 
 /** E.164 for a number a person typed the way they say it ("0300 1234567", "+92 300 1234567", "923001234567"), or the
  * trimmed text when it is not a valid number, or null when empty. A number with another country's code stays that
@@ -24,7 +32,8 @@ function toValue(text: string): string | null {
   return parsed?.isValid() ? parsed.number : trimmed;
 }
 
-/** A phone number, read as Pakistani unless it starts with another country's code. The value out is E.164. */
+/** A phone number, read as Pakistani unless it starts with another country's code (+44, +971, ...). The value out is
+ * E.164. Letters, symbols and digits past the country's longest number are refused as they are typed (D20). */
 export function PhoneInput({ label = 'Phone', value, onChange, error }: PhoneInputProps) {
   const [text, setText] = useState(value ?? '');
   // The value last sent up (or received). A different value coming down means the form was reset or loaded, so the box
@@ -32,6 +41,8 @@ export function PhoneInput({ label = 'Phone', value, onChange, error }: PhoneInp
   // into "+923001234567" under the person's thumbs).
   const [synced, setSynced] = useState<string | null>(value);
   const [touched, setTouched] = useState(false);
+  // D20: a keystroke the number cannot take is refused as it is typed, with the reason under the box.
+  const [refused, setRefused] = useState<string | null>(null);
   if (value !== synced) {
     setSynced(value);
     setText(value ?? '');
@@ -48,14 +59,32 @@ export function PhoneInput({ label = 'Phone', value, onChange, error }: PhoneInp
       placeholder="0300 1234567"
       helper="For example 0300 1234567"
       value={text}
+      maxLength={PHONE_MAX_CHARACTERS}
       onChangeText={next => {
+        if (!PHONE_CHARACTERS.test(next)) {
+          setRefused('Use digits only, with + before a country code');
+          return;
+        }
+        // The longest number the country allows (libphonenumber's metadata, the same for +44 or +971 as for Pakistan):
+        // one digit more is refused rather than accepted and failed later.
+        if (validatePhoneNumberLength(next, DEFAULT_COUNTRY) === 'TOO_LONG') {
+          setRefused('That is more digits than a phone number has');
+          return;
+        }
+        // A number that is already complete and valid takes no further digit that would make it invalid
+        // ("0300 1234567" stops at its 11th digit); where the country has longer numbers too, the digit is taken.
+        if (digitCount(next) > digitCount(text) && isValidNumber(text) && !isValidNumber(next)) {
+          setRefused('That number is complete');
+          return;
+        }
+        setRefused(null);
         const out = toValue(next);
         setText(next);
         setSynced(out);
         onChange(out);
       }}
       onBlur={() => setTouched(true)}
-      error={error ?? (touched && invalid ? 'Enter a phone number like 0300 1234567' : undefined)}
+      error={refused ?? error ?? (touched && invalid ? 'Enter a phone number like 0300 1234567' : undefined)}
     />
   );
 }

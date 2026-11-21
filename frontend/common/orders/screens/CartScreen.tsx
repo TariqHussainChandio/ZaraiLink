@@ -10,6 +10,7 @@ import { currentPrice, groupBySeller, productsTotal, sellerLabel } from '../util
 import { useAuthStore } from '../../../state/authStore';
 import { useCartStore } from '../../../state/cartStore';
 import { useCheckoutIntent } from '../../../state/checkoutIntentStore';
+import { openMarket } from '../../../navigation/openMarket';
 import { useSignInPrompt } from '../../../navigation/useSignInPrompt';
 import { useTheme, type Theme } from '../../../theme';
 import type { AppTabParamList } from '../../../navigation/stacks/AppNavigator';
@@ -48,7 +49,7 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
           title="Your cart is empty"
           description="Find seeds, fertiliser and produce in the market."
           actionLabel="Browse the market"
-          onAction={() => navigation.navigate(MARKETPLACE_ROUTES.Browse)}
+          onAction={() => openMarket(navigation)}
         />
       </ScreenScaffold>
     );

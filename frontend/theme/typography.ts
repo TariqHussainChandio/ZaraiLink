@@ -39,9 +39,9 @@ export const typography = {
   titleLg: style(board, 24, 28, '700', tabular),
   /** An inner screen's app-bar title. */
   titleBar: style(board, 20, 24, '700', tabular),
-  /** The price on a detail screen's rate plate; the total at checkout. */
+  /** The price on a detail screen; the total at checkout. */
   figureXl: style(board, 40, 44, '700', tabular),
-  /** The price on a listing card's plate; a count on a home screen. */
+  /** The price on a listing card; a count on a home screen. */
   figureLg: style(board, 28, 32, '700', tabular),
   /** Prices in rows and line items. */
   price: style(board, 20, 24, '700', tabular),

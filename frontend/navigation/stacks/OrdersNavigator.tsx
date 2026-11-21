@@ -8,7 +8,8 @@ import { PaymentMethodScreen } from '../../common/payments/screens/PaymentMethod
 import { PaymentProcessingScreen } from '../../common/payments/screens/PaymentProcessingScreen';
 import { PaymentResultScreen } from '../../common/payments/screens/PaymentResultScreen';
 import { WriteReviewScreen } from '../../common/reviews/screens/WriteReviewScreen';
-import { stackScreenOptions } from '../stackHeader';
+import { homeActions } from '../headerActions';
+import { stackOptionsWithActions } from '../stackHeader';
 
 export type OrdersStackParamList = {
   [ORDERS_ROUTES.OrderHistory]: undefined;
@@ -23,10 +24,13 @@ export type OrdersScreenProps<RouteName extends keyof OrdersStackParamList> =
   NativeStackScreenProps<OrdersStackParamList, RouteName>;
 
 const Stack = createNativeStackNavigator<OrdersStackParamList>();
+// D20: the order list's app bar has Messages and the bell top right, as on the buyer's other tabs; the person's photo is
+// on their home screen only.
+const ORDERS_STACK_OPTIONS = stackOptionsWithActions({ [ORDERS_ROUTES.OrderHistory]: homeActions });
 
 export function OrdersNavigator() {
   return (
-    <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Navigator screenOptions={ORDERS_STACK_OPTIONS}>
       <Stack.Screen
         name={ORDERS_ROUTES.OrderHistory}
         component={OrderHistoryScreen}

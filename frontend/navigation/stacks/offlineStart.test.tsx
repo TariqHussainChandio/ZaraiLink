@@ -129,7 +129,7 @@ describe('an offline cold start', () => {
     await rememberProfile(account('dealer-a', 'dealer') as never);
     await coldStartOffline('dealer-a');
 
-    await fireEvent.press(await screen.findByText('Open inventory system'));
+    await fireEvent.press(await screen.findByLabelText('Open inventory system'));
     expect(screen.queryByText('Inventory Management is for approved dealers')).toBeNull();
     expect(tabLabels()).toEqual(['Dashboard', 'Products', 'Stock', 'Reports', 'More']);
   });
@@ -138,7 +138,7 @@ describe('an offline cold start', () => {
     await rememberProfile(account('dealer-a', 'dealer') as never);
     await coldStartOffline('dealer-a');
 
-    expect(await screen.findByText('Open inventory system')).toBeTruthy();
+    expect(await screen.findByLabelText('Open inventory system')).toBeTruthy();
     expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'Messages', 'Account']);
     // The dealer's shop row says "Listings" (D15), never "Products", which is the inventory's word.
     expect(screen.getByText('Listings')).toBeTruthy();
@@ -150,7 +150,7 @@ describe('an offline cold start', () => {
     await coldStartOffline('farmer-a');
 
     await screen.findAllByRole('tab');
-    expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'Advisory', 'Account']);
+    expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'Plant doctor', 'Me']);
   });
 
   it('says the account cannot be checked when nothing is remembered, and opens no shell', async () => {
@@ -167,14 +167,14 @@ describe('an offline cold start', () => {
 
     answerProfile({ data: account('dealer-a', 'dealer'), error: null, status: 200 });
     await fireEvent.press(screen.getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByText('Open inventory system')).toBeTruthy();
+    expect(await screen.findByLabelText('Open inventory system')).toBeTruthy();
     expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'Messages', 'Account']);
   });
 
   it('follows the server on reconnect: a dealer suspended meanwhile sees Suspended', async () => {
     await rememberProfile(account('dealer-a', 'dealer') as never);
     await coldStartOffline('dealer-a');
-    await screen.findByText('Open inventory system');
+    await screen.findByLabelText('Open inventory system');
 
     answerProfile({ data: account('dealer-a', 'dealer', { is_suspended: true }), error: null, status: 200 });
     await act(async () => {

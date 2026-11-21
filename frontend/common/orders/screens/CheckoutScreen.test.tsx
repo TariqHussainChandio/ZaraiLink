@@ -69,7 +69,7 @@ beforeEach(() => {
 });
 
 describe('CheckoutScreen', () => {
-  it('titles each section with the seller and town, and puts the grand total on the plate', async () => {
+  it('titles each section with the seller and town, and shows the grand total in the action bar', async () => {
     useCartStore.setState({
       items: [
         item({ price: 100, quantity: 2 }),

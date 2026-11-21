@@ -30,6 +30,7 @@ jest.mock('../../common/reviews/services/reviewsService', () => ({
   fetchReviewsForListing: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('../HomeDashboardScreen', () => ({ HomeDashboardScreen: () => null }));
+jest.mock('../../admin/screens/DashboardScreen', () => ({ AdminDashboardScreen: () => null }));
 jest.mock('../../hooks/realtime/useRealtimeNotifications', () => ({ useRealtimeNotifications: () => undefined }));
 jest.mock('../../common/notifications/services/notificationsService', () => ({
   fetchUnreadCount: jest.fn().mockResolvedValue(0),
@@ -81,8 +82,9 @@ async function renderApp() {
   );
 }
 
-function signInAs(role: 'buyer') {
-  act(() => {
+// Awaited: an act() left running spills into the next test, which then renders nothing.
+async function signInAs(role: 'buyer' | 'admin') {
+  await act(async () => {
     useAuthStore.setState({ user: { id: `user-${role}` } as never, role, status: 'authenticated' });
   });
 }
@@ -91,8 +93,9 @@ function signInAs(role: 'buyer') {
 async function guestFillsTheCart() {
   await renderApp();
   expect(await screen.findByText('Premium Wheat Seeds')).toBeTruthy();
-  expect(screen.getByRole('tab', { name: 'Market' })).toBeSelected();
-  expect(screen.getByRole('tab', { name: 'Sign in' })).toBeTruthy();
+  // D20: no bottom bar; the profile button (top left) leads to Sign up and Log in, the cart is top right.
+  expect(screen.queryAllByRole('tab')).toHaveLength(0);
+  expect(screen.getByRole('button', { name: 'Sign up or log in' })).toBeTruthy();
 
   await fireEvent.press(screen.getByText('Premium Wheat Seeds'));
   await fireEvent.press(await screen.findByRole('button', { name: 'Add to cart · Rs 250' }));
@@ -120,9 +123,9 @@ describe('a guest (D18)', () => {
     await fireEvent.press(screen.getByLabelText(/^Cart/));
     await fireEvent.press(await screen.findByRole('button', { name: 'Sign in to check out' }));
 
-    // The sign-in tab, saying why; the cart and the wish to check out are kept.
+    // Log in, saying why; the cart and the wish to check out are kept.
     expect(await screen.findByText('Sign in to place your order')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Sign in' })).toBeSelected();
+    expect(screen.getByRole('header', { name: 'Log in' })).toBeTruthy();
     expect(useCartStore.getState().items).toHaveLength(1);
     expect(useCheckoutIntent.getState().pending).toBe(true);
   });
@@ -132,7 +135,18 @@ describe('a guest (D18)', () => {
     await fireEvent.press(await screen.findByText('Premium Wheat Seeds'));
     await fireEvent.press(await screen.findByRole('button', { name: 'Sign in to message the seller' }));
     expect(await screen.findByText('Sign in to message the seller')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Sign in' })).toBeSelected();
+    expect(screen.getByRole('header', { name: 'Log in' })).toBeTruthy();
+  });
+
+  it('opens the welcome page from the profile button, with Sign up and Log in, and Back to the market (D20)', async () => {
+    await renderApp();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Sign up or log in' }));
+    expect(await screen.findByRole('button', { name: 'Sign up' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Log in' }));
+    expect(await screen.findByRole('header', { name: 'Log in' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('Premium Wheat Seeds')).toBeTruthy();
   });
 
   it('signs in and lands back on the same cart, with the market underneath', async () => {
@@ -140,12 +154,34 @@ describe('a guest (D18)', () => {
     await fireEvent.press(screen.getByLabelText(/^Cart/));
     await fireEvent.press(await screen.findByRole('button', { name: 'Sign in to check out' }));
 
-    signInAs('buyer');
-    // The buyer's own shell, on Market, showing the cart the guest filled, now theirs.
+    await signInAs('buyer');
+    // The buyer's own shell, on their Cart tab (D20), showing the cart the guest filled, now theirs.
     expect(await screen.findByRole('button', { name: 'Go to checkout' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Market' })).toBeSelected();
+    expect(screen.getByRole('tab', { name: 'Cart' })).toBeSelected();
     expect(screen.getByRole('tab', { name: 'Orders' })).toBeTruthy();
     expect(useCartStore.getState()).toMatchObject({ ownerId: 'user-buyer', items: [expect.objectContaining({ listingId: 'listing-1' })] });
     expect(useCheckoutIntent.getState().pending).toBe(false);
+  });
+
+  it('names the market ZaraiLink, centred, for a guest (D20)', async () => {
+    await renderApp();
+    expect(await screen.findByRole('header', { name: 'ZaraiLink' })).toBeTruthy();
+    expect(screen.queryByRole('header', { name: 'Market' })).toBeNull();
+  });
+
+  // D20: signing in from the welcome page used to open the admin's Account, because the guest's sign-in tab shared the
+  // name Profile with the admin's Account tab and React Navigation kept the focused tab across the switch.
+  it.each([
+    ['admin', 'Overview'],
+    // The dashboards are stubbed here, so the bar keeps the stack's title; on a device it reads the person's name.
+    ['buyer', 'Home'],
+  ] as const)('opens the %s dashboard after signing in from the welcome page, not the account', async (role, home) => {
+    await renderApp();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Sign up or log in' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Log in' }));
+    expect(await screen.findByRole('header', { name: 'Log in' })).toBeTruthy();
+    await signInAs(role);
+    expect(await screen.findByRole('header', { name: home })).toBeTruthy();
+    expect(screen.queryByRole('header', { name: 'Account' })).toBeNull();
   });
 });

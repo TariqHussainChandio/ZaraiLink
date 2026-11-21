@@ -117,4 +117,39 @@ describe('isValidE164', () => {
   ])('isValidE164(%s) === %s', (value, expected) => {
     expect(isValidE164(value)).toBe(expected);
   });
+
+  // D20: limits are enforced as the person types, with the reason under the box.
+  it('refuses a letter or symbol as it is typed, and says why', async () => {
+    const onValue = jest.fn();
+    await render(<Harness onValue={onValue} />);
+    await fireEvent.changeText(screen.getByLabelText('Phone'), '0300a');
+    expect(screen.getByText('Use digits only, with + before a country code')).toBeTruthy();
+    expect(onValue).not.toHaveBeenCalled();
+  });
+
+  it('stops at the last digit of a complete Pakistani mobile number', async () => {
+    const onValue = jest.fn();
+    await render(<Harness onValue={onValue} />);
+    const field = screen.getByLabelText('Phone');
+    await fireEvent.changeText(field, '03001234567');
+    expect(onValue).toHaveBeenLastCalledWith('+923001234567');
+    await fireEvent.changeText(field, '030012345678');
+    expect(screen.getByText('That number is complete')).toBeTruthy();
+    expect(onValue).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses more digits than another country allows', async () => {
+    const onValue = jest.fn();
+    await render(<Harness onValue={onValue} />);
+    await fireEvent.changeText(screen.getByLabelText('Phone'), '+4479460000000');
+    expect(screen.getByText('That is more digits than a phone number has')).toBeTruthy();
+    expect(onValue).not.toHaveBeenCalled();
+  });
+
+  it('accepts a number with another country code', async () => {
+    const onValue = jest.fn();
+    await render(<Harness onValue={onValue} />);
+    await fireEvent.changeText(screen.getByLabelText('Phone'), '+44 7946 000000');
+    expect(onValue).toHaveBeenLastCalledWith('+447946000000');
+  });
 });

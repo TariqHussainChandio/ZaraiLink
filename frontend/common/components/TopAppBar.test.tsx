@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Bell } from 'lucide-react-native';
@@ -38,9 +38,12 @@ describe('TopAppBar', () => {
     expect(screen.getByText('Multan · 3 orders need you')).toBeTruthy();
   });
 
-  it('marks every inventory-system screen as the separate system (SRDS §15)', async () => {
-    await renderInsets(<TopAppBar title="Stock" variant="inventory" onBack={() => undefined} />);
-    expect(screen.getByText('Inventory system')).toBeTruthy();
+  it('marks every inventory-system screen as the separate system: earth brown, with no "Inventory system" line (SRDS §15, D20)', async () => {
+    await renderInsets(<TopAppBar title="Green Inputs" variant="inventory" onBack={() => undefined} />);
+    expect(screen.queryByText('Inventory system')).toBeNull();
+    const title = StyleSheet.flatten(screen.getByRole('header', { name: 'Green Inputs' }).props.style);
+    expect(title.color).toBe(lightTheme.colors.onAccent);
+    expect(lightTheme.colors.accent.inventory).toEqual(lightTheme.colors.secondary);
   });
 
   it("sets an inner screen's title in the board face at title-bar size, and a tab root's in the large headline", async () => {
@@ -54,12 +57,11 @@ describe('TopAppBar', () => {
     expect(large.fontSize).toBe(lightTheme.typography.headline.fontSize);
   });
 
-  it('writes the inventory kicker in sentence case, bold, in the dealer ink', async () => {
-    await renderInsets(<TopAppBar title="Stock" variant="inventory" onBack={() => undefined} />);
-    const kicker = StyleSheet.flatten(screen.getByText('Inventory system').props.style);
-    expect(kicker.color).toBe(lightTheme.colors.accent.dealer.ink);
-    expect(kicker.fontWeight).toBe(lightTheme.fontWeight.bold);
-    expect(kicker.textTransform).toBeUndefined();
+  it("puts a person's role on the line beneath their name in a home or Account bar (D20)", async () => {
+    await renderInsets(<TopAppBar title="Sana Iqbal" subtitle="Admin" left={<Text>photo</Text>} />);
+    expect(screen.getByRole('header', { name: 'Sana Iqbal' })).toBeTruthy();
+    expect(screen.getByText('Admin')).toBeTruthy();
+    expect(screen.getByText('photo')).toBeTruthy();
   });
 
   it('shows the actions and the element a screen supplies', async () => {
@@ -103,5 +105,17 @@ describe('IconButton', () => {
     const badge = StyleSheet.flatten(screen.getByText('7').parent?.props.style);
     expect(badge.height).toBeUndefined();
     expect(badge.minHeight).toBe(lightTheme.size.countBadge);
+  });
+
+  // D20: every app bar is the brand olive, its title and icons in onAppBar.
+  it('is olive, with its title and icons in onAppBar', async () => {
+    await renderInsets(<TopAppBar title="Market" onBack={() => undefined} />);
+    expect(StyleSheet.flatten(screen.getByText('Market').props.style).color).toBe(lightTheme.colors.onAppBar);
+    expect(lightTheme.colors.appBar).toBe(lightTheme.colors.accent.brand.fill);
+  });
+
+  it('draws what a shell puts under the bar, such as the admin Menu bar', async () => {
+    await renderInsets(<TopAppBar title="Overview" below={<Text>Menu</Text>} />);
+    expect(screen.getByText('Menu')).toBeTruthy();
   });
 });

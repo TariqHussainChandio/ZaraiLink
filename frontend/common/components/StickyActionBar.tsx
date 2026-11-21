@@ -4,7 +4,7 @@ import { useComposerInsets } from '../../hooks/useComposerInsets';
 import { type Theme, useTheme } from '../../theme';
 
 export interface StickyActionBarProps {
-  /** The figure the action acts on: a QuantityStepper, or a RatePlate with the total. Takes the room the button leaves. */
+  /** The figure the action acts on: a QuantityStepper, or a Price with the total. Takes the room the button leaves. */
   leading?: React.ReactNode;
   /** The screen's one primary action: a `Button` at `lg`. Show only the actions this viewer can take at this status. */
   children: React.ReactNode;

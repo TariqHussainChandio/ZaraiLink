@@ -77,7 +77,7 @@ beforeEach(() => {
 });
 
 describe('BrowseScreen', () => {
-  it('loads and renders listings on mount, with the price on its plate and who sells it', async () => {
+  it('loads and renders listings on mount, with the price and who sells it', async () => {
     mockFetchListings.mockResolvedValue([
       listing({ owner: { id: 'owner-1', full_name: 'Chaudhry Seeds', avatar_url: null }, location: { country: 'Pakistan', province: 'Punjab', city: 'Sargodha' } }),
     ]);

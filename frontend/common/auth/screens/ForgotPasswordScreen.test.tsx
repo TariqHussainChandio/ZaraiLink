@@ -1,3 +1,4 @@
+import { EMAIL_MESSAGE } from '../../validation/email';
 import React from 'react';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
@@ -55,7 +56,7 @@ describe('ForgotPasswordScreen', () => {
     await fireEvent.changeText(screen.getByLabelText('Email'), 'not-an-email');
     await fireEvent.press(screen.getByRole('button', { name: 'Send code' }));
 
-    expect(await screen.findByText('Enter a valid email')).toBeTruthy();
+    expect(await screen.findByText(EMAIL_MESSAGE)).toBeTruthy();
     expect(mockResetPassword).not.toHaveBeenCalled();
   });
 

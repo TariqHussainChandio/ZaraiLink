@@ -12,10 +12,11 @@ import { useTheme, type Theme } from '../../../theme';
 import { pickFromLibrary, type PickedPhoto } from '../../../utils/photoPicker';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
+import { personNameSchema } from '../../validation/personName';
 
 function makeEditProfileSchema() {
   return z.object({
-    fullName: z.string().trim().min(2, 'Enter your full name'),
+    fullName: personNameSchema,
     phone: z
       .string()
       .nullable()
@@ -58,6 +59,8 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
     setValue,
     formState: { errors, submitCount },
   } = useForm<EditProfileFormValues>({
+    // D20: the name rule shows as it is typed, as on sign-up.
+    mode: 'onChange',
     resolver: zodResolver(editProfileSchema),
     defaultValues: {
       fullName: profile?.full_name || '',
@@ -159,6 +162,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
             <TextField
               ref={ref}
               label="Full name"
+              helper="Letters only, with one space between names"
               autoComplete="name"
               textContentType="name"
               value={value}

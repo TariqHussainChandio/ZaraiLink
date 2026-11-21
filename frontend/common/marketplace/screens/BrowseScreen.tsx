@@ -12,7 +12,7 @@ import { useMarketplaceStore } from '../../../state/marketplaceStore';
 import { useTheme, type Theme } from '../../../theme';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 
-/** The market: a two-column grid people scan for price. Each card leads with its rate plate, then the name and who sells
+/** The market: a two-column grid people scan for price. Each card leads with its price, then the name and who sells
  * it. Search waits for typing to stop, the old grid stays until the new one arrives, and a list that is empty says whether
  * that is because of the filters. */
 export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {

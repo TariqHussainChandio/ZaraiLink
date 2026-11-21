@@ -57,11 +57,12 @@ beforeEach(() => {
 });
 
 describe('FarmerDashboardScreen', () => {
-  it('leads with the crop-health card, then what needs the farmer', async () => {
+  it('leads with the crop-health card, then what needs the farmer, with no status headline (D20)', async () => {
     mockFetch.mockResolvedValue(stats);
     await renderWithQuery(<FarmerDashboardScreen />);
 
-    expect(await screen.findByText('2 things need you')).toBeTruthy();
+    expect(await screen.findByText('2 orders ready to dispatch')).toBeTruthy();
+    expect(screen.queryByText('2 things need you')).toBeNull();
     expect(screen.getByText('Is a crop sick?')).toBeTruthy();
     expect(screen.getByText('Photograph a leaf for advice')).toBeTruthy();
     expect(screen.getByText('Needs you')).toBeTruthy();
@@ -86,8 +87,13 @@ describe('FarmerDashboardScreen', () => {
     await fireEvent.press(await screen.findByText('2 orders ready to dispatch'));
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Orders, { screen: ORDERS_ROUTES.OrderHistory, params: undefined, initial: false });
 
-    await fireEvent.press(screen.getByText('Sell produce'));
+    // D20: the main tasks are picture tiles, each one button named by its word.
+    await fireEvent.press(screen.getByRole('button', { name: 'Sell crop' }));
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Marketplace, { screen: MARKETPLACE_ROUTES.CreateListing, params: undefined, initial: false });
+    await fireEvent.press(screen.getByRole('button', { name: 'My orders' }));
+    expect(mockTabNavigate).toHaveBeenLastCalledWith(APP_TABS.Orders, { screen: ORDERS_ROUTES.OrderHistory, params: undefined, initial: false });
+    await fireEvent.press(screen.getByRole('button', { name: 'Messages' }));
+    expect(mockTabNavigate).toHaveBeenLastCalledWith(APP_TABS.Messages);
   });
 
   it('opens consultations when one is open', async () => {
@@ -122,12 +128,15 @@ describe('FarmerDashboardScreen', () => {
     expect(mockStackNavigate).toHaveBeenCalledWith(HOME_ROUTES.Analytics);
   });
 
-  it('says it is up to date when nothing is waiting', async () => {
+  it('shows no "Needs you" and no "up to date" line when nothing is waiting (D20: the alerts are enough)', async () => {
     mockFetch.mockResolvedValue({ ...stats, pendingOrders: 0, readyToDispatch: 0 });
     await renderWithQuery(<FarmerDashboardScreen />);
 
-    expect(await screen.findByText("You're up to date")).toBeTruthy();
-    expect(screen.getByText('Nothing is waiting for you.')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Sell crop' })).toBeTruthy();
+    await screen.findByLabelText(/^Orders: 6/);
+    expect(screen.queryByText("You're up to date")).toBeNull();
+    expect(screen.queryByText('Nothing is waiting for you.')).toBeNull();
+    expect(screen.queryByText('Needs you')).toBeNull();
   });
 
   it('on a failed load says so, shows dashes and never zeros (FA-14), and recovers on Try again', async () => {
@@ -135,7 +144,6 @@ describe('FarmerDashboardScreen', () => {
     await renderWithQuery(<FarmerDashboardScreen />);
 
     expect(await screen.findByText("Couldn't load your numbers")).toBeTruthy();
-    expect(screen.getByText('Your numbers are not available')).toBeTruthy();
     expect(screen.getAllByText('—')).toHaveLength(2);
     expect(screen.queryByText('0')).toBeNull();
     expect(screen.queryByText('Nothing is waiting for you.')).toBeNull();
@@ -144,16 +152,7 @@ describe('FarmerDashboardScreen', () => {
 
     mockFetch.mockResolvedValue(stats);
     await fireEvent.press(screen.getByText('Try again'));
-    expect(await screen.findByText('2 things need you')).toBeTruthy();
+    expect(await screen.findByText('2 orders ready to dispatch')).toBeTruthy();
   });
 
-  it("titles the large app bar with a greeting by the farmer's name (A8, F1)", async () => {
-    useAuthStore.setState({ profile: { full_name: 'Ali Raza' } as never });
-    mockFetch.mockResolvedValue(stats);
-    await renderWithQuery(<FarmerDashboardScreen />);
-
-    await screen.findByText('2 things need you');
-    expect(mockSetOptions).toHaveBeenLastCalledWith({ title: expect.stringMatching(/^Good (morning|afternoon|evening), Ali Raza$/) });
-    useAuthStore.setState({ profile: null });
-  });
 });

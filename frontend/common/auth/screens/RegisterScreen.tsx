@@ -7,7 +7,9 @@ import { Banner, Button, isValidE164, LocationPicker, PhoneInput, TextField } fr
 import { COUNTRY } from '../../constants/locations';
 import type { RegistrableRole } from '../../constants/roles';
 import { AUTH_ROUTES } from '../../constants/routes';
+import { emailSchema } from '../../validation/email';
 import { newPasswordSchema, PASSWORD_HELPER } from '../../validation/password';
+import { personNameSchema } from '../../validation/personName';
 import { useSignUp } from '../hooks/auth';
 import { AuthScreen } from '../components/AuthScreen';
 import { FormErrorSummary } from '../components/FormErrorSummary';
@@ -28,8 +30,8 @@ function makeRegisterSchema(role: RegistrableRole) {
   const located = role === 'farmer' || role === 'buyer';
   const place = (message: string) => (located ? z.string().trim().min(2, message) : z.string().trim());
   return z.object({
-    fullName: z.string().trim().min(2, 'Enter your full name'),
-    email: z.string().trim().email('Enter a valid email'),
+    fullName: personNameSchema,
+    email: emailSchema,
     phone: z
       .string()
       .trim()
@@ -61,6 +63,9 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
     formState: { errors, isSubmitting, submitCount },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
+    // D20: each field is checked as it is typed, so "Numbers and special characters are not allowed" appears under the
+    // name the moment a digit goes in, not only after Create account.
+    mode: 'onChange',
     defaultValues: { fullName: '', email: '', phone: '', password: '', province: '', city: '', street: '', village: '' },
   });
 
@@ -91,7 +96,7 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
   };
 
   return (
-    <AuthScreen title={TITLES[role]}>
+    <AuthScreen title={TITLES[role]} onBack={navigation.goBack}>
       <Button
         label="Choose a different account type"
         variant="quiet"
@@ -108,6 +113,7 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
             <TextField
               ref={ref}
               label="Full name"
+              helper="Letters only, with one space between names"
               autoComplete="name"
               textContentType="name"
               returnKeyType="next"
@@ -234,7 +240,7 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Already have an account?</Text>
-        <Button label="Sign in" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
+        <Button label="Log in" variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
       </View>
     </AuthScreen>
   );

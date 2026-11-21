@@ -120,7 +120,8 @@ beforeEach(() => {
   mockFetchListings.mockResolvedValue([listing]);
   mockFetchListingById.mockResolvedValue(listing);
   mockFetchReviews.mockResolvedValue([]);
-  useAuthStore.setState({ user: { id: 'buyer-1' } as never, role: 'buyer' });
+  // A farmer buying: the cart button sits in the market's app bar (a buyer's cart is a tab of its own since D20).
+  useAuthStore.setState({ user: { id: 'buyer-1' } as never, role: 'farmer' });
   useCartStore.setState({ items: [] });
 });
 

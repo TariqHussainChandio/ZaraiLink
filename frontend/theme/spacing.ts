@@ -12,9 +12,9 @@ export const space = {
   12: 48,
 } as const;
 
-// Corners are crisp, like a painted sign: xs for status badges, sm for buttons, inputs, chips, thumbnails and rate
-// plates, md for cards, list groups, banners and dialogs, lg for the top corners of bottom sheets only, pill for
-// avatars, count badges, the unread dot and the active tab pill.
+// Corners are crisp, like a painted sign: xs for status badges, sm for buttons, inputs, chips and thumbnails, md for
+// cards, list groups, banners and dialogs, lg for the top corners of bottom sheets only, pill for avatars, count
+// badges, the unread dot and the active tab pill.
 export const radius = {
   xs: 2,
   sm: 4,

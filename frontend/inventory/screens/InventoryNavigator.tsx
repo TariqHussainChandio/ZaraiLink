@@ -34,6 +34,7 @@ import { StockScreen } from './StockScreen';
 import { SupplierFormScreen } from './SupplierFormScreen';
 import { SupplierListScreen } from './SupplierListScreen';
 import { SyncLogScreen } from './SyncLogScreen';
+import { RoleScopeProvider } from '../../theme';
 
 const Stack = createNativeStackNavigator<InventoryStackParamList>();
 const Tab = createBottomTabNavigator<InventoryTabParamList>();
@@ -131,16 +132,19 @@ const MORE_TAB = tabOptions('More', Ellipsis);
  */
 export function InventoryNavigator({ navigation }: { navigation: { goBack: () => void } }) {
   return (
-    <InventoryGate onExit={navigation.goBack}>
-      <InventoryExitProvider onExit={navigation.goBack}>
-        <Tab.Navigator tabBar={renderTabBar} screenOptions={{ headerShown: false }} backBehavior="none">
-          <Tab.Screen name={INVENTORY_TABS.Dashboard} component={DashboardStack} options={DASHBOARD_TAB} />
-          <Tab.Screen name={INVENTORY_TABS.Products} component={ProductsStack} options={PRODUCTS_TAB} />
-          <Tab.Screen name={INVENTORY_TABS.Stock} component={StockStack} options={STOCK_TAB} />
-          <Tab.Screen name={INVENTORY_TABS.Reports} component={ReportsStack} options={REPORTS_TAB} />
-          <Tab.Screen name={INVENTORY_TABS.More} component={MoreStack} options={MORE_TAB} />
-        </Tab.Navigator>
-      </InventoryExitProvider>
-    </InventoryGate>
+    // D20: the whole inventory system is drawn in the brand's second colour, earth brown: bars, tabs, buttons and chips.
+    <RoleScopeProvider scope="inventory">
+      <InventoryGate onExit={navigation.goBack}>
+        <InventoryExitProvider onExit={navigation.goBack}>
+          <Tab.Navigator tabBar={renderTabBar} screenOptions={{ headerShown: false }} backBehavior="none">
+            <Tab.Screen name={INVENTORY_TABS.Dashboard} component={DashboardStack} options={DASHBOARD_TAB} />
+            <Tab.Screen name={INVENTORY_TABS.Products} component={ProductsStack} options={PRODUCTS_TAB} />
+            <Tab.Screen name={INVENTORY_TABS.Stock} component={StockStack} options={STOCK_TAB} />
+            <Tab.Screen name={INVENTORY_TABS.Reports} component={ReportsStack} options={REPORTS_TAB} />
+            <Tab.Screen name={INVENTORY_TABS.More} component={MoreStack} options={MORE_TAB} />
+          </Tab.Navigator>
+        </InventoryExitProvider>
+      </InventoryGate>
+    </RoleScopeProvider>
   );
 }

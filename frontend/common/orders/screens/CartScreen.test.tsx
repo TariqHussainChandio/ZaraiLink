@@ -4,7 +4,7 @@ import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { CartScreen } from './CartScreen';
 import { fetchListingById } from '../../marketplace/services/listingsService';
 import { useCartStore, type CartItem } from '../../../state/cartStore';
-import { APP_TABS, MARKETPLACE_ROUTES } from '../../constants/routes';
+import { AUTH_ROUTES, GUEST_SIGN_IN_TAB, MARKETPLACE_ROUTES } from '../../constants/routes';
 import { useLoginNotice } from '../../auth';
 import { useAuthStore } from '../../../state/authStore';
 import { useCheckoutIntent } from '../../../state/checkoutIntentStore';
@@ -152,7 +152,7 @@ describe('CartScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Sign in to check out' }));
 
     expect(navigation.navigate).not.toHaveBeenCalledWith(MARKETPLACE_ROUTES.Checkout);
-    expect(tabNavigate).toHaveBeenCalledWith(APP_TABS.Profile);
+    expect(tabNavigate).toHaveBeenCalledWith(GUEST_SIGN_IN_TAB, { screen: AUTH_ROUTES.Login, initial: false });
     expect(useCheckoutIntent.getState().pending).toBe(true);
     expect(useLoginNotice.getState().notice?.title).toBe('Sign in to place your order');
     expect(useCartStore.getState().items).toHaveLength(1);

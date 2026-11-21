@@ -12,7 +12,7 @@ import {
   OrderTimeline,
   PriceBreakdown,
   QueryState,
-  RatePlate,
+  Price,
   ScreenScaffold,
   StatusBadge,
   StickyActionBar,
@@ -236,7 +236,7 @@ export function OrderDetailScreen() {
               <View style={styles.summary}>
                 <StatusBadge kind="order" status={order.status} />
                 <Text style={styles.next}>{orderNextStep(order.status, viewer, { buyer: buyerName, seller: sellerName }, dealer)}</Text>
-                <RatePlate amount={order.total} unit="Total, delivery included" size="xl" />
+                <Price amount={order.total} unit="Total, delivery included" size="xl" />
               </View>
 
               <Card style={styles.card}>

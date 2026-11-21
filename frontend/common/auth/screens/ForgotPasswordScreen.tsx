@@ -6,12 +6,13 @@ import { Banner, Button, TextField } from '../../components';
 import { AUTH_ROUTES } from '../../constants/routes';
 import { useResetPassword } from '../hooks/auth';
 import { AuthScreen } from '../components/AuthScreen';
+import { emailSchema } from '../../validation/email';
 import { mapPasswordFlowErrorMessage } from './mapAuthError';
 import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 
-// Trimmed first: a space after a pasted address is the commonest reason an email "is not valid".
+// Trimmed first (emailSchema): a space after a pasted address is the commonest reason an email "is not valid".
 const forgotPasswordSchema = z.object({
-  email: z.string().trim().min(1, 'Enter your email').email('Enter a valid email'),
+  email: emailSchema,
 });
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
@@ -42,7 +43,11 @@ export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPass
   };
 
   return (
-    <AuthScreen title="Reset your password" subtitle="Enter your account email. If it has an account, a reset code is sent to it.">
+    <AuthScreen
+      title="Reset your password"
+      subtitle="Enter your account email. If it has an account, a reset code is sent to it."
+      onBack={navigation.goBack}
+    >
       <Controller
         control={control}
         name="email"

@@ -1,16 +1,20 @@
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, ListGroup, ListRow, ScreenScaffold, Skeleton, StatusBadge } from '../../common/components';
 import { StatTile } from '../../common/components/dashboards/StatTile';
-import { APP_TABS, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../common/constants/routes';
+import { APP_TABS, HOME_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../common/constants/routes';
 import { useOrders, type OrderWithItems } from '../../common/orders';
 import { navigateInTab } from '../../navigation/navigateInTab';
+import type { HomeStackParamList } from '../../navigation/stacks/HomeNavigator';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
 import { useAuthStore } from '../../state/authStore';
+import { useWishlist } from '../../state/wishlistStore';
 import { useTheme, type Theme } from '../../theme';
 import { errorMessage } from '../../utils/errorMessage';
 import { formatRs } from '../../utils/money';
+import { useNameTitle } from '../../hooks/useNameTitle';
 
 // Orders still moving towards the buyer; a rejected, expired or refunded order is over, not in progress.
 const IN_PROGRESS = ['pending', 'confirmed', 'processing', 'ready', 'dispatched'];
@@ -18,14 +22,16 @@ const IN_PROGRESS = ['pending', 'confirmed', 'processing', 'ready', 'dispatched'
 // (the same rule as `canPay` on the order screen). Disease Advisory is farmer-only: buyers get no entry into it here.
 const AWAITING_PAYMENT = ['pending', 'confirmed'];
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
 /** The buyer's home: what needs them first (orders to pay, goods to confirm), one next step, then recent purchases. */
 export function BuyerDashboardScreen() {
+  // D20: the app bar names whose account this is.
+  useNameTitle();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
   const tabs = useAppTabNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+  const saved = useWishlist(userId).length;
   const ordersQuery = useOrders('buyer', !!userId);
   const { data: orders, isPending, isError, error, refetch, isRefetching } = ordersQuery;
 
@@ -38,6 +44,7 @@ export function BuyerDashboardScreen() {
 
   const openOrder = (orderId: string) => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderDetail, { orderId });
   const findProducts = () => navigateInTab(tabs, APP_TABS.Marketplace, MARKETPLACE_ROUTES.Browse);
+  const allOrders = () => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderHistory);
 
   // `orders` is undefined while loading or when the first load failed: figures are then unknown ("—"), never 0.
   const known = orders !== undefined;
@@ -45,13 +52,6 @@ export function BuyerDashboardScreen() {
   const toConfirm = orders?.filter(o => o.status === 'dispatched') ?? [];
   const needsYou = [...toPay, ...toConfirm];
   const open = orders?.filter(o => IN_PROGRESS.includes(o.status)).length;
-
-  let situation: string;
-  if (isPending) situation = 'Loading your orders';
-  else if (!known) situation = 'Your orders are not available';
-  else if (toPay.length > 0) situation = `${plural(toPay.length, 'order', 'orders')} waiting for payment`;
-  else if (toConfirm.length > 0) situation = `${plural(toConfirm.length, 'order', 'orders')} to confirm`;
-  else situation = "You're up to date";
 
   const purchaseRow = (order: OrderWithItems) => (
     <ListRow
@@ -66,19 +66,17 @@ export function BuyerDashboardScreen() {
 
   return (
     <ScreenScaffold onRefresh={refetch} refreshing={isRefetching && !isPending} testID="buyer-dashboard">
-      <Text style={styles.situation} accessibilityRole="header">
-        {situation}
-      </Text>
-
       {isError ? (
         <Banner tone="danger" title="Couldn't load your orders" actionLabel="Try again" onAction={refetch}>
           {errorMessage(error)}
         </Banner>
       ) : null}
 
+      {/* Every figure opens what it counts (D20). The wishlist is kept on the phone, so its count is always known. */}
       <View style={styles.tiles}>
-        <StatTile label="Open orders" value={known ? open : null} />
-        <StatTile label="Purchases" value={known ? orders.length : null} />
+        <StatTile label="Open orders" value={known ? open : null} onPress={allOrders} />
+        <StatTile label="Purchases" value={known ? orders.length : null} onPress={allOrders} />
+        <StatTile label="Saved" value={saved} onPress={() => navigation.navigate(HOME_ROUTES.Wishlist)} />
       </View>
 
       {isPending ? (
@@ -121,7 +119,6 @@ export function BuyerDashboardScreen() {
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    situation: { ...typography.display, color: colors.ink },
     tiles: { flexDirection: 'row', gap: space[3] },
     section: { gap: space[2] },
     sectionTitle: { ...typography.title, color: colors.ink },

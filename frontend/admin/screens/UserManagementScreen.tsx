@@ -19,6 +19,7 @@ import {
 import { ROLES, ROLE_LABELS, type Role } from '../../common/constants/roles';
 import { statusMeta } from '../../common/constants/status';
 import type { Profile } from '../../common/types/profile';
+import type { AdminScreenProps } from '../../navigation/stacks/AdminNavigator';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { formatDay } from '../../utils/dates';
@@ -67,14 +68,15 @@ function roleChangeConsequence(name: string, from: Role, to: Role): string {
  * and its documents (A3b), so this list shows the status but offers no decision. The list pages (AD-02); the API filters
  * on role and account status, and the search box looks through the pages already loaded.
  */
-export function UserManagementScreen() {
+export function UserManagementScreen({ route }: Partial<AdminScreenProps<'UserManagement'>>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const currentUserId = useAuthStore(state => state.user?.id);
   const suspend = useSetProfileSuspended();
   const updateRole = useUpdateUserRole();
   const [search, setSearch] = useState('');
-  const [role, setRole] = useState<RoleFilter>('all');
+  // Opened from a "Users by role" tile, the list starts filtered to that role (D20).
+  const [role, setRole] = useState<RoleFilter>(route?.params?.role ?? 'all');
   const [status, setStatus] = useState<StatusFilter>('all');
   // The person whose menu is open, and where on the screen their row was tapped (the menu opens there, D19).
   const [selected, setSelected] = useState<{ profile: Profile; anchor: AnchorRect | null } | null>(null);

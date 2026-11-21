@@ -27,7 +27,7 @@ const baseListing: ListingWithRelations = {
 };
 
 describe('ListingCard', () => {
-  it('leads with the rate plate (price and unit), then the name and who sells it', async () => {
+  it('leads with the price and unit, then the name and who sells it', async () => {
     await render(<ListingCard listing={{ ...baseListing, location: { country: 'Pakistan', province: 'Punjab', city: 'Sargodha' } }} onPress={() => {}} />);
     expect(screen.getByLabelText('Rs 4,500, per bag')).toBeTruthy();
     expect(screen.getByText('DAP Fertilizer 50kg')).toBeTruthy();

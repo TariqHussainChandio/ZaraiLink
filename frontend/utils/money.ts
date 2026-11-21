@@ -3,7 +3,7 @@
 const RUPEES = new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 });
 
 /** The number alone, grouped the en-PK way: "12,450". For a figure that carries its own unit ("120 bags") or whose "Rs"
- * is drawn separately, as on a rate plate. */
+ * is drawn separately, as in a price. */
 export function formatAmount(amount: number): string {
   return RUPEES.format(amount);
 }

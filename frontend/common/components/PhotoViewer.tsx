@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Animated, Modal, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useInsets } from '../../hooks/useInsets';
 import { type Theme, useTheme } from '../../theme';
@@ -18,6 +18,8 @@ export interface PhotoViewerProps {
   photos: ViewerPhoto[];
   /** The photo to open on. */
   initialIndex?: number;
+  /** A word-button at the top right, beside Close: "Edit photo" on your own profile picture (D20). */
+  action?: { label: string; onPress: () => void };
 }
 
 // Behaviour limits, not design values: how far a photo zooms, and by how much a zoom button steps.
@@ -96,7 +98,7 @@ class Zoom {
  * zoom, drag a zoomed photo around, next and previous, "2 of 4", and a labelled close. TalkBack cannot pinch, so zoom has
  * buttons too. It is built on gesture-handler's JS-thread callbacks and React Native's Animated; there is no reanimated
  * in this app. */
-export function PhotoViewer({ visible, onClose, photos, initialIndex = 0 }: PhotoViewerProps) {
+export function PhotoViewer({ visible, onClose, photos, initialIndex = 0, action }: PhotoViewerProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const insets = useInsets();
@@ -166,6 +168,17 @@ export function PhotoViewer({ visible, onClose, photos, initialIndex = 0 }: Phot
           <Text style={styles.counter} accessibilityLiveRegion="polite">{`${Math.min(index + 1, count)} of ${count}`}</Text>
           <IconButton icon={ZoomOut} label="Zoom out" color={theme.colors.onBoard} onPress={() => zoom.to(zoom.current - ZOOM_STEP)} />
           <IconButton icon={ZoomIn} label="Zoom in" color={theme.colors.onBoard} onPress={() => zoom.to(zoom.current + ZOOM_STEP)} />
+          {action ? (
+            <Pressable
+              style={styles.action}
+              onPress={action.onPress}
+              android_ripple={{ color: theme.colors.rippleOnFill }}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+            >
+              <Text style={styles.actionText}>{action.label}</Text>
+            </Pressable>
+          ) : null}
           <IconButton icon={X} label="Close photos" color={theme.colors.onBoard} onPress={close} />
         </View>
 
@@ -196,6 +209,8 @@ function makeStyles({ colors, dark, space, size, typography }: Theme) {
     photo: { width: '100%', height: '100%' },
     top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: space[2] },
     counter: { ...typography.label, flex: 1, color: colors.onBoard, paddingHorizontal: space[2] },
+    action: { minHeight: size.touchMin, justifyContent: 'center', paddingHorizontal: space[3] },
+    actionText: { ...typography.bodyStrong, color: colors.onBoard },
     bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: space[2] },
     placeholder: { width: size.touchMin, height: size.touchMin },
   });

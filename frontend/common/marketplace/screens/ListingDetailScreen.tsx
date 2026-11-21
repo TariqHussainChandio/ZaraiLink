@@ -13,7 +13,7 @@ import {
   ScreenScaffold,
   StatusBadge,
   StickyActionBar,
-  RatePlate,
+  Price,
   useSnackbar,
 } from '../../components';
 import { RatingSummary, ReviewCard, useListingReviews } from '../../reviews';
@@ -31,6 +31,7 @@ import { hapticTap } from '../../../utils/haptics';
 import { formatRs } from '../../../utils/money';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { conditionLabel } from '../components/listingCondition';
+import { WishlistButton } from '../components/WishlistButton';
 
 /** Reviews shown before "Show all": enough to judge the seller without pushing the page past the buy bar. */
 const REVIEWS_PREVIEW = 3;
@@ -38,13 +39,14 @@ const REVIEWS_PREVIEW = 3;
 /** A photo counts as the current one once most of it is in view. Constant: FlatList reads it once. */
 const PAGER_VIEWABILITY = { itemVisiblePercentThreshold: 60 };
 
-/** One listing: every photo in a pager ("1 of 4", tap for full screen), the price on its plate, who sells it, and a bar
+/** One listing: every photo in a pager ("1 of 4", tap for full screen), the price, who sells it, and a bar
  * that sets the quantity before Add to cart (MK-02, MK-07, MK-08). The seller sees Edit listing there instead. */
 export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProps<'ListingDetail'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
+  const isBuyer = useAuthStore(state => state.role === 'buyer');
   const addItem = useCartStore(state => state.addItem);
   const tabs = useAppTabNavigation();
   const snackbar = useSnackbar();
@@ -94,7 +96,8 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
     hapticTap();
     snackbar.show(`${quantity} × ${listing.title} added to cart`, {
       label: 'View cart',
-      onPress: () => navigation.navigate(MARKETPLACE_ROUTES.Cart),
+      // A buyer's cart is a tab of its own (D20); everyone else's opens in the market stack.
+      onPress: () => (isBuyer ? tabs?.navigate(APP_TABS.Cart) : navigation.navigate(MARKETPLACE_ROUTES.Cart)),
     });
   };
 
@@ -185,10 +188,13 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
             </View>
 
             <View style={styles.head}>
-              <Text style={styles.title} accessibilityRole="header">
-                {listing.title}
-              </Text>
-              <RatePlate amount={listing.price} unit={`per ${listing.unit}`} size="xl" />
+              <View style={styles.titleRow}>
+                <Text style={styles.title} accessibilityRole="header">
+                  {listing.title}
+                </Text>
+                <WishlistButton listing={listing} />
+              </View>
+              <Price amount={listing.price} unit={`per ${listing.unit}`} size="xl" />
               <View style={styles.badges}>
                 {listing.availability ? <StatusBadge kind="stock" status={listing.availability} /> : null}
                 {listing.seller_role ? <RoleBadge role={listing.seller_role} /> : null}
@@ -198,10 +204,20 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
 
             {listing.owner ? (
               <ListGroup>
+                {/* D20: the seller's name opens their shop: everything they sell, their rating and shop reviews. */}
                 <ListRow
                   title={listing.owner.full_name || 'Seller'}
-                  meta={city ?? undefined}
+                  meta={city ? `${city} · See their shop` : 'See their shop'}
                   leading={<Avatar name={listing.owner.full_name} uri={listing.owner.avatar_url} size={theme.size.avatarMd} />}
+                  onPress={() =>
+                    navigation.navigate(MARKETPLACE_ROUTES.SellerProfile, {
+                      sellerId: listing.owner_id,
+                      name: listing.owner?.full_name ?? '',
+                      avatarUrl: listing.owner?.avatar_url ?? null,
+                      role: listing.seller_role,
+                      city: city ?? null,
+                    })
+                  }
                 />
               </ListGroup>
             ) : null}
@@ -271,7 +287,8 @@ function makeStyles({ colors, space, radius, size, typography }: Theme) {
     },
     counterText: { ...typography.label, color: colors.surface },
     head: { gap: space[3] },
-    title: { ...typography.titleLg, color: colors.ink },
+    titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space[2] },
+    title: { ...typography.titleLg, flex: 1, color: colors.ink },
     badges: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] },
     town: { ...typography.caption, color: colors.ink2 },
     section: { gap: space[2] },

@@ -115,8 +115,10 @@ export function usePurchase(purchaseId: string | undefined) {
   });
 }
 
-export function useStockAlerts() {
-  return useQuery({ queryKey: inventoryKeys.alerts(), queryFn: fetchAlerts });
+/** `enabled`: false outside the inventory system for anyone but an approved dealer (the dealer's bell, D20), since the
+ * inventory API refuses everyone else (BR-03/04). */
+export function useStockAlerts(enabled = true) {
+  return useQuery({ queryKey: inventoryKeys.alerts(), queryFn: fetchAlerts, enabled });
 }
 
 export function useAlertSettings() {

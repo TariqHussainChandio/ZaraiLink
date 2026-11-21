@@ -38,7 +38,7 @@ export function ScreenScaffold({ children, scroll = true, footer, onRefresh, ref
           <ScrollView
             testID={testID ? `${testID}-scroll` : undefined}
             style={styles.fill}
-            contentContainerStyle={[styles.scrollContent, sides, { paddingBottom: theme.components.screen.sectionGap + bottomClearance }]}
+            contentContainerStyle={[styles.scrollContent, sides, { paddingBottom: theme.components.screen.sectionGap * 2 + bottomClearance }]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             refreshControl={
@@ -55,7 +55,7 @@ export function ScreenScaffold({ children, scroll = true, footer, onRefresh, ref
             <View style={[styles.column, contentStyle]}>{children}</View>
           </ScrollView>
         ) : (
-          <View style={[styles.fill, styles.centre, sides, { paddingBottom: bottomClearance }]}>
+          <View style={[styles.fill, styles.centre, sides, styles.listTop, { paddingBottom: bottomClearance }]}>
             <View style={[styles.fillColumn, contentStyle]}>{children}</View>
           </View>
         )}
@@ -70,7 +70,10 @@ function makeStyles({ colors, components, size }: Theme) {
     screen: { flex: 1, backgroundColor: colors.ground },
     fill: { flex: 1 },
     centre: { alignItems: 'center' },
-    scrollContent: { flexGrow: 1, alignItems: 'center', paddingTop: components.screen.margin },
+    // A screen whose list scrolls itself (the market grid) starts a little below the bar too.
+    listTop: { paddingTop: components.screen.margin },
+    // D20: a full section gap under the app bar, so the body does not crowd the bar.
+    scrollContent: { flexGrow: 1, alignItems: 'center', paddingTop: components.screen.sectionGap },
     // The centred column of a tablet; on a phone it is simply the width of the screen.
     column: { width: '100%', maxWidth: size.contentMax, gap: components.screen.sectionGap },
     fillColumn: { flex: 1, width: '100%', maxWidth: size.contentMax },

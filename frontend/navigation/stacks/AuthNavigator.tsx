@@ -7,9 +7,11 @@ import { ForgotPasswordScreen } from '../../common/auth/screens/ForgotPasswordSc
 import { LoginScreen } from '../../common/auth/screens/LoginScreen';
 import { RegisterScreen } from '../../common/auth/screens/RegisterScreen';
 import { VerifyOtpScreen } from '../../common/auth/screens/VerifyOtpScreen';
+import { WelcomeScreen } from '../../common/auth/screens/WelcomeScreen';
 import type { RegistrableRole } from '../../common/constants/roles';
 
 type AuthStackParamList = {
+  [AUTH_ROUTES.Welcome]: undefined;
   [AUTH_ROUTES.Login]: undefined;
   [AUTH_ROUTES.CreateAccount]: undefined;
   [AUTH_ROUTES.Register]: { role: RegistrableRole };
@@ -26,6 +28,8 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 export function AuthNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {/* D20: the guest's profile button lands here first; the sign-in prompts open Log in on top of it. */}
+      <Stack.Screen name={AUTH_ROUTES.Welcome} component={WelcomeScreen} />
       <Stack.Screen name={AUTH_ROUTES.Login} component={LoginScreen} />
       <Stack.Screen name={AUTH_ROUTES.CreateAccount} component={CreateAccountScreen} />
       <Stack.Screen name={AUTH_ROUTES.Register} component={RegisterScreen} />

@@ -112,7 +112,7 @@ afterEach(() => {
 });
 
 describe('OrderDetailScreen', () => {
-  it('opens with the status and what happens next in words, the total on a plate, and the items', async () => {
+  it('opens with the status and what happens next in words, the total, and the items', async () => {
     signIn('buyer-1', 'buyer');
     mockFetchOrderById.mockResolvedValue(order());
     await renderWithQuery(<OrderDetailScreen />);

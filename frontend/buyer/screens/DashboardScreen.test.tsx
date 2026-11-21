@@ -54,8 +54,9 @@ describe('BuyerDashboardScreen', () => {
     mockFetchOrders.mockResolvedValue([order({ id: 'o1', status: 'confirmed' }), order({ id: 'o2' })]);
     await renderWithQuery(<BuyerDashboardScreen />);
 
-    expect(await screen.findByText('1 order waiting for payment')).toBeTruthy();
-    expect(screen.getByText('Needs you')).toBeTruthy();
+    // D20: no status headline; the alert rows say what is waiting.
+    expect(await screen.findByText('Needs you')).toBeTruthy();
+    expect(screen.queryByText('1 order waiting for payment')).toBeNull();
     expect(screen.getByText('Open the order to pay')).toBeTruthy();
     // With something waiting, the only call to action is the order itself.
     expect(screen.queryByText('Find seeds and fertiliser')).toBeNull();
@@ -64,15 +65,14 @@ describe('BuyerDashboardScreen', () => {
   it('asks the buyer to confirm dispatched orders', async () => {
     mockFetchOrders.mockResolvedValue([order({ status: 'dispatched' })]);
     await renderWithQuery(<BuyerDashboardScreen />);
-    expect(await screen.findByText('1 order to confirm')).toBeTruthy();
-    expect(screen.getByText('Confirm when the goods arrive')).toBeTruthy();
+    expect(await screen.findByText('Confirm when the goods arrive')).toBeTruthy();
   });
 
   it('shows status through a badge on each recent purchase, not as plain text', async () => {
     mockFetchOrders.mockResolvedValue([order()]);
     await renderWithQuery(<BuyerDashboardScreen />);
-    expect(await screen.findByText("You're up to date")).toBeTruthy();
-    expect(screen.getByText('Green Farms')).toBeTruthy();
+    expect(await screen.findByText('Green Farms')).toBeTruthy();
+    expect(screen.queryByText("You're up to date")).toBeNull();
     expect(screen.getByText('Urea 50 kg')).toBeTruthy();
     expect(screen.getByText('Completed')).toBeTruthy();
     expect(screen.queryByText(/Rs 500 ·/)).toBeNull();
@@ -81,8 +81,7 @@ describe('BuyerDashboardScreen', () => {
   it('offers one next step and an empty note when nothing is waiting', async () => {
     mockFetchOrders.mockResolvedValue([]);
     await renderWithQuery(<BuyerDashboardScreen />);
-    await screen.findByText("You're up to date");
-    expect(screen.getByText(/No purchases yet/)).toBeTruthy();
+    expect(await screen.findByText(/No purchases yet/)).toBeTruthy();
 
     await fireEvent.press(screen.getByText('Find seeds and fertiliser'));
     expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Marketplace, {
@@ -108,13 +107,12 @@ describe('BuyerDashboardScreen', () => {
     await renderWithQuery(<BuyerDashboardScreen />);
     expect(await screen.findByText("Couldn't load your orders")).toBeTruthy();
     // The rest of the screen is still there; the figures are unknown, never 0.
-    expect(screen.getByText('Your orders are not available')).toBeTruthy();
     expect(screen.getAllByText('—')).toHaveLength(2);
     expect(screen.getByText('Recent purchases')).toBeTruthy();
 
     mockFetchOrders.mockResolvedValueOnce([]);
     await fireEvent.press(screen.getByText('Try again'));
-    expect(await screen.findByText("You're up to date")).toBeTruthy();
+    expect(await screen.findByText(/No purchases yet/)).toBeTruthy();
     expect(screen.queryByText("Couldn't load your orders")).toBeNull();
   });
 });

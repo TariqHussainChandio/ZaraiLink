@@ -25,11 +25,9 @@ import {
   Store,
   Tags,
   Users,
-  X,
 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { IconButton } from '../../common/components';
+import { Animated, type GestureResponderEvent, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { ADMIN_HOME_ROUTES, ADMIN_TABS, PROFILE_ROUTES } from '../../common/constants/routes';
 import { useInsets } from '../../hooks/useInsets';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -146,24 +144,25 @@ function groupOf(route: string): string {
 }
 
 /**
- * The admin's side menu (D19): every admin screen in one place, grouped, each group opening and closing like a
- * dropdown, with what is waiting beside the queues. It slides in from the left over the screen; a tap outside, the close
- * button or the back gesture closes it. The bottom tabs stay for the four main areas.
+ * The admin's menu (D19, a dropdown since D20): every admin screen in one place, grouped, each group opening and closing,
+ * with what is waiting beside the queues. It drops down from the Menu bar under the app bar (`top` is where that bar
+ * ends) as a card over the screen; a tap outside, the bar again or the back gesture closes it. There is no bottom bar:
+ * this is how the admin moves between areas.
  */
-export function AdminMenu({ onClose, currentRoute }: { onClose: () => void; currentRoute: string }) {
+export function AdminMenu({ onClose, currentRoute, top }: { onClose: () => void; currentRoute: string; top: number }) {
   const theme = useTheme();
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const insets = useInsets();
   const window = useWindowDimensions();
+  const maxHeight = window.height - top - insets.bottom - theme.space[4];
   const reduceMotion = useReducedMotion();
   const tabs = useNavigation().getParent<Tabs>();
   const signOut = useAuthStore(state => state.signOut);
   const queues = useAdminQueues();
   const [open, setOpen] = useState<Set<string>>(() => new Set([groupOf(currentRoute)]));
-  const width = Math.min(theme.components.menu.width, window.width * theme.components.menu.maxShare);
-  // Mounted only while open (AdminMenuButton), so every opening starts here: closed groups but the current one, and
-  // the slide in from the left (none with reduced motion).
+  // Mounted only while open (AdminMenuBar), so every opening starts here: closed groups but the current one, and the
+  // drop from under the bar (none with reduced motion).
   const [slide] = useState(() => new Animated.Value(reduceMotion ? 1 : 0));
 
   useEffect(() => {
@@ -189,7 +188,7 @@ export function AdminMenu({ onClose, currentRoute }: { onClose: () => void; curr
     item.go(tabs as Tabs);
   };
 
-  const translateX = slide.interpolate({ inputRange: [0, 1], outputRange: [-width, 0] });
+  const translateY = slide.interpolate({ inputRange: [0, 1], outputRange: [-theme.space[4], 0] });
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
@@ -202,16 +201,10 @@ export function AdminMenu({ onClose, currentRoute }: { onClose: () => void; curr
         importantForAccessibility="no-hide-descendants"
       />
       <Animated.View
-        style={[styles.panel, { width, paddingTop: insets.top, paddingBottom: insets.bottom, transform: [{ translateX }] }]}
+        style={[styles.panel, { top, maxHeight, opacity: slide, transform: [{ translateY }] }]}
         accessibilityViewIsModal
         accessibilityLabel="Admin menu"
       >
-        <View style={styles.head}>
-          <Text style={styles.headTitle} accessibilityRole="header">
-            ZaraiLink admin
-          </Text>
-          <IconButton icon={X} label="Close the menu" onPress={onClose} />
-        </View>
         <ScrollView contentContainerStyle={styles.body}>
           {GROUPS.map(group => {
             const expanded = open.has(group.title);
@@ -286,17 +279,47 @@ function Count({ value, styles }: { value: number; styles: ReturnType<typeof mak
   );
 }
 
-/** The menu button on the first screen of every admin tab (AdminNavigator), with what is waiting counted on it. */
-export function AdminMenuButton() {
+/** The admin's Menu button (D20), in the left corner under the Overview's app bar: the menu's name and what is waiting
+ * across the queues. Pressing it drops the menu down from its lower edge. */
+export function AdminMenuBar() {
+  const theme = useTheme();
+  const accent = useRoleAccent();
+  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const route = useRoute();
   const queues = useAdminQueues();
-  const [visible, setVisible] = useState(false);
+  const [barHeight, setBarHeight] = useState(0);
+  const [top, setTop] = useState<number | null>(null);
   const q = queues.data;
   const waiting = q ? q.pending_dealer_applications + q.pending_expert_applications + q.open_reports + q.disputed_orders : 0;
+  const open = top !== null;
+  const toggle = (event: GestureResponderEvent) => {
+    if (open) {
+      setTop(null);
+      return;
+    }
+    // Where the bar ends on the screen, which the menu's modal also fills: the touch's place on the screen, less its place
+    // within the bar, is the bar's top. (measureInWindow on the bar never called back on a Redmi phone.)
+    const { pageY, locationY } = event.nativeEvent;
+    setTop(pageY - locationY + barHeight);
+  };
   return (
     <>
-      <IconButton icon={Menu} label="Open the menu" count={waiting} countLabel={n => `${n} waiting`} onPress={() => setVisible(true)} />
-      {visible ? <AdminMenu onClose={() => setVisible(false)} currentRoute={route.name} /> : null}
+      <View style={styles.menuRow}>
+        <Pressable
+          style={styles.menuBar}
+          onLayout={layout => setBarHeight(layout.nativeEvent.layout.height)}
+          onPress={toggle}
+          android_ripple={{ color: theme.colors.ripple }}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={waiting > 0 ? `Menu, ${waiting} waiting` : 'Menu'}
+        >
+          <Menu color={accent.ink} size={theme.size.iconMd} strokeWidth={theme.size.iconStroke} />
+          <Text style={styles.menuBarLabel}>Menu</Text>
+          {waiting > 0 ? <Count value={waiting} styles={styles} /> : null}
+        </Pressable>
+      </View>
+      {open ? <AdminMenu onClose={() => setTop(null)} currentRoute={route.name} top={top} /> : null}
     </>
   );
 }
@@ -305,17 +328,31 @@ function makeStyles({ colors, space, size, radius, typography, components, shado
   const { menu } = components;
   return StyleSheet.create({
     scrim: { backgroundColor: colors.scrim },
-    panel: { position: 'absolute', top: 0, bottom: 0, left: 0, backgroundColor: colors.surface, ...shadows.elev3 },
-    head: {
+    // A card under the Menu bar, inset from the screen's edges, as long as its open groups (scrolling past the screen).
+    panel: {
+      position: 'absolute',
+      left: space[2],
+      right: space[2],
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      overflow: 'hidden',
+      ...shadows.elev2,
+    },
+    // D20: a button in the left corner under the bar, not a bar across the screen.
+    // The icon lines up with the screen margin: the row's inset plus the button's own padding make space[4].
+    menuRow: { flexDirection: 'row', paddingHorizontal: space[1], paddingTop: space[3] },
+    menuBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      minHeight: size.appBar,
-      paddingLeft: menu.padding,
-      paddingRight: space[1],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
+      gap: space[2],
+      minHeight: size.touchMin,
+      paddingHorizontal: space[3],
+      borderRadius: radius.sm,
+      // No border (D20): the icon and the word on the field. A background from the start, the field's own colour, so the
+      // press highlight keeps its corners on Android.
+      backgroundColor: colors.ground,
     },
-    headTitle: { ...typography.titleBar, flex: 1, color: colors.ink },
+    menuBarLabel: { ...typography.bodyStrong, color: colors.ink },
     body: { paddingVertical: space[2], gap: menu.groupGap },
     group: { gap: menu.groupGap },
     groupHead: { flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: size.touchMin, paddingHorizontal: menu.padding },

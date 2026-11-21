@@ -13,8 +13,9 @@ import { useExitInventory } from './InventoryExit';
 import { SpokenRow } from './SpokenRow';
 
 /**
- * The app bar of each inventory tab's first screen (SRDS §16): the system's band and name, the dealer's business, the
- * location switcher, the alert centre and the way back to ZaraiLink. Inner screens use the stack's inventory app bar.
+ * The app bar of each inventory tab's first screen (SRDS §16): the system's band, the warehouse mark beside the dealer's
+ * business name (D20: no "Inventory system" line), the location switcher, the alert centre and the way back to ZaraiLink.
+ * Inner screens use the stack's inventory app bar.
  */
 export function InventoryShellHeader() {
   const theme = useTheme();

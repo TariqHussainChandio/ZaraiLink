@@ -82,7 +82,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
   const backLabel = purpose === 'recovery' ? 'Back' : 'Back to sign up';
 
   return (
-    <AuthScreen title={title} subtitle={subtitle}>
+    <AuthScreen title={title} subtitle={subtitle} onBack={navigation.goBack}>
       <View>
         <CodeField
           label="Code from your email"

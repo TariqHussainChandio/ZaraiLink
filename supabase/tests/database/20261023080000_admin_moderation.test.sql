@@ -314,7 +314,7 @@ select tests.expect(tests.fx('B'), $$update public.consultations set status = 'c
   'err:42501', 'consultation moderation: nor the requester');
 select tests.expect(tests.fx('B'), $$update public.consultations set status = 'cancelled' where id = $$ || tests.l('CONS1'),
   'n:1', 'consultation moderation: the requester still cancels their own, without one');
-select tests.expect(tests.fx('B'), 'insert into public.consultations (user_id, expert_id, subject, moderation_reason) values (' || tests.l('B') || ',' || tests.l('E') || $$, 'New', 'forged')$$,
+select tests.expect(tests.fx('F'), 'insert into public.consultations (user_id, expert_id, subject, moderation_reason) values (' || tests.l('F') || ',' || tests.l('E') || $$, 'New', 'forged')$$,
   'n:1', 'consultation moderation: a requester may send a reason with a new consultation...');
 select is((select count(*) from public.consultations where moderation_reason = 'forged'), 0::bigint,
   'consultation moderation: ...but a new consultation never carries one');

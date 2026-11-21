@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.auth.dependencies import AuthenticatedUser, require_admin, require_authenticated_user
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_authenticated_user, require_farmer
 from app.common.consultations import service
 from app.common.consultations.schemas import (
     Consultation,
@@ -21,10 +21,12 @@ from app.common.pagination import Page, paginate
 router = APIRouter(prefix="/api/v1/consultations", tags=["consultations"])
 
 
+# Only a farmer asks an expert (D20, 2026-11-22): buyers and dealers have no expert advisory. The database refuses the
+# same insert for anyone else (consultations_insert_requester), so a call that skips this API is refused too.
 @router.post("", response_model=Consultation)
 async def create_request(
     request: CreateConsultationRequest,
-    user: AuthenticatedUser = Depends(require_authenticated_user),
+    user: AuthenticatedUser = Depends(require_farmer),
 ) -> dict:
     fields = {
         "expert_id": request.expert_id,

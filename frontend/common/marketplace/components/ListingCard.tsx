@@ -1,11 +1,12 @@
 import { ImageOff } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Badge, RatePlate, RoleBadge, StatusBadge } from '../../components';
+import { Badge, Price, RoleBadge, StatusBadge } from '../../components';
 import { statusMeta } from '../../constants/status';
 import { useTheme, type Theme } from '../../../theme';
 import { formatRs } from '../../../utils/money';
 import { conditionLabel } from './listingCondition';
+import { WishlistButton } from './WishlistButton';
 import type { ListingWithRelations } from '../types/marketplace';
 
 export interface ListingCardProps {
@@ -19,8 +20,8 @@ function sellerLine(listing: Pick<ListingWithRelations, 'owner' | 'location'>): 
   return [listing.owner?.full_name, listing.location?.city].filter(Boolean).join(' · ');
 }
 
-/** One listing in the market grid: the photo, the rate plate (price first, with its unit), the name, who sells it, and the
- * stock word. The whole card is one button whose spoken label carries all of it. */
+/** One listing in the market grid: the photo (with the buyer's wishlist heart), the price (first, with its unit), the
+ * name, who sells it, and the stock word. The whole card is one button whose spoken label carries all of it. */
 export function ListingCard({ listing, onPress }: ListingCardProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -60,8 +61,12 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
           <RoleBadge role={listing.seller_role} />
         </View>
       ) : null}
+      {/* A buyer saves the listing from the card; nothing is drawn for anyone else (D20). */}
+      <View style={styles.wishlist}>
+        <WishlistButton listing={listing} />
+      </View>
       <View style={styles.body}>
-        <RatePlate amount={listing.price} unit={`per ${listing.unit}`} size="lg" />
+        <Price amount={listing.price} unit={`per ${listing.unit}`} size="lg" />
         <Text style={styles.title} numberOfLines={2}>
           {listing.title}
         </Text>
@@ -91,7 +96,8 @@ function makeStyles({ colors, space, typography, borders, size, components }: Th
   return StyleSheet.create({
     card: {
       flex: 1,
-      margin: space[1],
+      // Each card keeps space[2] on every side, so two cards side by side, or one above another, sit space[4] apart.
+      margin: space[2],
       backgroundColor: colors.surface,
       borderRadius: components.card.radius,
       overflow: 'hidden',
@@ -106,6 +112,7 @@ function makeStyles({ colors, space, typography, borders, size, components }: Th
     },
     imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
     roleBadge: { position: 'absolute', top: space[1], left: space[1] },
+    wishlist: { position: 'absolute', top: space[1], right: space[1] },
     body: { padding: space[2], gap: space[1] },
     title: { ...typography.bodyStrong, color: colors.ink },
     seller: { ...typography.caption, color: colors.ink2 },

@@ -9,7 +9,7 @@ import {
   ListGroup,
   ListRow,
   PriceBreakdown,
-  RatePlate,
+  Price,
   ScreenScaffold,
   StatusBadge,
   StickyActionBar,
@@ -17,13 +17,14 @@ import {
 } from '../../components';
 import { PAYMENT_METHOD_NAMES, PaymentMethodOptions, useInitiatePayment, type PaymentMethod } from '../../payments';
 import { digitsOnly, parseWhole } from '../../marketplace';
-import { APP_TABS, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../constants/routes';
+import { APP_TABS, ORDERS_ROUTES } from '../../constants/routes';
 import { useCartListings, useCheckout } from '../hooks/orders';
 import { currentPrice, groupBySeller, productsTotal, sellerLabel } from '../utils/cartGroups';
 import type { Order } from '../types/orders';
 import { useAuthStore } from '../../../state/authStore';
 import { useCartStore } from '../../../state/cartStore';
 import { navigateInTab } from '../../../navigation/navigateInTab';
+import { openMarket } from '../../../navigation/openMarket';
 import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigation';
 import { useTheme, type Theme } from '../../../theme';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
@@ -39,8 +40,8 @@ interface PlacedOrder {
   paid: boolean;
 }
 
-/** Checkout: one section per seller, each with its own delivery charge, price breakdown and way to pay, and one total on the
- * plate. Placing the order also starts each payment, so there is no separate "Pay now" step afterwards (MK-05). BR-09: the
+/** Checkout: one section per seller, each with its own delivery charge, price breakdown and way to pay, and one total in the
+ * action bar. Placing the order also starts each payment, so there is no separate "Pay now" step afterwards (MK-05). BR-09: the
  * delivery charge is its own line. BR-11: the buyer pays the seller directly; ZaraiLink holds nothing. */
 export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'>) {
   const theme = useTheme();
@@ -96,7 +97,15 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
       <ScreenScaffold
         footer={
           <StickyActionBar>
-            <Button label="Continue shopping" size="lg" onPress={() => navigation.popToTop()} />
+            <Button
+              label="Continue shopping"
+              size="lg"
+              onPress={() => {
+                // The checkout closes, and the market opens whether checkout started from Market or the buyer's Cart tab (D20).
+                navigation.popToTop();
+                openMarket(navigation);
+              }}
+            />
           </StickyActionBar>
         }
       >
@@ -126,7 +135,7 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
           title="Your cart is empty"
           description="Add something from the market to check out."
           actionLabel="Browse the market"
-          onAction={() => navigation.navigate(MARKETPLACE_ROUTES.Browse)}
+          onAction={() => openMarket(navigation)}
         />
       </ScreenScaffold>
     );
@@ -136,7 +145,7 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
   return (
     <ScreenScaffold
       footer={
-        <StickyActionBar leading={<RatePlate amount={grandTotal} unit="Total with delivery" size="md" />}>
+        <StickyActionBar leading={<Price amount={grandTotal} unit="Total with delivery" size="md" />}>
           <Button
             label={groups.length === 1 ? 'Place order' : `Place ${groups.length} orders`}
             size="lg"

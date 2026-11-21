@@ -186,12 +186,8 @@
   ]
  },
  "POST /api/v1/consultations": {
-  "kind": "auth",
+  "kind": "roles",
   "roles": [
-   "admin",
-   "buyer",
-   "dealer",
-   "expert",
    "farmer"
   ]
  },

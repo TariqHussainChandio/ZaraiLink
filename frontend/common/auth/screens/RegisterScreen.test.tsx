@@ -181,7 +181,7 @@ describe('RegisterScreen (A3b: one form per role, SRDS §5–§7, §10)', () => 
     await renderAs('buyer', navigation);
     await fireEvent.press(screen.getByText('Choose a different account type'));
     expect(navigation.navigate).toHaveBeenCalledWith(AUTH_ROUTES.CreateAccount);
-    await fireEvent.press(screen.getByText('Sign in'));
+    await fireEvent.press(screen.getByText('Log in'));
     expect(navigation.navigate).toHaveBeenCalledWith(AUTH_ROUTES.Login);
   });
 });

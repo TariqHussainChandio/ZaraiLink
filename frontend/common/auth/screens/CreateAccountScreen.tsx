@@ -20,7 +20,7 @@ export function CreateAccountScreen({ navigation }: AuthScreenProps<typeof AUTH_
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
-    <AuthScreen title="Create your account" subtitle="How will you use ZaraiLink?">
+    <AuthScreen title="Create your account" subtitle="How will you use ZaraiLink?" onBack={navigation.goBack}>
       <ListGroup>
         {CHOICES.map(choice => {
           const Icon = choice.icon;
@@ -37,7 +37,7 @@ export function CreateAccountScreen({ navigation }: AuthScreenProps<typeof AUTH_
       </ListGroup>
       <View style={styles.footer}>
         <Text style={styles.footerText}>Already have an account?</Text>
-        <Button label="Sign in" icon={LogIn} variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
+        <Button label="Log in" icon={LogIn} variant="quiet" fullWidth={false} onPress={() => navigation.navigate(AUTH_ROUTES.Login)} />
       </View>
     </AuthScreen>
   );

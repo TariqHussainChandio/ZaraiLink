@@ -1,12 +1,12 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, screen, within } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../state/authStore';
 import { createTestQueryClient } from '../../testUtils/renderWithProviders';
-import { lightColors } from '../../theme';
+import { lightColors, lightTheme } from '../../theme';
 import { AdminNavigator } from './AdminNavigator';
 import { AppNavigator } from './AppNavigator';
 import { ExpertNavigator } from './ExpertNavigator';
@@ -31,7 +31,7 @@ jest.mock('../../common/notifications/services/notificationsService', () => ({
 const PHONE = { frame: { x: 0, y: 0, width: 400, height: 800 }, insets: { top: 24, left: 0, right: 0, bottom: 24 } };
 
 async function renderShell(role: 'farmer' | 'buyer' | 'dealer' | 'expert' | 'admin') {
-  useAuthStore.setState({ role, user: { id: `user-${role}` } as never });
+  useAuthStore.setState({ role, status: 'authenticated', user: { id: `user-${role}` } as never });
   const shell = role === 'expert' ? <ExpertNavigator /> : role === 'admin' ? <AdminNavigator /> : <AppNavigator />;
   await render(
     <SafeAreaProvider initialMetrics={PHONE}>
@@ -49,17 +49,56 @@ function tabLabels(): string[] {
 
 describe('role shells', () => {
   it.each([
-    ['farmer', ['Home', 'Market', 'Orders', 'Advisory', 'Account']],
-    ['buyer', ['Home', 'Market', 'Orders', 'Experts', 'Account']],
+    // D20: the farmer's tabs are plain pictures with short words; the buyer has no experts, and a Cart of their own.
+    ['farmer', ['Home', 'Market', 'Orders', 'Plant doctor', 'Me']],
+    ['buyer', ['Dashboard', 'Market', 'Cart', 'Orders', 'Profile']],
     ['dealer', ['Home', 'Market', 'Orders', 'Messages', 'Account']],
     ['expert', ['Requests', 'Cases', 'Messages', 'Account']],
-    ['admin', ['Overview', 'Approvals', 'Moderation', 'Audit', 'Account']],
   ] as const)('gives the %s their own tabs, the first selected, in their accent', async (role, tabs) => {
     await renderShell(role);
     expect(tabLabels()).toEqual(tabs);
     const first = screen.getByRole('tab', { name: tabs[0] });
     expect(first).toBeSelected();
-    expect(StyleSheet.flatten(within(first).getByText(tabs[0]).props.style).color).toBe(lightColors.accent[role].ink);
+    // D20: the dealer's marketplace shell is drawn in the brand olive, not the dealer orange.
+    const accent = role === 'dealer' ? 'brand' : role;
+    expect(StyleSheet.flatten(within(first).getByText(tabs[0]).props.style).color).toBe(lightColors.accent[accent].ink);
+  });
+
+  it('gives the admin no bottom bar: the profile button, the bell, and the Menu bar under the app bar (D20)', async () => {
+    await renderShell('admin');
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Your profile' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Menu/ })).toBeTruthy();
+  });
+
+  it.each([
+    ['farmer', 'Farmer'],
+    ['buyer', 'Buyer'],
+    ['dealer', 'Dealer'],
+    ['expert', 'Expert'],
+    ['admin', 'Admin'],
+  ] as const)('puts the photo button and the role beneath the name in the %s home app bar (D20)', async (role, label) => {
+    await renderShell(role);
+    expect(screen.getAllByRole('button', { name: 'Your profile' })).toHaveLength(1);
+    expect(screen.getByText(label)).toBeTruthy();
+  });
+
+  it('draws the farmer bar larger, for literacy-friendly navigation (D20)', async () => {
+    await renderShell('farmer');
+    const label = within(screen.getByRole('tab', { name: 'Home' })).getByText('Home');
+    expect(StyleSheet.flatten(label.props.style).fontSize).toBe(lightTheme.typography.bodyStrong.fontSize);
+  });
+
+  it('gives the admin areas other than the Overview only their name and Back to the Overview, with no Menu (D20)', async () => {
+    await renderShell('admin');
+    expect(screen.getByRole('button', { name: /^Menu/ })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: /^Menu/ }), { nativeEvent: { pageY: 140, locationY: 20 } });
+    await fireEvent.press(await screen.findByRole('button', { name: /^Approvals/ }));
+    await fireEvent.press(await screen.findByRole('menuitem', { name: /^Applications/ }));
+    expect(await screen.findByRole('header', { name: 'Approvals' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Back to the Overview' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Menu/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Your profile' })).toBeNull();
   });
 
   it.each(['farmer', 'buyer'] as const)('puts Messages and the bell in the %s Home app bar, once each', async role => {

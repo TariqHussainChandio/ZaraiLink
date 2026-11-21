@@ -62,11 +62,12 @@ beforeEach(() => {
 });
 
 describe('AdminDashboardScreen', () => {
-  it('greets the admin by first name in the first heading (A8)', async () => {
+  it('greets nobody in the body: the admin’s name is in the app bar (D20)', async () => {
     useAuthStore.setState({ profile: { full_name: 'Sana Iqbal' } as never });
     const { navigation } = makeNavigation();
     await renderScreen(navigation);
-    expect(await screen.findByRole('header', { name: 'Hello, Sana' })).toBeTruthy();
+    expect(await screen.findByText('Needs you')).toBeTruthy();
+    expect(screen.queryByText(/^Hello/)).toBeNull();
     useAuthStore.setState({ profile: null });
   });
 
@@ -154,20 +155,25 @@ describe('AdminDashboardScreen', () => {
     expect(await screen.findByText('120')).toBeTruthy();
   });
 
-  it('links to analytics, AI activity and disease knowledge; notifications are the bell, not a second button', async () => {
+  it('leaves analytics, AI activity and disease knowledge to the menu, and notifications to the bell (D20)', async () => {
     const { navigation } = makeNavigation();
     await renderScreen(navigation);
     await screen.findByText('120');
 
-    await fireEvent.press(screen.getByText('Analytics'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.Analytics);
-    await fireEvent.press(screen.getByText('AI activity'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.AiActivity);
-    await fireEvent.press(screen.getByText('Disease knowledge'));
-    expect(navigation.navigate).toHaveBeenCalledWith(ADMIN_HOME_ROUTES.DiseaseKnowledge);
+    for (const label of ['Analytics', 'AI activity', 'Disease knowledge', 'Notifications', 'Manage Users']) {
+      expect(screen.queryByRole('button', { name: label })).toBeNull();
+    }
+  });
 
-    expect(screen.queryByText('Notifications')).toBeNull();
-    expect(screen.queryByText('Manage Users')).toBeNull();
+  it('opens Users filtered to a role from that role tile (D20)', async () => {
+    const { navigation, tabs } = makeNavigation();
+    await renderScreen(navigation);
+    await fireEvent.press(await screen.findByRole('button', { name: /^Farmer/ }));
+    expect(tabs.navigate).toHaveBeenCalledWith(ADMIN_TABS.Moderation, {
+      screen: ADMIN_HOME_ROUTES.UserManagement,
+      params: { role: 'farmer' },
+      initial: false,
+    });
   });
 
   it('has no inventory entry: the admin has no access to dealer inventory (SRDS §15)', async () => {

@@ -12,6 +12,7 @@ import { CropListScreen } from '../../farmer/screens/CropListScreen';
 import { FarmDetailScreen } from '../../farmer/screens/FarmDetailScreen';
 import { FarmListScreen } from '../../farmer/screens/FarmListScreen';
 import { DealerAnalyticsScreen } from '../../dealer/screens/AnalyticsScreen';
+import { InventoryAlertsSection } from '../../dealer/components/InventoryAlertsSection';
 import { BusinessDetailsScreen } from '../../dealer/screens/BusinessDetailsScreen';
 import { NotificationListScreen } from '../../common/notifications/screens/NotificationListScreen';
 import { DiseaseProcessingScreen } from '../../ai/screens/DiseaseProcessingScreen';
@@ -20,7 +21,10 @@ import { DiseaseUploadScreen } from '../../ai/screens/DiseaseUploadScreen';
 import { EditListingScreen } from '../../common/marketplace/screens/EditListingScreen';
 import { ListingDetailScreen } from '../../common/marketplace/screens/ListingDetailScreen';
 import { MyListingsScreen } from '../../common/marketplace/screens/MyListingsScreen';
-import { homeActions } from '../headerActions';
+import { SellerProfileScreen } from '../../common/marketplace/screens/SellerProfileScreen';
+import type { ListingWithRelations } from '../../common/marketplace';
+import { WishlistScreen } from '../../buyer/screens/WishlistScreen';
+import { homeActions, profileAction } from '../headerActions';
 import { stackOptionsWithActions } from '../stackHeader';
 
 export type HomeStackParamList = {
@@ -45,6 +49,8 @@ export type HomeStackParamList = {
   // A listing opened from My listings stays in Home's stack, so Back returns to the list (audit MK-01).
   [MARKETPLACE_ROUTES.ListingDetail]: { listingId: string };
   [MARKETPLACE_ROUTES.EditListing]: { listingId: string };
+  [MARKETPLACE_ROUTES.SellerProfile]: { sellerId: string; name: string; avatarUrl: string | null; role: ListingWithRelations['seller_role']; city: string | null };
+  [HOME_ROUTES.Wishlist]: undefined;
   [HOME_ROUTES.BusinessDetails]: undefined;
   [HOME_ROUTES.Analytics]: undefined;
 };
@@ -67,7 +73,16 @@ function RoleAwareAnalyticsScreen() {
   return <EmptyState title="Analytics unavailable" description="Analytics isn't available for this role." />;
 }
 
-const HOME_STACK_OPTIONS = stackOptionsWithActions({ [HOME_ROUTES.Dashboard]: homeActions });
+/** D20: a dealer reads the inventory system's stock alerts in the same list as the shop's notifications, above them. */
+function RoleAwareNotificationsScreen() {
+  const role = useAuthStore(state => state.role);
+  return <NotificationListScreen header={role === 'dealer' ? <InventoryAlertsSection /> : undefined} />;
+}
+
+// D20: the profile button top left, Messages (farmers and buyers) and the bell top right.
+const HOME_STACK_OPTIONS = stackOptionsWithActions({ [HOME_ROUTES.Dashboard]: homeActions }, 'marketplace', {
+  [HOME_ROUTES.Dashboard]: profileAction,
+});
 
 export function HomeNavigator() {
   return (
@@ -75,11 +90,12 @@ export function HomeNavigator() {
       <Stack.Screen
         name={HOME_ROUTES.Dashboard}
         component={HomeDashboardScreen}
-        options={{ title: 'Home' }}
+        // D20: the photo and the person's name side by side in the bar (useNameTitle sets the name).
+        options={{ title: 'Home', headerLargeTitle: false }}
       />
       <Stack.Screen
         name={HOME_ROUTES.Notifications}
-        component={NotificationListScreen}
+        component={RoleAwareNotificationsScreen}
         options={{ title: 'Notifications' }}
       />
       <Stack.Screen
@@ -129,6 +145,8 @@ export function HomeNavigator() {
       />
       <Stack.Screen name={MARKETPLACE_ROUTES.ListingDetail} component={ListingDetailScreen} options={{ title: 'Listing' }} />
       <Stack.Screen name={MARKETPLACE_ROUTES.EditListing} component={EditListingScreen} options={{ title: 'Edit listing' }} />
+      <Stack.Screen name={MARKETPLACE_ROUTES.SellerProfile} component={SellerProfileScreen} options={{ title: 'Seller' }} />
+      <Stack.Screen name={HOME_ROUTES.Wishlist} component={WishlistScreen} options={{ title: 'Wishlist' }} />
       <Stack.Screen name={HOME_ROUTES.BusinessDetails} component={BusinessDetailsScreen} options={{ title: 'Business details' }} />
       <Stack.Screen
         name={HOME_ROUTES.Analytics}

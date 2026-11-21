@@ -1,7 +1,11 @@
 import React from 'react';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { pickFromLibrary } from '../../../utils/photoPicker';
+import { updateProfile, uploadAvatar } from '../services/profileService';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { ViewProfileScreen } from './ViewProfileScreen';
+import { ProfilePhoto } from '../components/ProfilePhoto';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../../state/authStore';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
@@ -14,6 +18,14 @@ jest.mock('../../auth/services/mfaService', () => ({
   verifyTotpEnrollment: jest.fn(),
   unenrollTotp: jest.fn(),
   verifySecondFactor: jest.fn(),
+}));
+
+// The gallery and the upload are the outer edge here: the picker is the system's, the upload is Supabase Storage.
+jest.mock('../../../utils/photoPicker', () => ({ pickFromLibrary: jest.fn() }));
+jest.mock('../services/profileService', () => ({
+  ...jest.requireActual('../services/profileService'),
+  uploadAvatar: jest.fn(),
+  updateProfile: jest.fn(),
 }));
 
 const profile = (overrides: Partial<Profile> = {}): Profile =>
@@ -52,12 +64,12 @@ describe('ViewProfileScreen', () => {
     expect(refreshProfile).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the user's name, role, and contact details, the phone as it is written locally", async () => {
+  it('renders the contact details, the phone as it is written locally; the name and role are in the app bar (D20)', async () => {
     useAuthStore.setState({ profile: profile(), user: { email: 'ahmed@example.com' } as never });
     await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
-    expect(screen.getByText('Ahmed Khan')).toBeTruthy();
-    expect(screen.getByText('Farmer')).toBeTruthy();
+    expect(screen.queryByText('Ahmed Khan')).toBeNull();
+    expect(screen.queryByText('Farmer')).toBeNull();
     expect(screen.getByText('ahmed@example.com')).toBeTruthy();
     expect(screen.getByText('0300 1234567')).toBeTruthy();
     expect(screen.getByText('Multan, Punjab, Pakistan')).toBeTruthy();
@@ -94,12 +106,6 @@ describe('ViewProfileScreen', () => {
     useAuthStore.setState({ profile: profile({ role }), user: { email: 'ahmed@example.com' } as never });
     await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
     expect(screen.queryByText('Business details')).toBeNull();
-  });
-
-  it('shows a prompt for an empty name', async () => {
-    useAuthStore.setState({ profile: profile({ full_name: '' }), user: { email: 'ahmed@example.com' } as never });
-    await renderWithQuery(<ViewProfileScreen navigation={makeNavigation()} route={{} as never} />);
-    expect(screen.getByText('Add your name')).toBeTruthy();
   });
 
   it('turns missing values into prompts that open the form, not dashes', async () => {
@@ -154,7 +160,6 @@ describe('ViewProfileScreen', () => {
     const navigation = makeNavigation();
     await renderWithQuery(<ViewProfileScreen navigation={navigation} route={{} as never} />);
 
-    expect(screen.getByText('Platform Admin')).toBeTruthy();
     expect(screen.getByText('admin@example.com')).toBeTruthy();
     expect(screen.getByText('Appearance')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
@@ -163,5 +168,40 @@ describe('ViewProfileScreen', () => {
     }
     await fireEvent.press(screen.getByText('Password'));
     expect(navigation.navigate).toHaveBeenCalledWith(PROFILE_ROUTES.ChangePassword);
+  });
+
+  // D20: everyone changes their own photo from the photo in their Account's app bar, the admin included.
+  it.each(['farmer', 'admin'] as const)('lets the %s open their photo and change it with Edit photo, after asking to open the gallery', async role => {
+    const refreshProfile = jest.fn().mockResolvedValue(undefined);
+    useAuthStore.setState({ profile: profile({ role, avatar_url: 'https://example.test/old.jpg' }), user: { id: 'user-1' } as never, refreshProfile });
+    (pickFromLibrary as jest.Mock).mockResolvedValue([{ uri: 'file:///new.jpg', mimeType: 'image/jpeg' }]);
+    (uploadAvatar as jest.Mock).mockResolvedValue('https://example.test/new.jpg');
+    (updateProfile as jest.Mock).mockResolvedValue(undefined);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find(button => button.text === 'Allow')?.onPress?.();
+    });
+
+    await renderWithQuery(<ProfilePhoto compact />);
+    await fireEvent.press(screen.getByRole('imagebutton', { name: 'Your profile photo' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Edit photo' }));
+
+    expect(alert).toHaveBeenCalledWith('Open your gallery?', expect.any(String), expect.any(Array));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ avatar_url: 'https://example.test/new.jpg' }));
+    expect(uploadAvatar).toHaveBeenCalledWith('user-1', expect.objectContaining({ uri: 'file:///new.jpg' }));
+    expect(refreshProfile).toHaveBeenCalled();
+    alert.mockRestore();
+  });
+
+  it('opens nothing when the person says Not now to the gallery', async () => {
+    useAuthStore.setState({ profile: profile({ avatar_url: null }), user: { id: 'user-1' } as never });
+    (pickFromLibrary as jest.Mock).mockReset();
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find(button => button.text === 'Not now')?.onPress?.();
+    });
+    await renderWithQuery(<ProfilePhoto compact />);
+    await fireEvent.press(screen.getByRole('imagebutton', { name: 'Add a profile photo' }));
+    expect(alert).toHaveBeenCalled();
+    expect(pickFromLibrary).not.toHaveBeenCalled();
+    alert.mockRestore();
   });
 });
