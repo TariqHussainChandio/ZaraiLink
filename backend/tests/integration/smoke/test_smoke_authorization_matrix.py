@@ -66,6 +66,7 @@ EXPECTED_PUBLIC = {
     ("GET", "/api/v1/expert"),
     ("GET", "/api/v1/expert/{expert_id}"),
     ("GET", "/api/v1/marketplace/listings"),
+    ("GET", "/api/v1/marketplace/listings/filter-options"),  # D20: the market filters, public like browsing
     ("GET", "/api/v1/marketplace/listings/{listing_id}"),
     ("GET", "/api/v1/marketplace/categories"),
     ("GET", "/api/v1/marketplace/crops"),

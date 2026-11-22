@@ -10828,6 +10828,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maximum": 36500,
                   "minimum": 0,
                   "type": "integer"
                 },
