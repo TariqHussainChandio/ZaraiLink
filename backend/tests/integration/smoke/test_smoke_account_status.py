@@ -58,7 +58,8 @@ def test_a_pending_dealer_is_refused_through_both_doors_and_an_approved_one_is_n
         "role": "dealer",
         "previous_status": "pending",
         "new_status": "approved",
-        "email_delivered": True,
+        # A test run sends no email (EMAIL_ENABLED=false in conftest: Gmail is the only sender, no local catcher).
+        "email_delivered": False,
     }
     approved = fresh_sign_in(approved_email)
 
@@ -225,7 +226,7 @@ def test_an_expert_applies_while_pending_and_is_approved_from_approvals(
         json={"decision": "approved", "notes": "Degree checked"},
     )
     assert decided.status_code == 200, decided.text
-    assert decided.json()["email_delivered"] is True
+    assert decided.json()["email_delivered"] is False  # no email from a test run (conftest)
     fresh = fresh_sign_in(expert_email)
     assert api_client("GET", "/api/v1/consultations/assigned", fresh).status_code == 200
     public = api_client("GET", f"/api/v1/expert/{expert_id}")

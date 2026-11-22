@@ -101,12 +101,13 @@ async def test_a_notification_is_delivered_to_its_owner_only(world, api_client):
 
 
 async def test_a_consultation_message_is_delivered_to_its_participants_only(world):
-    headers = {**_auth_headers(world.buyer.token), "Prefer": "return=representation"}
+    # The requester is a farmer: since D20 only a farmer opens a consultation (consultations_insert_requester).
+    headers = {**_auth_headers(world.farmer.token), "Prefer": "return=representation"}
     async with httpx.AsyncClient(base_url=LOCAL_URL, timeout=30) as http:
         created = await http.post(
             "/rest/v1/consultations",
             headers=headers,
-            json={"user_id": world.buyer.id, "expert_id": world.expert.id, "subject": "Realtime check"},
+            json={"user_id": world.farmer.id, "expert_id": world.expert.id, "subject": "Realtime check"},
         )
         created.raise_for_status()
         consultation_id = created.json()[0]["id"]
@@ -123,7 +124,7 @@ async def test_a_consultation_message_is_delivered_to_its_participants_only(worl
                 await http.post(
                     "/rest/v1/consultation_messages",
                     headers=headers,
-                    json={"consultation_id": consultation_id, "sender_id": world.buyer.id, "body": marker},
+                    json={"consultation_id": consultation_id, "sender_id": world.farmer.id, "body": marker},
                 )
             ).raise_for_status()
             assert await heard(expert_sink, marker, WAIT), "the expert was not told"

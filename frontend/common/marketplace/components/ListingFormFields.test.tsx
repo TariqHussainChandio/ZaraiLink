@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithQuery } from '../../../testUtils/renderWithProviders';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { Text } from 'react-native';
 import { fetchLinkableInventoryProducts } from '../services/inventoryProductsService';
 import { useAuthStore } from '../../../state/authStore';
@@ -60,6 +60,19 @@ function Harness({ defaults = listingFormDefaults, onValues }: { defaults?: List
   );
 }
 
+/** Renders the form and waits until its reference lists (categories, crops, units, the dealer's products) have loaded.
+ * A dropdown opened before its list arrives shows no options, which on a busy CI runner made these tests fail now and
+ * then; waiting for every query to settle first makes them deterministic. */
+async function renderSettled(ui: React.ReactElement, started: () => void = () => undefined) {
+  const queryClient = createTestQueryClient();
+  const view = await renderWithQuery(ui, queryClient);
+  // `started` waits for a query that begins after the first render (the dealer's products), so "nothing fetching" is not
+  // read before it has even started.
+  await waitFor(started);
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+  return view;
+}
+
 describe('ListingFormFields', () => {
   it('renders the core fields with one label style, and marks the optional ones with the field, not in the label', async () => {
     await renderWithQuery(<Harness />);
@@ -86,7 +99,7 @@ describe('ListingFormFields', () => {
   });
 
   it('offers units from the reference list, without area units, instead of free text', async () => {
-    await renderWithQuery(<Harness />);
+    await renderSettled(<Harness />);
     await fireEvent.press(await screen.findByRole('button', { name: /Sold by/ }));
     expect(await screen.findByText('Kilogram (kg)', {}, { timeout: 3000 })).toBeTruthy();
     expect(screen.getByText('Bag (bag)')).toBeTruthy();
@@ -94,8 +107,9 @@ describe('ListingFormFields', () => {
   });
 
   it('keeps a unit saved before the list existed, so it does not read as nothing chosen', async () => {
-    await renderWithQuery(<Harness defaults={{ ...listingFormDefaults, unit: '40kg bag' }} />);
-    expect(await screen.findByText('40kg bag', {}, { timeout: 3000 })).toBeTruthy();
+    await renderSettled(<Harness defaults={{ ...listingFormDefaults, unit: '40kg bag' }} />);
+    // Shown as the chosen value, and kept in the list beside the reference units.
+    expect((await screen.findAllByText('40kg bag')).length).toBeGreaterThan(0);
   });
 
   it('keeps only the digits typed into price and quantity: "1,500" is 1500', async () => {
@@ -118,7 +132,7 @@ describe('ListingFormFields', () => {
   // D8: the linked inventory product picker.
   it('offers an approved dealer their active products, and writes the pick or null for None', async () => {
     useAuthStore.setState({ profile: { role: 'dealer', account_status: 'approved' } as never });
-    await renderWithQuery(<Harness />);
+    await renderSettled(<Harness />, () => expect(mockFetchProducts).toHaveBeenCalled());
 
     const field = await screen.findByRole('button', { name: 'Linked inventory product, None' });
     expect(screen.getByText('Optional. Stock for this listing then comes from your inventory.')).toBeTruthy();
