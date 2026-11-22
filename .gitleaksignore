@@ -1,0 +1,6 @@
+# Reviewed gitleaks findings that are not secrets. Each entry is a finding's fingerprint (commit:file:rule:line).
+# Add one only after reading the line; a real secret is rotated and removed, never listed here.
+
+# 2026-11-22, approved by the maintainer: the idempotency test sends the literal key "purchase-key-1" in an
+# Idempotency-Key header; gitleaks' generic-api-key rule reads any "...-Key" header value as a credential.
+573dac2097ecde5ec9450587ef35af53d0d1a9dd:backend/tests/integration/smoke/test_smoke_inventory_api.py:generic-api-key:891
