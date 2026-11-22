@@ -1,4 +1,4 @@
-"""P5 (item 6): `Idempotency-Key` support for order checkout and payment initiation.
+"""`Idempotency-Key` support for order checkout and payment initiation.
 
 Flow: `begin()` claims (user, key, endpoint) by inserting a row before any work runs. A fresh claim
 returns a `Claim` the caller completes with the response, or abandons if the work failed (so a retry

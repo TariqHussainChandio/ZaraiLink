@@ -1,16 +1,17 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useInsets } from '../../hooks/useInsets';
 import { type Accent, type Theme, useRoleAccent, useTheme } from '../../theme';
 
 /** Each role's bottom navigation (passed as a bottom-tab navigator's `tabBar`): three to five destinations, the active
- * one in the shell's tint. A tab's `tabBarBadge` shows as the amber dot. */
-export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+ * one in the shell's tint. A tab's `tabBarBadge` shows as the amber dot. `large` (the farmer's shell, D20) draws bigger
+ * icons and bolder words in a taller bar, for people who find their way by the picture first. */
+export function TabBar({ state, descriptors, navigation, large = false }: BottomTabBarProps & { large?: boolean }) {
   const theme = useTheme();
   const accent = useRoleAccent();
-  const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
-  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(theme, accent, large), [theme, accent, large]);
+  const insets = useInsets();
 
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom }]} accessibilityRole="tablist">
@@ -34,10 +35,12 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             accessibilityState={{ selected: focused }}
             accessibilityLabel={options.tabBarBadge ? `${label}, new` : label}
             testID={options.tabBarButtonTestID}
+            // Every tab ripples when pressed (D15); the tab fills its slot, so the ripple is its whole 64 dp cell.
+            android_ripple={{ color: theme.colors.ripple }}
             style={styles.tab}
           >
             <View style={[styles.pill, focused && styles.pillActive]}>
-              {options.tabBarIcon?.({ focused, color: colour, size: theme.size.iconMd })}
+              {options.tabBarIcon?.({ focused, color: colour, size: large ? theme.size.iconLg : theme.size.iconMd })}
               {options.tabBarBadge ? <View style={styles.dot} /> : null}
             </View>
             {/* Five tabs at a large font scale do not fit "Moderation" whole; the label shrinks a little to fit instead of
@@ -52,15 +55,15 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   );
 }
 
-function makeStyles({ colors, space, size, radius, borders, components, typography, fontWeight }: Theme, accent: Accent) {
+function makeStyles({ colors, space, size, radius, borders, components, typography, fontWeight }: Theme, accent: Accent, large: boolean) {
   return StyleSheet.create({
     bar: { flexDirection: 'row', backgroundColor: colors.surface, borderTopWidth: borders.hairline, borderTopColor: colors.line },
-    tab: { flex: 1, minHeight: size.tabBar, alignItems: 'center', justifyContent: 'center', gap: space[1], paddingVertical: space[2], paddingHorizontal: space[1] },
+    tab: { flex: 1, minHeight: large ? size.tabBar + space[4] : size.tabBar, alignItems: 'center', justifyContent: 'center', gap: space[1], paddingVertical: space[2], paddingHorizontal: space[1] },
     // The pill always has a background (the bar's own surface when not selected): on Android a view that gains its first
     // background after mount drew square corners, so a tab selected later showed a square highlight (seen on the emulator).
     pill: {
-      width: components.tab.pill.width,
-      height: components.tab.pill.height,
+      width: large ? components.tab.pill.width + space[2] : components.tab.pill.width,
+      height: large ? components.tab.pill.height + space[3] : components.tab.pill.height,
       borderRadius: radius.pill,
       backgroundColor: colors.surface,
       alignItems: 'center',
@@ -79,6 +82,6 @@ function makeStyles({ colors, space, size, radius, borders, components, typograp
       borderWidth: borders.selected,
       borderColor: colors.module.notificationsInk,
     },
-    label: { ...typography.caption, fontWeight: fontWeight.semibold },
+    label: large ? { ...typography.bodyStrong } : { ...typography.caption, fontWeight: fontWeight.semibold },
   });
 }

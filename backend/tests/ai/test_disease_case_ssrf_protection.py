@@ -40,12 +40,14 @@ SSRF_PAYLOADS = [
 ]
 
 
+# D11 (A6): creating a case is farmer-only, so the caller here is a farmer. Overriding the base dependency keeps the
+# real role check (require_farmer) in the chain.
 @pytest.fixture
-def buyer_client():
+def farmer_client():
     app.dependency_overrides[require_authenticated_user] = lambda: AuthenticatedUser(
         id=CALLER_ID,
         email=None,
-        role="buyer",
+        role="farmer",
         access_token="test-token",
     )
     yield TestClient(app)
@@ -53,9 +55,9 @@ def buyer_client():
 
 
 @pytest.mark.parametrize("payload", SSRF_PAYLOADS)
-def test_create_case_rejects_url_shaped_payloads(buyer_client, payload):
+def test_create_case_rejects_url_shaped_payloads(farmer_client, payload):
     with patch("app.ai.service.disease_repository.create_case") as create:
-        response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": payload})
+        response = farmer_client.post("/api/v1/disease/cases", json={"storage_path": payload})
 
     assert response.status_code in (400, 422)
     create.assert_not_called()
@@ -70,36 +72,36 @@ def test_create_case_rejects_url_shaped_payloads(buyer_client, payload):
         f"/{CALLER_ID}/photo.jpg",  # leading slash
     ],
 )
-def test_create_case_rejects_path_traversal_and_malformed_paths(buyer_client, payload):
+def test_create_case_rejects_path_traversal_and_malformed_paths(farmer_client, payload):
     with patch("app.ai.service.disease_repository.create_case") as create:
-        response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": payload})
+        response = farmer_client.post("/api/v1/disease/cases", json={"storage_path": payload})
 
     assert response.status_code in (400, 422)
     create.assert_not_called()
 
 
-def test_create_case_rejects_an_excessively_long_storage_path(buyer_client):
+def test_create_case_rejects_an_excessively_long_storage_path(farmer_client):
     # Found by this phase's verifier: the regex alone has no length bound, so a 100,000+ char
     # string passed shape validation. Not exploitable for SSRF (it never reaches an outbound
     # request), but a defense-in-depth gap versus every other validated field in this codebase.
     with patch("app.ai.service.disease_repository.create_case") as create:
-        response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": f"{CALLER_ID}/" + "a" * 300})
+        response = farmer_client.post("/api/v1/disease/cases", json={"storage_path": f"{CALLER_ID}/" + "a" * 300})
 
     assert response.status_code == 422
     create.assert_not_called()
 
 
-def test_create_case_rejects_a_storage_path_under_a_different_users_id(buyer_client):
+def test_create_case_rejects_a_storage_path_under_a_different_users_id(farmer_client):
     # Shape-valid (passes the schema's regex) but points at another user's uploaded object — the
     # regex alone can't express ownership, so disease_service.create_case checks it directly.
     with patch("app.ai.service.disease_repository.create_case") as create:
-        response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": f"{OTHER_USER_ID}/photo.jpg"})
+        response = farmer_client.post("/api/v1/disease/cases", json={"storage_path": f"{OTHER_USER_ID}/photo.jpg"})
 
     assert response.status_code == 422
     create.assert_not_called()
 
 
-def test_create_case_accepts_a_storage_path_under_the_callers_own_id(buyer_client):
+def test_create_case_accepts_a_storage_path_under_the_callers_own_id(farmer_client):
     stored = {
         "id": "case-1",
         "user_id": CALLER_ID,
@@ -114,7 +116,7 @@ def test_create_case_accepts_a_storage_path_under_the_callers_own_id(buyer_clien
             return_value="https://example.supabase.co/storage/signed?token=abc",
         ),
     ):
-        response = buyer_client.post("/api/v1/disease/cases", json={"storage_path": f"{CALLER_ID}/photo.jpg"})
+        response = farmer_client.post("/api/v1/disease/cases", json={"storage_path": f"{CALLER_ID}/photo.jpg"})
 
     assert response.status_code == 200, response.text
     assert response.json()["image_signed_url"] == "https://example.supabase.co/storage/signed?token=abc"

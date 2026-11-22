@@ -9,8 +9,11 @@ jest.mock('../services/supabase/client', () => {
 });
 
 // Imported after the mock so the store picks up the mocked client.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase/client';
-import { useAuthStore } from './authStore';
+import { selectAccount, useAuthStore } from './authStore';
+import { useNetworkStore } from './networkStore';
+import { recallProfile, rememberProfile } from './rememberedProfile';
 
 const mockedSupabase = supabase as unknown as ReturnType<typeof makeSupabaseMock>;
 
@@ -28,13 +31,23 @@ const profileRow = {
 
 function resetStore() {
   act(() => {
-    useAuthStore.setState({ session: null, user: null, profile: null, role: null, status: 'loading' });
+    useAuthStore.setState({
+      session: null,
+      user: null,
+      profile: null,
+      role: null,
+      status: 'loading',
+      unavailableReason: null,
+      deviceAccount: null,
+    });
+    useNetworkStore.setState({ isOffline: false });
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
   resetStore();
+  await AsyncStorage.clear();
 });
 
 describe('useAuthStore.initialize', () => {
@@ -298,8 +311,16 @@ describe('useAuthStore: account status', () => {
   });
 });
 
-// A3a verification round 1, H1: an admin with an authenticator gives the second factor before the console opens.
-describe('useAuthStore: the admin second factor', () => {
+// D19: two-step verification is optional sign-in protection for everyone but the admin, who never has one to give.
+describe('useAuthStore: the optional second factor', () => {
+  // The default (no factor) again afterwards, so later suites are not asked for a code.
+  afterEach(() => {
+    mockedSupabase.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
+      data: { currentLevel: 'aal1', nextLevel: 'aal1', currentAuthenticationMethods: [] },
+      error: null,
+    } as never);
+  });
+
   async function signIn(role: string, levels: { currentLevel: string; nextLevel: string }) {
     mockedSupabase.auth.getSession.mockResolvedValue({ data: { session }, error: null });
     mockProfile({ ...profileRow, role, account_status: 'approved' });
@@ -311,28 +332,188 @@ describe('useAuthStore: the admin second factor', () => {
     return unsubscribe;
   }
 
-  it('asks an admin who signed in with the password only for the code', async () => {
-    const unsubscribe = await signIn('admin', { currentLevel: 'aal1', nextLevel: 'aal2' });
+  it('asks a farmer who turned it on and signed in with the password only for the code', async () => {
+    const unsubscribe = await signIn('farmer', { currentLevel: 'aal1', nextLevel: 'aal2' });
     await waitFor(() => expect(useAuthStore.getState().status).toBe('secondFactor'));
     unsubscribe();
   });
 
-  it('opens the console once the session has used the second factor', async () => {
-    const unsubscribe = await signIn('admin', { currentLevel: 'aal2', nextLevel: 'aal2' });
+  it('opens the shell once the session has used the second factor', async () => {
+    const unsubscribe = await signIn('buyer', { currentLevel: 'aal2', nextLevel: 'aal2' });
     await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
     unsubscribe();
   });
 
-  it('opens the console for an admin with no authenticator yet (they set one up in Settings)', async () => {
-    const unsubscribe = await signIn('admin', { currentLevel: 'aal1', nextLevel: 'aal1' });
+  it('opens the shell for someone who never turned it on', async () => {
+    const unsubscribe = await signIn('dealer', { currentLevel: 'aal1', nextLevel: 'aal1' });
     await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
     unsubscribe();
   });
 
-  it('never asks anyone but an admin', async () => {
-    const unsubscribe = await signIn('farmer', { currentLevel: 'aal1', nextLevel: 'aal2' });
+  it('never asks the admin, even with a factor left from before D19', async () => {
+    const unsubscribe = await signIn('admin', { currentLevel: 'aal1', nextLevel: 'aal2' });
     await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
     expect(mockedSupabase.auth.mfa.getAuthenticatorAssuranceLevel).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+});
+
+// B4 verification, F1: an approved dealer who started the app offline landed in the buyer shell and stayed there after
+// reconnecting. The profile read is faked at its edge exactly as postgrest-js answers: no response is status 0.
+describe('useAuthStore: an offline start', () => {
+  const dealerSession = { access_token: 'token-dealer', user: { id: 'dealer-a', email: 'dealer@example.com' } };
+  const approvedDealer = {
+    ...profileRow,
+    id: 'dealer-a',
+    role: 'dealer',
+    full_name: 'Dealer A',
+    account_status: 'approved',
+    is_suspended: false,
+  };
+
+  function answerProfile(answer: { data: unknown; error: unknown; status: number }) {
+    mockedSupabase.from.mockImplementation(() => {
+      const builder: any = {};
+      builder.select = jest.fn(() => builder);
+      builder.eq = jest.fn(() => builder);
+      builder.single = jest.fn(() => Promise.resolve(answer));
+      return builder;
+    });
+  }
+  const offline = () =>
+    answerProfile({ data: null, error: { message: 'TypeError: Network request failed', code: '' }, status: 0 });
+  const server = (row: Record<string, unknown>) => answerProfile({ data: row, error: null, status: 200 });
+
+  async function coldStart(expected: string) {
+    mockedSupabase.auth.getSession.mockResolvedValue({ data: { session: dealerSession }, error: null });
+    let unsubscribe!: () => void;
+    await act(async () => {
+      unsubscribe = useAuthStore.getState().initialize();
+    });
+    await waitFor(() => expect(useAuthStore.getState().status).toBe(expected));
+    return unsubscribe;
+  }
+
+  async function reconnect() {
+    await act(async () => {
+      useNetworkStore.setState({ isOffline: true });
+    });
+    await act(async () => {
+      useNetworkStore.setState({ isOffline: false });
+    });
+  }
+
+  it('opens the remembered approved dealer in the dealer shell, without writing personal fields to the device', async () => {
+    await rememberProfile(approvedDealer as never);
+    offline();
+    const unsubscribe = await coldStart('authenticated');
+
+    const state = useAuthStore.getState();
+    expect(state.role).toBe('dealer');
+    expect(selectAccount(state)).toEqual({ id: 'dealer-a', role: 'dealer', account_status: 'approved', is_suspended: false });
+    expect(state.profile).toBeNull();
+    expect(await AsyncStorage.getItem('zl-remembered-profile')).not.toContain('Dealer A');
+    unsubscribe();
+  });
+
+  it('says the account cannot be checked when nothing is remembered, and guesses no role', async () => {
+    offline();
+    const unsubscribe = await coldStart('accountUnavailable');
+    expect(useAuthStore.getState().unavailableReason).toBe('offline');
+    expect(useAuthStore.getState().role).toBeNull();
+    unsubscribe();
+  });
+
+  it('never opens the remembered profile of another user', async () => {
+    await rememberProfile({ ...approvedDealer, id: 'dealer-b' } as never);
+    offline();
+    const unsubscribe = await coldStart('accountUnavailable');
+    expect(useAuthStore.getState().role).toBeNull();
+    unsubscribe();
+  });
+
+  it.each([401, 403])('does not fall back to the remembered profile when the server answers %s', async status => {
+    await rememberProfile(approvedDealer as never);
+    answerProfile({ data: null, error: { message: 'JWT expired', code: 'PGRST301' }, status });
+    const unsubscribe = await coldStart('accountUnavailable');
+    expect(useAuthStore.getState().unavailableReason).toBe('refused');
+    expect(useAuthStore.getState().role).toBeNull();
+    expect(selectAccount(useAuthStore.getState())).toBeNull();
+    unsubscribe();
+  });
+
+  it('reads the profile again on reconnect: an approved dealer stays, with the server profile', async () => {
+    await rememberProfile(approvedDealer as never);
+    offline();
+    const unsubscribe = await coldStart('authenticated');
+
+    server(approvedDealer);
+    await reconnect();
+    await waitFor(() => expect(useAuthStore.getState().profile?.full_name).toBe('Dealer A'));
+    expect(useAuthStore.getState().status).toBe('authenticated');
+    expect(useAuthStore.getState().role).toBe('dealer');
+    expect(useAuthStore.getState().deviceAccount).toBeNull();
+    unsubscribe();
+  });
+
+  it('switches to Suspended on reconnect when the dealer was suspended meanwhile, and remembers that at once', async () => {
+    await rememberProfile(approvedDealer as never);
+    offline();
+    const unsubscribe = await coldStart('authenticated');
+
+    server({ ...approvedDealer, is_suspended: true });
+    await reconnect();
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('suspended'));
+    expect((await recallProfile('dealer-a'))?.is_suspended).toBe(true);
+    unsubscribe();
+  });
+
+  it('closes the dealer shell on reconnect when the approval was withdrawn meanwhile', async () => {
+    await rememberProfile(approvedDealer as never);
+    offline();
+    const unsubscribe = await coldStart('authenticated');
+
+    server({ ...approvedDealer, account_status: 'pending' });
+    await reconnect();
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('awaitingApproval'));
+    unsubscribe();
+  });
+
+  it('leaves the cannot-check state by itself once the connection returns', async () => {
+    offline();
+    const unsubscribe = await coldStart('accountUnavailable');
+
+    server(approvedDealer);
+    await reconnect();
+    await waitFor(() => expect(useAuthStore.getState().status).toBe('authenticated'));
+    expect(useAuthStore.getState().role).toBe('dealer');
+    expect(useAuthStore.getState().unavailableReason).toBeNull();
+    unsubscribe();
+  });
+
+  it('keeps the open shell when a refresh finds no connection, instead of dropping the role', async () => {
+    server(approvedDealer);
+    const unsubscribe = await coldStart('authenticated');
+
+    offline();
+    await act(async () => {
+      await useAuthStore.getState().refreshProfile();
+    });
+    expect(useAuthStore.getState().status).toBe('authenticated');
+    expect(useAuthStore.getState().role).toBe('dealer');
+    expect(useAuthStore.getState().profile?.full_name).toBe('Dealer A');
+    unsubscribe();
+  });
+
+  it('forgets the remembered profile on sign-out', async () => {
+    server(approvedDealer);
+    const unsubscribe = await coldStart('authenticated');
+    expect(await recallProfile('dealer-a')).not.toBeNull();
+
+    await act(async () => {
+      await useAuthStore.getState().signOut();
+    });
+    expect(await AsyncStorage.getItem('zl-remembered-profile')).toBeNull();
     unsubscribe();
   });
 });

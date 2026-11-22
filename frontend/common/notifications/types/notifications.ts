@@ -1,7 +1,7 @@
 // `type` isn't a DB enum (kept as `text` so new event types don't need a migration) — this
 // union covers every event Module 13's triggers currently write; treat unknown strings as
 // possible (see NotificationRow's fallback icon/label).
-export type NotificationType =
+type NotificationType =
   | 'order_new'
   | 'order_status_changed'
   | 'payment_status_changed'

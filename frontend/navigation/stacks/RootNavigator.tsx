@@ -6,11 +6,12 @@ import { SplashScreen } from '../../common/auth/screens/SplashScreen';
 import { SuspendedScreen } from '../../common/auth/screens/SuspendedScreen';
 import { ErrorBoundary } from '../../common/components/ErrorBoundary';
 import { useAuthStore } from '../../state/authStore';
+import { AccountUnavailableScreen } from '../AccountUnavailableScreen';
 import { AdminNavigator } from './AdminNavigator';
 import { AppNavigator } from './AppNavigator';
 import { ApprovalNavigator } from './ApprovalNavigator';
-import { AuthNavigator } from './AuthNavigator';
 import { ExpertNavigator } from './ExpertNavigator';
+import { GuestNavigator } from './GuestNavigator';
 
 export function RootNavigator() {
   const status = useAuthStore(state => state.status);
@@ -33,10 +34,15 @@ export function RootNavigator() {
   }
   if (status === 'approvalGranted') return <ApprovalGrantedScreen />;
   if (status === 'secondFactor') return <SecondFactorScreen />;
+  // Signed in, but the account could not be checked (offline with nothing remembered, or the read failed): no shell
+  // is guessed in its place (B4 verification, F1).
+  if (status === 'accountUnavailable') return <AccountUnavailableScreen />;
+  // Not signed in: the market is open to anyone who installs the app, with sign-in as a tab; an account is asked for
+  // only to check out or message a seller (D18). Sign-in and registration are the same screens as before.
   if (status !== 'authenticated') {
     return (
-      <Guarded name="auth navigator">
-        <AuthNavigator />
+      <Guarded name="guest navigator">
+        <GuestNavigator />
       </Guarded>
     );
   }
@@ -57,6 +63,7 @@ export function RootNavigator() {
       </Guarded>
     );
   }
+  // AppNavigator guesses no role either: without a marketplace role it shows the account state instead of a shell.
   return (
     <Guarded name="app navigator">
       <AppNavigator />

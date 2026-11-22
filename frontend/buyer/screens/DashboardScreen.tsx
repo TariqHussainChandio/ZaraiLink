@@ -1,34 +1,39 @@
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Card, EmptyState, Skeleton, SkeletonList } from '../../common/components';
-import { ActivityFeed } from '../../common/components/dashboards/ActivityFeed';
-import { QuickActions } from '../../common/components/dashboards/QuickActions';
+import { StyleSheet, Text, View } from 'react-native';
+import { Banner, Button, ListGroup, ListRow, ScreenScaffold, Skeleton, StatusBadge } from '../../common/components';
 import { StatTile } from '../../common/components/dashboards/StatTile';
-import {
-  APP_TABS,
-  CONSULTATIONS_ROUTES,
-  MARKETPLACE_ROUTES,
-  ORDERS_ROUTES,
-} from '../../common/constants/routes';
-import { useOrders, type OrderStatus } from '../../common/orders';
-import { useAuthStore } from '../../state/authStore';
+import { APP_TABS, HOME_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../common/constants/routes';
+import { useOrders, type OrderWithItems } from '../../common/orders';
+import { navigateInTab } from '../../navigation/navigateInTab';
+import type { HomeStackParamList } from '../../navigation/stacks/HomeNavigator';
 import { useAppTabNavigation } from '../../navigation/stacks/useAppTabNavigation';
+import { useAuthStore } from '../../state/authStore';
+import { useWishlist } from '../../state/wishlistStore';
 import { useTheme, type Theme } from '../../theme';
+import { errorMessage } from '../../utils/errorMessage';
 import { formatRs } from '../../utils/money';
-import { statusMeta } from '../../common/constants/status';
+import { useNameTitle } from '../../hooks/useNameTitle';
 
-const IN_PROGRESS: OrderStatus[] = ['pending', 'confirmed', 'processing', 'ready', 'dispatched'];
+// Orders still moving towards the buyer; a rejected, expired or refunded order is over, not in progress.
+const IN_PROGRESS = ['pending', 'confirmed', 'processing', 'ready', 'dispatched'];
+// The order list carries no payment record, so "waiting for payment" is the stage where the buyer can still pay
+// (the same rule as `canPay` on the order screen). Disease Advisory is farmer-only: buyers get no entry into it here.
+const AWAITING_PAYMENT = ['pending', 'confirmed'];
 
-// Disease Advisory is farmer-only (like Inventory is dealer-only) — buyers get marketplace,
-// orders, and expert consultation only, no entry point into `HOME_ROUTES.DiseaseAdvisory` here.
+/** The buyer's home: what needs them first (orders to pay, goods to confirm), one next step, then recent purchases. */
 export function BuyerDashboardScreen() {
+  // D20: the app bar names whose account this is.
+  useNameTitle();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const tabNavigation = useAppTabNavigation();
-  const { data: orders = [], isPending: loading, error, refetch } = useOrders('buyer', !!userId);
-  const load = () => refetch();
+  const tabs = useAppTabNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+  const saved = useWishlist(userId).length;
+  const ordersQuery = useOrders('buyer', !!userId);
+  const { data: orders, isPending, isError, error, refetch, isRefetching } = ordersQuery;
 
   // Coming back to the dashboard shows orders placed or updated elsewhere.
   useFocusEffect(
@@ -37,112 +42,88 @@ export function BuyerDashboardScreen() {
     }, [userId, refetch]),
   );
 
-  if (error) {
-    return (
-      <EmptyState
-        title="Couldn't load your dashboard"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
+  const openOrder = (orderId: string) => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderDetail, { orderId });
+  const findProducts = () => navigateInTab(tabs, APP_TABS.Marketplace, MARKETPLACE_ROUTES.Browse);
+  const allOrders = () => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderHistory);
 
-  if (loading) {
-    return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.statsRow}>
-          <Card style={styles.statSkeletonCard}>
-            <Skeleton style={styles.statSkeletonValue} />
-            <Skeleton style={styles.statSkeletonLabel} />
-          </Card>
-          <Card style={styles.statSkeletonCard}>
-            <Skeleton style={styles.statSkeletonValue} />
-            <Skeleton style={styles.statSkeletonLabel} />
-          </Card>
-        </View>
-        <SkeletonList count={3} />
-      </ScrollView>
-    );
-  }
+  // `orders` is undefined while loading or when the first load failed: figures are then unknown ("—"), never 0.
+  const known = orders !== undefined;
+  const toPay = orders?.filter(o => AWAITING_PAYMENT.includes(o.status)) ?? [];
+  const toConfirm = orders?.filter(o => o.status === 'dispatched') ?? [];
+  const needsYou = [...toPay, ...toConfirm];
+  const open = orders?.filter(o => IN_PROGRESS.includes(o.status)).length;
 
-  // Orders still moving towards the buyer; a rejected, expired or refunded order is over, not in progress.
-  const pendingCount = orders.filter(order => IN_PROGRESS.includes(order.status)).length;
+  const purchaseRow = (order: OrderWithItems) => (
+    <ListRow
+      key={order.id}
+      title={order.seller?.full_name || 'Unknown seller'}
+      meta={order.order_items.map(item => item.listing?.title).filter(Boolean).slice(0, 2).join(', ') || undefined}
+      trailing={<Text style={styles.price}>{formatRs(order.total)}</Text>}
+      status={<StatusBadge kind="order" status={order.status} />}
+      onPress={() => openOrder(order.id)}
+    />
+  );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.statsRow}>
-        <StatTile label="Total Purchases" value={orders.length} accent={theme.colors.module.orders} />
-        <StatTile label="In Progress" value={pendingCount} accent={theme.colors.module.orders} />
+    <ScreenScaffold onRefresh={refetch} refreshing={isRefetching && !isPending} testID="buyer-dashboard">
+      {isError ? (
+        <Banner tone="danger" title="Couldn't load your orders" actionLabel="Try again" onAction={refetch}>
+          {errorMessage(error)}
+        </Banner>
+      ) : null}
+
+      {/* Every figure opens what it counts (D20). The wishlist is kept on the phone, so its count is always known. */}
+      <View style={styles.tiles}>
+        <StatTile label="Open orders" value={known ? open : null} onPress={allOrders} />
+        <StatTile label="Purchases" value={known ? orders.length : null} onPress={allOrders} />
+        <StatTile label="Saved" value={saved} onPress={() => navigation.navigate(HOME_ROUTES.Wishlist)} />
       </View>
 
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <QuickActions
-        actions={[
-          {
-            label: 'Browse Marketplace',
-            onPress: () =>
-              tabNavigation?.navigate(APP_TABS.Marketplace, { screen: MARKETPLACE_ROUTES.Browse }),
-          },
-          {
-            label: 'Consult an Expert',
-            onPress: () =>
-              tabNavigation?.navigate(APP_TABS.Consultations, {
-                screen: CONSULTATIONS_ROUTES.ConsultationList,
-              }),
-          },
-        ]}
-      />
+      {isPending ? (
+        <Skeleton style={styles.skeleton} />
+      ) : needsYou.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Needs you</Text>
+          <ListGroup>
+            {needsYou.map(order => (
+              <ListRow
+                key={order.id}
+                title={order.seller?.full_name || 'Unknown seller'}
+                meta={order.status === 'dispatched' ? 'Confirm when the goods arrive' : 'Open the order to pay'}
+                trailing={<Text style={styles.price}>{formatRs(order.total)}</Text>}
+                status={<StatusBadge kind="order" status={order.status} />}
+                onPress={() => openOrder(order.id)}
+              />
+            ))}
+          </ListGroup>
+        </View>
+      ) : null}
 
-      <ActivityFeed
-        title="Recent Purchases"
-        emptyMessage="No purchases yet"
-        items={orders.slice(0, 5).map(order => ({
-          id: order.id,
-          title: order.seller?.full_name || 'Unknown seller',
-          subtitle: `${formatRs(order.total)} · ${statusMeta('order', order.status).label}`,
-          onPress: () =>
-            tabNavigation?.navigate(APP_TABS.Orders, {
-              screen: ORDERS_ROUTES.OrderDetail,
-              params: { orderId: order.id },
-            }),
-        }))}
-      />
-    </ScrollView>
+      {needsYou.length === 0 && !isPending ? (
+        <Button label="Find seeds and fertiliser" size="lg" onPress={findProducts} />
+      ) : null}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent purchases</Text>
+        {isPending ? (
+          <Skeleton style={styles.skeleton} />
+        ) : !known ? null : orders.length === 0 ? (
+          <Text style={styles.empty}>No purchases yet. Your orders will show here.</Text>
+        ) : (
+          <ListGroup>{orders.slice(0, 5).map(order => purchaseRow(order))}</ListGroup>
+        )}
+      </View>
+    </ScreenScaffold>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    statsRow: {
-      flexDirection: 'row',
-      gap: space[3],
-      marginBottom: space[6],
-    },
-    sectionTitle: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-      marginBottom: space[2],
-    },
-    statSkeletonCard: {
-      flex: 1,
-      alignItems: 'flex-start',
-    },
-    statSkeletonValue: {
-      width: '40%',
-      height: typography.figureLg.fontSize,
-    },
-    statSkeletonLabel: {
-      marginTop: space[1],
-      width: '70%',
-      height: typography.caption.fontSize,
-    },
+    tiles: { flexDirection: 'row', gap: space[3] },
+    section: { gap: space[2] },
+    sectionTitle: { ...typography.title, color: colors.ink },
+    price: { ...typography.price, color: colors.ink },
+    empty: { ...typography.body, color: colors.ink2 },
+    skeleton: { width: '100%', height: space[12] },
   });
 }

@@ -1,9 +1,9 @@
-"""P5 (item 5): limit/offset on every list endpoint, with the next page announced in an RFC 8288
+"""Limit/offset on every list endpoint, with the next page announced in an RFC 8288
 `Link: <...>; rel="next"` header.
 
 The response body stays a bare JSON array on purpose: every mobile service function is typed
-`Promise<T[]>`, so a `{items, next}` envelope would break ~25 contracts at once and P5 has no frontend
-budget. Headers are additive; P7's generated client is where a UI starts reading them. `X-Total-Count`
+`Promise<T[]>`, so a `{items, next}` envelope would break ~25 contracts at once. Headers are additive: a client
+reads them only when it needs the next page. `X-Total-Count`
 was in the original plan and is deliberately left out: it needs a counted query per list, which changes every
 repository's return shape for a value nothing consumes yet.
 

@@ -1,7 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { dehydrate, type QueryClient } from '@tanstack/react-query';
 import { ApiError } from '../services/api/errors';
 import { useAuthStore } from '../state/authStore';
+import { recallProfile, rememberProfile } from '../state/rememberedProfile';
 import { createTestQueryClient } from '../testUtils/renderWithProviders';
+import { waitFor } from '@testing-library/react-native';
 import { queryKeys } from './keys';
 import { connectQueryManagers, queryClient, shouldPersist, shouldRetry } from './queryClient';
 
@@ -77,6 +80,48 @@ describe('sign-out', () => {
     await queryClient.prefetchQuery({ queryKey: queryKeys.orders.list('buyer'), queryFn: async () => [{ id: 'order-1' }] });
     useAuthStore.setState({ user: { id: 'user-b' } as never });
     expect(queryClient.getQueryData(queryKeys.orders.list('buyer'))).toBeUndefined();
+    disconnect();
+    useAuthStore.setState({ user: null });
+  });
+});
+
+// B4 verification, F1: the profile remembered for an offline start follows the persisted cache's rules, so a remembered
+// approved dealer never outlives a sign-out or an account switch.
+describe('the remembered profile', () => {
+  const dealer = (id: string) => ({ id, role: 'dealer', account_status: 'approved', is_suspended: false }) as never;
+
+  beforeEach(() => AsyncStorage.clear());
+
+  it('is forgotten when the session ends', async () => {
+    const disconnect = connectQueryManagers();
+    useAuthStore.setState({ user: { id: 'user-a' } as never });
+    await rememberProfile(dealer('user-a'));
+
+    useAuthStore.setState({ user: null });
+    await waitFor(async () => expect(await AsyncStorage.getItem('zl-remembered-profile')).toBeNull());
+    disconnect();
+  });
+
+  it('is forgotten when another account signs in without a sign-out in between', async () => {
+    const disconnect = connectQueryManagers();
+    useAuthStore.setState({ user: { id: 'user-a' } as never });
+    await rememberProfile(dealer('user-a'));
+
+    useAuthStore.setState({ user: { id: 'user-b' } as never });
+    await waitFor(async () => expect(await AsyncStorage.getItem('zl-remembered-profile')).toBeNull());
+    expect(await recallProfile('user-a')).toBeNull();
+    disconnect();
+    useAuthStore.setState({ user: null });
+  });
+
+  it('is forgotten at a cold start that finds a cache owned by someone else', async () => {
+    await AsyncStorage.setItem('zl-query-cache-owner', 'user-a');
+    await rememberProfile(dealer('user-a'));
+    const disconnect = connectQueryManagers();
+
+    useAuthStore.setState({ user: { id: 'user-b' } as never });
+    await waitFor(async () => expect(await AsyncStorage.getItem('zl-query-cache-owner')).toBe('user-b'));
+    expect(await recallProfile('user-a')).toBeNull();
     disconnect();
     useAuthStore.setState({ user: null });
   });

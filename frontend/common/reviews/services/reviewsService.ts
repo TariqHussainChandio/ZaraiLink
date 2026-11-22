@@ -25,11 +25,6 @@ export async function fetchReviewById(reviewId: string): Promise<ReviewWithBuyer
   return apiFetch(`/api/v1/reviews/${reviewId}`);
 }
 
-/** Admin-only, enforced server-side. */
-export async function deleteReview(reviewId: string): Promise<void> {
-  await apiFetch(`/api/v1/reviews/${reviewId}`, { method: 'DELETE' });
-}
-
 /** `reviews_one_per_order` makes this at most one row — used to gate the "Write a Review" action. */
 export async function fetchReviewByOrderId(orderId: string): Promise<ReviewWithBuyer | null> {
   return apiFetch(`/api/v1/reviews/by-order/${orderId}`);

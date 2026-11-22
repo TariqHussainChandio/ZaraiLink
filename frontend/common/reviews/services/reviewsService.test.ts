@@ -1,8 +1,8 @@
 import { apiFetch } from '../../../services/api/client';
+import * as reviewsService from './reviewsService';
 import {
   createConsultationReview,
   createReview,
-  deleteReview,
   fetchReviewByConsultationId,
   fetchReviewByOrderId,
   fetchReviewById,
@@ -77,11 +77,10 @@ describe('reads', () => {
   });
 });
 
-describe('deleteReview', () => {
-  it('DELETEs the review', async () => {
-    mockApiFetch.mockResolvedValue(undefined);
-    await deleteReview('review-1');
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/reviews/review-1', { method: 'DELETE' });
+describe('moderation', () => {
+  // SRDS §14: an admin hides a review with a reason and can restore it; nobody deletes one, and the API has no route.
+  it('offers no way to delete a review', () => {
+    expect(Object.keys(reviewsService).filter(name => /delete/i.test(name))).toEqual([]);
   });
 });
 

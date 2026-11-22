@@ -24,7 +24,8 @@ export interface BannerProps {
   onAction?: () => void;
 }
 
-/** A message about the whole screen, at its top: what happened and what to do next. */
+/** A message about the whole screen, at its top: what happened and what to do next. The message is in `body` (16),
+ * because people act on it. */
 export function Banner({ tone = 'info', title, children, actionLabel, onAction }: BannerProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -32,26 +33,29 @@ export function Banner({ tone = 'info', title, children, actionLabel, onAction }
   const Icon = ICON[tone];
 
   return (
-    // One TalkBack stop that reads the title and message together (a failure as an alert); the action stays its own stop.
-    <View
-      style={[styles.banner, { backgroundColor: bg }]}
-      accessible
-      accessibilityRole={tone === 'danger' ? 'alert' : 'summary'}
-      accessibilityLiveRegion="polite"
-    >
+    <View style={[styles.banner, { backgroundColor: bg }]}>
       <Icon color={mark} size={theme.size.iconMd} />
       <View style={styles.body}>
-        {title ? <Text style={[styles.title, { color: fg }]}>{title}</Text> : null}
-        {typeof children === 'string' ? <Text style={[styles.text, { color: fg }]}>{children}</Text> : children}
+        {/* The title and message are one TalkBack stop (a failure is announced as an alert). The action is outside it:
+            an `accessible` container around the whole banner swallowed the button for TalkBack. */}
+        <View
+          style={styles.message}
+          accessible
+          accessibilityRole={tone === 'danger' ? 'alert' : 'summary'}
+          accessibilityLiveRegion={tone === 'danger' ? 'assertive' : 'polite'}
+        >
+          {title ? <Text style={[styles.title, { color: fg }]}>{title}</Text> : null}
+          {typeof children === 'string' ? <Text style={[styles.text, { color: fg }]}>{children}</Text> : children}
+        </View>
         {actionLabel && onAction ? (
           <View style={styles.action}>
             {tone === 'advisory' ? (
               // The AI advisory keeps the AI accent in every shell; any other banner's action takes the shell's accent.
               <RoleScopeProvider scope="ai">
-                <Button label={actionLabel} onPress={onAction} variant="secondary" size="sm" fullWidth={false} />
+                <Button label={actionLabel} onPress={onAction} variant="secondary" fullWidth={false} />
               </RoleScopeProvider>
             ) : (
-              <Button label={actionLabel} onPress={onAction} variant="secondary" size="sm" fullWidth={false} />
+              <Button label={actionLabel} onPress={onAction} variant="secondary" fullWidth={false} />
             )}
           </View>
         ) : null}
@@ -71,8 +75,9 @@ function makeStyles({ space, components, typography }: Theme) {
   return StyleSheet.create({
     banner: { flexDirection: 'row', alignItems: 'flex-start', gap: banner.gap, padding: banner.padding, borderRadius: banner.radius },
     body: { flex: 1, gap: space[1] },
+    message: { gap: space[1] },
     title: { ...typography.bodyStrong },
-    text: { ...typography.caption },
+    text: { ...typography.body },
     action: { marginTop: space[2], alignSelf: 'flex-start' },
   });
 }

@@ -1,5 +1,8 @@
+import asyncio
+import logging
 from typing import Any
 
+import httpx
 from postgrest import APIError
 from postgrest.types import ReturnMethod
 
@@ -12,6 +15,17 @@ from app.database.supabase_client import get_public_client, get_user_scoped_clie
 # see any seller's name otherwise (confirmed live: this returned "owner": null for every listing).
 LISTING_SELECT = "*, category:categories(id,name,slug), owner:profiles_public(id,full_name,avatar_url)"
 PAGE_SIZE = 20
+
+logger = logging.getLogger(__name__)
+
+# What the availability read can actually fail with (D7): the database refusing or timing out the call (a statement
+# timeout, a broken join in the IMS tables) arrives as a PostgREST APIError; a dropped connection or a client timeout as
+# an httpx.HTTPError; our own deadline below as a TimeoutError; an unreadable body or a malformed row as a ValueError
+# (JSON and pydantic validation), KeyError or TypeError.
+AVAILABILITY_FAULTS = (APIError, httpx.HTTPError, TimeoutError, KeyError, TypeError, ValueError)
+# A locked or slow IMS table would otherwise hold the page for the role's statement timeout (8 s signed in): past this,
+# the listing says `unknown` and the page answers (contract "Listing availability": a timeout shows unknown).
+AVAILABILITY_TIMEOUT_SECONDS = 2.0
 
 
 async def fetch_listings(
@@ -61,9 +75,19 @@ async def fetch_availability(listing_ids: list[str], access_token: str | None = 
     token it also answers for their own hidden or sold listings, as the listing read does."""
     if not listing_ids:
         return {}
-    client = await get_user_scoped_client(access_token) if access_token else get_public_client()
-    response = await client.rpc("listing_availability", {"listing_ids": listing_ids}).execute()
-    return {row["listing_id"]: row["availability"] for row in as_rows(response)}
+    try:
+        client = await get_user_scoped_client(access_token) if access_token else get_public_client()
+        response = await asyncio.wait_for(
+            client.rpc("listing_availability", {"listing_ids": listing_ids}).execute(), AVAILABILITY_TIMEOUT_SECONDS
+        )
+        words = {row["listing_id"]: row["availability"] for row in as_rows(response)}
+    except AVAILABILITY_FAULTS:
+        # Since B3 the answer comes from the IMS stock tables, and an IMS problem never breaks browsing (SRDS §53.39,
+        # D7): each listing then says `unknown` instead of the page failing. A programming error still raises.
+        logger.warning("listing availability unavailable; showing unknown", exc_info=True)
+        return dict.fromkeys(listing_ids, "unknown")
+    # A listing the function did not answer for (hidden from this caller) is `unknown` too, never missing.
+    return {listing_id: words.get(listing_id, "unknown") for listing_id in listing_ids}
 
 
 async def fetch_listing_by_id(listing_id: str, access_token: str | None = None) -> dict | None:

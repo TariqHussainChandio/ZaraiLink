@@ -1,22 +1,24 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EmptyState, Spinner } from '../../common/components';
-import { ActivityFeed } from '../../common/components/dashboards/ActivityFeed';
-import { BarChart } from '../../common/components/dashboards/BarChart';
+import { StyleSheet, Text, View } from 'react-native';
+import { ListGroup, ListRow, QueryState, ScreenScaffold } from '../../common/components';
 import { StatTile } from '../../common/components/dashboards/StatTile';
 import { useFarmerAnalytics } from '../../common/analytics';
 import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { formatRs } from '../../utils/money';
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** The farmer's sales picture (FA-24): the totals as tiles, then the products ranked by what they earned. One list, not a
+ * chart and a list saying the same thing. The API sends totals and a product ranking, not a month-by-month series, so
+ * there is no month axis to name. */
 export function FarmerAnalyticsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const userId = useAuthStore(state => state.user?.id);
-  const { data: analytics, isPending, error, refetch } = useFarmerAnalytics(!!userId);
-  const loading = isPending && !!userId;
-  const load = () => refetch();
+  const query = useFarmerAnalytics(!!userId);
+  const { data: analytics, refetch } = query;
 
   useFocusEffect(
     useCallback(() => {
@@ -24,78 +26,60 @@ export function FarmerAnalyticsScreen() {
     }, [userId, refetch]),
   );
 
-  if (loading) return <Spinner fullscreen />;
-  if (error || !analytics) {
-    return (
-      <EmptyState
-        title="Couldn't load analytics"
-        description="Check your connection and try again."
-        actionLabel="Retry"
-        onAction={load}
-      />
-    );
-  }
+  const reload = () => {
+    refetch();
+  };
+
+  // Highest earner first; the API ranks by units sold, which is not what "top" means to someone selling produce.
+  const ranked = useMemo(() => [...(analytics?.popularProducts ?? [])].sort((a, b) => b.revenue - a.revenue), [analytics]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.statsRow}>
-        <StatTile
-          label="Listing Views"
-          value={analytics.totalListingViews}
-          accent={theme.colors.module.marketplace}
-        />
-        <StatTile
-          label="Orders"
-          value={analytics.totalOrders}
-          accent={theme.colors.module.orders}
-        />
-        <StatTile
-          label="Sales"
-          value={formatRs(analytics.totalSales)}
-          accent={theme.colors.module.payments}
-        />
-      </View>
+    <ScreenScaffold onRefresh={reload} refreshing={query.isRefetching && !query.isPending}>
+      <QueryState query={query} failureTitle="Couldn't load your analytics">
+        {analytics ? (
+          <>
+            {/* Said in words first: the figures below are tiles, and the ranking is a list, so this is the one-line summary. */}
+            <Text style={styles.summary} accessibilityRole="header">
+              {`${formatRs(analytics.totalSales)} in completed sales`}
+            </Text>
 
-      <Text style={styles.sectionTitle}>Popular Products</Text>
-      <BarChart
-        data={analytics.popularProducts.map(p => ({ label: p.title, value: p.unitsSold }))}
-        color={theme.colors.accent.farmer.mark}
-        emptyMessage="No completed sales yet"
-      />
+            <View style={styles.tiles}>
+              <StatTile label="Sales" value={formatRs(analytics.totalSales)} note="From completed orders" />
+              <StatTile label="Orders" value={analytics.totalOrders} note="Received, any status" />
+              <StatTile label="Listing views" value={analytics.totalListingViews} />
+            </View>
 
-      <ActivityFeed
-        title="Top Products by Revenue"
-        emptyMessage="No completed sales yet"
-        items={analytics.popularProducts.map(p => ({
-          id: p.listingId,
-          title: p.title,
-          subtitle: `${p.unitsSold} units sold`,
-          value: formatRs(p.revenue),
-        }))}
-      />
-    </ScrollView>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Top products by sales</Text>
+              {ranked.length === 0 ? (
+                <Text style={styles.empty}>No completed sales yet. Your best sellers will be ranked here.</Text>
+              ) : (
+                <ListGroup>
+                  {ranked.map((product, index) => (
+                    <ListRow
+                      key={product.listingId}
+                      title={`${index + 1}. ${product.title}`}
+                      meta={plural(product.unitsSold, 'unit sold', 'units sold')}
+                      trailing={<Text style={styles.revenue}>{formatRs(product.revenue)}</Text>}
+                    />
+                  ))}
+                </ListGroup>
+              )}
+            </View>
+          </>
+        ) : null}
+      </QueryState>
+    </ScreenScaffold>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    content: {
-      padding: space[4],
-    },
-    statsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space[3],
-      marginBottom: space[6],
-    },
-    sectionTitle: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-      marginBottom: space[2],
-    },
+    summary: { ...typography.titleLg, color: colors.ink },
+    tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },
+    section: { gap: space[2] },
+    sectionTitle: { ...typography.title, color: colors.ink },
+    empty: { ...typography.body, color: colors.ink2 },
+    revenue: { ...typography.price, color: colors.ink },
   });
 }

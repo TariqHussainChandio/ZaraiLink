@@ -41,7 +41,7 @@ function profile(overrides: Partial<Profile>): Profile {
   };
 }
 
-const refreshProfile = jest.fn(() => Promise.resolve());
+const refreshProfile = jest.fn((): Promise<void> => Promise.resolve());
 const signOut = jest.fn(() => Promise.resolve());
 
 function signedInAs(p: Profile) {
@@ -62,9 +62,11 @@ describe('ApplicationStatusScreen (A3a, A3b, D10)', () => {
     signedInAs(profile({ role: 'dealer' }));
     await renderWithQuery(<ApplicationStatusScreen />);
 
-    expect(screen.getByText('Your dealer account')).toBeTruthy();
+    expect(screen.getByText('Finish your dealer application')).toBeTruthy();
     expect(screen.getByText(/Send your business details and documents/)).toBeTruthy();
     expect(screen.queryByText('Under review')).toBeNull();
+    // A draft has no decision to check on, and no way out other than the quiet ones at the bottom.
+    expect(screen.queryByText('Check again')).toBeNull();
     await fireEvent.press(screen.getByText('Complete your application'));
     expect(mockNavigate).toHaveBeenCalledWith(APPROVAL_ROUTES.ApplicationWizard);
   });
@@ -82,9 +84,10 @@ describe('ApplicationStatusScreen (A3a, A3b, D10)', () => {
     await renderWithQuery(<ApplicationStatusScreen />);
 
     expect(screen.getByText('Under review')).toBeTruthy();
-    expect(screen.getByText(/An administrator reviews every dealer account/)).toBeTruthy();
+    expect(screen.getByText('An administrator is checking your business details.')).toBeTruthy();
+    expect(screen.getByText(/Sent 12 Oct/)).toBeTruthy();
     expect(screen.queryByText('Complete your application')).toBeNull();
-    await fireEvent.press(screen.getByText('View your application'));
+    await fireEvent.press(screen.getByText('View application'));
     expect(mockNavigate).toHaveBeenCalledWith(APPROVAL_ROUTES.ApplicationWizard);
   });
 
@@ -99,6 +102,7 @@ describe('ApplicationStatusScreen (A3a, A3b, D10)', () => {
     await renderWithQuery(<ApplicationStatusScreen />);
 
     expect(screen.getByText('Not approved')).toBeTruthy();
+    expect(screen.getByText('Not approved. Reason from the administrator')).toBeTruthy();
     expect(screen.getByText('The business licence is missing.')).toBeTruthy();
     await fireEvent.press(screen.getByText('Update and resubmit'));
     expect(mockNavigate).toHaveBeenCalledWith(APPROVAL_ROUTES.ApplicationWizard);
@@ -119,13 +123,37 @@ describe('ApplicationStatusScreen (A3a, A3b, D10)', () => {
     expect(refreshProfile).toHaveBeenCalledTimes(2);
   });
 
+  it('says what Check again found, so an unchanged status does not look like a dead button (AU-10)', async () => {
+    signedInAs(profile({ application_submitted_at: '2026-10-12T08:00:00Z' }));
+    await renderWithQuery(<ApplicationStatusScreen />);
+    expect(screen.getByText('The decision shows here as soon as it is made.')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Check again'));
+    expect(await screen.findByText(/Checked at .*Still under review\./)).toBeTruthy();
+  });
+
+  it('says so when Check again could not reach the server', async () => {
+    signedInAs(profile({ application_submitted_at: '2026-10-12T08:00:00Z' }));
+    refreshProfile.mockRejectedValueOnce(new TypeError('Network request failed'));
+    await renderWithQuery(<ApplicationStatusScreen />);
+
+    await fireEvent.press(screen.getByText('Check again'));
+    expect(await screen.findByText(/Could not check at .*No connection/)).toBeTruthy();
+  });
+
+  it('gives a rejected applicant the reason in full and a next step when none was written', async () => {
+    signedInAs(profile({ account_status: 'rejected', account_status_reason: null, application_submitted_at: '2026-10-12T08:00:00Z' }));
+    await renderWithQuery(<ApplicationStatusScreen />);
+    expect(screen.getByText(/No reason was given\. Check your details and documents/)).toBeTruthy();
+  });
+
   it('signs out, and opens account deletion', async () => {
     signedInAs(profile({}));
     await renderWithQuery(<ApplicationStatusScreen />);
 
-    await fireEvent.press(screen.getByText('Sign out'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
     expect(signOut).toHaveBeenCalledTimes(1);
-    await fireEvent.press(screen.getByText('Delete account'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
     expect(mockNavigate).toHaveBeenCalledWith(APPROVAL_ROUTES.DeleteAccount);
   });
 });

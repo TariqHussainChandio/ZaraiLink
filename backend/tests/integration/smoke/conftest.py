@@ -29,7 +29,6 @@ from pathlib import Path
 
 import contract
 import httpx
-import pyotp
 import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parents[3]
@@ -51,8 +50,24 @@ _SKIP_REASON = (
 # LOCAL_SUPABASE_URL), instead of skipping cleanly. The guard belongs on the shared fixture every
 # smoke test depends on instead, which works regardless of which file requests it.
 
+
+@pytest.fixture(scope="session", autouse=True)
+def _needs_local_stack():
+    """Skips every smoke test when no local stack is configured. A session-scoped autouse fixture runs before any other
+    fixture, so module fixtures (an admin's sessions, a dealer's world) and tests that go straight to the database with
+    psql are skipped too; the guard on `backend_url` alone let those error in CI's mocked "Backend" job, which has no
+    stack (httpx.UnsupportedProtocol on an empty URL, StopIteration on a missing container)."""
+    if not (_is_local and ANON_KEY and SERVICE_KEY):
+        pytest.skip(_SKIP_REASON)
+
+
 PASSWORD = "Passw0rd!123"
 RUN = uuid.uuid4().hex[:8]
+
+# D19: the platform's one admin. When both are set, the suite signs in as that admin (the maintainer's own, made by the
+# runbook) instead of promoting a fresh one; set them in the shell for the run, never in a file or in git.
+ADMIN_EMAIL = os.environ.get("ZARAILINK_ADMIN_EMAIL", "")
+ADMIN_PASSWORD = os.environ.get("ZARAILINK_ADMIN_PASSWORD", "")
 
 
 def _free_port() -> int:
@@ -84,13 +99,10 @@ def backend_url():
         # The default 200/minute per caller would throttle the property-based contract test (hundreds of requests as one
         # user) into 429s. The limiter itself is proven separately, on its own server (test_smoke_proxy_headers.py).
         "RATE_LIMIT_DEFAULT": "100000/minute",
-        # The decision emails go to the mail catcher of the stack (Mailpit); test_smoke_applications.py reads them.
-        "EMAIL_ENABLED": "true",
-        "SMTP_HOST": "127.0.0.1",
-        "SMTP_PORT": "54325",
-        "SMTP_STARTTLS": "false",
-        # Mailpit takes no login. A developer's backend/.env may hold a real sender's account (G1); it must not be
-        # offered to the mail catcher, or every send fails.
+        # Email goes through the real Gmail sender only (there is no local mail catcher), so a test run must never send
+        # any: the decision routes still run and report `email_delivered: false`. The wording of each email is proven
+        # by tests/common/notifications/test_emails.py; delivery by the maintainer's live check (G1).
+        "EMAIL_ENABLED": "false",
         "SMTP_USERNAME": "",
         "SMTP_PASSWORD": "",
     }
@@ -186,7 +198,7 @@ def sign_in(email: str) -> str:
         token_resp = http.post(
             "/auth/v1/token?grant_type=password",
             headers=_auth_headers(None),
-            json={"email": email, "password": PASSWORD},
+            json={"email": email, "password": ADMIN_PASSWORD if ADMIN_EMAIL and email == ADMIN_EMAIL else PASSWORD},
         )
         token_resp.raise_for_status()
         return token_resp.json()["access_token"]
@@ -267,7 +279,7 @@ def submit_application(backend_url: str, token: str) -> None:
 
 def approve_dealer(backend_url: str, admin_token: str, dealer_id: str, dealer_token: str) -> None:
     """The dealer sends a complete application, then an admin approves it the way the app does
-    (PATCH /admin/users/{id}/account-status, second factor)."""
+    (PATCH /admin/users/{id}/account-status)."""
     fill_application(backend_url, "dealer", dealer_id, dealer_token)
     submit_application(backend_url, dealer_token)
     with httpx.Client(base_url=backend_url, timeout=60) as c:
@@ -292,38 +304,6 @@ def approve_expert(backend_url: str, admin_token: str, expert_id: str, expert_to
     assert decided.status_code == 200, decided.text
 
 
-def enrol_totp_and_get_aal2_token(access_token: str) -> str:
-    """P4 (4A.4): `world`'s shared admin needs aal2 for the same reason a real admin does — every
-    admin-write endpoint now requires it (auth/dependencies.py:require_admin_aal2). Drives the same 3-call
-    sequence a mobile enrolment screen would (enrol -> challenge -> verify) straight against
-    Supabase Auth's REST API, matching how every other auth operation in this codebase bypasses
-    FastAPI entirely. `pyotp` stands in for the user's authenticator app."""
-    with httpx.Client(base_url=LOCAL_URL, timeout=30) as http:
-        enroll = http.post(
-            "/auth/v1/factors",
-            headers={"apikey": ANON_KEY, "Authorization": f"Bearer {access_token}"},
-            json={"factor_type": "totp"},
-        )
-        enroll.raise_for_status()
-        factor = enroll.json()
-        factor_id, secret = factor["id"], factor["totp"]["secret"]
-
-        challenge = http.post(
-            f"/auth/v1/factors/{factor_id}/challenge",
-            headers={"apikey": ANON_KEY, "Authorization": f"Bearer {access_token}"},
-        )
-        challenge.raise_for_status()
-        challenge_id = challenge.json()["id"]
-
-        verify = http.post(
-            f"/auth/v1/factors/{factor_id}/verify",
-            headers={"apikey": ANON_KEY, "Authorization": f"Bearer {access_token}"},
-            json={"challenge_id": challenge_id, "code": pyotp.TOTP(secret).now()},
-        )
-        verify.raise_for_status()
-        return verify.json()["access_token"]
-
-
 def _local_db_container() -> str:
     names = subprocess.run(
         ["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True
@@ -337,9 +317,15 @@ def promote_to_admin(user_id: str) -> None:
     never a plain UPDATE: `guard_profiles_role()` blocks any role change where `auth.uid()` is
     null (true for both a service-role PostgREST call and a raw superuser psql connection — it's
     not an RLS check, and RLS bypass doesn't exempt a session from triggers), exactly the same
-    guard that blocks a public signup from self-escalating. See the runbook for why."""
+    guard that blocks a public signup from self-escalating. See the runbook for why.
+
+    D19: there is one admin (`profiles_single_admin`). The admin a previous smoke run promoted (an
+    `@example.test` address) is retired to a buyer in the same transaction; an admin with any other address is
+    someone's real local login and is left alone, so the promotion then fails loudly rather than replace it."""
     sql = (
         "begin; set local session_replication_role = replica; "
+        "update public.profiles set role = 'buyer' where role = 'admin' and id in "
+        "(select id from auth.users where email like 'smoke-%@example.test'); "
         f"update public.profiles set role = 'admin' where id = '{user_id}'; commit;"
     )
     subprocess.run(
@@ -382,7 +368,25 @@ class World:
 
 
 @pytest.fixture(scope="session")
-def world(backend_url: str) -> World:
+def smoke_admin() -> Actor:
+    """The session's one admin (D19: there is only ever one), shared by `world` and `matrix_actors`: the platform's own
+    admin when ZARAILINK_ADMIN_EMAIL and ZARAILINK_ADMIN_PASSWORD are set, otherwise a fresh buyer promoted the
+    runbook's way. Either way a password-only session: there is no second factor (D19)."""
+    if ADMIN_EMAIL and ADMIN_PASSWORD:
+        token = sign_in(ADMIN_EMAIL)
+        with httpx.Client(base_url=LOCAL_URL, timeout=30) as http:
+            me = http.get("/auth/v1/user", headers={"apikey": ANON_KEY, "Authorization": f"Bearer {token}"})
+            me.raise_for_status()
+        return Actor(me.json()["id"], ADMIN_EMAIL, token)
+    admin_id, admin_email, admin_tok = make_user("buyer")  # promoted below — admin is never self-selected
+    promote_to_admin(admin_id)
+    # The token was minted before the promotion; the backend re-reads profiles.role per request
+    # (auth/dependencies.py), so the existing token now acts as the admin.
+    return Actor(admin_id, admin_email, admin_tok)
+
+
+@pytest.fixture(scope="session")
+def world(backend_url: str, smoke_admin: Actor) -> World:
     # max_keepalive_connections=0: a keep-alive connection reused across dozens of requests
     # against uvicorn's single-worker dev server occasionally hangs on read after a slow request
     # (e.g. the disease predict() call, which runs real torch inference) — a fresh connection per
@@ -400,15 +404,7 @@ def world(backend_url: str) -> World:
     buyer2_id, buyer2_email, buyer2_tok = make_user("buyer")
     dealer_id, dealer_email, dealer_tok = make_user("dealer")
     expert_id, expert_email, expert_tok = make_user("expert")
-    admin_id, admin_email, admin_tok = make_user("buyer")  # promoted below — admin is never self-selected
-    promote_to_admin(admin_id)
-    # The admin token was minted before the promotion; GoTrue tokens carry no role claim the
-    # backend trusts anyway (auth/dependencies.py re-reads profiles.role per request), so the existing
-    # token is still valid — only the database row's role matters.
-    # P4 (4A.4): every admin-write endpoint now requires aal2 (require_admin_aal2), so world's
-    # shared admin must actually enrol a second factor — replacing admin_tok with the
-    # post-verification aal2 token, which is a superset of what the plain aal1 token could do.
-    admin_tok = enrol_totp_and_get_aal2_token(admin_tok)
+    admin_id, admin_email, admin_tok = smoke_admin.id, smoke_admin.email, smoke_admin.token
 
     cats = api("GET", "/api/v1/marketplace/categories", buyer_tok)
     assert cats.status_code == 200, f"reference data must be seeded: {cats.text}"
@@ -562,19 +558,16 @@ def make_applicant(backend_url):
 
 
 @pytest.fixture(scope="session")
-def matrix_actors(backend_url: str) -> dict[str, str]:
+def matrix_actors(backend_url: str, smoke_admin: Actor) -> dict[str, str]:
     """One fresh, real user per role for the authorization matrix (its own users, so its ~120 requests
-    per actor neither share a rate-limit bucket with `world` nor mutate `world`'s actors). `admin` is
-    the aal2 session; `admin_aal1` is the same admin before its second factor was verified. The dealer and expert
+    per actor neither share a rate-limit bucket with `world` nor mutate `world`'s actors). The admin is the
+    session's one admin (D19), on a session of its own (a fresh sign-in). The dealer and expert
     are approved (and signed in again); `dealer_pending` and `expert_pending` are waiting for a decision, for the
     routes a pending account may and may not call (A3a, D10)."""
     tokens: dict[str, str] = {}
     for role in ("farmer", "buyer"):
         tokens[role] = make_user(role)[2]
-    admin_id, _, admin_aal1 = make_user("buyer")
-    promote_to_admin(admin_id)
-    tokens["admin_aal1"] = admin_aal1
-    tokens["admin"] = enrol_totp_and_get_aal2_token(admin_aal1)
+    tokens["admin"] = sign_in(smoke_admin.email)
     dealer_id, dealer_email, dealer_token = make_user("dealer")
     approve_dealer(backend_url, tokens["admin"], dealer_id, dealer_token)
     tokens["dealer"] = sign_in(dealer_email)

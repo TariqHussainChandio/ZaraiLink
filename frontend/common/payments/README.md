@@ -8,7 +8,7 @@ Payment method and manual payment status (cash on delivery, bank transfer). No e
 
 ## Public API
 
-Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `useResolvePayment`, `fetchPaymentByOrderId`, `PaymentMethod`, `PaymentStatus`. A payment's status is shown with the shared `StatusBadge` (`kind="payment"`).
+Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `PaymentMethodOptions` (the radio group; bank transfer is shown disabled until sellers have account details), `PAYMENT_METHOD_NAMES`, `paymentMethodName`, `useInitiatePayment`, `useResolvePayment`, `fetchPaymentByOrderId`, `PaymentMethod`, `PaymentStatus`. A payment's status is shown with the shared `StatusBadge` (`kind="payment"`).
 
 ## Inside
 

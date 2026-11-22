@@ -22,7 +22,7 @@ export function EmptyState({ title, description, icon: Icon = Inbox, actionLabel
 
   return (
     <View style={styles.container}>
-      <View style={styles.disc}>
+      <View style={styles.tile}>
         <Icon color={accent.ink} size={theme.size.iconLg} />
       </View>
       <Text style={styles.title} accessibilityRole="header">
@@ -41,10 +41,11 @@ export function EmptyState({ title, description, icon: Icon = Inbox, actionLabel
 function makeStyles({ colors, space, size, radius, typography }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: { alignItems: 'center', justifyContent: 'center', paddingVertical: space[8], paddingHorizontal: space[4], gap: space[2] },
-    disc: {
+    // A square tile, not a disc (D15): crisp corners, like a painted sign.
+    tile: {
       width: size.iconDisc,
       height: size.iconDisc,
-      borderRadius: radius.pill,
+      borderRadius: radius.md,
       backgroundColor: accent.soft,
       alignItems: 'center',
       justifyContent: 'center',

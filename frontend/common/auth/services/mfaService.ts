@@ -9,6 +9,8 @@ export interface TotpEnrollment {
   factorId: string;
   qrCodeSvg: string;
   secret: string;
+  /** The `otpauth://` link for the same key: a phone cannot scan a QR code shown on its own screen, but it can open this. */
+  uri: string;
 }
 
 /** The verified TOTP factor's id, or null if none is enrolled — needed either way: to show the
@@ -24,7 +26,7 @@ export async function getVerifiedTotpFactorId(): Promise<string | null> {
 export async function enrollTotp(): Promise<TotpEnrollment> {
   const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
   if (error) throw error;
-  return { factorId: data.id, qrCodeSvg: data.totp.qr_code, secret: data.totp.secret };
+  return { factorId: data.id, qrCodeSvg: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri };
 }
 
 export async function verifyTotpEnrollment(factorId: string, code: string): Promise<void> {

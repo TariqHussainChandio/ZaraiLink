@@ -22,10 +22,11 @@ const STOPS: Partial<Record<OrderStatus, { label: string; icon: LucideIcon; soli
   payment_failed: { label: 'Payment failed', icon: TriangleAlert, solid: true },
 };
 
-// After completion a buyer may dispute the order, and an admin may refund the dispute (or close it as completed): the
-// order service's transitions. These orders went the whole way first, so every step is done and the aftermath follows.
+// After completion a buyer may dispute the order, and an admin settles it for the buyer (`refunded`) or closes it as
+// completed: the order service's transitions. BR-11: the step is named for the decision, not "Refunded", because the
+// seller pays any refund directly and ZaraiLink never holds the money (the label matches `statusMeta`). These orders went the whole way first, so every step is done and the aftermath follows.
 const DISPUTE: [OrderStatus, string, LucideIcon] = ['disputed', 'Dispute opened', Gavel];
-const REFUND: [OrderStatus, string, LucideIcon] = ['refunded', 'Refunded', Receipt];
+const REFUND: [OrderStatus, string, LucideIcon] = ['refunded', 'Settled for buyer', Receipt];
 const AFTER: Partial<Record<OrderStatus, [OrderStatus, string, LucideIcon][]>> = {
   disputed: [DISPUTE],
   refunded: [DISPUTE, REFUND],

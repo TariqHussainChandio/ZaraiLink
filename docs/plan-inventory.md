@@ -73,6 +73,8 @@ never write). `test_a_pending_dealer_and_the_admin_reach_no_inventory_data` prov
 
 ### B1 — Inventory data model
 
+> **Status (2026-10-11): done.** Migration `20261021080000_inventory_data_model.sql` (plus `20261025080000_numeric_nan_guards.sql` from the verifier's findings); pgTAP `20261021080000_inventory_data_model` (122 assertions) passes; reset rebuilds from migrations; the reconciliation identity holds on the scripted scenario; a fresh-context verifier found a High (NaN quantities) and four lesser issues, all fixed and tested. Decisions: the listing holds the product link (`listings.inventory_product_id`), dispatch draws from the default location, an opening-balance OTHER movement fills gaps in carried-over history.
+
 **Goal:** the tables and functions in §2, with the existing data carried over. Plan mode first (migrations).
 
 | Lane | Tasks | Needs |
@@ -84,6 +86,8 @@ never write). `test_a_pending_dealer_and_the_admin_reach_no_inventory_data` prov
 scenario (restock + local sale + adjustment + damage = current stock).
 
 ### B2 — Inventory API
+
+> **Status (2026-10-11): done.** Every B2 endpoint tested: unit (`backend/tests/inventory/`, 341) and real stack with two dealers (`test_smoke_inventory_api.py`, `test_smoke_inventory_isolation.py`, `test_smoke_inventory_races.py`); the authorization matrix covers every route. The tests found five defects (empty unit, an inactive default location, silent rounding of movements and purchase lines, a refused purchase leaving a draft), all fixed. The fresh-context verifier first returned NOT VERIFIED: concurrent purchase edits duplicated lines and receiving then multiplied stock. Fixed in the database with locked definer functions (`20261025090000_purchase_atomic_writes.sql`), plus guards for the default location, the 1000-row cap, idempotency keys on movements and purchase create, and length and date caps. Re-verification: VERIFIED WITH FINDINGS, its Lows fixed. Returns have no SRDS source, so a customer return is a Stock In with a reason.
 
 **Goal:** `backend/app/inventory/` covers every SRDS §17 capability, approved dealers only, own data only.
 
@@ -104,6 +108,10 @@ and router registration.
 
 ### B3 — Marketplace synchronisation
 
+> **Status (2026-10-12): done.** pgTAP `20261022090000_inventory_sync` (and the eight files the dropped legacy tables broke, repaired); unit and real-stack (`test_smoke_inventory_sync.py`, `test_smoke_dispatch.py`, `test_smoke_listing_inventory_link.py`, `test_smoke_checkout_stock.py`). Testing fixed: D6 summed per product and per unlinked listing and net of owed lines; a dealer with no location dispatches with lines pending; retry rotation; the sync log names order, line and listing. The fresh-context verifier returned NOT VERIFIED (owed lines ignored, an IMS hang broke checkout and dispatch, exact stock readable by any signed-in user); all fixed. Round 2 found on the emulator that the shared picker drew no options (FlashList measured zero inside the sheet), so a dealer could not link a listing; fixed with the keyboard and cart-ownership issues it surfaced. Final re-verification: VERIFIED WITH FINDINGS (N4 the trade-off below; N5, the sync log screen naming its order, deferred to B4). Emulator walk: link in Edit Listing → buyer sees the word only → checkout → dispatch → the sync log shows the applied line → the next account's cart is empty.
+
+> **D6/D7 trade-off (recorded 2026-10-12, B3 verifier).** D6 refuses a dispatch only for a shortage the IMS can read. When the IMS stock is locked past the bound (2 s for a table lock, under the 8 s statement timeout for a row lock), the stock is unknown, so the dispatch goes through (D7: the marketplace never breaks) and its linked lines are logged pending, counted as owed by availability and later dispatches, and applied by the dealer's retry. No client can take such a lock (MAINTAIN is revoked, PostgREST has no LOCK), so only maintenance or DDL can open this window.
+
 **Goal:** SRDS §19–§21, §48, §53.14–§53.15, §53.39 (D5–D8).
 
 | Lane | Tasks | Needs |
@@ -117,6 +125,8 @@ dispatches deduct once; cancelling before dispatch deducts nothing; IMS unavaila
 orders, the event stays pending, and is applied on recovery; every deduction has a movement with the order id.
 
 ### B4 — IMS app
+
+> **Status (2026-10-18): done.** 22 Jest suites for every screen, hook and service; `InventoryGate` refuses anyone but an approved, unsuspended dealer; the device cache is wiped on sign-out and on an account switch; writes send an Idempotency-Key; the sync log names its order and listing (B3 N5). The emulator walk of every flow found and fixed: a new dealer stuck on "Loading locations", the movement filters failing (the app sent timestamps, the API wants dates), a cold-cache purchase line with no location, an empty trend drawing blank bars, no screen for editing a draft purchase, and the offline banner covering the app bar. The fresh-context verifier first returned NOT VERIFIED: an approved dealer who started the app offline landed in the buyer shell (the profile read failed and the role fell back to buyer). Fixed with a remembered role and account status per user, an "account can't be checked offline" state and a reload on reconnect; also a lost-reply write now says it is unconfirmed and keeps its key with the form, low stock reads the default location everywhere, and the sync log opens its order in a sheet. Re-verification: VERIFIED WITH FINDINGS (Low: an unsigned remembered record a rooted device could alter, offline application-status wording; known limit: an offline start after the token expires goes to sign-in).
 
 **Goal:** the separate inventory application (SRDS §16–§18) in `frontend/inventory/`.
 
@@ -134,6 +144,8 @@ orders, the event stays pending, and is applied on recovery; every deduction has
 clearly; an unapproved dealer never sees the tile or reaches a screen.
 
 ### B5 — Reports, analytics and reconciliation
+
+> **Status (2026-10-18): done.** pgTAP `20261024080000_inventory_exports` (74; the whole suite 1823 green; policy mutation 0 survivors); backend unit (557) and real stack (`test_smoke_inventory_reports.py`, a scripted month with real dispatches; every export opened and matched); Jest (244); emulator walk with every report, reconciliation and all eight CSV downloads checked on the device. Testing fixed: timestamps accepted as days and a far date crashing a report, float noise in figures, no UTF-8 BOM (Urdu names garbled in Excel), mixed number styles in the reconciliation file, the same product as a fast and a slow mover, "0 days" of cover for an empty product, a hidden period chip, costs rounded to whole rupees. Fresh-context verifier: VERIFIED WITH FINDINGS (139 attack checks held; every figure and CSV matched its own scripted month). Fixed after it: reconciliation now reads every page (it stopped at 1000 products), a Storage outage answers 503, exports have their own limit (10 a minute), formula characters behind spaces, invisible or fullwidth characters are neutralised, a deleted dealer's exports are swept with the account, and the report range moves to the new day at UTC midnight.
 
 | Lane | Tasks | Needs |
 |---|---|---|

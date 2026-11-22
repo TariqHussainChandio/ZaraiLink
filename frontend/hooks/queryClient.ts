@@ -4,9 +4,12 @@ import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persi
 import { focusManager, onlineManager, QueryClient, type Query } from '@tanstack/react-query';
 import type { PersistQueryClientProviderProps } from '@tanstack/react-query-persist-client';
 import { AppState, type AppStateStatus } from 'react-native';
+import { ENV } from '../config/env';
 import { isApiError } from '../services/api/errors';
 import { useAuthStore } from '../state/authStore';
 import { useNetworkStore } from '../state/networkStore';
+import { forgetRememberedProfile } from '../state/rememberedProfile';
+import { logger } from '../utils/logger';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -35,16 +38,52 @@ function createQueryClient(): QueryClient {
 export const queryClient = createQueryClient();
 
 /**
- * Only public marketplace reads are written to disk. Orders, messages, profiles and anything else personal stay
- * in memory, so a lost or shared phone never exposes them and there is nothing to purge for correctness.
+ * Only public marketplace reads and the dealer's own inventory are written to disk. Orders, messages, profiles and
+ * anything else personal stay in memory, so a lost or shared phone never exposes them.
+ *
+ * 'inventory' is the dealer's private stock data (BR-03/04: dealer-only). The maintainer decided (2026-10-11) that it
+ * is kept on the device for 24 hours so the inventory system opens offline; in exchange the whole persisted cache is
+ * wiped on sign-out and whenever a different user's session starts (`connectQueryManagers` below).
  */
-const PERSISTED_ROOTS = new Set<unknown>(['marketplace']);
+const PERSISTED_ROOTS = new Set<unknown>(['marketplace', 'inventory']);
 
 export function shouldPersist(query: Query): boolean {
   return query.state.status === 'success' && PERSISTED_ROOTS.has(query.queryKey[0]);
 }
 
 const persister = createAsyncStoragePersister({ storage: AsyncStorage, key: 'zl-query-cache' });
+
+/** The id of the user whose data the persisted cache holds; it outlives the session so a cold start can compare. */
+const CACHE_OWNER_KEY = 'zl-query-cache-owner';
+
+/**
+ * Drops every cached query, in memory and on disk, forgets whose data it was, and forgets the profile remembered for
+ * an offline start (`frontend/state/rememberedProfile.ts`) under the same rules, so a remembered approved dealer never
+ * outlives a sign-out or an account switch. `keepUserId` is the account starting now, whose own record is kept.
+ */
+async function wipeCache(keepUserId?: string): Promise<void> {
+  queryClient.clear();
+  await persister.removeClient();
+  await AsyncStorage.removeItem(CACHE_OWNER_KEY);
+  await forgetRememberedProfile(keepUserId);
+}
+
+/**
+ * A session has started (sign-in or a restored session at launch). In-memory comparison alone misses the cold start:
+ * the previous user may have signed out or expired while the app was closed, so the disk cache restored at launch can
+ * still hold their inventory. The stored owner id catches that case.
+ */
+async function claimCache(userId: string): Promise<void> {
+  const owner = await AsyncStorage.getItem(CACHE_OWNER_KEY);
+  if (owner !== null && owner !== userId) {
+    await wipeCache(userId);
+  }
+  await AsyncStorage.setItem(CACHE_OWNER_KEY, userId);
+}
+
+function reportWipeFailure(err: unknown): void {
+  logger.warn('queryClient: could not wipe the persisted cache', err);
+}
 
 export const persistOptions: PersistQueryClientProviderProps['persistOptions'] = {
   persister,
@@ -59,26 +98,90 @@ function isOnline(state: { isConnected: boolean | null; isInternetReachable: boo
   return state.isConnected !== false && state.isInternetReachable !== false;
 }
 
+const PROBE_TIMEOUT_MS = 5000;
+/** While the app believes it is offline it looks again this often, so it recovers without waiting for a network event. */
+const OFFLINE_RETRY_MS = 15000;
+
+/**
+ * Whether the app can reach its backend, by asking it: Supabase Auth's health check, about 1 KB. Any answer below 500
+ * means the network carried the request there and back.
+ */
+export async function canReachBackend(): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${ENV.supabaseUrl}/auth/v1/health`, {
+      headers: { apikey: ENV.supabaseAnonKey },
+      signal: controller.signal,
+    });
+    return response.status < 500;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Connects React Query to the device: it pauses fetching offline and refetches on reconnect and on app resume. */
 export function connectQueryManagers(): () => void {
-  onlineManager.setEventListener(setOnline => NetInfo.addEventListener(state => setOnline(isOnline(state))));
-  // The offline banner follows the device's connection too, not only a request that just failed: airplane mode shows
-  // it at once, and it clears when the connection is back, before any request has to succeed to say so.
-  const unsubscribeNetInfo = NetInfo.addEventListener(state => useNetworkStore.getState().setOffline(!isOnline(state)));
+  // NetInfo's "online" is trusted, its "offline" is checked. On a Xiaomi phone on mobile data (2026-11-20) NetInfo
+  // reported the app offline, natively and with its own probe, while the network was validated and the app's requests
+  // to Supabase and the API succeeded: the app sat behind the offline banner and fetched nothing. So an "offline" from
+  // NetInfo is confirmed by reaching the backend before the app stops fetching, and re-checked until it clears.
+  let retry: ReturnType<typeof setTimeout> | null = null;
+  let disposed = false;
+  const apply = (online: boolean) => {
+    onlineManager.setOnline(online);
+    // The offline banner follows the same answer: airplane mode shows it once the check fails, and it clears as soon
+    // as the backend answers, before any screen's request has to succeed to say so.
+    useNetworkStore.getState().setOffline(!online);
+  };
+  const confirm = () => {
+    if (retry) clearTimeout(retry);
+    retry = null;
+    canReachBackend().then(reachable => {
+      if (disposed) return;
+      apply(reachable);
+      if (!reachable) retry = setTimeout(confirm, OFFLINE_RETRY_MS);
+    });
+  };
+  const unsubscribeNetInfo = NetInfo.addEventListener(state => {
+    if (isOnline(state)) {
+      if (retry) clearTimeout(retry);
+      retry = null;
+      apply(true);
+    } else {
+      confirm();
+    }
+  });
   const subscription = AppState.addEventListener('change', (status: AppStateStatus) => {
     focusManager.setFocused(status === 'active');
+    if (status === 'active' && !onlineManager.isOnline()) confirm();
   });
 
   // Another account must never see the previous one's cached data, whichever way the session ended
-  // (sign out, expiry, suspension).
+  // (sign out, expiry, suspension). The persisted part now includes the dealer's inventory (BR-03/04), so the disk
+  // copy is wiped with the memory one.
   const unsubscribeAuth = useAuthStore.subscribe((state, previous) => {
     if (previous.user && state.user?.id !== previous.user.id) {
-      queryClient.clear();
-      persister.removeClient();
+      wipeCache(state.user?.id)
+        .then(() => (state.user ? claimCache(state.user.id) : undefined))
+        .catch(reportWipeFailure);
+      return;
+    }
+    if (!previous.user && state.user) {
+      claimCache(state.user.id).catch(reportWipeFailure);
+      return;
+    }
+    // Launch found no session: whoever owned the restored cache is signed out, so their data goes too.
+    if (previous.status === 'loading' && state.status === 'unauthenticated') {
+      wipeCache().catch(reportWipeFailure);
     }
   });
 
   return () => {
+    disposed = true;
+    if (retry) clearTimeout(retry);
     subscription.remove();
     unsubscribeNetInfo();
     unsubscribeAuth();

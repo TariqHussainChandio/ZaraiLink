@@ -1,32 +1,27 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '../../components';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
+import { BrandPanel } from '../components/BrandPanel';
 
+/** The board panel, full screen, while the session is restored. The spinner is chalk-coloured: the accent mark would be
+ * the farmer green on the blackboard green. */
 export function SplashScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>ZaraiLink</Text>
-      <Spinner />
+    <View style={styles.screen}>
+      <BrandPanel fill />
+      <View style={styles.spinner}>
+        <ActivityIndicator testID="spinner" accessibilityLabel="Loading" color={theme.colors.onBoard} size="large" />
+      </View>
     </View>
   );
 }
 
-function makeStyles({ colors, space, typography }: Theme) {
+function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surface,
-      gap: space[4],
-    },
-    title: {
-      ...typography.display,
-      color: colors.accent.brand.ink,
-    },
+    screen: { flex: 1, backgroundColor: colors.board },
+    spinner: { position: 'absolute', left: 0, right: 0, bottom: space[12], alignItems: 'center' },
   });
 }

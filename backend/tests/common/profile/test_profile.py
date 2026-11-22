@@ -13,6 +13,7 @@ from app.main import app
 client = TestClient(app)
 
 USER = AuthenticatedUser(id="user-1", email="u@x.com", role="farmer", access_token="tok")
+ADMIN = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok-a")
 
 
 @pytest.mark.asyncio
@@ -20,6 +21,39 @@ async def test_update_profile_writes_only_to_callers_own_row():
     with patch("app.common.profile.service.repo.update_profile") as mock_update:
         await service.update_profile(USER, {"full_name": "New Name"})
     mock_update.assert_called_once_with(USER.access_token, USER.id, {"full_name": "New Name"})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field", ["full_name", "phone", "street", "city"])
+async def test_the_admins_details_are_set_by_the_system(field):
+    # D19: the admin changes the password, preferences and (D20) the photo only; the other details are predefined.
+    with patch("app.common.profile.service.repo.update_profile") as mock_update, pytest.raises(AppHTTPException) as exc:
+        await service.update_profile(ADMIN, {field: "x"})
+    assert exc.value.status_code == 403
+    mock_update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_the_admin_changes_their_photo():
+    # D20: every user changes their own profile photo, the admin included.
+    with patch("app.common.profile.service.repo.update_profile") as mock_update:
+        await service.update_profile(ADMIN, {"avatar_url": "https://example.test/a.jpg"})
+    mock_update.assert_called_once_with(ADMIN.access_token, ADMIN.id, {"avatar_url": "https://example.test/a.jpg"})
+
+
+@pytest.mark.asyncio
+async def test_the_admin_still_changes_a_preference():
+    with patch("app.common.profile.service.repo.update_profile") as mock_update:
+        await service.update_profile(ADMIN, {"notifications_enabled": False})
+    mock_update.assert_called_once_with(ADMIN.access_token, ADMIN.id, {"notifications_enabled": False})
+
+
+@pytest.mark.asyncio
+async def test_the_admin_account_cannot_be_deleted():
+    with patch("app.common.profile.service.repo.reauthenticate") as mock_reauth, pytest.raises(AppHTTPException) as exc:
+        await service.delete_own_account(ADMIN, "password")
+    assert exc.value.status_code == 403
+    mock_reauth.assert_not_called()
 
 
 def test_update_profile_without_authorization_header_is_rejected():

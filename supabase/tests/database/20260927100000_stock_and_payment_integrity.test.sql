@@ -1,5 +1,6 @@
 -- Pair for migration 20260927100000_stock_and_payment_integrity.sql: the stock function only touches the order's seller's
--- inventory (each row once), an inventory row belongs to a listing its dealer owns, one open payment per order,
+-- inventory (each row once), stock belongs only to a listing its dealer owns (since B3 the IMS product link; the legacy
+-- inventory table is gone), one open payment per order,
 -- server-owned columns on insert, no decision on a dead order, and reviews only for listings the order contained.
 begin;
 \ir ../helpers/rls_helpers.inc
@@ -7,12 +8,10 @@ select * from no_plan();
 
 select tests.world();
 
--- fixtures made as the owner (the guards bind only signed-in users): F sells L1 and stocks 5 of it; dealer D plants a row
--- for F's listing directly (which the policies now refuse through the API, see below)
-insert into public.inventory (dealer_id, listing_id, stock_quantity)
-  select tests.fx('F'), tests.fx('L1'), 5;
-insert into public.inventory (dealer_id, listing_id, stock_quantity)
-  select tests.fx('D'), tests.fx('L1'), 0;
+-- fixtures made as the owner (the guards bind only signed-in users): F sells L1 (10 units, no inventory product: a farmer
+-- keeps none). B3 dropped the legacy `inventory` table, so the ownership cases below run on what replaced it: a listing's
+-- link to an IMS product (listings.inventory_product_id, guarded by guard_inventory_references since B1). Dealer D has
+-- product INV1 (1 unit at DS1) linked from LD1 (tests.world()).
 with x as (
   insert into public.orders (buyer_id, seller_id, delivery_charge) values (tests.fx('B'), tests.fx('F'), 0) returning id
 ) insert into tests.fixtures select 'OSTK', id from x;
@@ -20,25 +19,27 @@ insert into public.order_items (order_id, listing_id, quantity, unit_price) valu
 
 -- ── inventory ownership ──────────────────────────────────────────────────
 
-select tests.expect(tests.fx('D'), 'insert into public.inventory (dealer_id, listing_id) values (' || tests.l('D') || ',' || tests.l('L1') || ')', 'err:42501', 'inventory: a dealer cannot plant a row for someone else''s listing');
-select tests.expect(tests.fx('D'), 'update public.inventory set listing_id = ' || tests.l('L1') || ' where id = ' || tests.l('INV1'), 'err:42501', 'inventory: nor point their own row at it');
-select throws_ok(
-  format('insert into public.inventory (dealer_id, listing_id) values (%L, %L)', tests.fx('F'), tests.fx('L1')),
-  '23505', null, 'inventory: a listing has one row per owner');
-select tests.expect(tests.fx('F'), 'insert into public.inventory (dealer_id) values (' || tests.l('F') || ')', 'err:42501', 'inventory: only an approved dealer keeps inventory (20261005080000)');
+select tests.expect(tests.fx('D'), 'update public.listings set inventory_product_id = ' || tests.l('INV1') || ' where id = ' || tests.l('L1'), 'n:0', 'inventory: a dealer cannot attach their stock to someone else''s listing');
+select tests.expect(tests.fx('F'), 'update public.listings set inventory_product_id = ' || tests.l('INV1') || ' where id = ' || tests.l('L1'), 'err:42501', 'inventory: nor can the listing owner link to another seller''s product');
+-- "a listing has one row per owner" (the legacy unique index) has no successor to test: a listing now holds at most one
+-- product link in its own column.
+select tests.expect(tests.fx('F'), 'insert into public.inventory_products (dealer_id, sku, name) values (' || tests.l('F') || $$, 'F-1', 'Farm stock')$$, 'err:42501', 'inventory: only an approved dealer keeps inventory (20261005080000)');
 
 select is(
   (select available from public.available_stock(array[tests.fx('L1')])),
-  5::numeric, 'available stock is the listing owner''s row, not a planted one');
+  10::numeric, 'available stock of an unlinked listing is its own quantity');
+select is(
+  (select available from public.available_stock(array[tests.fx('LD1')])),
+  1::numeric, 'available stock of a linked listing is its owner''s product at the default location');
 
--- ── the stock cut takes the seller's rows only, once per row (at dispatch since 20261019080000) ──
+-- ── the stock cut takes the seller's stock only (at dispatch since 20261019080000, from the IMS since 20261022090000) ──
 
-select tests.expect(tests.fx('F'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('OSTK'), 'n:1', 'confirm: the seller confirms an order the planted row does not block');
+select tests.expect(tests.fx('F'), $$update public.orders set status = 'confirmed' where id = $$ || tests.l('OSTK'), 'n:1', 'confirm: the seller confirms the order');
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'processing' where id = $$ || tests.l('OSTK'), 'n:1', 'dispatch: the seller processes it...');
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'ready' where id = $$ || tests.l('OSTK'), 'n:1', 'dispatch: ...marks it ready...');
 select tests.expect(tests.fx('F'), $$update public.orders set status = 'dispatched' where id = $$ || tests.l('OSTK'), 'n:1', 'dispatch: ...and dispatches it');
-select is((select stock_quantity from public.inventory where dealer_id = tests.fx('F') and listing_id = tests.fx('L1')), 2::numeric, 'dispatch: the seller''s stock is reduced by the order quantity');
-select is((select stock_quantity from public.inventory where dealer_id = tests.fx('D') and listing_id = tests.fx('L1')), 0::numeric, 'dispatch: someone else''s row is left alone');
+select is((select quantity from public.listings where id = tests.fx('L1')), 7::numeric, 'dispatch: the seller''s stock is reduced by the order quantity');
+select is((select quantity from public.inventory_stock where product_id = tests.fx('INV1') and location_id = tests.fx('DS1')), 1::numeric, 'dispatch: someone else''s stock is left alone');
 
 -- the same listing twice in one order is refused, so the reduction can never run from a stale line
 with x as (

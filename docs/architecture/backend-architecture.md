@@ -37,7 +37,7 @@ backend/app/
 │   └── request_context.py   the request id carried into JSON logs
 ├── common/            shared core: rows.py (typed PostgREST rows), problem_details.py (RFC 9457 errors),
 │   │                   errors.py, logging_config.py, pagination.py, idempotency.py, openapi.py,
-│   │                   observability.py (Sentry, off unless SENTRY_DSN is set), audit_log.py, schemas.py
+│   │                   observability.py (Sentry, off unless SENTRY_DSN is set), audit_events.py, schemas.py
 │   └── <feature>/      shared features: analytics, consultations, marketplace, messaging, notifications,
 │                       orders, payments, profile, reference_data, reviews
 ├── admin/ dealer/ expert/ farmer/   role modules
@@ -57,8 +57,7 @@ Every domain (`admin`, `analytics`, `consultations`, `dealer`, `disease`, `exper
 (the reality gate's `module-boundary` rule).
 
 Cross-domain business calls (e.g. `orders_service` reducing `dealer_service`'s inventory on
-confirm, `payments_service` calling `orders_service.update_order_status`, several services
-calling the shared `audit_log_service.log_admin_action`) are direct in-process Python calls —
+confirm, `payments_service` calling `orders_service.update_order_status`) are direct in-process Python calls —
 this is one FastAPI monolith, not a set of services, so there's no HTTP hop between domains.
 
 ## Request pipeline (`main.py`, `middleware/`)
@@ -164,10 +163,10 @@ No repository other than these two calls `get_service_role_client`.
 
 Three domains that might look like service-role candidates deliberately don't reach for it,
 each with its own reason documented at the call site:
-- `audit_log_service.log_admin_action` uses the user-scoped client — every caller has already
-  passed `require_admin`, and `audit_logs`' insert policy is admin-only, so RLS already permits
-  the write; there's no reason for a full-bypass client just to log an action the caller was
-  already allowed to take.
+- Admin audit rows are not written by the backend at all since A7: a database trigger writes
+  each one in the same transaction as the admin's change (`20261023080000_admin_moderation.sql`,
+  BR-15), with the actor taken from the session, so a failed write leaves no row and a direct
+  Data API write cannot skip it. The only backend audit write left is `log_self_deletion`.
 - `orders_repository.get_available_stock` calls the `available_stock` RPC through the
   user-scoped client too — the Postgres function itself is `security definer` (elevated at the
   database level), so the elevation lives in the RPC, not in the calling client.

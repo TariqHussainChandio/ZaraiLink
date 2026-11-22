@@ -108,12 +108,21 @@ async def find_conversation(access_token: str, user_id: str, other_user_id: str)
     return rows[0] if rows else None
 
 
-async def create_conversation(access_token: str, user_id: str, other_user_id: str) -> dict:
+async def create_conversation(
+    access_token: str, user_id: str, other_user_id: str, context_type: str, context_id: str
+) -> dict:
     # N1 fix — see send_message's comment above.
     client = await get_user_scoped_client(access_token)
     response = (
         await client.table("conversations")
-        .insert({"participant_one": user_id, "participant_two": other_user_id})
+        .insert(
+            {
+                "participant_one": user_id,
+                "participant_two": other_user_id,
+                "context_type": context_type,
+                "context_id": context_id,
+            }
+        )
         .execute()
     )
     return first_row(response)

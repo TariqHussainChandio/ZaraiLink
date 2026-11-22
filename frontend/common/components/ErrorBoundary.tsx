@@ -17,9 +17,9 @@ function Fallback({ onRetry }: { onRetry: () => void }) {
   return (
     <View style={styles.container}>
       <EmptyState
-        title="Something went wrong"
-        description="This screen hit a problem. Your data is safe. Try again, and if it keeps happening, restart the app."
-        actionLabel="Retry"
+        title="This screen stopped working"
+        description="Your data is safe. Try again, and if it keeps happening, close the app and open it again."
+        actionLabel="Try again"
         onAction={onRetry}
       />
     </View>

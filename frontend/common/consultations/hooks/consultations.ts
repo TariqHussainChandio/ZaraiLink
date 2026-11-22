@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
+  createConsultationAssessment,
   createConsultationRequest,
+  fetchConsultationAssessments,
   fetchConsultationById,
   fetchConsultationMessages,
   fetchConsultationsForExpert,
@@ -14,7 +16,8 @@ import {
   type ConsultationRequestInput,
 } from '../services/consultationService';
 import { createConsultationReview, fetchReviewByConsultationId } from '../../reviews';
-import type { ConsultationMessageWithListing, ConsultationStatus } from '../../../expert';
+import type { Consultation, ConsultationMessageWithListing, ConsultationStatus } from '../../../expert';
+import type { ConsultationAssessmentInput } from '../types/consultations';
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { useRealtimeConsultationMessages } from '../../../hooks/realtime/useRealtimeConsultationMessages';
 import { queryKeys } from '../../../hooks/keys';
@@ -29,7 +32,29 @@ export function useConsultations(asExpert: boolean, enabled: boolean) {
 }
 
 export function useConsultation(id: string) {
-  return useQuery({ queryKey: queryKeys.consultations.detail(id), queryFn: () => fetchConsultationById(id) });
+  return useQuery({
+    queryKey: queryKeys.consultations.detail(id),
+    queryFn: () => fetchConsultationById(id),
+  });
+}
+
+// Kept under the consultation's detail key, so invalidating `consultations.all` refreshes it as well.
+const assessmentsKey = (consultationId: string) => [...queryKeys.consultations.detail(consultationId), 'assessments'] as const;
+
+/** The Expert Assessments on a consultation (SRDS §35), shown apart from the AI report. */
+export function useConsultationAssessments(consultationId: string) {
+  return useQuery({
+    queryKey: assessmentsKey(consultationId),
+    queryFn: () => fetchConsultationAssessments(consultationId),
+  });
+}
+
+export function useCreateConsultationAssessment(consultationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ConsultationAssessmentInput) => createConsultationAssessment(consultationId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: assessmentsKey(consultationId) }),
+  });
 }
 
 const withoutDuplicate = (messages: ConsultationMessageWithListing[], incoming: ConsultationMessageWithListing) =>
@@ -39,7 +64,11 @@ const withoutDuplicate = (messages: ConsultationMessageWithListing[], incoming: 
 export function useConsultationMessages(consultationId: string) {
   const queryClient = useQueryClient();
   const key = queryKeys.consultations.messages(consultationId);
-  const query = useQuery({ queryKey: key, queryFn: () => fetchConsultationMessages(consultationId), staleTime: 0 });
+  const query = useQuery({
+    queryKey: key,
+    queryFn: () => fetchConsultationMessages(consultationId),
+    staleTime: 0,
+  });
   useRealtimeConsultationMessages(consultationId, incoming => {
     queryClient.setQueryData<ConsultationMessageWithListing[]>(key, previous =>
       withoutDuplicate(previous ?? [], incoming as ConsultationMessageWithListing),
@@ -84,6 +113,15 @@ export function useUpdateConsultationStatus(consultationId: string) {
   });
 }
 
+/** Accepts or declines a request from a list, where the consultation is not yet the open screen (so the id is a variable). */
+export function useDecideConsultation() {
+  const invalidate = useInvalidateConsultations();
+  return useMutation({
+    mutationFn: ({ id, to }: { id: string; to: 'accepted' | 'rejected' }) => updateConsultationStatus(id, to),
+    onSuccess: invalidate,
+  });
+}
+
 interface SendConsultationMessageVariables {
   body: string;
   images?: PickedPhoto[];
@@ -116,21 +154,43 @@ export function useCreateConsultationReview(consultationId: string) {
   return useMutation({
     mutationFn: ({ rating, comment }: { rating: number; comment: string | null }) =>
       createConsultationReview(consultationId, rating, comment),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.consultations.review(consultationId) }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.consultations.review(consultationId),
+      }),
   });
 }
 
-/** Sends a consultation request, then attaches any photos (they need the new consultation's id for their path). */
+/** The new consultation, and whether its photos reached the server: the request exists either way. */
+export interface RequestConsultationResult {
+  consultation: Consultation;
+  photosFailed: boolean;
+}
+
+/**
+ * Sends a consultation request, then attaches any photos (they need the new consultation's id for their path). A photo
+ * failure does not fail the request: it was sent, so the result says the photos did not upload and the person opens the
+ * case instead of sending it twice (FA-15).
+ */
 export function useRequestConsultation(userId: string | undefined) {
   const invalidate = useInvalidateConsultations();
   return useMutation({
-    mutationFn: async ({ input, images }: { input: ConsultationRequestInput; images: PickedPhoto[] }) => {
+    mutationFn: async ({
+      input,
+      images,
+    }: {
+      input: ConsultationRequestInput;
+      images: PickedPhoto[];
+    }): Promise<RequestConsultationResult> => {
       const consultation = await createConsultationRequest(input);
-      if (images.length > 0 && userId) {
+      if (images.length === 0 || !userId) return { consultation, photosFailed: false };
+      try {
         const paths = await uploadConsultationAttachments(consultation.id, userId, images);
         await updateConsultationImages(consultation.id, paths);
+        return { consultation, photosFailed: false };
+      } catch {
+        return { consultation, photosFailed: true };
       }
-      return consultation;
     },
     onSuccess: invalidate,
   });

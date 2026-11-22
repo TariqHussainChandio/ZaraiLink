@@ -7,8 +7,8 @@ from app.common.consultations import service as consultations_service
 from app.common.marketplace import service as marketplace_service
 from app.common.orders import service as orders_service
 from app.common.reviews import service as reviews_service
-from app.dealer import service as dealer_service
 from app.farmer import service as farmer_service
+from app.inventory import service as inventory_service
 
 
 def _month_key(iso: str) -> str:
@@ -102,12 +102,14 @@ async def fetch_farmer_analytics(user: AuthenticatedUser) -> dict:
 
 
 async def fetch_dealer_analytics(user: AuthenticatedUser) -> dict:
-    orders, inventory, stores, suppliers, sale_tx, listings = await asyncio.gather(
+    # Stock figures come from the IMS through its public service, never from the inventory tables (contract "Inventory
+    # entry", BR-03/04: dealer inventory is dealer-only and the IMS owns it). The stores and suppliers counts use the
+    # same legacy reads the dealer's store and supplier screens use, so the dashboard and those lists always agree.
+    orders, summary, stores, suppliers, listings = await asyncio.gather(
         orders_service.read_orders_for_user(user, "seller"),
-        dealer_service.fetch_inventory(user),
-        dealer_service.fetch_stores(user),
-        dealer_service.fetch_suppliers(user),
-        repo.fetch_dealer_sale_transactions(user.access_token, user.id),
+        inventory_service.fetch_dealer_inventory_summary(user),
+        inventory_service.legacy_list_stores(user),
+        inventory_service.legacy_list_suppliers(user),
         repo.fetch_own_listings(user.access_token, user.id),
     )
 
@@ -115,11 +117,10 @@ async def fetch_dealer_analytics(user: AuthenticatedUser) -> dict:
     product_stats: dict[str, dict] = {}
     _accumulate_product_stats(completed_orders, product_stats)
 
-    # `inventory_transactions.quantity` stores the signed resulting delta — a `sale` always
-    # decreases stock, so these rows are negative; abs() turns "stock went down by 4" into
-    # "4 units moved", which is what a movement chart should show.
-    movement_by_month: dict[str, int] = defaultdict(int)
-    for row in sale_tx:
+    # The chart shows units sold per month, as before the IMS. A sale is a stock movement out, so its quantity may be
+    # stored signed; abs() turns "stock went down by 4" into "4 units moved", which is what a movement chart shows.
+    movement_by_month: dict[str, float] = defaultdict(float)
+    for row in summary["sales"]:
         movement_by_month[_month_key(row["created_at"])] += abs(row["quantity"])
     inventory_movement = [{"month": month, "value": value} for month, value in sorted(movement_by_month.items())[-6:]]
 
@@ -130,7 +131,7 @@ async def fetch_dealer_analytics(user: AuthenticatedUser) -> dict:
         "pendingOrders": _count_pending(orders),
         "readyToDispatch": _count_ready(orders),
         "inventoryMovement": inventory_movement,
-        "lowStockCount": sum(1 for i in inventory if i["stock_quantity"] <= i["min_stock_threshold"]),
+        "lowStockCount": summary["low_stock_count"],
         "bestSellers": _top_products(product_stats),
         "storeCount": len(stores),
         "supplierCount": len(suppliers),

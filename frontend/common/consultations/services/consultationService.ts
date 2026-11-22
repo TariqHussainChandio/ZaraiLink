@@ -8,6 +8,11 @@ import type {
   ConsultationPriority,
   ConsultationWithRelations,
 } from '../../../expert';
+import type {
+  ConsultationAssessment,
+  ConsultationAssessmentInput,
+  ConsultationDetail,
+} from '../types/consultations';
 
 const ATTACHMENTS_BUCKET = 'consultation-attachments';
 
@@ -19,6 +24,8 @@ export interface ConsultationRequestInput {
   farmId: string | null;
   images: string[];
   priority: ConsultationPriority;
+  /** The AI disease case this request carries to the expert (A6, SRDS §34); null for a plain question. */
+  diseaseCaseId?: string | null;
 }
 
 // No userId param — always the caller's own consultation, derived from the session token.
@@ -33,6 +40,8 @@ export async function createConsultationRequest(input: ConsultationRequestInput)
       farm_id: input.farmId,
       images: input.images,
       priority: input.priority,
+      // Sent only with a case, so a plain question keeps the request body it always had.
+      ...(input.diseaseCaseId ? { disease_case_id: input.diseaseCaseId } : {}),
     },
   });
 }
@@ -97,7 +106,8 @@ export async function fetchConsultationsForExpert(): Promise<ConsultationWithRel
   return apiFetch('/api/v1/consultations/assigned');
 }
 
-export async function fetchConsultationById(id: string): Promise<ConsultationWithRelations> {
+/** The consultation with its relations and, when a disease case is attached, the AI report (`ai_report`). */
+export async function fetchConsultationById(id: string): Promise<ConsultationDetail> {
   return apiFetch(`/api/v1/consultations/${id}`);
 }
 
@@ -125,5 +135,26 @@ export async function sendConsultationMessage(
   return apiFetch(`/api/v1/consultations/${consultationId}/messages`, {
     method: 'POST',
     body: { body, attachments, recommended_listing_id: recommendedListingId },
+  });
+}
+
+/** Every Expert Assessment on the consultation, newest first (the server's order); a later one supersedes an earlier one. */
+export async function fetchConsultationAssessments(consultationId: string): Promise<ConsultationAssessment[]> {
+  return apiFetch(`/api/v1/consultations/${consultationId}/assessments`);
+}
+
+// No expertId param: the server takes the caller as the expert and allows only the assigned one while the
+// consultation is accepted or in progress (403 otherwise).
+export async function createConsultationAssessment(
+  consultationId: string,
+  input: ConsultationAssessmentInput,
+): Promise<ConsultationAssessment> {
+  return apiFetch(`/api/v1/consultations/${consultationId}/assessments`, {
+    method: 'POST',
+    body: {
+      verdict: input.verdict,
+      diagnosis: input.diagnosis ?? null,
+      recommendations: input.recommendations ?? null,
+    },
   });
 }

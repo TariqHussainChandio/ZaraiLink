@@ -1,4 +1,4 @@
-"""P4 (4A.2): local JWT verification against Supabase's JWKS endpoint, replacing the per-request
+"""Local JWT verification against Supabase's JWKS endpoint, replacing the per-request
 `GET /auth/v1/user` call in `auth/dependencies.py`. `PyJWKClient` caches keys and refreshes automatically
 on an unknown `kid` (e.g. after a key rotation) — see its own `PyJWKClientCache`. A JWKS-fetch
 failure (Supabase unreachable) raises `JWKSUnavailableError`, which `auth/dependencies.py` maps to a 503,
@@ -25,6 +25,12 @@ from app.config.settings import settings
 # environment doesn't crash import of this module.
 _jwk_client: PyJWKClient | None = None
 
+# Clock skew allowed between this server and Supabase Auth when checking `iat`, `nbf` and `exp`. PyJWT refuses a
+# token issued "in the future", so with this machine's clock 2-3 seconds behind Supabase's, a token used straight after
+# sign-in was rejected as "not yet valid (iat)"; the app read the 401 as a dead session and signed the user out. A few
+# seconds of drift is normal between hosts; 30 seconds covers it without meaningfully extending an expired token.
+CLOCK_SKEW_LEEWAY_SECONDS = 30
+
 
 class JWKSUnavailableError(RuntimeError):
     """The JWKS endpoint could not be reached or returned no usable key — a Supabase-side outage
@@ -42,10 +48,6 @@ class TokenVerificationError(RuntimeError):
 class VerifiedClaims:
     sub: str
     email: str | None
-    # "aal1" (password/OTP only) or "aal2" (a second factor, e.g. TOTP, has also been verified
-    # this session) — P4 (4A.4), used to gate admin writes. Supabase always sets this claim once
-    # MFA is available on the project, defaulting to "aal1" for a session with no second factor.
-    aal: str | None = None
     # When the user last signed in (the latest `amr` timestamp, Unix seconds). A refresh keeps it, so it tells a real
     # sign-in from a refreshed session: an approved dealer or expert must sign in again after the decision (A3a).
     signed_in_at: int | None = None
@@ -94,6 +96,7 @@ def verify_access_token(token: str) -> VerifiedClaims:
             signing_key.key,
             algorithms=[signing_key.algorithm_name],
             audience="authenticated",
+            leeway=CLOCK_SKEW_LEEWAY_SECONDS,
             options={"require": ["exp", "sub", "aud"]},
         )
     except jwt.PyJWTError as exc:
@@ -103,6 +106,4 @@ def verify_access_token(token: str) -> VerifiedClaims:
     if not sub:
         raise TokenVerificationError("Token has no subject claim")
 
-    return VerifiedClaims(
-        sub=sub, email=claims.get("email"), aal=claims.get("aal"), signed_in_at=_signed_in_at(claims.get("amr"))
-    )
+    return VerifiedClaims(sub=sub, email=claims.get("email"), signed_in_at=_signed_in_at(claims.get("amr")))

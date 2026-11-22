@@ -1,11 +1,23 @@
-import { apiFetch } from '../../services/api/client';
+import { apiFetch, apiFetchPage, type Page } from '../../services/api/client';
+import type { ListingWithRelations } from '../../common/marketplace';
 import type { Profile } from '../../common/types/profile';
 import type { Role } from '../../common/constants/roles';
 import type { ReportStatus, ReportWithReporter } from '../types/reports';
-import type { AuditLogEntryWithActor } from '../types/audit';
 import type { OrderWithItems } from '../../common/orders';
+import { fetchPaymentByOrderId } from '../../common/payments';
 import type { ApplicationDocument, BusinessType, RequiredDocument } from '../../common/auth';
 import type { ApplicationDecision } from '../../expert';
+import type { AdminQueues, OrderWithItems as AdminOrder } from '../../services/api/generated/types.gen';
+import type { AiActivity, DiseaseKnowledgeEntry, DiseaseKnowledgeUpdate } from '../types/ai';
+import type { AuditEventNameEntry, AuditLogEntryWithActor } from '../types/audit';
+import type {
+  ConsultationDetail,
+  ConsultationStatus,
+  ConsultationWithRelations,
+  ModerateConsultationRequest,
+} from '../types/consultations';
+import type { DisputeOutcome, OrderStatusHistoryEntry } from '../types/orders';
+import type { Review, ReviewWithBuyer } from '../types/reviews';
 
 export interface PlatformStats {
   totalUsers: number;
@@ -31,9 +43,23 @@ export async function fetchPlatformStats(): Promise<PlatformStats> {
   };
 }
 
-/** The user list, filtered on the server (a pending-dealer queue filtered in the app lost everyone past one page). */
-export async function fetchAllProfiles(filter: { role?: Role; accountStatus?: Profile['account_status'] } = {}): Promise<Profile[]> {
-  return apiFetch('/api/v1/admin/users', { query: { role: filter.role, account_status: filter.accountStatus } });
+/** How many rows one request asks for; the API's own ceiling is 100. Every list pages past it with "Load more". */
+export const ADMIN_PAGE_SIZE = 50;
+
+/** One page of a list: the rows and where the next page starts (null on the last page). */
+export type AdminPage<T> = Page<T[]>;
+
+const pageQuery = (offset: number) => ({ limit: ADMIN_PAGE_SIZE, offset });
+
+/** One page of users, filtered on the server by role and account status (a queue filtered in the app lost everyone past
+ * the first page). The API has no name search, so the screen searches the pages it has loaded. */
+export function fetchProfilesPage(
+  filter: { role?: Role; accountStatus?: Profile['account_status'] },
+  offset: number,
+): Promise<AdminPage<Profile>> {
+  return apiFetchPage('/api/v1/admin/users', {
+    query: { role: filter.role, account_status: filter.accountStatus, ...pageQuery(offset) },
+  });
 }
 
 // logAdminAction moved server-side entirely (backend/app/common/audit_log.py) — every
@@ -52,8 +78,8 @@ export async function updateUserRole(profileId: string, newRole: Role): Promise<
 }
 
 /**
- * Decides a submitted dealer application (A3a, A3b; SRDS §8, §12). Needs a second factor; the decision and its audit row
- * are one database transaction. A rejection's reason is what the dealer reads on their Application Status screen and
+ * Decides a submitted dealer application (A3a, A3b; SRDS §8, §12). The decision and its audit row are one database
+ * transaction. A rejection's reason is what the dealer reads on their Application Status screen and
  * in the email sent after the decision; `email_delivered` says whether that email went out.
  */
 export async function decideDealerApplication(
@@ -67,8 +93,8 @@ export async function decideDealerApplication(
   });
 }
 
-export async function fetchReports(status?: ReportStatus): Promise<ReportWithReporter[]> {
-  return apiFetch('/api/v1/admin/reports', { query: { status } });
+export function fetchReportsPage(status: ReportStatus | undefined, offset: number): Promise<AdminPage<ReportWithReporter>> {
+  return apiFetchPage('/api/v1/admin/reports', { query: { status, ...pageQuery(offset) } });
 }
 
 export async function resolveReport(reportId: string, notes: string | null): Promise<void> {
@@ -82,17 +108,108 @@ export async function dismissReport(reportId: string, notes: string | null): Pro
 export interface FetchAuditLogsParams {
   targetEntity?: string;
   actorId?: string;
+  /** One SRDS §51 event name, from fetchAuditEvents. */
+  action?: string;
 }
 
-export async function fetchAuditLogs({ targetEntity, actorId }: FetchAuditLogsParams = {}): Promise<
-  AuditLogEntryWithActor[]
-> {
-  return apiFetch('/api/v1/admin/audit-logs', { query: { target_entity: targetEntity, actor_id: actorId } });
+/**
+ * Newest first. The API filters by one `target_entity`, one actor and one SRDS §51 event name (`action`, from
+ * fetchAuditEvents); nothing else.
+ */
+export function fetchAuditLogsPage(
+  { targetEntity, actorId, action }: FetchAuditLogsParams,
+  offset: number,
+): Promise<AdminPage<AuditLogEntryWithActor>> {
+  return apiFetchPage('/api/v1/admin/audit-logs', {
+    query: { target_entity: targetEntity, actor_id: actorId, action, ...pageQuery(offset) },
+  });
 }
 
-/** Platform-wide order overview — every order, not scoped to the caller. Admin-only. */
-export async function fetchAllOrders(): Promise<OrderWithItems[]> {
-  return apiFetch('/api/v1/admin/orders');
+/** Platform-wide order overview: every order, not scoped to the caller, or only the disputed ones. Admin-only. */
+export function fetchOrdersPage(offset: number, status?: 'disputed'): Promise<AdminPage<OrderWithItems>> {
+  return apiFetchPage('/api/v1/admin/orders', { query: { status, ...pageQuery(offset) } });
+}
+
+/** Every listing for moderation, hidden and sold ones too. The route belongs to the marketplace API (admin-only there). */
+export function fetchModerationListingsPage(offset: number): Promise<AdminPage<ListingWithRelations>> {
+  return apiFetchPage('/api/v1/marketplace/listings/moderation', { query: pageQuery(offset) });
+}
+
+/** The SRDS §51 event names with the label the audit screen shows for each; the audit filter's options. */
+export async function fetchAuditEvents(): Promise<AuditEventNameEntry[]> {
+  return apiFetch('/api/v1/admin/audit-events');
+}
+
+/** What waits for the admin (SRDS §14): the counts behind the Overview's queue tiles. */
+export async function fetchAdminQueues(): Promise<AdminQueues> {
+  return apiFetch('/api/v1/admin/queues');
+}
+
+export interface AdminOrderDetail {
+  order: AdminOrder;
+  history: OrderStatusHistoryEntry[];
+  payment: Awaited<ReturnType<typeof fetchPaymentByOrderId>>;
+}
+
+/** One order as the admin reads it, with its status history and payment; the order routes let an admin read every order. */
+export async function fetchOrderForAdmin(orderId: string): Promise<AdminOrderDetail> {
+  const [order, history, payment] = await Promise.all([
+    apiFetch<AdminOrder>(`/api/v1/orders/${orderId}`),
+    apiFetch<OrderStatusHistoryEntry[]>(`/api/v1/orders/${orderId}/status-history`),
+    fetchPaymentByOrderId(orderId),
+  ]);
+  return { order, history, payment };
+}
+
+/**
+ * Cancels an order that has not left the seller (pending, confirmed, processing or ready; SRDS §14). Needs a second
+ * factor; the reason is stored on the order for both parties to read and the API writes the audit entry (BR-15).
+ */
+export async function cancelOrderAsAdmin(orderId: string, reason: string): Promise<AdminOrder> {
+  return apiFetch(`/api/v1/admin/orders/${orderId}/cancel`, { method: 'POST', body: { reason } });
+}
+
+/**
+ * Settles a disputed order (SRDS §14). The platform holds no money (BR-11): "refunded" records the outcome, and any
+ * refund is paid by the seller to the buyer off the platform. The API writes the audit entry as
+ * "Order Administrative Action" (BR-15). The order status route is the one the API offers for it. The reason is
+ * required (422 without it) and stored on the order as `admin_action_reason`, for the buyer and the seller to read.
+ */
+export async function resolveDisputeAsAdmin(orderId: string, outcome: DisputeOutcome, reason: string): Promise<void> {
+  return apiFetch(`/api/v1/orders/${orderId}/status`, { method: 'PATCH', body: { to: outcome, reason } });
+}
+
+// ---- consultations (SRDS §14). Moderation is audited by the API (BR-15).
+
+export async function fetchConsultationsForAdmin(
+  filter: { status?: ConsultationStatus; olderThanDays?: number } = {},
+): Promise<ConsultationWithRelations[]> {
+  return apiFetch('/api/v1/admin/consultations', {
+    query: { status: filter.status, older_than_days: filter.olderThanDays },
+  });
+}
+
+export async function fetchConsultationForAdmin(consultationId: string): Promise<ConsultationDetail> {
+  return apiFetch(`/api/v1/admin/consultations/${consultationId}`);
+}
+
+export async function moderateConsultation(consultationId: string, body: ModerateConsultationRequest): Promise<ConsultationDetail> {
+  return apiFetch(`/api/v1/admin/consultations/${consultationId}/moderate`, { method: 'PATCH', body });
+}
+
+// ---- reviews (SRDS §14). An admin hides a review with a reason, or restores it; nothing is deleted. Both are
+// audited by the API (BR-15).
+
+export async function fetchReviewsForModeration(): Promise<ReviewWithBuyer[]> {
+  return apiFetch('/api/v1/reviews/admin', { query: { include_hidden: true } });
+}
+
+export async function hideReview(reviewId: string, reason: string): Promise<Review> {
+  return apiFetch(`/api/v1/reviews/${reviewId}/hide`, { method: 'PATCH', body: { reason } });
+}
+
+export async function restoreReview(reviewId: string): Promise<Review> {
+  return apiFetch(`/api/v1/reviews/${reviewId}/restore`, { method: 'PATCH' });
 }
 
 // ---- dealer applications (A3b; SRDS §12)
@@ -158,4 +275,29 @@ export async function updateRequiredDocument(
   changes: Partial<Pick<RequiredDocument, 'label' | 'description' | 'is_required' | 'active' | 'sort_order'>>,
 ): Promise<RequiredDocument> {
   return apiFetch(`/api/v1/admin/required-documents/${id}`, { method: 'PATCH', body: changes });
+}
+
+// ---- AI module (A6; SRDS §37). Every write is audited by the API as "AI Configuration Changed" (BR-15, SRDS §51).
+
+/** Scan, failure, low-confidence and referral counts for the recent window. Counts only: no image, no farmer. */
+export async function fetchAiActivity(): Promise<AiActivity> {
+  return apiFetch('/api/v1/admin/ai-activity');
+}
+
+export async function fetchDiseaseKnowledge(): Promise<DiseaseKnowledgeEntry[]> {
+  return apiFetch('/api/v1/admin/disease-knowledge');
+}
+
+export async function fetchDiseaseKnowledgeEntry(classLabel: string): Promise<DiseaseKnowledgeEntry> {
+  return apiFetch(`/api/v1/admin/disease-knowledge/${encodeURIComponent(classLabel)}`);
+}
+
+/** An edit; the server sends a reviewed entry back to pending review, so a changed text is never shown as reviewed. */
+export async function updateDiseaseKnowledge(classLabel: string, changes: DiseaseKnowledgeUpdate): Promise<DiseaseKnowledgeEntry> {
+  return apiFetch(`/api/v1/admin/disease-knowledge/${encodeURIComponent(classLabel)}`, { method: 'PATCH', body: changes });
+}
+
+/** Records that a qualified agronomist reviewed the entry; the server stamps who and when from the session. */
+export async function reviewDiseaseKnowledge(classLabel: string): Promise<DiseaseKnowledgeEntry> {
+  return apiFetch(`/api/v1/admin/disease-knowledge/${encodeURIComponent(classLabel)}/review`, { method: 'POST' });
 }

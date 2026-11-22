@@ -76,24 +76,12 @@
       "code": "insufficient_stock",
       "instance": "/api/v1/orders/checkout",
       "status": 422,
-      "title": "Only 5.0 left in stock for listing <uuid>.",
+      "title": "Not enough stock for Contract stock.",
       "type": "about:blank"
     },
     "contentType": "application/problem+json",
     "requestId": true,
     "status": 422
-  },
-  "mfa_required": {
-    "body": {
-      "code": "mfa_required",
-      "instance": "/api/v1/reference-data/units/rows",
-      "status": 403,
-      "title": "This action requires a verified second factor (MFA).",
-      "type": "about:blank"
-    },
-    "contentType": "application/problem+json",
-    "requestId": true,
-    "status": 403
   },
   "not_found": {
     "body": {

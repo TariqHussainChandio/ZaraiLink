@@ -1,6 +1,24 @@
 import { AuthError } from '@supabase/supabase-js';
+import { ERROR_CODE_MESSAGES, errorMessage } from '../../../utils/errorMessage';
 
 const RATE_LIMITED = 'Too many attempts. Wait a moment before trying again.';
+
+/** A request that never reached Supabase has no error code, so every mapper below would fall back to "Failed to sign in".
+ * That says nothing about the cause or the fix; a lost connection is named instead. */
+function connectionMessage(error: unknown): string | null {
+  const message = errorMessage(error);
+  return message === ERROR_CODE_MESSAGES.network || message === ERROR_CODE_MESSAGES.timeout ? message : null;
+}
+
+/** True when a send was refused only because one went out a moment ago. The code in the inbox is still good. */
+export function isSendRateLimited(error: unknown): boolean {
+  return error instanceof AuthError && (error.code === 'over_email_send_rate_limit' || error.code === 'over_request_rate_limit');
+}
+
+/** True when sign-in was refused because the email code was never entered. */
+export function isEmailNotConfirmed(error: unknown): boolean {
+  return error instanceof AuthError && error.code === 'email_not_confirmed';
+}
 
 /**
  * The same idea for the password flows (sign in, sign up, forgot and reset password). `invalid_credentials` means a
@@ -8,13 +26,15 @@ const RATE_LIMITED = 'Too many attempts. Wait a moment before trying again.';
  */
 export function mapPasswordFlowErrorMessage(error: unknown, fallbackMessage: string): string {
   const code = error instanceof AuthError ? error.code : undefined;
+  const offline = connectionMessage(error);
+  if (offline) return offline;
 
   switch (code) {
     case 'invalid_credentials':
       return 'Incorrect email or password.';
     case 'email_not_confirmed':
     case 'phone_not_confirmed':
-      return 'Confirm your account with the code we sent, then sign in.';
+      return 'Confirm your email first. Enter the code that was emailed to you.';
     case 'user_already_exists':
     case 'email_exists':
     case 'phone_exists':
@@ -40,6 +60,8 @@ export function mapPasswordFlowErrorMessage(error: unknown, fallbackMessage: str
 /** Two-factor enrolment and verification: a wrong or expired code says so; everything else shows the screen's own text. */
 export function mapMfaErrorMessage(error: unknown, fallbackMessage: string): string {
   const code = error instanceof AuthError ? error.code : undefined;
+  const offline = connectionMessage(error);
+  if (offline) return offline;
 
   switch (code) {
     case 'mfa_verification_failed':
@@ -59,12 +81,14 @@ export function mapMfaErrorMessage(error: unknown, fallbackMessage: string): str
 // string. This one is for the one-time-code flows (`invalid_credentials` there means a wrong code).
 export function mapAuthErrorMessage(error: unknown, fallbackMessage: string): string {
   const code = error instanceof AuthError ? error.code : undefined;
+  const offline = connectionMessage(error);
+  if (offline) return offline;
 
   switch (code) {
     case 'otp_expired':
-      return 'This code has expired. Request a new one.';
+      return 'This code has expired. Ask for a new one.';
     case 'invalid_credentials':
-      return "That code isn't right. Check it and try again.";
+      return 'That code is not right. Check it, or ask for a new one.';
     case 'over_email_send_rate_limit':
     case 'over_sms_send_rate_limit':
     case 'over_request_rate_limit':

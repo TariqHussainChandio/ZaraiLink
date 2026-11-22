@@ -1,6 +1,6 @@
 import type { ViewStyle } from 'react-native';
 
-// Elevation (A2, D14). Surfaces are separated by the ground colour and a 1px line, not shadows; elevation marks only
+// Elevation (D15, Rate Board). Surfaces are separated by the ground colour and a 1px line, not shadows; elevation marks only
 // what floats over content. Android draws `elevation`; the shadow* keys are its iOS/web equivalent.
 type Shadow = Pick<ViewStyle, 'shadowColor' | 'shadowOffset' | 'shadowOpacity' | 'shadowRadius' | 'elevation'>;
 
@@ -22,4 +22,8 @@ export const shadows = {
   elev2: elevation(6, 4, 14, 0.16),
   /** Bottom sheets and dialogs over the scrim. */
   elev3: elevation(12, -6, 28, 0.2),
+  /** D20: the sign-in and sign-up card, lifted off the field with its shadow falling to the right and below, as if lit
+   * from the top left. `elevation` can only drop a shadow straight down, so this is a CSS box shadow, which React Native
+   * draws on Android under the New Architecture. */
+  card: { boxShadow: '6px 8px 16px 0px rgba(13, 17, 12, 0.22)' } as Pick<ViewStyle, 'boxShadow'>,
 } as const;

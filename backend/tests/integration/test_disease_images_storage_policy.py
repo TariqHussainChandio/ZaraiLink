@@ -35,7 +35,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def two_confirmed_users():
-    """Signs up two throwaway users, confirms and logs both in, deletes both afterwards."""
+    """Signs up two throwaway farmers, confirms and logs both in, deletes both afterwards."""
     anon = {"apikey": ANON_KEY, "Authorization": f"Bearer {ANON_KEY}"}
     service = {"apikey": SERVICE_KEY, "Authorization": f"Bearer {SERVICE_KEY}"}
     users = []
@@ -44,12 +44,17 @@ def two_confirmed_users():
         for _ in range(2):
             email = f"storage-test-{uuid.uuid4().hex[:10]}@example.test"
             password = "Passw0rd!123"
-            signup = http.post("/auth/v1/signup", headers=anon, json={"email": email, "password": password, "data": {}})
-            assert signup.status_code == 200, signup.text
-            user_id = signup.json().get("id") or signup.json()["user"]["id"]
-            http.put(
-                f"/auth/v1/admin/users/{user_id}", headers=service, json={"email_confirm": True}
-            ).raise_for_status()
+            # Farmers: since A6 only an approved, unsuspended farmer uploads disease photos
+            # (20261022080000_ai_advisory.sql), so the folder check is proven for the one role the bucket admits.
+            # Created confirmed through the Auth admin API: the stack sends real email (Gmail), so a test never signs
+            # up through the public endpoint, which would mail a confirmation code to this made-up address.
+            created = http.post(
+                "/auth/v1/admin/users",
+                headers=service,
+                json={"email": email, "password": password, "email_confirm": True, "user_metadata": {"role": "farmer"}},
+            )
+            assert created.status_code == 200, created.text
+            user_id = created.json()["id"]
             token = http.post(
                 "/auth/v1/token?grant_type=password", headers=anon, json={"email": email, "password": password}
             ).json()["access_token"]

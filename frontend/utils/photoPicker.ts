@@ -100,10 +100,10 @@ export async function takePhoto(): Promise<PickedPhoto[]> {
  */
 export function pickPhotos({ selectionLimit = 1 }: PickPhotosOptions = {}): Promise<PickedPhoto[]> {
   return new Promise((resolve, reject) => {
-    Alert.alert('Add Photo', undefined, [
-      { text: 'Take Photo', onPress: () => takePhoto().then(resolve, reject) },
+    Alert.alert('Add photo', undefined, [
+      { text: 'Take photo', onPress: () => takePhoto().then(resolve, reject) },
       {
-        text: 'Choose from Gallery',
+        text: 'Choose from gallery',
         onPress: () => pickFromLibrary({ selectionLimit }).then(resolve, reject),
       },
       { text: 'Cancel', style: 'cancel', onPress: () => resolve([]) },

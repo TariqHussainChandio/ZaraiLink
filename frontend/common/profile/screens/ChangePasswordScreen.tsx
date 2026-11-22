@@ -2,30 +2,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthError } from '@supabase/supabase-js';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, TextField } from '../../components';
+import { Banner, Button, CodeField, ScreenScaffold, TextField, useSnackbar } from '../../components';
+import { formatCountdown, isSendRateLimited, mapAuthErrorMessage, mapPasswordFlowErrorMessage, useResendCooldown } from '../../auth';
+import { newPasswordSchema, PASSWORD_HELPER } from '../../validation/password';
 import { useRequestReauthentication, useUpdatePassword } from '../hooks/profile';
 import { useTheme, type Theme } from '../../../theme';
-import { mapPasswordFlowErrorMessage } from '../../auth';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
 
-// Supabase's own password rule (supabase/config.toml), checked first only to answer sooner.
-const PASSWORD_RULE = 'Use at least 8 characters, with letters and numbers';
+const changePasswordSchema = z.object({ password: newPasswordSchema });
 
-function makeChangePasswordSchema() {
-  return z
-    .object({
-      password: z.string().min(8, PASSWORD_RULE).regex(/[A-Za-z]/, PASSWORD_RULE).regex(/\d/, PASSWORD_RULE),
-      confirmPassword: z.string(),
-    })
-    .refine(data => data.password === data.confirmPassword, {
-      message: "Passwords don't match",
-      path: ['confirmPassword'],
-    });
-}
-
-type ChangePasswordFormValues = z.infer<ReturnType<typeof makeChangePasswordSchema>>;
+type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
 /**
  * The new password, and then, only when Supabase asks for it, the code it emails to confirm the account's owner (A3a).
@@ -36,24 +24,27 @@ type ChangePasswordFormValues = z.infer<ReturnType<typeof makeChangePasswordSche
 export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangePassword'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const snackbar = useSnackbar();
   const { mutateAsync: updatePassword } = useUpdatePassword();
   const reauthenticate = useRequestReauthentication();
-  const changePasswordSchema = useMemo(() => makeChangePasswordSchema(), []);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pendingPassword, setPendingPassword] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [resendResult, setResendResult] = useState<{ ok: boolean; text: string } | null>(null);
+  // The code goes out when the form is sent, so the minute before another may be asked for starts then.
+  const { remaining, restart } = useResendCooldown();
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ChangePasswordFormValues>({
     resolver: zodResolver(changePasswordSchema),
-    defaultValues: { password: '', confirmPassword: '' },
+    defaultValues: { password: '' },
   });
 
   const done = () => {
-    Alert.alert('Password updated', 'Your password has been changed.');
+    snackbar.show('Password updated');
     navigation.goBack();
   };
 
@@ -64,80 +55,90 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
       done();
     } catch (error) {
       if (!(error instanceof AuthError && error.code === 'reauthentication_needed')) {
-        setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to update password'));
+        setSubmitError(mapPasswordFlowErrorMessage(error, 'Could not update the password. Try again.'));
         return;
       }
       try {
         await reauthenticate.mutateAsync();
         setPendingPassword(values.password);
+        restart();
       } catch (sendError) {
-        setSubmitError(mapPasswordFlowErrorMessage(sendError, 'Could not send the code'));
+        setSubmitError(mapPasswordFlowErrorMessage(sendError, 'Could not send the code. Try again.'));
       }
     }
   };
 
-  const confirm = async () => {
-    if (!pendingPassword) return;
+  const confirm = async (token: string) => {
+    if (!pendingPassword || confirming) return;
     setSubmitError(null);
     setConfirming(true);
     try {
-      await updatePassword({ password: pendingPassword, nonce: code.trim() });
+      await updatePassword({ password: pendingPassword, nonce: token.trim() });
       done();
     } catch (error) {
-      setSubmitError(mapPasswordFlowErrorMessage(error, 'Failed to update password'));
+      setSubmitError(mapPasswordFlowErrorMessage(error, 'Could not update the password. Try again.'));
     } finally {
       setConfirming(false);
     }
   };
 
+  const resend = async () => {
+    setResendResult(null);
+    try {
+      await reauthenticate.mutateAsync();
+      restart();
+      setCode('');
+      setResendResult({ ok: true, text: 'New code sent. The old one no longer works.' });
+    } catch (error) {
+      // A send refused as too soon leaves the earlier code valid; say that, not "failed".
+      setResendResult({
+        ok: false,
+        text: isSendRateLimited(error) ? 'A code was sent a moment ago. Check your email, or wait to ask again.' : mapAuthErrorMessage(error, 'Could not send a new code. Try again.'),
+      });
+    }
+  };
+
   if (pendingPassword) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.subtitle}>
-          You signed in a while ago, so we emailed you a 6-digit code. Enter it to confirm the new password.
-        </Text>
-        <TextField
-          label="Code"
-          keyboardType="number-pad"
-          autoComplete="one-time-code"
-          maxLength={6}
-          value={code}
-          onChangeText={value => setCode(value.replace(/\D/g, ''))}
-        />
-        {submitError ? (
-          <View style={styles.errorBanner}>
-            <Banner tone="danger" title={submitError} />
-          </View>
-        ) : null}
-        <Button
-          label="Confirm new password"
-          loading={confirming}
-          disabled={code.length !== 6}
-          onPress={confirm}
-          style={styles.submit}
-        />
-        <Button
-          label="Send a new code"
-          variant="quiet"
-          loading={reauthenticate.isPending}
-          onPress={() => reauthenticate.mutate()}
-        />
-      </View>
+      <ScreenScaffold>
+        <Text style={styles.text}>You signed in a while ago, so a 6-digit code was emailed to you. Enter it to confirm the new password.</Text>
+        <View>
+          <CodeField label="Code from your email" value={code} onChange={setCode} onComplete={confirm} error={submitError ?? undefined} />
+          <Text style={styles.helper}>Check your spam folder. The code works for 15 minutes.</Text>
+        </View>
+        <Button label="Confirm new password" size="lg" loading={confirming} disabled={code.length !== 6} onPress={() => confirm(code)} />
+        <View style={styles.resend}>
+          {remaining > 0 ? (
+            <Text style={styles.text}>{`Send a new code in ${formatCountdown(remaining)}`}</Text>
+          ) : (
+            <Button label="Send a new code" variant="secondary" fullWidth={false} loading={reauthenticate.isPending} onPress={resend} />
+          )}
+          {resendResult ? (
+            <Text style={[styles.result, resendResult.ok ? styles.ok : styles.fail]} accessibilityLiveRegion="polite">
+              {resendResult.text}
+            </Text>
+          ) : null}
+        </View>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.subtitle}>Choose a new password for your account.</Text>
-
+    <ScreenScaffold>
       <Controller
         control={control}
         name="password"
-        render={({ field: { onChange, onBlur, value } }) => (
+        render={({ field: { ref, onChange, onBlur, value } }) => (
           <TextField
+            ref={ref}
             label="New password"
-            helper="8 or more characters, with letters and numbers"
+            helper={PASSWORD_HELPER}
             secureTextEntry
+            autoCapitalize="none"
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit(submit)}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -145,54 +146,21 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
           />
         )}
       />
-      <Controller
-        control={control}
-        name="confirmPassword"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Confirm new password"
-            secureTextEntry
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.confirmPassword?.message}
-          />
-        )}
-      />
 
-      {submitError ? (
-        <View style={styles.errorBanner}>
-          <Banner tone="danger" title={submitError} />
-        </View>
-      ) : null}
+      {submitError ? <Banner tone="danger" title={submitError} /> : null}
 
-      <Button
-        label="Update Password"
-        loading={isSubmitting || reauthenticate.isPending}
-        onPress={handleSubmit(submit)}
-        style={styles.submit}
-      />
-    </View>
+      <Button label="Update password" size="lg" loading={isSubmitting || reauthenticate.isPending} onPress={handleSubmit(submit)} />
+    </ScreenScaffold>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      padding: space[4],
-    },
-    subtitle: {
-      ...typography.body,
-      color: colors.ink2,
-      marginBottom: space[6],
-    },
-    errorBanner: {
-      marginBottom: space[3],
-    },
-    submit: {
-      marginTop: space[2],
-    },
+    text: { ...typography.body, color: colors.ink2 },
+    helper: { ...typography.caption, color: colors.ink3 },
+    resend: { gap: space[2], alignItems: 'flex-start' },
+    result: { ...typography.caption },
+    ok: { color: colors.status.success.ink },
+    fail: { color: colors.status.danger.ink },
   });
 }

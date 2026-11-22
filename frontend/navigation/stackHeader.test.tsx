@@ -70,9 +70,9 @@ describe('stack header over the tabs', () => {
 });
 
 describe('stack header', () => {
-  it('gives the first screen the large title and no Back', async () => {
+  it('gives the first screen the same compact title as every bar, and no Back (D20)', async () => {
     await renderStack();
-    expect(screen.getByRole('header', { name: 'Orders' })).toHaveStyle({ fontSize: typography.headline.fontSize });
+    expect(screen.getByRole('header', { name: 'Orders' })).toHaveStyle({ fontSize: typography.titleBar.fontSize });
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
   });
 
@@ -83,7 +83,7 @@ describe('stack header', () => {
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
 
     await fireEvent.press(await screen.findByText('Open Receipt'));
-    expect(await screen.findByRole('header', { name: 'Receipt' })).toHaveStyle({ fontSize: typography.title.fontSize });
+    expect(await screen.findByRole('header', { name: 'Receipt' })).toHaveStyle({ fontSize: typography.titleBar.fontSize });
     expect(screen.getAllByRole('button', { name: 'Back' }).length).toBeGreaterThan(0);
   });
 });

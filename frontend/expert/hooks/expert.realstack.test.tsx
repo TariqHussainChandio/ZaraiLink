@@ -2,7 +2,7 @@
  * P7 (7D) real-stack test: the expert and admin hooks against the real FastAPI and the real local Supabase.
  * Setup and how to run it: see frontend/testUtils/realStack.ts (`ZARAILINK_REALSTACK=1 npx jest realstack`).
  *
- * The admin write paths need a second factor (aal2) and a database-side role promotion, which the backend smoke
+ * The admin write paths need a database-side role promotion (there is one admin, D19), which the backend smoke
  * suite already drives with a real admin (`world.admin`); what this test adds is what the app's hooks see: an expert
  * applying, and every admin call being refused for a user who is not an admin.
  */
@@ -108,10 +108,10 @@ describeReal('expert and admin hooks against the real backend', () => {
       const calls = await renderHook(
         () => ({
           stats: admin.usePlatformStats(),
-          users: admin.useProfiles(),
-          audit: admin.useAuditLogs(),
-          orders: admin.useAllOrders(),
-          reports: admin.useReports(undefined),
+          users: admin.useProfilePages({}, false),
+          audit: admin.useAuditLogPages({}, false),
+          orders: admin.useOrderPages(undefined, false),
+          reports: admin.useReportPages(undefined, false),
           verifications: admin.useExpertVerifications(undefined),
           suspend: admin.useSetProfileSuspended(),
         }),

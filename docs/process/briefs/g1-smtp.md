@@ -2,9 +2,11 @@
 
 Status: **decided 2026-09-27: Gmail SMTP** (the maintainer's choice for the FYP; no domain needed). The sending
 account is `tariqhussainchandio1357@gmail.com` with 2-step verification and an app password. The settings are in
-`supabase/config.toml` under `[remotes.production.auth.email.smtp]` (smtp.gmail.com:587, sender name ZaraiLink), so
-only the hosted project sends real mail; the local stack keeps Mailpit. The app password is never stored in git or a
-file: it is set as `SUPABASE_AUTH_SMTP_PASS` only in the terminal session that runs `npx supabase config push`.
+`supabase/config.toml` under `[auth.email.smtp]` (smtp.gmail.com:587, sender name ZaraiLink). Since 2026-11-20 the
+local stack sends through it too (the maintainer removed Mailpit), so local and hosted mail behave the same. The app
+password is never stored in git: locally it sits in the git-ignored `supabase/.env`, and for `npx supabase config push`
+it is set as `SUPABASE_AUTH_SMTP_PASS` in that terminal session. Test runs create accounts through the admin API and
+keep the API's email off, so they send nothing.
 Limits to know: Gmail allows about 500 messages a day and may throttle bursts; mail comes from a personal Gmail
 address. Before a public release, move to a provider with your own domain (Resend or Brevo below) by changing only
 that block. The analysis below is kept as it was written.

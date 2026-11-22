@@ -47,16 +47,18 @@ select tests.expect(tests.fx('A'), 'update public.profiles set application_submi
 select tests.expect(tests.fx('B'), $$select id from public.required_documents where code in ('business_registration', 'business_licence', 'other', 'degree', 'experience', 'institution')$$, 'rows:7', 'required_documents: a signed-in user reads the list (the seven starting rows)');
 select tests.expect(tests.fx('B'), 'select id from public.required_documents', 'rows:' || (select count(*) from public.required_documents), 'required_documents: and every other row');
 select tests.expect(null, 'select id from public.required_documents', 'err:42501', 'required_documents: anon does not');
-select tests.expect(tests.fx('A'), $$insert into public.required_documents (role, code, label) values ('dealer', 'tax_certificate', 'Tax certificate')$$, 'err:42501', 'required_documents: an admin without a second factor cannot add one');
+select tests.expect(tests.fx('D2'), $$insert into public.required_documents (role, code, label) values ('dealer', 'tax_certificate', 'Tax certificate')$$, 'err:42501', 'required_documents: a non-admin (D19: the admin needs no second factor) cannot add one');
 select tests.expect(tests.fx('D'), $$insert into public.required_documents (role, code, label) values ('dealer', 'tax_certificate', 'Tax certificate')$$, 'err:42501', 'required_documents: a dealer cannot');
 select tests.expect(tests.fx('A'), $$insert into public.required_documents (role, code, label) values ('dealer', 'tax_certificate', 'Tax certificate')$$, 'n:1', 'required_documents: an admin with a second factor adds one', 'aal2');
 select tests.expect(tests.fx('D'), $$update public.required_documents set label = 'Anything' where code = 'tax_certificate'$$, 'n:0', 'required_documents: a dealer cannot edit one');
 select tests.expect(tests.fx('A'), $$update public.required_documents set active = false where code = 'tax_certificate'$$, 'n:1', 'required_documents: the admin retires it', 'aal2');
 select tests.expect(tests.fx('A'), $$delete from public.required_documents where code = 'tax_certificate'$$, 'err:42501', 'required_documents: nobody deletes a row (documents point at it)', 'aal2');
+-- A7 (20261023080000): the event is the SRDS §51 name, required_document_changed; created or updated is the change,
+-- kept in metadata.change (the same split the migration gave the older rows).
 select is(
-  (select array_agg(action order by created_at, action) from public.audit_logs
+  (select array_agg(action || ':' || (metadata ->> 'change') order by created_at, metadata ->> 'change') from public.audit_logs
     where target_entity = 'required_documents' and actor_id = tests.fx('A')),
-  array['required_document_created', 'required_document_updated'],
+  array['required_document_changed:required_document_created', 'required_document_changed:required_document_updated'],
   'required_documents: each admin change is audited (BR-15)');
 select is((select count(*) from public.audit_logs where target_entity = 'required_documents' and actor_id is null), 0::bigint, 'required_documents: the starting rows are setup, not audited admin actions');
 

@@ -132,13 +132,20 @@ describe('resolveAttachmentUrls', () => {
 });
 
 describe('findOrCreateConversation', () => {
-  it('POSTs the other participant id', async () => {
-    mockApiFetch.mockResolvedValue({});
-    await findOrCreateConversation('user-2');
+  // A5 (SRDS §30): a conversation always carries the listing, order or consultation it started from.
+  it.each(['listing', 'order', 'consultation'] as const)('POSTs the other participant and the %s context', async type => {
+    mockApiFetch.mockResolvedValue({ id: 'conv-1' });
+    await expect(findOrCreateConversation('user-2', { type, id: 'ctx-1' })).resolves.toEqual({ id: 'conv-1' });
     expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/messaging/conversations', {
       method: 'POST',
-      body: { other_user_id: 'user-2' },
+      body: { other_user_id: 'user-2', context_type: type, context_id: 'ctx-1' },
     });
+  });
+
+  it('passes a refusal for an unrelated pair through to the caller', async () => {
+    const refused = new Error('You can message someone only about a listing, order or consultation you share.');
+    mockApiFetch.mockRejectedValue(refused);
+    await expect(findOrCreateConversation('user-2', { type: 'listing', id: 'listing-1' })).rejects.toBe(refused);
   });
 });
 

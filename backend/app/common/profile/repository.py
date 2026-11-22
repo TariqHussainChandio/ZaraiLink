@@ -7,13 +7,14 @@ from app.common.errors import AppHTTPException
 from app.common.rows import as_rows
 from app.database.supabase_client import get_reauth_client, get_service_role_client, get_user_scoped_client
 
-# P4 (4A.5), account deletion: buckets whose objects are stored under a `{user_id}/...` prefix,
+# Account deletion: buckets whose objects are stored under a `{user_id}/...` prefix,
 # so a sweep-by-owner is just a `list(user_id)` + `remove(...)` per bucket. `message-attachments`
 # and `consultation-attachments` are deliberately NOT included — their paths are keyed by
 # conversation/consultation id, not user id (grep-verified), so finding "this user's" objects
 # there needs a join through messages/consultation_messages, not a prefix list. Known gap, not
-# silently dropped: see the account-deletion service's own docstring.
-_OWNER_PREFIXED_BUCKETS = ("avatars", "disease-images", "expert-documents", "dealer-documents")
+# silently dropped: see the account-deletion service's own docstring. `inventory-exports` (B5) holds a dealer's report
+# CSVs under `{dealer_id}/...`; a deleted dealer's stock figures must not outlive the account.
+_OWNER_PREFIXED_BUCKETS = ("avatars", "disease-images", "expert-documents", "dealer-documents", "inventory-exports")
 
 
 async def update_profile(access_token: str, user_id: str, patch: dict[str, Any]) -> None:
@@ -54,7 +55,7 @@ async def delete_owned_storage_objects(user_id: str) -> None:
     it's the backend's own cleanup step, the same documented exception every other service-role
     call site in this codebase already follows.
 
-    P5 audit: the owner-scoped storage policies would let the user's own token do this too, so it
+    Audited: the owner-scoped storage policies would let the user's own token do this too, so it
     could be converted. Deliberately not: converting buys no security (the caller owns these objects
     either way) and makes this step depend on the token still being valid mid-deletion, with nothing
     to re-authenticate it if it isn't."""

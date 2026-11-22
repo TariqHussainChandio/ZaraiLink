@@ -1,11 +1,19 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { lightTheme } from '../../theme';
+import { TextField } from './TextField';
 import { SelectField, type SelectOption } from './SelectField';
 
 const options: SelectOption[] = [
   { id: 'kg', label: 'Kilogram' },
   { id: 'bag', label: 'Bag' },
   { id: 'crate', label: 'Crate' },
+];
+// Long enough for the search box (it appears from nine options; a short list is read at a glance).
+const searchable: SelectOption[] = [
+  ...options,
+  ...['Dozen', 'Litre', 'Maund', 'Packet', 'Tonne', 'Box'].map(label => ({ id: label.toLowerCase(), label })),
 ];
 
 describe('SelectField — closed state', () => {
@@ -41,6 +49,24 @@ describe('SelectField — closed state', () => {
   });
 });
 
+describe('SelectField — look', () => {
+  it('has the same label as a text field, so a select and a text field in one form read alike', async () => {
+    await render(
+      <>
+        <SelectField label="Unit" value={null} options={options} onSelect={() => {}} />
+        <TextField label="Price" />
+      </>,
+    );
+    expect(StyleSheet.flatten(screen.getByText('Unit').props.style)).toEqual(StyleSheet.flatten(screen.getByText('Price').props.style));
+    expect(StyleSheet.flatten(screen.getByText('Unit').props.style).color).toBe(lightTheme.colors.ink);
+  });
+
+  it('says the error in words under the field', async () => {
+    await render(<SelectField label="Unit" value={null} options={options} onSelect={() => {}} error="Choose a unit" />);
+    expect(screen.getByText('Choose a unit')).toBeTruthy();
+  });
+});
+
 describe('SelectField — for TalkBack', () => {
   it('reads the closed field as a button with its label and the chosen option', async () => {
     await render(<SelectField label="Unit" value="bag" options={options} onSelect={() => {}} />);
@@ -57,7 +83,7 @@ describe('SelectField — for TalkBack', () => {
 });
 
 describe('SelectField — opening the picker', () => {
-  it('opens the option sheet when the field is pressed', async () => {
+  it('opens the option list when the field is pressed', async () => {
     await render(<SelectField value={null} options={options} onSelect={() => {}} />);
     await fireEvent.press(screen.getByText('Select...'));
     expect(screen.getByText('Kilogram')).toBeTruthy();
@@ -78,7 +104,7 @@ describe('SelectField — opening the picker', () => {
 });
 
 describe('SelectField — selecting an option', () => {
-  it('calls onSelect with the tapped option id and closes the sheet', async () => {
+  it('calls onSelect with the tapped option id and closes the list', async () => {
     const onSelect = jest.fn();
     await render(<SelectField value={null} options={options} onSelect={onSelect} />);
     await fireEvent.press(screen.getByText('Select...'));
@@ -89,8 +115,8 @@ describe('SelectField — selecting an option', () => {
 });
 
 describe('SelectField — search', () => {
-  it('renders a search field by default and filters options by it', async () => {
-    await render(<SelectField value={null} options={options} onSelect={() => {}} />);
+  it('renders a search field for a long list and filters options by it', async () => {
+    await render(<SelectField value={null} options={searchable} onSelect={() => {}} />);
     await fireEvent.press(screen.getByText('Select...'));
     await fireEvent.changeText(screen.getByPlaceholderText('Search'), 'bag');
     expect(screen.getByText('Bag')).toBeTruthy();
@@ -99,23 +125,57 @@ describe('SelectField — search', () => {
   });
 
   it('filtering is case-insensitive', async () => {
-    await render(<SelectField value={null} options={options} onSelect={() => {}} />);
+    await render(<SelectField value={null} options={searchable} onSelect={() => {}} />);
     await fireEvent.press(screen.getByText('Select...'));
     await fireEvent.changeText(screen.getByPlaceholderText('Search'), 'KILO');
     expect(screen.getByText('Kilogram')).toBeTruthy();
   });
 
   it('shows an empty state when no options match', async () => {
-    await render(<SelectField value={null} options={options} onSelect={() => {}} />);
+    await render(<SelectField value={null} options={searchable} onSelect={() => {}} />);
     await fireEvent.press(screen.getByText('Select...'));
     await fireEvent.changeText(screen.getByPlaceholderText('Search'), 'nonexistent');
     expect(screen.getByText('No results')).toBeTruthy();
   });
 
+  it('shows the empty state when there are no options at all', async () => {
+    await render(<SelectField value={null} options={[]} onSelect={() => {}} />);
+    await fireEvent.press(screen.getByText('Select...'));
+    expect(screen.getByText('No results')).toBeTruthy();
+  });
+
   it('omits the search field when searchable is false', async () => {
-    await render(<SelectField value={null} options={options} onSelect={() => {}} searchable={false} />);
+    await render(<SelectField value={null} options={searchable} onSelect={() => {}} searchable={false} />);
     await fireEvent.press(screen.getByText('Select...'));
     expect(screen.queryByPlaceholderText('Search')).toBeNull();
     expect(screen.getByText('Kilogram')).toBeTruthy();
+  });
+
+  it('shows a short list whole, without a search field', async () => {
+    await render(<SelectField value={null} options={options} onSelect={() => {}} />);
+    await fireEvent.press(screen.getByText('Select...'));
+    expect(screen.queryByPlaceholderText('Search')).toBeNull();
+    expect(screen.getByText('Crate')).toBeTruthy();
+  });
+});
+
+// A long list is virtualised (FlashList with a fixed height); a short one is a plain ScrollView (N1, B3 verification).
+describe('SelectField — a long option list', () => {
+  const many: SelectOption[] = Array.from({ length: 60 }, (_, i) => ({ id: `p${i}`, label: `Product ${i}` }));
+
+  it('renders the first options and selects one', async () => {
+    const onSelect = jest.fn();
+    await render(<SelectField label="Product" value={null} options={many} onSelect={onSelect} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Product, Select...' }));
+    await fireEvent.press(await screen.findByText('Product 0'));
+    expect(onSelect).toHaveBeenCalledWith('p0');
+  });
+
+  it('narrows by search, back into the short list', async () => {
+    await render(<SelectField value={null} options={many} onSelect={() => {}} />);
+    await fireEvent.press(screen.getByText('Select...'));
+    await fireEvent.changeText(screen.getByPlaceholderText('Search'), 'Product 42');
+    expect(screen.getByText('Product 42')).toBeTruthy();
+    expect(screen.queryByText('Product 0')).toBeNull();
   });
 });

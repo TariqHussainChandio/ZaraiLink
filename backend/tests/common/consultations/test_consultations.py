@@ -4,7 +4,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app.auth.dependencies import AuthenticatedUser
+from app.auth.dependencies import AuthenticatedUser, get_current_user
 from app.common.consultations import service
 from app.main import app
 
@@ -95,6 +95,42 @@ async def test_send_message_uses_callers_own_id_as_sender():
 def test_create_request_without_authorization_header_is_rejected():
     response = client.post("/api/v1/consultations", json={"expert_id": "e-1", "subject": "help"})
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize("role", ["buyer", "dealer", "expert", "admin"])
+def test_only_a_farmer_may_ask_an_expert(role):
+    # D20: expert advisory is the farmer's alone. Refused before the service runs, so nothing is written.
+    other = AuthenticatedUser(id="u-9", email="o@x.com", role=role, access_token="tok9")
+    app.dependency_overrides[get_current_user] = lambda: other
+    try:
+        with patch("app.common.consultations.service.create_request") as mock_create:
+            response = client.post("/api/v1/consultations", json={"expert_id": "e-1", "subject": "help"})
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+    assert response.status_code == 403
+    mock_create.assert_not_called()
+
+
+def test_a_farmer_may_ask_an_expert():
+    app.dependency_overrides[get_current_user] = lambda: REQUESTER
+    try:
+        created = {
+            **REQUESTED_CONSULTATION,
+            "subject": "help",
+            "crop_id": None,
+            "problem_description": None,
+            "farm_id": None,
+            "images": [],
+            "priority": "medium",
+            "created_at": "2026-11-22T00:00:00Z",
+            "updated_at": "2026-11-22T00:00:00Z",
+        }
+        with patch("app.common.consultations.service.create_request", return_value=created) as mock_create:
+            response = client.post("/api/v1/consultations", json={"expert_id": EXPERT.id, "subject": "help"})
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+    assert response.status_code == 200
+    mock_create.assert_called_once()
 
 
 @pytest.mark.asyncio

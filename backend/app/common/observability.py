@@ -1,4 +1,4 @@
-"""P5 (item 11, gate G5): Sentry error tracking, off unless `SENTRY_DSN` is set.
+"""Sentry error tracking (gate G5), off unless `SENTRY_DSN` is set.
 
 With no DSN nothing is initialised, so every `sentry_sdk` call elsewhere in the app is a no-op and local
 development, tests and CI never talk to a third party. Turning it on needs the maintainer to create the

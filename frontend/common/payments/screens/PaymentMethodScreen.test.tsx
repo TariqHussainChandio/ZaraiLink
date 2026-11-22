@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { PaymentMethodScreen } from './PaymentMethodScreen';
@@ -21,6 +20,8 @@ const mockFetchOrder = fetchOrderById as jest.Mock;
 const mockFetchPayment = fetchPaymentByOrderId as jest.Mock;
 const mockInitiate = initiatePayment as jest.Mock;
 
+const order = { total: 1550, product_subtotal: 1500, delivery_charge: 50, seller: { id: 'seller-1', full_name: 'Green Farms' } };
+
 function makeProps() {
   return {
     navigation: { replace: jest.fn() },
@@ -33,37 +34,34 @@ beforeEach(() => {
   mockFetchPayment.mockReset();
   mockInitiate.mockReset();
   useAuthStore.setState({ user: { id: 'user-1' } as never });
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-});
-
-afterEach(() => {
-  jest.restoreAllMocks();
 });
 
 describe('PaymentMethodScreen', () => {
-  it('loads the order total and defaults to Cash on Delivery', async () => {
-    mockFetchOrder.mockResolvedValue({ total: 1500 });
+  it('shows products and delivery on their own lines, and who is paid (BR-09, BR-11)', async () => {
+    mockFetchOrder.mockResolvedValue(order);
     mockFetchPayment.mockResolvedValue(null);
     await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
 
-    expect(await screen.findByText('Rs 1,500')).toBeTruthy();
-    expect(screen.getByText('Cash on Delivery')).toBeTruthy();
-    expect(screen.getByText('Bank Transfer')).toBeTruthy();
+    expect(await screen.findByLabelText('Products Rs 1,500')).toBeTruthy();
+    expect(screen.getByLabelText('Delivery charge Rs 50')).toBeTruthy();
+    expect(screen.getByLabelText('Total Rs 1,550')).toBeTruthy();
+    expect(screen.getByText('You pay Green Farms directly. ZaraiLink does not hold your money.')).toBeTruthy();
   });
 
-  it('tells TalkBack which method is chosen, and moves the choice when another is pressed', async () => {
-    mockFetchOrder.mockResolvedValue({ total: 1500 });
+  it('offers Cash on delivery as chosen and Bank transfer disabled with its reason', async () => {
+    mockFetchOrder.mockResolvedValue(order);
     mockFetchPayment.mockResolvedValue(null);
     await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
 
-    expect(await screen.findByRole('button', { name: /Cash on Delivery/, selected: true })).toBeTruthy();
-    await fireEvent.press(screen.getByText('Bank Transfer'));
-    expect(screen.getByRole('button', { name: /Bank Transfer/, selected: true })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Cash on Delivery/, selected: false })).toBeTruthy();
+    const cash = await screen.findByRole('radio', { name: /^Cash on delivery/ });
+    expect(cash.props.accessibilityState).toMatchObject({ checked: true });
+    const bank = screen.getByRole('radio', { name: /^Bank transfer/ });
+    expect(bank.props.accessibilityState).toMatchObject({ checked: false, disabled: true });
+    expect(screen.getByText('Not offered by this seller yet')).toBeTruthy();
   });
 
   it('redirects straight to PaymentProcessing when a payment already exists', async () => {
-    mockFetchOrder.mockResolvedValue({ total: 1500 });
+    mockFetchOrder.mockResolvedValue(order);
     mockFetchPayment.mockResolvedValue({ id: 'payment-1' });
     const props = makeProps();
     await renderWithQuery(<PaymentMethodScreen {...props} />);
@@ -75,32 +73,49 @@ describe('PaymentMethodScreen', () => {
     );
   });
 
-  it('initiates payment with the selected method and moves to PaymentProcessing', async () => {
-    mockFetchOrder.mockResolvedValue({ total: 1500 });
+  it('starts the payment with cash on delivery and moves to PaymentProcessing', async () => {
+    mockFetchOrder.mockResolvedValue(order);
     mockFetchPayment.mockResolvedValue(null);
     mockInitiate.mockResolvedValue({ id: 'payment-2' });
     const props = makeProps();
     await renderWithQuery(<PaymentMethodScreen {...props} />);
-    await screen.findByText('Rs 1,500');
 
-    await fireEvent.press(screen.getByText('Bank Transfer'));
-    await fireEvent.press(screen.getByText('Continue'));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Confirm cash on delivery' }));
 
-    expect(mockInitiate).toHaveBeenCalledWith('order-1', 'bank_transfer');
-    expect(props.navigation.replace).toHaveBeenCalledWith(ORDERS_ROUTES.PaymentProcessing, {
-      paymentId: 'payment-2',
-    });
+    await waitFor(() => expect(mockInitiate).toHaveBeenCalledWith('order-1', 'cod'));
+    expect(props.navigation.replace).toHaveBeenCalledWith(ORDERS_ROUTES.PaymentProcessing, { paymentId: 'payment-2' });
   });
 
-  it('shows an alert when initiatePayment fails', async () => {
-    mockFetchOrder.mockResolvedValue({ total: 1500 });
+  it('cannot start a bank transfer: the disabled option does nothing when pressed', async () => {
+    mockFetchOrder.mockResolvedValue(order);
+    mockFetchPayment.mockResolvedValue(null);
+    await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
+    await fireEvent.press(await screen.findByRole('radio', { name: /^Bank transfer/ }));
+    expect(screen.getByRole('radio', { name: /^Cash on delivery/ }).props.accessibilityState).toMatchObject({ checked: true });
+  });
+
+  it('shows a Banner, not an alert, when the payment cannot be started', async () => {
+    mockFetchOrder.mockResolvedValue(order);
     mockFetchPayment.mockResolvedValue(null);
     mockInitiate.mockRejectedValue(new Error('Gateway unavailable'));
+    const props = makeProps();
+    await renderWithQuery(<PaymentMethodScreen {...props} />);
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Confirm cash on delivery' }));
+
+    expect(await screen.findByText("Couldn't start the payment")).toBeTruthy();
+    expect(screen.getByText('Gateway unavailable')).toBeTruthy();
+    expect(props.navigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('shows a Banner with "Try again" instead of spinning forever when the order cannot be loaded (MK-03)', async () => {
+    mockFetchOrder.mockRejectedValueOnce(new Error('Server down'));
+    mockFetchPayment.mockResolvedValue(null);
     await renderWithQuery(<PaymentMethodScreen {...makeProps()} />);
-    await screen.findByText('Rs 1,500');
+    expect(await screen.findByText("Couldn't load this order")).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Continue'));
-
-    expect(Alert.alert).toHaveBeenCalledWith('Could not start payment', 'Gateway unavailable');
+    mockFetchOrder.mockResolvedValue(order);
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByLabelText('Total Rs 1,550')).toBeTruthy();
   });
 });

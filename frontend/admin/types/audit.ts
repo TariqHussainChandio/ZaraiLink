@@ -1,15 +1,4 @@
-export interface AuditLogEntry {
-  id: string;
-  actor_id: string | null;
-  action: string;
-  target_entity: string;
-  target_id: string | null;
-  previous_state: Record<string, unknown> | null;
-  new_state: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
-  created_at: string;
-}
-
-export interface AuditLogEntryWithActor extends AuditLogEntry {
-  actor: { id: string; full_name: string } | null;
-}
+// An audit entry as the API returns it (SRDS §51): the raw event name in `action` and the label the screen shows in
+// `action_label`, and the catalogue of event names the filter offers. The generated contract is the source of truth
+// (AGENTS.md rule 9), so this only re-exports it.
+export type { AuditEventNameEntry, AuditLogEntryWithActor } from '../../services/api/generated/types.gen';

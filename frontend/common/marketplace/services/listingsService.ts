@@ -49,7 +49,9 @@ export async function fetchListings({
   });
 }
 
-export async function fetchListingById(id: string): Promise<ListingWithRelations> {
+export async function fetchListingById(
+  id: string,
+): Promise<ListingWithRelations> {
   return apiFetch(`/api/v1/marketplace/listings/${id}`);
 }
 
@@ -66,11 +68,20 @@ export interface CategoryInput {
 /** Admin-only in practice — enforced server-side. No `actorId` param — the acting admin is
  * derived from the verified session token. */
 export async function createCategory(input: CategoryInput): Promise<Category> {
-  return apiFetch('/api/v1/marketplace/categories', { method: 'POST', body: input });
+  return apiFetch('/api/v1/marketplace/categories', {
+    method: 'POST',
+    body: input,
+  });
 }
 
-export async function updateCategory(id: string, input: Partial<CategoryInput>): Promise<Category> {
-  return apiFetch(`/api/v1/marketplace/categories/${id}`, { method: 'PATCH', body: input });
+export async function updateCategory(
+  id: string,
+  input: Partial<CategoryInput>,
+): Promise<Category> {
+  return apiFetch(`/api/v1/marketplace/categories/${id}`, {
+    method: 'PATCH',
+    body: input,
+  });
 }
 
 export async function deleteCategory(id: string): Promise<void> {
@@ -95,6 +106,8 @@ export interface ListingInput {
   country: string | null;
   province: string | null;
   city: string | null;
+  /** D8: the dealer's own inventory product to link, or null to unlink. The server refuses another dealer's (403). */
+  inventoryProductId?: string | null;
 }
 
 function toApiListing(input: Partial<ListingInput>) {
@@ -108,20 +121,34 @@ function toApiListing(input: Partial<ListingInput>) {
     ...(input.images !== undefined && { images: input.images }),
     ...(input.brand !== undefined && { brand: input.brand }),
     ...(input.condition !== undefined && { condition: input.condition }),
-    ...(input.cropCompatibility !== undefined && { crop_compatibility: input.cropCompatibility }),
+    ...(input.cropCompatibility !== undefined && {
+      crop_compatibility: input.cropCompatibility,
+    }),
     ...(input.country !== undefined && { country: input.country }),
     ...(input.province !== undefined && { province: input.province }),
     ...(input.city !== undefined && { city: input.city }),
+    ...(input.inventoryProductId !== undefined && {
+      inventory_product_id: input.inventoryProductId,
+    }),
   };
 }
 
 // No ownerId param — the backend always uses the caller's own id.
 export async function createListing(input: ListingInput): Promise<Listing> {
-  return apiFetch('/api/v1/marketplace/listings', { method: 'POST', body: toApiListing(input) });
+  return apiFetch('/api/v1/marketplace/listings', {
+    method: 'POST',
+    body: toApiListing(input),
+  });
 }
 
-export async function updateListing(id: string, input: Partial<ListingInput>): Promise<Listing> {
-  return apiFetch(`/api/v1/marketplace/listings/${id}`, { method: 'PATCH', body: toApiListing(input) });
+export async function updateListing(
+  id: string,
+  input: Partial<ListingInput>,
+): Promise<Listing> {
+  return apiFetch(`/api/v1/marketplace/listings/${id}`, {
+    method: 'PATCH',
+    body: toApiListing(input),
+  });
 }
 
 export async function deleteListing(id: string): Promise<void> {
@@ -134,22 +161,34 @@ export async function deleteListing(id: string): Promise<void> {
  * admin-only server-side too, even though RLS alone would also permit the owner. No `actorId`
  * param — derived from the verified session token.
  */
-export async function updateListingStatus(id: string, status: ListingStatus): Promise<void> {
-  await apiFetch(`/api/v1/marketplace/listings/${id}/status`, { method: 'PATCH', body: { status } });
+export async function updateListingStatus(
+  id: string,
+  status: ListingStatus,
+): Promise<void> {
+  await apiFetch(`/api/v1/marketplace/listings/${id}/status`, {
+    method: 'PATCH',
+    body: { status },
+  });
 }
 
-export async function fetchAllListingsForModeration(): Promise<ListingWithRelations[]> {
+export async function fetchAllListingsForModeration(): Promise<
+  ListingWithRelations[]
+> {
   return apiFetch('/api/v1/marketplace/listings/moderation');
 }
 
 /** Records a view of a listing. Callers should skip this for the listing's own owner. No
  * `viewerId` param — always the caller's own id. */
 export async function recordListingView(listingId: string): Promise<void> {
-  await apiFetch(`/api/v1/marketplace/listings/${listingId}/views`, { method: 'POST' });
+  await apiFetch(`/api/v1/marketplace/listings/${listingId}/views`, {
+    method: 'POST',
+  });
 }
 
 /** Owner-only under RLS; used by farmer/dealer analytics, never shown to buyers. */
-export async function fetchListingViewCounts(listingIds: string[]): Promise<Record<string, number>> {
+export async function fetchListingViewCounts(
+  listingIds: string[],
+): Promise<Record<string, number>> {
   if (listingIds.length === 0) return {};
   return apiFetch('/api/v1/marketplace/listings/view-counts', {
     method: 'POST',
@@ -157,7 +196,10 @@ export async function fetchListingViewCounts(listingIds: string[]): Promise<Reco
   });
 }
 
-export async function uploadListingImages(userId: string, images: PickedPhoto[]): Promise<string[]> {
+export async function uploadListingImages(
+  userId: string,
+  images: PickedPhoto[],
+): Promise<string[]> {
   const urls: string[] = [];
 
   for (const image of images) {
@@ -171,7 +213,9 @@ export async function uploadListingImages(userId: string, images: PickedPhoto[])
 
     const { error } = await supabase.storage
       .from('listing-images')
-      .upload(path, arrayBuffer, { contentType: image.mimeType ?? 'image/jpeg' });
+      .upload(path, arrayBuffer, {
+        contentType: image.mimeType ?? 'image/jpeg',
+      });
 
     if (error) throw error;
 

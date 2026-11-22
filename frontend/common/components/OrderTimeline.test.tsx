@@ -55,16 +55,18 @@ describe('OrderTimeline', () => {
     }
     expect(screen.getByLabelText('Completed, 28 Sept, 4:00 pm, done')).toBeTruthy();
     expect(screen.getByLabelText('Dispute opened, 29 Sept, 9:00 am, current step')).toBeTruthy();
-    expect(screen.queryByText('Refunded')).toBeNull();
+    expect(screen.queryByText('Settled for buyer')).toBeNull();
   });
 
-  it('shows a refunded order as fully done, then the past dispute and the refund, with nothing current', async () => {
+  it('shows a refunded order as fully done, then the past dispute and its settlement for the buyer, with nothing current', async () => {
     await render(<OrderTimeline status="refunded" />);
     for (const label of ['Order placed', 'Confirmed by seller', 'Being prepared', 'Ready for dispatch', 'Completed']) {
       expect(screen.getByLabelText(`${label}, done`)).toBeTruthy();
     }
     expect(screen.getByLabelText('Dispute opened')).toBeTruthy();
-    expect(screen.getByLabelText('Refunded')).toBeTruthy();
+    expect(screen.getByLabelText('Settled for buyer')).toBeTruthy();
+    // BR-11: the platform holds no money, so no step says it refunded anything.
+    expect(screen.queryByText('Refunded')).toBeNull();
     expect(screen.queryByLabelText(/current step|to come/)).toBeNull();
   });
 

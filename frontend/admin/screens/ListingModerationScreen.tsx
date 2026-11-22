@@ -1,22 +1,50 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { Button, EmptyState, Spinner, StatusBadge } from '../../common/components';
-import { useModerationListings, useSetListingStatus } from '../hooks/admin';
-import { useAuthStore } from '../../state/authStore';
+import { StyleSheet, Text } from 'react-native';
+import {
+  ChipRow,
+  ListGroup,
+  ListRow,
+  QueryState,
+  ScreenScaffold,
+  Sheet,
+  StatusBadge,
+  TextField,
+  type ChipOption,
+} from '../../common/components';
+import type { ListingStatus, ListingWithRelations } from '../../common/marketplace';
+import { statusMeta } from '../../common/constants/status';
 import { useTheme, type Theme } from '../../theme';
-import { errorMessage } from '../../utils/errorMessage';
-import type { ListingWithRelations } from '../../common/marketplace';
 import { formatRs } from '../../utils/money';
+import { AdminActionSheet, type AdminAction } from '../components/AdminActionSheet';
+import { LoadMore } from '../components/LoadMore';
+import { useModerationListingPages, useSetListingStatus } from '../hooks/admin';
 
+type Filter = ListingStatus | 'all';
+
+// The status words come from the shared vocabulary, so the filter, the badge and the action all say "Listed" and "Hidden".
+const FILTERS: ChipOption<Filter>[] = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: statusMeta('listing', 'active').label },
+  { value: 'inactive', label: statusMeta('listing', 'inactive').label },
+  { value: 'sold', label: statusMeta('listing', 'sold').label },
+];
+
+/** Every listing, hidden and sold ones too, so the admin can hide one that breaks the rules and list it again (SRDS §8).
+ * The API takes a status and nothing else for a listing, so no reason is asked; the audit row records who, what and when. */
 export function ListingModerationScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const actorId = useAuthStore(state => state.user?.id);
-  const { data: listings = [], isPending: loading, refetch } = useModerationListings();
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [selected, setSelected] = useState<ListingWithRelations | null>(null);
+  const [action, setAction] = useState<AdminAction | null>(null);
   const setListingStatus = useSetListingStatus();
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const needle = search.trim().toLowerCase();
+  const loadAll = needle.length > 0 || filter !== 'all';
+  const query = useModerationListingPages(loadAll);
+  const { rows, refetch } = query;
 
   useFocusEffect(
     useCallback(() => {
@@ -24,87 +52,84 @@ export function ListingModerationScreen() {
     }, [refetch]),
   );
 
-  const toggleActive = async (listing: ListingWithRelations) => {
-    if (!actorId) return;
-    setUpdatingId(listing.id);
-    try {
-      await setListingStatus.mutateAsync({ id: listing.id, status: listing.status === 'active' ? 'inactive' : 'active' });
-    } catch (error) {
-      Alert.alert('Could not update the listing', errorMessage(error));
-    } finally {
-      setUpdatingId(null);
-    }
+  const shown = rows.filter(
+    l => (filter === 'all' || l.status === filter) && (!needle || `${l.title} ${l.owner?.full_name ?? ''}`.toLowerCase().includes(needle)),
+  );
+
+  const toggle = (listing: ListingWithRelations) => {
+    const hiding = listing.status === 'active';
+    setSelected(null);
+    setAction(
+      hiding
+        ? {
+            title: `Hide "${listing.title}"?`,
+            message: `Buyers will no longer find "${listing.title}" in the marketplace. ${listing.owner?.full_name || 'The seller'} keeps the listing and you can restore it.`,
+            confirmLabel: 'Hide listing',
+            destructive: true,
+            run: () => setListingStatus.mutateAsync({ id: listing.id, status: 'inactive' }),
+            done: 'Listing hidden',
+            undo: () => setListingStatus.mutateAsync({ id: listing.id, status: 'active' }),
+          }
+        : {
+            title: `Restore "${listing.title}"?`,
+            message: `"${listing.title}" shows in the marketplace again.`,
+            confirmLabel: 'Restore listing',
+            run: () => setListingStatus.mutateAsync({ id: listing.id, status: 'active' }),
+            done: 'Listing restored',
+            undo: () => setListingStatus.mutateAsync({ id: listing.id, status: 'inactive' }),
+          },
+    );
   };
 
-  if (loading) return <Spinner fullscreen />;
-
   return (
-    <FlashList
-      style={styles.container}
-      contentContainerStyle={styles.list}
-      data={listings}
-      keyExtractor={item => item.id}
-      renderItem={({ item }) => (
-        <View style={styles.row}>
-          <View style={styles.info}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <Text style={styles.owner} numberOfLines={1}>
-              {`${item.owner?.full_name || 'Unknown'} · ${formatRs(item.price)}/${item.unit}`}
-            </Text>
-            <StatusBadge kind="listing" status={item.status} />
-          </View>
-          {item.status !== 'sold' ? (
-            <Button
-              label={item.status === 'active' ? 'Deactivate' : 'Activate'}
-              variant={item.status === 'active' ? 'danger' : 'secondary'}
-              fullWidth={false}
-              loading={updatingId === item.id}
-              onPress={() => toggleActive(item)}
-            />
-          ) : null}
-        </View>
-      )}
-      ListEmptyComponent={
-        <EmptyState
-          title="No listings yet"
-          description="Listings will show up here once sellers start publishing."
-        />
-      }
-    />
+    <>
+      <ScreenScaffold onRefresh={() => refetch()} refreshing={query.isRefetching && !query.isFetchingNextPage}>
+        <TextField label="Find a listing" placeholder="Title or seller" value={search} onChangeText={setSearch} autoCorrect={false} />
+        <ChipRow options={FILTERS} value={filter} onChange={setFilter} />
+        <QueryState
+          query={query}
+          failureTitle="Couldn't load listings"
+          isEmpty={shown.length === 0 && !query.hasNextPage && !query.isFetching}
+          empty={
+            needle || filter !== 'all'
+              ? { title: 'No listing matches', description: 'Try a different title, seller or status.' }
+              : { title: 'No listings yet', description: 'Listings show up here once sellers start publishing.' }
+          }
+        >
+          <ListGroup>
+            {shown.map(listing => (
+              <ListRow
+                key={listing.id}
+                title={listing.title}
+                meta={listing.owner?.full_name || 'Unknown seller'}
+                trailing={<Text style={styles.price}>{`${formatRs(listing.price)}/${listing.unit}`}</Text>}
+                status={<StatusBadge kind="listing" status={listing.status} />}
+                // A sold listing has nothing to moderate.
+                onPress={listing.status === 'sold' ? undefined : () => setSelected(listing)}
+              />
+            ))}
+          </ListGroup>
+          <LoadMore hasMore={!!query.hasNextPage} loading={query.isFetchingNextPage} onLoadMore={() => query.fetchNextPage()} noun="listings" />
+        </QueryState>
+      </ScreenScaffold>
+
+      <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selected?.title ?? 'Listing'}>
+        <ListGroup>
+          <ListRow
+            title={selected?.status === 'active' ? 'Hide listing' : 'Restore listing'}
+            meta={selected?.status === 'active' ? 'Buyers stop seeing it' : 'Buyers see it again'}
+            onPress={() => selected && toggle(selected)}
+          />
+        </ListGroup>
+      </Sheet>
+
+      <AdminActionSheet action={action} onClose={() => setAction(null)} />
+    </>
   );
 }
 
-function makeStyles({ colors, space, typography, borders }: Theme) {
+function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-    },
-    list: {
-      padding: space[4],
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: space[3],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    info: {
-      flex: 1,
-      marginRight: space[2],
-    },
-    title: {
-      ...typography.bodyStrong,
-      color: colors.ink,
-    },
-    owner: {
-      ...typography.caption,
-      color: colors.ink2,
-      marginVertical: space[1],
-    },
+    price: { ...typography.price, color: colors.ink },
   });
 }

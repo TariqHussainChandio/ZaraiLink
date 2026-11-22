@@ -1,4 +1,6 @@
 export const AUTH_ROUTES = {
+  // D20: a guest's profile button opens this first: the profile mark with Sign up and Log in.
+  Welcome: 'Welcome',
   Login: 'Login',
   // A3b: the four ways to register (SRDS §4), then the form for the chosen one.
   CreateAccount: 'CreateAccount',
@@ -19,10 +21,18 @@ export const APP_TABS = {
   Home: 'Home',
   Marketplace: 'Marketplace',
   Orders: 'Orders',
+  // D20: the buyer's own Cart tab (Dashboard · Market · Cart · Orders · Profile). Not named `Cart`, which is the cart
+  // screen inside it: React Navigation warns about a screen nested under one of the same name.
+  Cart: 'CartTab',
   Consultations: 'Consultations',
   Messages: 'Messages',
   Profile: 'Profile',
 } as const;
+
+// The guest's sign-in tab (D18, D20). Its own name, not the signed-in shells' `Profile`: when someone signs in, React
+// Navigation carries the focused tab over to the new shell if a tab of the same name exists there, so signing in from a
+// tab called Profile opened the admin's Account instead of their dashboard.
+export const GUEST_SIGN_IN_TAB = 'SignIn';
 
 // The expert's shell (A2): Requests (Home) · Cases (Consultations) · Messages · Account (Profile). No Market or Orders;
 // notifications open from the bell on Requests.
@@ -53,12 +63,6 @@ export const ADMIN_TABS = {
   Profile: 'Profile',
 } as const;
 
-export const ROOT_ROUTES = {
-  Splash: 'Splash',
-  Auth: 'Auth',
-  App: 'App',
-} as const;
-
 export const MARKETPLACE_ROUTES = {
   Browse: 'Browse',
   ListingDetail: 'ListingDetail',
@@ -66,6 +70,8 @@ export const MARKETPLACE_ROUTES = {
   EditListing: 'EditListing',
   Cart: 'Cart',
   Checkout: 'Checkout',
+  // D20: a seller's public page (their listings, rating and shop reviews), opened from a listing's seller row.
+  SellerProfile: 'SellerProfile',
 } as const;
 
 // PaymentMethod/Processing/Result (Module 10) live in the orders stack rather than a separate
@@ -88,12 +94,10 @@ export const MESSAGING_ROUTES = {
   Chat: 'Chat',
 } as const;
 
-// Shared Home stack for buyer/farmer/dealer. Farms/Crops (Module 7), Stores/Suppliers/
-// Inventory (Module 8), and Disease Advisory (Module 15) are real screens; My Listings/
-// Products remain placeholders owned by later modules. Every route here is reachable via Quick
-// Actions on the dashboard, but not every role gets every action — Disease Advisory is
-// farmer-only (like Inventory is dealer-only), gated purely at the Quick Actions level, same as
-// Farms/Crops already are.
+// Shared Home stack for buyer/farmer/dealer. Farms/Crops (Module 7), Disease Advisory (Module 15) and My Listings are real
+// screens. Every route here is reachable via Quick Actions on the dashboard, but not every role gets every action: Disease
+// Advisory is farmer-only, gated at the Quick Actions level, same as Farms/Crops. The dealer's inventory is its own system
+// with its own navigator (frontend/inventory, B4).
 export const HOME_ROUTES = {
   Dashboard: 'Dashboard',
   MyListings: 'MyListings',
@@ -105,17 +109,12 @@ export const HOME_ROUTES = {
   DiseaseAdvisory: 'DiseaseAdvisory',
   DiseaseProcessing: 'DiseaseProcessing',
   DiseaseResult: 'DiseaseResult',
-  Products: 'Products',
   // A3b: an approved dealer's business details.
   BusinessDetails: 'BusinessDetails',
-  Stores: 'Stores',
-  StoreDetail: 'StoreDetail',
-  Suppliers: 'Suppliers',
-  SupplierDetail: 'SupplierDetail',
-  Inventory: 'Inventory',
-  InventoryTransactions: 'InventoryTransactions',
   Notifications: 'Notifications',
   Analytics: 'Analytics',
+  // D20: the buyer's wishlist, kept on the phone (wishlistStore).
+  Wishlist: 'Wishlist',
 } as const;
 
 // Every admin screen, across the admin's tab stacks (they share one param list, AdminStackParamList).
@@ -126,7 +125,6 @@ export const ADMIN_HOME_ROUTES = {
   // A3b: the dealer and expert review queue, one application, a photographed document, the required-document list.
   Approvals: 'ApprovalQueue',
   ApplicationDetail: 'ApplicationDetail',
-  DocumentViewer: 'DocumentViewer',
   RequiredDocuments: 'RequiredDocuments',
   ModerationHub: 'ModerationHub',
   UserManagement: 'UserManagement',
@@ -137,10 +135,18 @@ export const ADMIN_HOME_ROUTES = {
   Categories: 'Categories',
   ReferenceData: 'ReferenceData',
   AuditLogs: 'AuditLogs',
+  // A6 (SRDS §37): AI activity counts and the disease knowledge base the AI report reads.
+  AiActivity: 'AiActivity',
+  DiseaseKnowledge: 'DiseaseKnowledge',
+  DiseaseKnowledgeEdit: 'DiseaseKnowledgeEdit',
+  // A7 (SRDS §14): consultation and review moderation, from the Moderation hub and the Overview's queues.
+  ConsultationModeration: 'AdminConsultations',
+  ConsultationModerationDetail: 'AdminConsultationDetail',
+  ReviewModeration: 'ReviewModeration',
 } as const;
 
-// Consultations tab (Buyer/Farmer per §34; Dealer's nav tree omits it — no dealer entry point
-// was ever built, matching that omission). Real screens as of Module 14. Expert's own
+// The farmer's Advisory tab: since D20 (2026-11-22) only farmers ask experts; buyers lost their Experts tab and dealers
+// never had one. Real screens as of Module 14. Expert's own
 // consultations stack (ExpertNavigator) reuses `ConsultationList`/`ConsultationDetail` only —
 // browsing/requesting experts is requester-only, an expert doesn't browse other experts.
 export const CONSULTATIONS_ROUTES = {
@@ -156,11 +162,8 @@ export const PROFILE_ROUTES = {
   EditProfile: 'EditProfile',
   Settings: 'Settings',
   ChangePassword: 'ChangePassword',
-  // P4 (4A.4, admin-only) and (4A.5, every role).
+  // Optional two-step verification for everyone but the admin (D19).
   MfaEnrollment: 'MfaEnrollment',
-  // A3b, admin only: email, password and two-step verification together, and the email change itself.
-  AccountSecurity: 'AccountSecurity',
-  ChangeEmail: 'ChangeEmail',
   // A3: a dealer reads and updates their business details from their profile (the application's business step).
   BusinessDetails: 'ProfileBusinessDetails',
   DeleteAccount: 'DeleteAccount',

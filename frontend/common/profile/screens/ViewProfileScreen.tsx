@@ -1,112 +1,98 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Avatar, Button, RoleBadge } from '../../components';
+import { Building2, Home, Mail, MapPin, Phone, UserX } from 'lucide-react-native';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Button, EmptyState, ListGroup, ListRow, ScreenScaffold } from '../../components';
 import { PROFILE_ROUTES } from '../../constants/routes';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';
+import { AccountSections } from '../components/AccountSections';
+import { useNameTitle } from '../../../hooks/useNameTitle';
 
+/** The Account tab (D3): who you are, what is on your profile, how the app looks and how you sign in, in one scrolling
+ * list. A value that is missing is an invitation ("Add phone number") that opens the form, not a dash. */
 export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfile'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const profile = useAuthStore(state => state.profile);
   const email = useAuthStore(state => state.user?.email);
+  const refreshProfile = useAuthStore(state => state.refreshProfile);
+  const [retrying, setRetrying] = useState(false);
+  // D20: the app bar's title is the person's name, beside their photo.
+  useNameTitle();
 
-  if (!profile) return null;
-
-  // The structured place from sign-up and Edit Profile (A3b); the old free-text field only when none is set.
-  const place = [profile.village, profile.city, profile.province, profile.country].filter(Boolean).join(', ');
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Avatar name={profile.full_name} uri={profile.avatar_url} size={theme.size.avatarLg} />
-        <Text style={styles.name}>{profile.full_name || 'No name yet'}</Text>
-        {/* The wrapper takes the header's centring; the badge itself sizes to its label. */}
-        <View>
-          <RoleBadge role={profile.role} />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Row styles={styles} label="Email" value={email ?? '—'} />
-        <Row styles={styles} label="Phone" value={profile.phone ?? '—'} />
-        <Row styles={styles} label="Location" value={place || profile.location || '—'} />
-        <Row styles={styles} label="Address" value={profile.street ?? '—'} />
-      </View>
-
-      <Button
-        label="Edit Profile"
-        onPress={() => navigation.navigate(PROFILE_ROUTES.EditProfile)}
-        style={styles.action}
-      />
-      {profile.role === 'dealer' ? (
-        <Button
-          label="Business details"
-          variant="secondary"
-          onPress={() => navigation.navigate(PROFILE_ROUTES.BusinessDetails)}
-          style={styles.action}
+  // The profile is loaded with the session; if it is missing the Account tab says so and offers to load it again, instead
+  // of showing an empty screen with no way to sign out.
+  if (!profile) {
+    return (
+      <ScreenScaffold>
+        <EmptyState
+          icon={UserX}
+          title="Couldn't load your profile"
+          description="Check your connection, then try again."
+          actionLabel={retrying ? 'Trying again' : 'Try again'}
+          onAction={() => {
+            if (retrying) return;
+            setRetrying(true);
+            refreshProfile()
+              .catch(() => undefined)
+              .finally(() => setRetrying(false));
+          }}
         />
-      ) : null}
-      <Button
-        label="Settings"
-        variant="secondary"
-        onPress={() => navigation.navigate(PROFILE_ROUTES.Settings)}
-        style={styles.action}
-      />
-    </View>
-  );
-}
+        <AccountSections navigate={route => navigation.navigate(route)} />
+      </ScreenScaffold>
+    );
+  }
 
-function Row({ label, value, styles }: { label: string; value: string; styles: ReturnType<typeof makeStyles> }) {
+  // The structured place from sign-up and Edit profile (A3b); the old free-text field only when none is set.
+  const place = [profile.village, profile.city, profile.province, profile.country].filter(Boolean).join(', ') || profile.location;
+  // Stored as +923001234567, read as 0300 1234567: the way the person writes it.
+  const phone = profile.phone ? (parsePhoneNumberFromString(profile.phone)?.formatNational() ?? profile.phone) : null;
+  const edit = () => navigation.navigate(PROFILE_ROUTES.EditProfile);
+  const icon = (Icon: typeof Mail) => <Icon color={theme.colors.ink2} size={theme.size.iconMd} strokeWidth={theme.size.iconStroke} />;
+
+  // D19: the admin's details are set by the system, so their Account shows who they are, read-only, and the password;
+  // since D20 the admin changes their photo too.
+  if (profile.role === 'admin') {
+    return (
+      <ScreenScaffold>
+        <ListGroup>
+          <ListRow title="Email" meta={email ?? 'Not available'} leading={icon(Mail)} />
+        </ListGroup>
+        <AccountSections navigate={route => navigation.navigate(route)} />
+      </ScreenScaffold>
+    );
+  }
+
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
-    </View>
+    <ScreenScaffold>
+      {/* D20: the photo, the name and the role are in the app bar; Edit profile opens the body. */}
+      <View style={styles.header}>
+        <Button label="Edit profile" variant="quiet" size="sm" fullWidth={false} onPress={edit} />
+      </View>
+
+      <ListGroup>
+        <ListRow title="Email" meta={email ?? 'Not available'} leading={icon(Mail)} />
+        <ListRow title="Phone" meta={phone ?? 'Add phone number'} leading={icon(Phone)} onPress={edit} />
+        <ListRow title="Place" meta={place || 'Add your location'} leading={icon(MapPin)} onPress={edit} />
+        <ListRow title="Address" meta={profile.street ?? 'Add your address'} leading={icon(Home)} onPress={edit} />
+        {profile.role === 'dealer' ? (
+          <ListRow
+            title="Business details"
+            leading={icon(Building2)}
+            onPress={() => navigation.navigate(PROFILE_ROUTES.BusinessDetails)}
+          />
+        ) : null}
+      </ListGroup>
+
+      <AccountSections navigate={route => navigation.navigate(route)} />
+    </ScreenScaffold>
   );
 }
 
-function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
+function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      padding: space[4],
-    },
-    header: {
-      alignItems: 'center',
-      marginBottom: space[6],
-      gap: space[2],
-    },
-    name: {
-      ...typography.titleLg,
-      color: colors.ink,
-    },
-    section: {
-      marginBottom: space[6],
-    },
-    row: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      gap: space[3],
-      paddingVertical: space[2],
-      borderBottomWidth: borders.hairline,
-      borderBottomColor: colors.line,
-    },
-    rowLabel: {
-      ...typography.body,
-      color: colors.ink2,
-    },
-    rowValue: {
-      ...typography.body,
-      color: colors.ink,
-      fontWeight: fontWeight.medium,
-      flexShrink: 1,
-      textAlign: 'right',
-    },
-    action: {
-      marginBottom: space[3],
-    },
+    header: { flexDirection: 'row', justifyContent: 'flex-end' },
   });
 }

@@ -11,7 +11,7 @@ import { ExpertAnalyticsScreen } from '../../expert/screens/AnalyticsScreen';
 import { ExpertDashboardScreen } from '../../expert/screens/DashboardScreen';
 import { ExpertApplicationScreen } from '../../expert/screens/ExpertApplicationScreen';
 import { RoleScopeProvider } from '../../theme';
-import { notificationsAction } from '../headerActions';
+import { notificationsAction, profileAction } from '../headerActions';
 import { stackOptionsWithActions, stackScreenOptions } from '../stackHeader';
 import { renderTabBar, tabOptions } from '../tabOptions';
 import { MessagingNavigator, type MessagingStackParamList } from './MessagingNavigator';
@@ -25,7 +25,10 @@ type ExpertHomeStackParamList = {
 };
 
 const ExpertHomeStack = createNativeStackNavigator<ExpertHomeStackParamList>();
-const REQUESTS_STACK_OPTIONS = stackOptionsWithActions({ [EXPERT_HOME_ROUTES.Dashboard]: notificationsAction });
+// D20: the expert's home has their photo top left, beside their name, and the bell.
+const REQUESTS_STACK_OPTIONS = stackOptionsWithActions({ [EXPERT_HOME_ROUTES.Dashboard]: notificationsAction }, 'marketplace', {
+  [EXPERT_HOME_ROUTES.Dashboard]: profileAction,
+});
 
 // Requests: the expert's dashboard of new consultation requests, with the notification bell in its app bar.
 function ExpertHomeNavigator() {
@@ -34,7 +37,7 @@ function ExpertHomeNavigator() {
       <ExpertHomeStack.Screen
         name={EXPERT_HOME_ROUTES.Dashboard}
         component={ExpertDashboardScreen}
-        options={{ title: 'Requests' }}
+        options={{ title: 'Requests', headerLargeTitle: false }}
       />
       <ExpertHomeStack.Screen name={EXPERT_HOME_ROUTES.Notifications} component={NotificationListScreen} options={{ title: 'Notifications' }} />
       <ExpertHomeStack.Screen
@@ -49,7 +52,7 @@ function ExpertHomeNavigator() {
 
 type ExpertConsultationsStackParamList = {
   [CONSULTATIONS_ROUTES.ConsultationList]: undefined;
-  [CONSULTATIONS_ROUTES.ConsultationDetail]: { consultationId: string };
+  [CONSULTATIONS_ROUTES.ConsultationDetail]: { consultationId: string; aiSuggestion?: { label: string; confidence: number } };
 };
 
 const ExpertConsultationsStack = createNativeStackNavigator<ExpertConsultationsStackParamList>();
@@ -67,7 +70,8 @@ function ExpertConsultationsNavigator() {
       <ExpertConsultationsStack.Screen
         name={CONSULTATIONS_ROUTES.ConsultationDetail}
         component={ConsultationDetailScreen}
-        options={{ title: 'Consultation' }}
+        // The case is named by its AI suggestion when it came from a plant scan; otherwise it is simply a case.
+        options={({ route }) => ({ title: route.params.aiSuggestion?.label ?? 'Case' })}
       />
     </ExpertConsultationsStack.Navigator>
   );

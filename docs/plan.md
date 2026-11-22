@@ -1,10 +1,55 @@
 # ZaraiLink Plan of Record
 
-> **Status (2026-10-05): A0 to A3 closed (A3a PR #25 `59d57fc`; A3b PR #28 `1c57d38`); wave 4 under way: A4 (dispatch)
+> **Status (2026-11-19): final integration for submission, on branch `integration/final`.**
+> - **A8 (local accessibility pass)** committed `ff45ac9`; the B6 leftovers (local-only release build switch, IMS
+>   airplane-mode steps) `01ca422`.
+> - **Rate Board redesign merged** (`0eeda13`, D15–D17) onto B1–B5, A5–A7 and the local A8 work: merge `f1047c3`.
+>   The teammate's look everywhere, the behaviour built since kept (A4/B3 dispatch, A5 context, A6 report, A7 audit,
+>   B4/B5 inventory). Inventory: B4 wins over the pre-B4 screens; the dealer dashboard opens the inventory system only
+>   for an approved dealer. Toast and Snackbar, and ScreenState and QueryState, both stay for now (one of each is
+>   follow-up work). OpenAPI, the client and the authorization snapshot regenerated (`/disease/crops`: any signed-in role).
+> - **D18 guest browsing** built (in the working tree for the maintainer's review): the market is open without an
+>   account, checkout and messaging ask for one, and the cart survives sign-in. Proven on the emulator against the real
+>   stack, guest to placed order.
+> - **Checks:** tsc, eslint, Jest 2202, backend unit 1021, reality gate; backend real stack 601 passed, 0 failed (the
+>   first run's 7 failures were tests left behind by B3, A6 and A7 renames, plus 5 operations no test called, among them
+>   the merged `/disease/crops`; tests updated, no assertion weakened); fresh debug and release builds walked on the
+>   Pixel 8 emulator (guest to placed order).
+> - **Hosted database (2026-11-20, maintainer's request):** restarted (it had stopped answering; now Postgres 17.11) and
+>   the 11 A4–B5 migrations pushed with `npx supabase db push` (69 in step, latest `20261025090000`), after a dry run
+>   and a read-only check that its audit log held no row the A7 rename would touch. Its only account is the
+>   maintainer's admin; there are no listings or orders. Advisors: only the documented expected findings, plus
+>   leaked-password protection (an Auth dashboard toggle) still off.
+> - **Not done:** hosted deployment of the API, release signing and EAS,
+>   Sentry and backups (G5, G3), the per-role TalkBack and dark-mode pass, usability testing with real users, B6's
+>   fresh-context attack, the agronomist's review of the disease texts.
+
+> **Earlier status (2026-10-18): testing stage, phase by phase.** Phases A4–A8 and B0–B5 were first written as code only
+> (2026-10-10/11, the maintainer's call); since 2026-10-11 each is tested, security-checked by a fresh-context verifier,
+> walked on the emulator (since 2026-10-12, after a fresh rebuild) and committed, one commit per phase on
+> `phases/b1-b5` (draft PR #36, merging after B5).
+> - **Done:** A4 + B0 (PR #35 merged, `a2bf62c`); B1 `ca3f80d` (inventory data model); A5 `8b8f286` (conversations
+>   only on a real relationship); A6 `4bc44e1` (AI report with the consultation, expert assessment apart, farmers only);
+>   B2 `573dac2` (inventory API; atomic purchase writes); B3 `ae47437` (dispatch deducts once, an IMS fault never breaks
+>   the marketplace, exact stock server-side only); A7 `235ab02` (every admin action audited by the database under
+>   its §51 name; the admin reaches no inventory); B4 `14f626d` (the inventory app, approved dealers only,
+>   readable offline, the device cache and a remembered role wiped on sign-out).
+> - B5 `3b2e490` (reports, exports through a signed link, reconciliation holding over a scripted month).
+> - **Next:** A8 (accessibility; its 8 failing farmer screen tests and the Toast/ScreenState work are A8's); then A9 and
+>   B6. PR #36 (B1–B5, A5–A7) waits on the maintainer's OK to merge.
+> - **Waiting on the maintainer:** the hosted `db push` of A4's two migrations and of B1–B3 and A7 (each checked
+>   read-only first; A7's needs a check that no hosted audit row has a non-snake_case action); an agronomist's review
+>   of the 38 disease-knowledge entries; a licence-clear real leaf photo for the real-photo test.
+> - **Decisions recorded in testing:** the database writes every admin audit row (A6, A7); D6/D7 trade-off when the
+>   IMS is locked past its bound (`plan-inventory.md` B3); a listing with no product link answers availability from
+>   its own quantity.
+
+> **Earlier status (2026-10-05).**
+> A0 to A3 closed (A3a PR #25 `59d57fc`; A3b PR #28 `1c57d38`); wave 4 under way: A4 (dispatch)
 > and B0 (inventory boundary) built together, B1 next. The A3b
 > migration is on the hosted project too (pushed 2026-10-05, 59 migrations in step); the reauthentication and
 > email-change templates are pushed (`config push`, 2026-10-05), and the API's decision email reached a real inbox
-> through Gmail. The A3a migration is on the hosted project (pushed 2026-10-04).**
+> through Gmail. The A3a migration is on the hosted project (pushed 2026-10-04).
 > - **A0** (PR #13): the hosted project matches the repository (56 migrations with the reference data) and Auth is
 >   configured as code (`supabase/config.toml` through `npx supabase config push`: email codes sent by Gmail SMTP,
 >   Supabase's password rules, reauthentication for old sessions, phone sign-up off).
@@ -20,6 +65,12 @@
 >   npm advisories that newly failed the dependency scan.
 > - An early build of A3's account status, email-only sign-in and Application Status screen is parked, unmerged, on
 >   branch `wip/a3-account-status` (its migration is not pushed); A3 ports it by hand with `scripts/a1/moves.json`.
+> - **A8, UI/UX rollout, brought forward (started 2026-11-08):** a read-only audit of all 78 screens found 103
+>   problems, and the maintainer chose a new look, Rate Board (D15), with D16 and D17 settling the scan scope and admin
+>   role changes. Stage 1 (theme and shared components) comes first; the screens then follow lane by lane. Audit
+>   findings that need the API or the database (order numbers; reasons for order and admin actions; seller bank
+>   details; reply notifications) are separate tasks, waiting for a local Supabase stack, which needs Docker on this
+>   machine.
 >
 > D2–D4 decided. The requirements are [`docs/srds.md`](srds.md),
 > traced requirement by requirement in [`docs/status/srds-traceability.md`](status/srds-traceability.md); this
@@ -101,7 +152,8 @@ role's dashboard numbers, until a phase splits it per role), frontend `common/re
 `common/reference_data`) and frontend `testUtils/`. Folders with no code yet appear in the phase that fills them:
 backend `buyer/`, `storage/` and `inventory/` (B0 carves it out of `dealer/`), and frontend
 `common/{forms,validation,formatting,error-handling,loading,permissions,api}` (A2). The explicit old-to-new file
-list is `scripts/a1/moves.json`, kept for porting older branches (A3, B0).
+list was `scripts/a1/moves.json`, used to port older branches (A3, B0); the one-off A1 and A2 scripts were removed on
+2026-11-20 and remain in the git history.
 
 ## 3. Lanes and agents
 
@@ -175,7 +227,13 @@ Agreed before the phase that needs them. Each has a contract test, so a lane can
 | D11 | AI report text comes from a curated, expert-reviewed disease knowledge base (no LLM) | Recommended |
 | D12 | Conversations start only from a listing, an order or a consultation | Recommended |
 | D13 | Model weights live in the private Supabase bucket `ml-models`, fetched by signed URL | **Done** 2026-09-26 |
-| D14 | A2's design source is a new ZaraiLink design system built from the SRDS (§43–§44, the business rules and the status vocabulary); the earlier Cowork design system and prototype are not used | **Decided** 2026-09-28 (maintainer); design approved 2026-09-28 |
+| D14 | A2's design source is a new ZaraiLink design system built from the SRDS (§43–§44, the business rules and the status vocabulary); the earlier Cowork design system and prototype are not used | **Decided** 2026-09-28 (maintainer); design approved 2026-09-28; its look replaced by D15 |
+| D15 | The design source is the Rate Board design system (https://claude.ai/artifact/TszKUgaoe99eChm1KYw5TD). Field, paper, board, chalk and ink; Barlow Semi Condensed for titles and figures, Atkinson Hyperlegible Next for text; crisp corners; the board green is the brand; ripples, no entrance animations. It replaces D14's visual design; the SRDS §44 role and module colours are unchanged | **Decided** 2026-11-08 (maintainer) |
+| D16 | The disease scan offers only the crops the model knows (`backend/app/ai/checkpoints/class_names.json`); any other crop goes to an expert with the photo, and a photo predicted as another crop gets the advisory and the expert action, not a report (BR-13) | **Decided** 2026-11-08 (maintainer) |
+| D17 | An admin role change is confirmed in a sheet that states its consequence (an approved dealer or expert returns to pending); the app does not offer making someone an admin | **Decided** 2026-11-08 (maintainer) |
+| D18 | Anyone who installs the app may browse the marketplace, open listings and fill a cart without an account; checking out and messaging a seller ask for sign-in or registration, and the cart goes with the guest into that account. Only public reads are open (the API already served them without a token); every write still needs an account | **Decided** 2026-11-19 (maintainer); built the same day |
+| D19 | The admin is the platform's one administrator, made by the system (the bootstrap runbook) with its details predefined: the admin changes only the password, has no profile editing, phone or address, no email change, no Delete account, and needs no second factor for any action. A unique index allows one admin; nobody is made an admin from the app or the API, and the admin's role and access are fixed. Two-step verification stays optional for farmers, buyers, dealers and experts (sign-in protection). The admin gets a side menu with every admin screen in dropdown groups (the bottom tabs stay), and option lists across the app open at the tapped field instead of from the bottom of the screen. Migration `20261120080000_sole_admin_no_mfa.sql`; it replaces P4's admin two-factor | **Decided** 2026-11-20 (maintainer); built the same day, in the working tree |
+| D20 | ZaraiLink's brand is olive green (`#556B2F`) with earth brown (`#7B4B2A`) as its second colour, replacing D15's blackboard green; every app bar in every shell is olive with white title and icons. The price plate is gone everywhere: a price is earth-brown text with its unit. A guest has no bottom bar: the Market's app bar carries a profile button (top left, opening a welcome page with Sign up and Log in) and the cart. Sign-in and sign-up are a centred card with its shadow to the right and below. A person's name is letters (English or Urdu) with single spaces, any valid email is accepted, and the phone field refuses letters and digits past a complete number; each shows its error as it is typed. Listing pages link the seller's shop (their listings, rating and shop reviews). Buyers: Dashboard · Market · Cart · Orders · Profile, profile button top left, Messages and the bell top right, a wishlist kept on the phone; buyers no longer reach experts, and only a farmer may start a consultation (API `require_farmer`, migration `20261122080000_consultations_farmers_only.sql`). Farmers: larger tab bar (Home · Market · Orders · Plant doctor · Me) and picture tiles on Home. Admin: no bottom bar; profile button and bell in the app bar, a Menu bar under it opening the D19 menu as a dropdown; Analytics, AI activity and Disease knowledge leave the Overview for the menu; every Overview figure opens what it counts. Follow-up the same day: the guest market's bar says ZaraiLink, centred; signing in opens the dashboard (the guest's sign-in tab is named `SignIn`, so React Navigation no longer carries a focused `Profile` tab into the admin's or expert's shell); profile buttons and the buyer's Profile tab show the person's photo; dashboards are titled with the person's name; everyone, the admin included, changes their own photo from their Account (tap the photo, Edit photo, a prompt, then the system gallery), migration `20261122090000_admin_profile_photo.sql`. Second follow-up: the person's photo is on their home screen only, beside their name with their role beneath, and every other main screen shows only its page name; the Account carries photo, name and role in its bar, with no title, bell or menu (the admin gets Back to the Overview); dashboards drop greetings and status lines ("You're up to date") and keep the alerts; the body sits further from both bars; the inventory system gets its paper bar back, with the warehouse mark beside the business name and no "Inventory system" line; the dealer's home is their marketplace shop (alerts from the shop and the inventory system, the shop's figures and listings, one entry into the inventory system, where all stock work happens). Third follow-up: every bar has the home bar's compact height (no large title); the admin's Menu is a borderless button in the left corner under the Overview's bar, on the Overview only; every other admin area shows only its name and Back to the Overview. Fourth follow-up (dealer): the dealer's marketplace shell is drawn in the brand olive, not the dealer orange (the dealer role badge keeps its SRDS colour); the dealer's home shows only the shop's figures and best sellers, with no business name and no alerts; the bell counts the inventory system's stock alerts with the marketplace notifications, and the notification list shows them first; the inventory system opens from a warehouse button in the home's app bar and is drawn in earth brown throughout (new accent `inventory`) | **Decided** 2026-11-22 (maintainer); built the same day, in the working tree. Both migrations were validated locally and pushed to the hosted project on 2026-11-22 (maintainer's OK) |
 
 ## 7. Outside services and gates
 

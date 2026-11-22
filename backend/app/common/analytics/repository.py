@@ -9,20 +9,10 @@ async def fetch_own_listings(access_token: str, owner_id: str) -> list[dict]:
     return as_rows(response)
 
 
-async def fetch_dealer_sale_transactions(access_token: str, dealer_id: str) -> list[dict]:
-    client = await get_user_scoped_client(access_token)
-    response = await (
-        client.table("inventory_transactions")
-        .select("quantity,created_at,inventory:inventory!inner(dealer_id)")
-        .eq("inventory.dealer_id", dealer_id)
-        .eq("type", "sale")
-        .execute()
-    )
-    return as_rows(response)
-
-
-# --- admin-wide reads — every table below already grants admins full read under RLS
-# (`... or public.is_admin()`), confirmed directly in the migrations, same as fetch_platform_stats.
+# --- admin-wide reads. Each of the seven tables read below (profiles, listings, orders, payments, reports, experts,
+# consultations) has a select policy with an `or public.is_admin()` branch, so the admin's own token reads them all.
+# That is not true of every table: the dealer's inventory (the IMS tables) gives admins no read at all (BR-03/04), so
+# no admin analytics may be built on it.
 
 
 async def fetch_all_profiles_summary(access_token: str) -> list[dict]:

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
@@ -61,7 +60,6 @@ beforeEach(() => {
   mockUpsertFarmerProfile.mockReset().mockResolvedValue(undefined);
   mockUpdateProfile.mockReset().mockResolvedValue(undefined);
   mockUploadAvatar.mockReset();
-  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -75,7 +73,10 @@ describe('EditProfileScreen', () => {
 
     expect(screen.getByDisplayValue('Ahmed Khan')).toBeTruthy();
     expect(screen.getByDisplayValue('+923001234567')).toBeTruthy();
-    expect(screen.getByDisplayValue('Pakistan')).toBeTruthy();
+    // The country is not a field; the province is chosen from a list and the city is typed.
+    expect(screen.queryByLabelText('Country')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Province, Punjab' })).toBeTruthy();
+    expect(screen.getByDisplayValue('Multan')).toBeTruthy();
   });
 
   it('does not show farmer-only fields or fetch the farmer profile for a buyer', async () => {
@@ -125,14 +126,16 @@ describe('EditProfileScreen', () => {
     await renderWithQuery(<EditProfileScreen navigation={navigation} route={{} as never} />);
 
     await fireEvent.changeText(screen.getByLabelText('Full name'), 'Ahmed Ali Khan');
-    await fireEvent.press(screen.getByText('Save Changes'));
+    await fireEvent.press(screen.getByText('Save profile'));
 
     await waitFor(() =>
       expect(mockUpdateProfile).toHaveBeenCalledWith(
-        expect.objectContaining({ full_name: 'Ahmed Ali Khan', phone: '+923001234567' }),
+        expect.objectContaining({ full_name: 'Ahmed Ali Khan', phone: '+923001234567', country: 'Pakistan', province: 'Punjab' }),
       ),
     );
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    // A save the person can see worked, without an Alert.
+    expect(await screen.findByText('Profile saved')).toBeTruthy();
   });
 
   it('also upserts the farmer profile when saving as a farmer', async () => {
@@ -145,7 +148,7 @@ describe('EditProfileScreen', () => {
     await screen.findByText('Experience');
 
     await fireEvent.changeText(screen.getByLabelText('Experience'), '10 years');
-    await fireEvent.press(screen.getByText('Save Changes'));
+    await fireEvent.press(screen.getByText('Save profile'));
 
     await waitFor(() =>
       expect(mockUpsertFarmerProfile).toHaveBeenCalledWith({ experience: '10 years', agriculturalInfo: null }),
@@ -165,8 +168,9 @@ describe('EditProfileScreen', () => {
     });
     await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
 
-    await fireEvent.press(screen.getByText('AK'));
-    await fireEvent.press(screen.getByText('Save Changes'));
+    // The photo is a visible, named control: the avatar with a "Change photo" button beside it.
+    await fireEvent.press(screen.getByRole('button', { name: 'Change photo' }));
+    await fireEvent.press(screen.getByText('Save profile'));
 
     await waitFor(() =>
       expect(mockUploadAvatar).toHaveBeenCalledWith('user-1', {
@@ -180,17 +184,38 @@ describe('EditProfileScreen', () => {
     );
   });
 
-  it('shows an alert when saving fails', async () => {
+  it('shows a failed save as a banner on the screen, with the cause, and stays open', async () => {
     mockUpdateProfile.mockRejectedValue(new Error('Network error'));
     useAuthStore.setState({ user: { id: 'user-1' } as never, profile: profile() });
     const navigation = makeNavigation();
     await renderWithQuery(<EditProfileScreen navigation={navigation} route={{} as never} />);
 
-    await fireEvent.press(screen.getByText('Save Changes'));
+    await fireEvent.press(screen.getByText('Save profile'));
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith('Failed to update profile', 'Network error'),
-    );
+    expect(await screen.findByText("Couldn't save your profile")).toBeTruthy();
+    expect(screen.getByText('Network error')).toBeTruthy();
     expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('shows a photo that could not be chosen as a banner', async () => {
+    mockLaunchImageLibrary.mockRejectedValue(new Error('Picker failed'));
+    useAuthStore.setState({ user: { id: 'user-1' } as never, profile: profile() });
+    await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Change photo' }));
+
+    expect(await screen.findByText("Couldn't choose that photo")).toBeTruthy();
+    expect(screen.getByText('Picker failed')).toBeTruthy();
+  });
+
+  it('refuses a phone number that is not a number, and says what to enter', async () => {
+    useAuthStore.setState({ user: { id: 'user-1' } as never, profile: profile() });
+    await renderWithQuery(<EditProfileScreen navigation={makeNavigation()} route={{} as never} />);
+
+    await fireEvent.changeText(screen.getByLabelText('Phone'), '0300');
+    await fireEvent.press(screen.getByText('Save profile'));
+
+    expect((await screen.findAllByText('Enter a phone number like 0300 1234567')).length).toBeGreaterThan(0);
+    expect(mockUpdateProfile).not.toHaveBeenCalled();
   });
 });

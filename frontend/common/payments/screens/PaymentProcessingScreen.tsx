@@ -1,27 +1,36 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Button, Spinner, StatusBadge } from '../../components';
+import { Button, Card, PriceBreakdown, QueryState, ScreenScaffold, StatusBadge } from '../../components';
 import { ORDERS_ROUTES } from '../../constants/routes';
+import { useOrderPaymentContext } from '../../orders';
 import { usePayment } from '../hooks/payments';
+import { paymentMethodName } from '../methods';
 import { useTheme, type Theme } from '../../../theme';
-import type { Payment, PaymentMethod } from '../types/payments';
+import type { Payment } from '../types/payments';
 import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
-import { PAYMENT_METHOD_LABELS } from '../../constants/labels';
 import { formatRs } from '../../../utils/money';
-
-// A payment row stores the method as text; one this build does not know is shown as stored.
-function isPaymentMethod(method: string): method is PaymentMethod {
-  return method in PAYMENT_METHOD_LABELS;
-}
 
 const TERMINAL_STATUSES: Payment['status'][] = ['successful', 'failed', 'cancelled', 'refunded'];
 
+/** What happens next, in words, for the method that was chosen. Cash is handed over on delivery and the seller records
+ * it then; nothing here waits on money in a ZaraiLink account, because there is none (BR-11). */
+function nextStep(method: string): string {
+  return method === 'cod'
+    ? 'Pay the seller in cash when you receive the goods. The seller marks it paid then, and this screen updates.'
+    : 'The seller confirms once they have received your transfer, and this screen updates.';
+}
+
+/** Where a started payment waits for the seller to record it. A failed load shows a Banner with "Try again" instead of
+ * spinning forever, and "Back to order" is always on screen (this screen has no Back arrow). */
 export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps<'PaymentProcessing'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { paymentId } = route.params;
-  const { data: payment, refetch } = usePayment(paymentId);
+  const query = usePayment(paymentId);
+  const payment = query.data;
+  const order = useOrderPaymentContext(payment?.order_id ?? '');
+  const { refetch } = query;
 
   // The seller decides a payment, so leaving the waiting screen is driven by the status the server reports.
   useEffect(() => {
@@ -37,63 +46,51 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
     }, [refetch]),
   );
 
-  if (!payment) return <Spinner fullscreen />;
+  const backToOrder = () => {
+    if (!payment) return;
+    navigation.reset({
+      index: 1,
+      routes: [{ name: ORDERS_ROUTES.OrderHistory }, { name: ORDERS_ROUTES.OrderDetail, params: { orderId: payment.order_id } }],
+    });
+  };
 
   return (
-    <View style={styles.container}>
-      <StatusBadge kind="payment" status={payment.status} />
-      <Text style={styles.amount}>
-        {formatRs(payment.amount)}
-      </Text>
-      <Text style={styles.method}>
-        {isPaymentMethod(payment.method) ? PAYMENT_METHOD_LABELS[payment.method] : payment.method}
-      </Text>
-      <Text style={styles.waiting}>{"Waiting for the seller to confirm payment receipt. You'll be able to track this from your order at any time."}</Text>
-      <Button label="Check Status" onPress={() => refetch()} variant="secondary" style={styles.action} />
-      <Button
-        label="Back to Order"
-        onPress={() =>
-          navigation.reset({
-            index: 1,
-            routes: [
-              { name: ORDERS_ROUTES.OrderHistory },
-              { name: ORDERS_ROUTES.OrderDetail, params: { orderId: payment.order_id } },
-            ],
-          })
-        }
-        style={styles.action}
-      />
-    </View>
+    <ScreenScaffold>
+      <QueryState query={query} failureTitle="Couldn't load this payment">
+        {payment ? (
+          <>
+            <Card style={styles.card}>
+              <View style={styles.head}>
+                <Text style={styles.method}>{paymentMethodName(payment.method)}</Text>
+                <StatusBadge kind="payment" status={payment.status} />
+              </View>
+              {order.data ? (
+                <PriceBreakdown
+                  subtotal={order.data.productSubtotal}
+                  delivery={order.data.deliveryCharge}
+                  total={payment.amount}
+                  payTo={order.data.sellerName ? `You pay ${order.data.sellerName} directly. ZaraiLink does not hold your money.` : undefined}
+                />
+              ) : (
+                <Text style={styles.amount}>{formatRs(payment.amount)}</Text>
+              )}
+            </Card>
+            <Text style={styles.next}>{nextStep(payment.method)}</Text>
+            <Button label="Back to order" onPress={backToOrder} />
+            <Button label="Check again" variant="secondary" loading={query.isFetching} onPress={() => refetch()} />
+          </>
+        ) : null}
+      </QueryState>
+    </ScreenScaffold>
   );
 }
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      padding: space[4],
-      alignItems: 'center',
-    },
-    amount: {
-      marginTop: space[4],
-      ...typography.headline,
-      color: colors.ink,
-    },
-    method: {
-      marginTop: space[1],
-      ...typography.caption,
-      color: colors.ink2,
-    },
-    waiting: {
-      marginTop: space[4],
-      ...typography.caption,
-      color: colors.ink2,
-      textAlign: 'center',
-    },
-    action: {
-      marginTop: space[3],
-      alignSelf: 'stretch',
-    },
+    card: { gap: space[3] },
+    head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space[3] },
+    method: { ...typography.title, color: colors.ink },
+    amount: { ...typography.figureLg, color: colors.ink },
+    next: { ...typography.body, color: colors.ink },
   });
 }

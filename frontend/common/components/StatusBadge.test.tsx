@@ -25,6 +25,13 @@ describe('StatusBadge', () => {
     expect(words.some(w => /held|escrow|release/.test(w))).toBe(false);
   });
 
+  it('never says the platform refunded anything: a refund is the seller paying the buyer directly (BR-11)', async () => {
+    expect(STATUS.order.refunded.label).toBe('Settled for buyer');
+    expect(STATUS.payment.refunded.label).toBe('Refunded by seller');
+    await render(<StatusBadge kind="order" status="refunded" />);
+    expect(screen.queryByText('Refunded')).toBeNull();
+  });
+
   it('draws a failure as the one solid block, with the on-accent text colour', async () => {
     await render(<StatusBadge kind="order" status="rejected" />);
     expect(colourOf(screen.getByText('Rejected'))).toBe(lightColors.onAccent);
@@ -46,6 +53,16 @@ describe('StatusBadge', () => {
   it('reads only the vocabulary itself, not what its lookup object inherits', async () => {
     await render(<StatusBadge kind="order" status={'constructor' as never} />);
     expect(screen.getByText('Constructor')).toBeTruthy();
+  });
+
+  it('shows an application document as needed, added or optional', async () => {
+    await render(<StatusBadge kind="document" status="needed" />);
+    expect(screen.getByText('Needed')).toBeTruthy();
+    expect(colourOf(screen.getByText('Needed'))).toBe(lightColors.status.warning.ink);
+    await render(<StatusBadge kind="document" status="added" />);
+    expect(colourOf(screen.getByText('Added'))).toBe(lightColors.status.success.ink);
+    await render(<StatusBadge kind="document" status="optional" />);
+    expect(screen.getByText('Optional')).toBeTruthy();
   });
 
   it('gives every status in every kind an icon and a word', () => {

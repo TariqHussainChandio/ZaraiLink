@@ -1,17 +1,20 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, type ChipOption, ChipRow, LocationPicker, Spinner, TextField } from '../../../components';
+import { Banner, Chip, LocationPicker, TextField } from '../../../components';
 import { BUSINESS_TYPE_LABELS } from '../../../constants/labels';
+import { COUNTRY } from '../../../constants/locations';
 import { useTheme, type Theme } from '../../../../theme';
 import { errorMessage } from '../../../../utils/errorMessage';
 import { useDealerApplication, useSaveDealerApplication } from '../../hooks/application';
 import type { BusinessType } from '../../types/application';
+import { ChoiceGroup } from '../ChoiceGroup';
+import { FormErrorSummary } from '../FormErrorSummary';
+import { FormSkeleton, StepActions, StepLoadFailure } from './StepParts';
 
 const BUSINESS_TYPES = Object.keys(BUSINESS_TYPE_LABELS) as BusinessType[];
-const TYPE_OPTIONS: ChipOption<BusinessType>[] = BUSINESS_TYPES.map(value => ({ value, label: BUSINESS_TYPE_LABELS[value] }));
 
 // The lengths match the database checks on dealer_profiles (20261012080000_applications.sql).
 function makeSchema() {
@@ -21,9 +24,8 @@ function makeSchema() {
     businessType: z.enum(BUSINESS_TYPES as [BusinessType, ...BusinessType[]]),
     registrationNumber: text(2, 60, 'Enter the registration or licence number'),
     businessAddress: text(5, 300, 'Enter the street address of your business'),
-    country: z.string().trim().min(2, 'Enter the country'),
-    province: z.string().trim().min(2, 'Enter the province'),
-    city: z.string().trim().min(2, 'Enter the city'),
+    province: z.string().trim().min(2, 'Choose the province of your business'),
+    city: z.string().trim().min(2, 'Enter the city of your business'),
   });
 }
 
@@ -32,23 +34,27 @@ type Values = z.infer<ReturnType<typeof makeSchema>>;
 /** The dealer's business details (SRDS §7): the second step of their application, and the dealer's profile form. */
 export function DealerBusinessStep({
   onDone,
+  onBack,
   submitLabel = 'Save and continue',
 }: {
   onDone: () => void;
+  /** Present when another step comes before this one. */
+  onBack?: () => void;
   submitLabel?: string;
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const { data: saved, isLoading } = useDealerApplication();
+  const saved = useDealerApplication();
   const save = useSaveDealerApplication();
   const schema = useMemo(() => makeSchema(), []);
   const {
     control,
     handleSubmit,
     reset,
+    setFocus,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, submitCount },
   } = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -56,7 +62,6 @@ export function DealerBusinessStep({
       businessType: 'agri_input_retailer',
       registrationNumber: '',
       businessAddress: '',
-      country: '',
       province: '',
       city: '',
     },
@@ -64,19 +69,19 @@ export function DealerBusinessStep({
 
   // Fill the form once from what was saved before (a rejected dealer correcting it); later refetches keep the edits.
   const filled = useRef(false);
+  const application = saved.data;
   useEffect(() => {
-    if (!saved || filled.current) return;
+    if (!application || filled.current) return;
     filled.current = true;
     reset({
-      businessName: saved.business_name,
-      businessType: saved.business_type,
-      registrationNumber: saved.registration_number,
-      businessAddress: saved.business_address,
-      country: saved.country,
-      province: saved.province,
-      city: saved.city,
+      businessName: application.business_name,
+      businessType: application.business_type,
+      registrationNumber: application.registration_number,
+      businessAddress: application.business_address,
+      province: application.province,
+      city: application.city,
     });
-  }, [saved, reset]);
+  }, [application, reset]);
 
   const onSubmit = async (values: Values) => {
     // A refusal (application_locked, say) is shown from the mutation's own error; the step stays open.
@@ -85,7 +90,8 @@ export function DealerBusinessStep({
       business_type: values.businessType,
       registration_number: values.registrationNumber,
       business_address: values.businessAddress,
-      country: values.country,
+      // ZaraiLink serves Pakistan only, so the country is not asked.
+      country: COUNTRY,
       province: values.province,
       city: values.city,
     };
@@ -93,66 +99,90 @@ export function DealerBusinessStep({
     if (stored) onDone();
   };
 
-  if (isLoading) return <Spinner />;
+  if (saved.isPending) return <FormSkeleton />;
+  // A failed load must not look like an empty form: saving over it would replace what the dealer already sent.
+  if (saved.isError) return <StepLoadFailure error={saved.error} onRetry={() => saved.refetch()} />;
 
+  const businessType = watch('businessType');
   return (
     <View style={styles.form}>
-      <Controller
-        control={control}
-        name="businessName"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField label="Business name" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.businessName?.message} />
-        )}
-      />
-      <Text style={styles.label}>Business type</Text>
-      <Controller
-        control={control}
-        name="businessType"
-        render={({ field: { onChange, value } }) => <ChipRow options={TYPE_OPTIONS} value={value} onChange={onChange} />}
-      />
-      <Controller
-        control={control}
-        name="registrationNumber"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Registration or licence number"
-            helper="As it appears on your business registration certificate"
-            autoCapitalize="characters"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.registrationNumber?.message}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="businessAddress"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField label="Business address" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.businessAddress?.message} />
-        )}
-      />
-      <LocationPicker
-        country={watch('country') || null}
-        province={watch('province') || null}
-        city={watch('city') || null}
-        onCountryChange={value => setValue('country', value ?? '', { shouldValidate: !!errors.country })}
-        onProvinceChange={value => setValue('province', value ?? '', { shouldValidate: !!errors.province })}
-        onCityChange={value => setValue('city', value ?? '', { shouldValidate: !!errors.city })}
-      />
-      {errors.country || errors.province || errors.city ? (
-        <Text style={styles.error}>Enter the country, province and city of your business</Text>
-      ) : null}
+      <View>
+        <Controller
+          control={control}
+          name="businessName"
+          render={({ field: { ref, onChange, onBlur, value } }) => (
+            <TextField
+              ref={ref}
+              label="Business name"
+              returnKeyType="next"
+              onSubmitEditing={() => setFocus('registrationNumber')}
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.businessName?.message}
+            />
+          )}
+        />
+        <ChoiceGroup label="Business type" single error={errors.businessType?.message}>
+          {BUSINESS_TYPES.map(type => (
+            <Chip
+              key={type}
+              label={BUSINESS_TYPE_LABELS[type]}
+              selected={businessType === type}
+              onPress={() => setValue('businessType', type)}
+            />
+          ))}
+        </ChoiceGroup>
+        <Controller
+          control={control}
+          name="registrationNumber"
+          render={({ field: { ref, onChange, onBlur, value } }) => (
+            <TextField
+              ref={ref}
+              label="Registration or licence number"
+              helper="As it appears on your business registration certificate"
+              autoCapitalize="characters"
+              returnKeyType="next"
+              onSubmitEditing={() => setFocus('businessAddress')}
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.registrationNumber?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="businessAddress"
+          render={({ field: { ref, onChange, onBlur, value } }) => (
+            <TextField
+              ref={ref}
+              label="Business address"
+              autoComplete="street-address"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.businessAddress?.message}
+            />
+          )}
+        />
+        <LocationPicker
+          province={watch('province') || null}
+          city={watch('city') || null}
+          onProvinceChange={value => setValue('province', value ?? '', { shouldValidate: submitCount > 0 })}
+          onCityChange={value => setValue('city', value ?? '', { shouldValidate: submitCount > 0 })}
+          errors={{ province: errors.province?.message, city: errors.city?.message }}
+        />
+      </View>
+      <FormErrorSummary errors={errors} submitted={submitCount > 0} />
       {save.error ? <Banner tone="danger">{errorMessage(save.error)}</Banner> : null}
-      <Button label={submitLabel} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
+      <StepActions onBack={onBack} primaryLabel={submitLabel} loading={save.isPending} onPrimary={handleSubmit(onSubmit)} />
     </View>
   );
 }
 
-function makeStyles({ colors, space, typography }: Theme) {
+function makeStyles({ space }: Theme) {
   return StyleSheet.create({
-    form: { gap: space[2] },
-    label: { ...typography.caption, color: colors.ink2 },
-    error: { ...typography.caption, color: colors.status.danger.mark },
+    form: { gap: space[4] },
   });
 }

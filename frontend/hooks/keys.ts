@@ -23,6 +23,7 @@ export const queryKeys = {
   reviews: {
     all: ['reviews'] as const,
     forListing: (listingId: string) => ['reviews', 'listing', listingId] as const,
+    forSeller: (sellerId: string) => ['reviews', 'seller', sellerId] as const,
   },
   orders: {
     all: ['orders'] as const,

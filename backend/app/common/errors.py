@@ -1,4 +1,4 @@
-"""P7 (7B): the stable error codes of the API.
+"""The stable error codes of the API.
 
 Every error response is RFC 9457 problem+json (common/problem_details.py) and carries a `code`: a short machine-readable
 identifier the mobile app maps to its own message and to behaviour (a suspended account, an expired session, a
@@ -21,7 +21,6 @@ ErrorCode = Literal[
     "account_not_approved",
     "sign_in_again",
     "insufficient_role",
-    "mfa_required",
     "incorrect_password",
     "forbidden",
     "not_found",

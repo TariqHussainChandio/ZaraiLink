@@ -14,13 +14,11 @@ import pytest
 from fastapi import HTTPException
 
 from app.auth.dependencies import (
-    AuthenticatedUser,
     _profile_cache,
     forget_profile,
     get_bearer_token,
     get_current_user,
     get_current_user_any_status,
-    require_admin_aal2,
 )
 from app.auth.jwt_verifier import JWKSUnavailableError, TokenVerificationError, VerifiedClaims, _signed_in_at
 
@@ -142,35 +140,6 @@ async def test_profile_lookup_is_cached_across_calls():
     # get_user_scoped_client (the profile lookup) is only called once per user id within the
     # cache's TTL, even across two separate requests.
     assert mock_lookup.call_count == 1
-
-
-# ------------------------------------------------------------------ require_admin_aal2 (P4, 4A.4)
-
-_ADMIN_AAL2 = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok", aal="aal2")
-_ADMIN_AAL1 = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok", aal="aal1")
-_ADMIN_NO_AAL = AuthenticatedUser(id="admin-1", email="a@x.com", role="admin", access_token="tok")
-
-
-@pytest.mark.asyncio
-async def test_require_admin_aal2_allows_a_verified_second_factor():
-    user = await require_admin_aal2(user=_ADMIN_AAL2)
-    assert user is _ADMIN_AAL2
-
-
-@pytest.mark.asyncio
-async def test_require_admin_aal2_rejects_aal1_with_403():
-    with pytest.raises(HTTPException) as exc_info:
-        await require_admin_aal2(user=_ADMIN_AAL1)
-    assert exc_info.value.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_require_admin_aal2_rejects_no_aal_claim_with_403():
-    # A token from before MFA was ever set up on this project, or a session that never verified
-    # a second factor — must fail closed, not be treated as implicitly sufficient.
-    with pytest.raises(HTTPException) as exc_info:
-        await require_admin_aal2(user=_ADMIN_NO_AAL)
-    assert exc_info.value.status_code == 403
 
 
 # ---- Account status (A3a; SRDS §8, §11, §13; D10) -------------------------------------------------------------------

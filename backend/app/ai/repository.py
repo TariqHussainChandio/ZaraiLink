@@ -1,9 +1,11 @@
-from app.common.rows import as_rows, first_row
-from app.database.supabase_client import get_service_role_client
+from app.common.rows import as_rows, first_row, maybe_row
+from app.database.supabase_client import get_service_role_client, get_user_scoped_client
 
-# Uses the service-role client, not the request-scoped one — documented exception #3 in
-# docs/architecture/backend-architecture.md. Safe only because every call site in
-# ai/service.py verifies ownership (case.user_id == caller.id, or admin) against
+_CASE_WITH_PREDICTION = "*, crop:crops(id,name), prediction:disease_predictions(*)"
+
+# The writes, the storage calls and the single-case read for prediction use the service-role client, not the
+# request-scoped one — documented exception #3 in docs/architecture/backend-architecture.md. Safe only because every
+# call site in ai/service.py verifies ownership (case.user_id == caller.id) against
 # the verified AuthenticatedUser before trusting anything this module returns — never against a
 # client-supplied id. create_signed_url/download_case_image extend that same exception: the
 # service layer never lets an unowned storage_path reach either of them.
@@ -12,19 +14,6 @@ from app.database.supabase_client import get_service_role_client
 async def get_disease_case(disease_case_id: str) -> dict | None:
     response = (
         await get_service_role_client().table("disease_cases").select("*").eq("id", disease_case_id).limit(1).execute()
-    )
-    rows = as_rows(response)
-    return rows[0] if rows else None
-
-
-async def get_case_with_prediction(disease_case_id: str) -> dict | None:
-    response = await (
-        get_service_role_client()
-        .table("disease_cases")
-        .select("*, crop:crops(id,name), prediction:disease_predictions(*)")
-        .eq("id", disease_case_id)
-        .limit(1)
-        .execute()
     )
     rows = as_rows(response)
     return rows[0] if rows else None
@@ -84,3 +73,49 @@ async def insert_prediction(
         .execute()
     )
     return first_row(response)
+
+
+async def set_case_status(disease_case_id: str, status: str, failure_reason: str | None = None) -> None:
+    """Records the case's processing state.
+
+    Service role on purpose: the migration grants `update (status, failure_reason)` to service_role only, so a farmer
+    cannot mark their own case predicted or failed (20261022080000)."""
+    await (
+        get_service_role_client()
+        .table("disease_cases")
+        .update({"status": status, "failure_reason": failure_reason})
+        .eq("id", disease_case_id)
+        .execute()
+    )
+
+
+async def get_knowledge(class_label: str) -> dict | None:
+    """The reviewed advisory text for one model class (service role holds select on disease_knowledge)."""
+    response = await (
+        get_service_role_client()
+        .table("disease_knowledge")
+        .select("*")
+        .eq("class_label", class_label)
+        .limit(1)
+        .execute()
+    )
+    return maybe_row(response)
+
+
+# The reads below run as the caller, not the service role: row-level security decides who sees a case (the owner,
+# an admin, or the expert assigned through a consultation, is_case_expert in 20261022080000), so the API cannot drift
+# from the database's own rule.
+
+
+async def get_case_with_prediction_as_user(access_token: str, disease_case_id: str) -> dict | None:
+    client = await get_user_scoped_client(access_token)
+    response = await (
+        client.table("disease_cases").select(_CASE_WITH_PREDICTION).eq("id", disease_case_id).limit(1).execute()
+    )
+    return maybe_row(response)
+
+
+async def list_knowledge_as_user(access_token: str) -> list[dict]:
+    client = await get_user_scoped_client(access_token)
+    response = await client.table("disease_knowledge").select("*").order("crop").order("disease").execute()
+    return as_rows(response)

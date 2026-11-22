@@ -5,9 +5,19 @@ import { type Theme, useTheme } from '../../theme';
 const PULSE_MIN_OPACITY = 0.4;
 const PULSE_MAX_OPACITY = 1;
 
+// A8 accessibility run: a skeleton was silent, so TalkBack found nothing where the content would be. Each placeholder is
+// one stop that says it is loading and is marked busy; the blocks inside a composite shape stay silent under it.
+const LOADING_LABEL = 'Loading…';
+const loadingProps = { accessible: true, accessibilityLabel: LOADING_LABEL, accessibilityState: { busy: true } } as const;
+
+interface SilentProps {
+  /** Inside a shape that already says "Loading…", so it adds no stop of its own. */
+  silent?: boolean;
+}
+
 /** One pulsing block in `surfaceSunken`: the shape of content that is still loading. The pulse stops when the phone
  * asks for reduced motion. Every other skeleton shape in this file is built from it. */
-export function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
+export function Skeleton({ style, silent = false }: { style?: StyleProp<ViewStyle> } & SilentProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [opacity] = useState(() => new Animated.Value(PULSE_MAX_OPACITY));
@@ -30,7 +40,7 @@ export function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
     };
   }, [opacity, theme.motion]);
 
-  return <Animated.View style={[styles.block, { opacity }, style]} />;
+  return <Animated.View style={[styles.block, { opacity }, style]} {...(silent ? null : loadingProps)} />;
 }
 
 /** A listing card: image block, title line, price line. */
@@ -38,28 +48,28 @@ export function SkeletonCard() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
-    <View style={styles.card}>
-      <Skeleton style={styles.cardImage} />
+    <View style={styles.card} {...loadingProps}>
+      <Skeleton style={styles.cardImage} silent />
       <View style={styles.cardBody}>
-        <Skeleton style={styles.lineWide} />
-        <Skeleton style={styles.lineNarrow} />
+        <Skeleton style={styles.lineWide} silent />
+        <Skeleton style={styles.lineNarrow} silent />
       </View>
     </View>
   );
 }
 
 /** A list row: a leading tile, two text lines and a trailing figure. */
-export function SkeletonListItem() {
+export function SkeletonListItem({ silent = false }: SilentProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
-    <View style={styles.row}>
-      <Skeleton style={styles.rowIcon} />
+    <View style={styles.row} {...(silent ? null : loadingProps)}>
+      <Skeleton style={styles.rowIcon} silent />
       <View style={styles.rowBody}>
-        <Skeleton style={styles.lineWide} />
-        <Skeleton style={styles.lineNarrow} />
+        <Skeleton style={styles.lineWide} silent />
+        <Skeleton style={styles.lineNarrow} silent />
       </View>
-      <Skeleton style={styles.rowTrailing} />
+      <Skeleton style={styles.rowTrailing} silent />
     </View>
   );
 }
@@ -67,9 +77,10 @@ export function SkeletonListItem() {
 /** N list rows: the list-shaped placeholder for a loading list. */
 export function SkeletonList({ count = 6 }: { count?: number }) {
   return (
-    <View>
+    // The whole list is one "Loading…", not one per row.
+    <View {...loadingProps}>
       {Array.from({ length: count }, (_, i) => (
-        <SkeletonListItem key={i} />
+        <SkeletonListItem key={i} silent />
       ))}
     </View>
   );
@@ -89,7 +100,7 @@ function makeStyles({ colors, space, size, radius, borders, components, typograp
       overflow: 'hidden',
       backgroundColor: colors.surface,
     },
-    cardImage: { width: '100%', height: size.cardImage, borderRadius: 0 },
+    cardImage: { width: '100%', height: size.photoLg, borderRadius: 0 },
     cardBody: { padding: space[3], gap: space[2] },
     row: { flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: size.row, paddingVertical: space[3], paddingHorizontal: space[4] },
     rowIcon: { width: size.avatarMd, height: size.avatarMd, borderRadius: radius.sm },

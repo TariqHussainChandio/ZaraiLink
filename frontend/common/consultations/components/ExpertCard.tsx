@@ -9,14 +9,22 @@ export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onP
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const specializations = expert.expert_specializations.map(s => SPECIALIZATION_LABELS[s.specialization]);
+  const name = expert.profile?.full_name || 'Expert';
+  const label = [name, expert.degree, specializations.join(', ')].filter(Boolean).join('. ');
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Opens the expert's profile"
+    >
       <Card style={styles.card}>
         <View style={styles.row}>
           <Avatar name={expert.profile?.full_name} uri={expert.profile?.avatar_url} size={theme.size.avatarMd} />
           <View style={styles.textWrap}>
-            <Text style={styles.name}>{expert.profile?.full_name || 'Expert'}</Text>
+            <Text style={styles.name}>{name}</Text>
             {expert.degree ? <Text style={styles.degree}>{expert.degree}</Text> : null}
             {specializations.length > 0 ? (
               <Text style={styles.specializations} numberOfLines={1}>
@@ -30,7 +38,7 @@ export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onP
   );
 }
 
-function makeStyles({ colors, space, typography }: Theme) {
+function makeStyles({ colors, space, size, typography }: Theme) {
   return StyleSheet.create({
     card: {
       marginBottom: space[3],
@@ -38,6 +46,7 @@ function makeStyles({ colors, space, typography }: Theme) {
     row: {
       flexDirection: 'row',
       alignItems: 'center',
+      minHeight: size.touchMin,
     },
     textWrap: {
       flex: 1,

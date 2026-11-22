@@ -1,19 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, TextField } from '../../components';
+import { Button, ConfirmSheet, ScreenScaffold, TextField } from '../../components';
+import { useLoginNotice } from '../../auth';
 import { useDeleteOwnAccount } from '../hooks/profile';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
-import { errorMessage } from '../../../utils/errorMessage';
+import { isApiError } from '../../../services/api/errors';
 
-function makeDeleteAccountSchema() {
-  return z.object({ password: z.string().min(1, 'Enter your password to confirm') });
-}
+const deleteAccountSchema = z.object({ password: z.string().min(1, 'Enter your password to confirm') });
 
-type DeleteAccountFormValues = z.infer<ReturnType<typeof makeDeleteAccountSchema>>;
+type DeleteAccountFormValues = z.infer<typeof deleteAccountSchema>;
 
 // P4 (4A.5). No navigation prop used — on success, signOut() flips authStore's status to
 // 'unauthenticated' and RootNavigator swaps to the auth flow on its own, the same way every
@@ -22,53 +21,60 @@ export function DeleteAccountScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { mutateAsync: deleteOwnAccount } = useDeleteOwnAccount();
-  const deleteAccountSchema = useMemo(() => makeDeleteAccountSchema(), []);
   const signOut = useAuthStore(state => state.signOut);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const leaveNotice = useLoginNotice(state => state.leave);
+  // The password is checked by the server when the deletion is confirmed; it is held here only for that one request.
+  const [confirming, setConfirming] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    setError,
+    formState: { errors },
   } = useForm<DeleteAccountFormValues>({
     resolver: zodResolver(deleteAccountSchema),
     defaultValues: { password: '' },
   });
 
-  const onSubmit = async (values: DeleteAccountFormValues) => {
-    setSubmitError(null);
-    Alert.alert(
-      'Delete your account?',
-      'This cannot be undone. Are you sure you want to permanently delete your account?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteOwnAccount(values.password);
-              await signOut();
-            } catch (error) {
-              setSubmitError(errorMessage(error));
-            }
-          },
-        },
-      ],
-    );
+  const deleteNow = async () => {
+    if (confirming === null) return;
+    try {
+      await deleteOwnAccount(confirming);
+    } catch (error) {
+      if (isApiError(error) && error.code === 'incorrect_password') {
+        // The wrong password belongs on the password field, not in a banner: close the sheet and say it there.
+        setConfirming(null);
+        setError('password', { message: 'That password is not correct.' });
+        return;
+      }
+      // Anything else stays in the sheet, with the reason, so the person can try again without retyping.
+      throw error;
+    }
+    // Signing out swaps the whole navigator, so the sign-in screen is told what happened through this notice.
+    leaveNotice({ tone: 'success', title: 'Account deleted', message: 'Your account and your personal details were removed.' });
+    await signOut();
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Delete account</Text>
-      <Text style={styles.warning}>This permanently deactivates your account. Your name, phone number, and photo are removed everywhere they appear. You will not be able to sign in again.</Text>
+    <ScreenScaffold>
+      <Text style={styles.warning}>
+        This permanently deletes your account. Your name, phone number and photo are removed everywhere they appear, and you
+        cannot sign in again.
+      </Text>
 
       <Controller
         control={control}
         name="password"
-        render={({ field: { onChange, onBlur, value } }) => (
+        render={({ field: { ref, onChange, onBlur, value } }) => (
           <TextField
-            label="Confirm your password"
+            ref={ref}
+            label="Your password"
+            helper="Enter it to confirm that this is you"
             secureTextEntry
+            autoCapitalize="none"
+            autoComplete="current-password"
+            textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit(values => setConfirming(values.password))}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -77,49 +83,29 @@ export function DeleteAccountScreen() {
         )}
       />
 
-      {submitError ? (
-
-        <View style={styles.errorBanner}>
-
-          <Banner tone="danger" title={submitError} />
-
-        </View>
-
-      ) : null}
-
       <Button
         label="Delete my account"
         variant="danger"
-        loading={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
-        style={styles.submit}
+        size="lg"
+        onPress={handleSubmit(values => setConfirming(values.password))}
       />
-    </View>
+
+      <ConfirmSheet
+        visible={confirming !== null}
+        onClose={() => setConfirming(null)}
+        title="Delete your account?"
+        message="This cannot be undone. Your account and your personal details are removed for good."
+        confirmLabel="Delete account"
+        keepLabel="Keep my account"
+        destructive
+        onConfirm={deleteNow}
+      />
+    </ScreenScaffold>
   );
 }
 
-function makeStyles({ colors, space, typography }: Theme) {
+function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      padding: space[4],
-    },
-    title: {
-      ...typography.titleLg,
-      color: colors.ink,
-      marginBottom: space[2],
-    },
-    warning: {
-      ...typography.body,
-      color: colors.status.danger.mark,
-      marginBottom: space[6],
-    },
-    errorBanner: {
-      marginBottom: space[3],
-    },
-    submit: {
-      marginTop: space[2],
-    },
+    warning: { ...typography.body, color: colors.status.danger.ink },
   });
 }

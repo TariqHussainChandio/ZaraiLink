@@ -6,7 +6,6 @@
   },
   "lint-disable": {
    "frontend/ai/screens/DiseaseProcessingScreen.tsx": 1,
-   "frontend/common/components/StaggeredItem.tsx": 1,
    "frontend/hooks/realtime/useRealtimeConsultationMessages.ts": 1,
    "frontend/hooks/realtime/useRealtimeMessages.ts": 1,
    "frontend/hooks/realtime/useRealtimeNotifications.ts": 1
@@ -15,23 +14,7 @@
  "tools": {
   "eslint": {},
   "knip": {
-   "devDependencies:package.json": 1,
-   "exports:frontend/common/constants/routes.ts": 1,
-   "exports:frontend/services/api/client.ts": 1,
-   "exports:frontend/testUtils/supabaseMock.ts": 1,
-   "exports:frontend/theme/motion.ts": 2,
-   "types:frontend/admin/types/audit.ts": 1,
-   "types:frontend/admin/types/reports.ts": 1,
-   "types:frontend/common/analytics/types/analytics.ts": 3,
-   "types:frontend/common/components/dashboards/ActivityFeed.tsx": 1,
-   "types:frontend/common/components/dashboards/BarChart.tsx": 1,
-   "types:frontend/common/components/dashboards/QuickActions.tsx": 1,
-   "types:frontend/common/messaging/types/messaging.ts": 1,
-   "types:frontend/common/notifications/types/notifications.ts": 1,
-   "types:frontend/common/orders/types/orders.ts": 1,
-   "types:frontend/navigation/stacks/AdminNavigator.tsx": 2,
-   "types:frontend/navigation/stacks/AuthNavigator.tsx": 1,
-   "types:frontend/state/marketplaceStore.ts": 1
+   "devDependencies:package.json": 1
   },
   "mypy": {},
   "ruff": {

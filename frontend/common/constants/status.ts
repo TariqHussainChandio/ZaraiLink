@@ -1,5 +1,6 @@
 import {
   BadgeCheck,
+  ArrowLeftRight,
   Ban,
   Check,
   CircleAlert,
@@ -9,14 +10,21 @@ import {
   CircleQuestionMark,
   CircleX,
   Clock,
+  FileCheck,
+  FileMinus,
+  FilePlus,
   Gavel,
   Hourglass,
   LoaderCircle,
   Lock,
   MessageCircle,
   PackageCheck,
+  PackagePlus,
+  PackageX,
   Receipt,
   Search,
+  ShoppingBag,
+  SlidersHorizontal,
   Tag,
   TriangleAlert,
   Truck,
@@ -29,7 +37,7 @@ import type { ListingStatus } from '../marketplace';
 import type { OrderStatus } from '../orders';
 import type { PaymentStatus } from '../payments';
 
-// The status vocabulary (A2, D14; the design system's "Status vocabulary"): every status the app shows maps to one tone,
+// The status vocabulary (A2, D14; kept by D15, Rate Board): every status the app shows maps to one tone,
 // one icon and one label, so the same state reads the same on every screen. Status is never colour alone: StatusBadge
 // always draws the icon and the word. Tones: warning = waiting on someone, info = in flight, success = settled well,
 // neutral = ended or unknown, danger = stopped or failed (the only solid badge).
@@ -54,8 +62,10 @@ const order: Record<OrderStatus, StatusMeta> = {
   rejected: meta('danger', Ban, 'Rejected'),
   payment_failed: meta('danger', TriangleAlert, 'Payment failed'),
   disputed: meta('warning', Gavel, 'Disputed'),
-  // BR-11: a refund is the seller returning money directly; ZaraiLink never held it.
-  refunded: meta('neutral', Receipt, 'Refunded'),
+  // BR-11: ZaraiLink holds no money, so "Refunded" would read as if the platform paid it back. The enum value stays
+  // `refunded`; the label says what happened: an admin settled the dispute for the buyer, and the seller refunds them
+  // directly, off the platform.
+  refunded: meta('neutral', Receipt, 'Settled for buyer'),
   expired: meta('neutral', Hourglass, 'Expired'),
 };
 
@@ -66,7 +76,8 @@ const payment: Record<PaymentStatus, StatusMeta> = {
   successful: meta('success', CircleCheck, 'Paid'),
   failed: meta('danger', TriangleAlert, 'Payment failed'),
   cancelled: meta('neutral', CircleX, 'Cancelled'),
-  refunded: meta('neutral', Receipt, 'Refunded'),
+  // BR-11: the seller returned the money to the buyer themselves; the platform never held it.
+  refunded: meta('neutral', Receipt, 'Refunded by seller'),
 };
 
 // SRDS §13: dealer and expert applications.
@@ -109,7 +120,77 @@ const stock = {
   unknown: meta('neutral', CircleQuestionMark, 'Stock not known'),
 };
 
-export const STATUS = { order, payment, application, consultation, listing, report, stock } as const;
+// An application's required document: what it still needs from the person, what is attached, and what may be skipped.
+const document = {
+  needed: meta('warning', FilePlus, 'Needed'),
+  added: meta('success', FileCheck, 'Added'),
+  optional: meta('neutral', FileMinus, 'Optional'),
+};
+
+// A6: a disease knowledge entry stays a draft until a qualified agronomist reviews it.
+const knowledge = {
+  pending_review: meta('warning', Hourglass, 'Pending agronomist review'),
+  reviewed: meta('success', BadgeCheck, 'Reviewed'),
+};
+
+// B3: what happened when a marketplace dispatch reached the dealer's inventory (inventory_sync_log).
+const sync = {
+  applied: meta('success', CircleCheck, 'Applied'),
+  skipped_duplicate: meta('neutral', CircleDashed, 'Already applied'),
+  failed: meta('danger', CircleX, 'Failed'),
+};
+
+// A6: the expert's verdict on a case, kept apart from the AI assessment (SRDS §35).
+const assessment = {
+  agree: meta('success', Check, 'Agrees with AI'),
+  correct: meta('warning', CircleAlert, 'Corrected diagnosis'),
+  additional_diagnosis: meta('info', Search, 'Additional diagnosis'),
+  request_information: meta('neutral', MessageCircle, 'More information needed'),
+};
+
+// B4: where a stock movement came from (SRDS §22, the movement sources of inventory_movements). Losses read neutral, not
+// danger: a recorded expiry is the ledger working, not a failure.
+const movement = {
+  ZARAILINK_ORDER: meta('info', ShoppingBag, 'Marketplace order'),
+  LOCAL_SALE: meta('info', Receipt, 'Local sale'),
+  PURCHASE: meta('success', PackageCheck, 'Purchase'),
+  RESTOCK: meta('success', PackagePlus, 'Restock'),
+  MANUAL_ADJUSTMENT: meta('warning', SlidersHorizontal, 'Adjustment'),
+  DAMAGE: meta('neutral', PackageX, 'Damage'),
+  EXPIRY: meta('neutral', Hourglass, 'Expiry'),
+  TRANSFER: meta('info', ArrowLeftRight, 'Transfer'),
+  OTHER: meta('neutral', CircleDashed, 'Other'),
+};
+
+// B4: a purchase from a supplier; only a received one has added stock.
+const purchase = {
+  draft: meta('warning', Clock, 'Draft'),
+  received: meta('success', PackageCheck, 'Received'),
+  cancelled: meta('neutral', CircleX, 'Cancelled'),
+};
+
+// B4: SRDS §25, whether a product's ledger adds up to its current stock.
+const reconciliation = {
+  balanced: meta('success', Check, 'Balanced'),
+  unbalanced: meta('danger', TriangleAlert, 'Does not add up'),
+};
+
+export const STATUS = {
+  order,
+  payment,
+  application,
+  consultation,
+  listing,
+  report,
+  stock,
+  knowledge,
+  sync,
+  assessment,
+  movement,
+  purchase,
+  reconciliation,
+  document,
+} as const;
 
 export type StatusKind = keyof typeof STATUS;
 export type StatusOf<K extends StatusKind> = keyof (typeof STATUS)[K];

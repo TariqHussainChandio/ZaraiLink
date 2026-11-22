@@ -16,13 +16,14 @@ dependencies = [
   "supabase==2.31.0",
   "httpx==0.28.1",
   "slowapi==0.1.10",
-  # torch>=2.6 closes CVE-2025-32434 (RCE via torch.load, even with weights_only=True, in every
-  # version before 2.6.0 — app/ai/engine.py already passed weights_only=True, which is necessary but
-  # was not sufficient on 2.5.x). torchvision pinned to the version PyTorch's own compatibility
-  # matrix pairs with 2.6.0.
-  "torch==2.6.0",
-  "torchvision==0.21.0",
-  "pillow==12.3.0",
+  # torch>=2.6 closed CVE-2025-32434 (RCE via torch.load, even with weights_only=True, before 2.6.0;
+  # app/ai/engine.py passes weights_only=True). 2.13.0 is the first release with every later torch
+  # advisory fixed (Dependabot, 2026-11-22). torchvision is the version PyTorch's compatibility matrix
+  # pairs with it (0.21 went with 2.6, one minor per torch minor since).
+  "torch==2.13.0",
+  "torchvision==0.28.0",
+  # 13.0.0 fixes every open Pillow advisory (the image decoders the AI upload path uses).
+  "pillow==13.0.0",
   "pyjwt[crypto]==2.15.0",
   "cachetools==5.5.0",
   "sentry-sdk[fastapi]==2.70.0",

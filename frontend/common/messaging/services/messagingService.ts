@@ -2,7 +2,7 @@ import type { PickedPhoto } from '../../../utils/photoPicker';
 import { extensionFromMimeType } from '../../../utils/mimeExtension';
 import { apiFetch } from '../../../services/api/client';
 import { supabase } from '../../../services/supabase/client';
-import type { Conversation, ConversationWithPreview, Message } from '../types/messaging';
+import type { Conversation, ConversationContext, ConversationWithPreview, Message } from '../types/messaging';
 
 const ATTACHMENTS_BUCKET = 'message-attachments';
 const SIGNED_URL_TTL_SECONDS = 3600;
@@ -79,11 +79,15 @@ export async function resolveAttachmentUrls(paths: string[]): Promise<Record<str
 }
 
 // No userId param — always the caller's own id as one side of the pair; the race-safe
-// find-or-create retry now lives in the backend service.
-export async function findOrCreateConversation(otherUserId: string): Promise<Conversation> {
+// find-or-create retry now lives in the backend service. A new conversation needs the listing, order or consultation
+// the two share (A5, SRDS §30); the database refuses an unrelated pair.
+export async function findOrCreateConversation(
+  otherUserId: string,
+  context: ConversationContext,
+): Promise<Conversation> {
   return apiFetch('/api/v1/messaging/conversations', {
     method: 'POST',
-    body: { other_user_id: otherUserId },
+    body: { other_user_id: otherUserId, context_type: context.type, context_id: context.id },
   });
 }
 

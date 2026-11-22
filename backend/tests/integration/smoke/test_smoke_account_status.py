@@ -2,7 +2,8 @@
 
 Dealers and experts sign up pending (profiles.account_status, migration 20261005080000). These tests drive real users
 through both doors, FastAPI and Supabase PostgREST with the user's own session, and require the same answer: a pending
-dealer is refused and an approved one allowed; nobody approves themselves; an admin decides only with a second factor,
+dealer is refused and an approved one allowed; nobody approves themselves; only the admin decides (no second factor
+since D19),
 and every decision leaves its audit row; a rejection carries a reason the applicant reads and may answer by
 resubmitting; and a session from before the approval must sign in again.
 """
@@ -57,7 +58,8 @@ def test_a_pending_dealer_is_refused_through_both_doors_and_an_approved_one_is_n
         "role": "dealer",
         "previous_status": "pending",
         "new_status": "approved",
-        "email_delivered": True,
+        # A test run sends no email (EMAIL_ENABLED=false in conftest: Gmail is the only sender, no local catcher).
+        "email_delivered": False,
     }
     approved = fresh_sign_in(approved_email)
 
@@ -68,10 +70,17 @@ def test_a_pending_dealer_is_refused_through_both_doors_and_an_approved_one_is_n
     allowed = api_client("GET", "/api/v1/dealer/inventory", approved)
     assert allowed.status_code == 200, allowed.text
 
-    # PostgREST with the same sessions: row-level security gives the same answer.
-    store = rest("POST", "dealer_stores", pending, body={"dealer_id": pending_id, "name": "Pending store"})
+    # PostgREST with the same sessions: row-level security gives the same answer. The dealer's own storage locations
+    # (inventory_locations, B1) replaced the old dealer_stores table, dropped in B3 (20261022090000_inventory_sync.sql).
+    store = rest("POST", "inventory_locations", pending, body={"dealer_id": pending_id, "name": "Pending store"})
     assert refused_by_rls(store), store.text
-    store = rest("POST", "dealer_stores", approved, body={"dealer_id": approved_id, "name": "Approved store"})
+    # A dealer's first location is their default one (purchase_atomic_writes: a dealer always has one default).
+    store = rest(
+        "POST",
+        "inventory_locations",
+        approved,
+        body={"dealer_id": approved_id, "name": "Approved store", "is_default": True},
+    )
     assert store.status_code == 201, store.text
     listing = rest("POST", "listings", pending, body={"owner_id": pending_id, "title": "Urea", "price": 50})
     assert refused_by_rls(listing), listing.text
@@ -82,34 +91,35 @@ def test_a_pending_dealer_is_refused_through_both_doors_and_an_approved_one_is_n
 
 
 def test_a_buyer_cannot_open_a_dealer_store_through_postgrest(world):
-    # Before A3a the dealer tables checked only the owner, so any role could create a store for themselves.
-    store = rest("POST", "dealer_stores", world.buyer.token, body={"dealer_id": world.buyer.id, "name": "Not mine"})
+    # Before A3a the dealer tables checked only the owner, so any role could create a store for themselves. The store is
+    # now an inventory location (B1); it still demands an approved dealer.
+    store = rest(
+        "POST", "inventory_locations", world.buyer.token, body={"dealer_id": world.buyer.id, "name": "Not mine"}
+    )
     assert refused_by_rls(store), store.text
 
 
-def test_nobody_approves_themselves_and_an_admin_decides_only_with_a_second_factor(
-    make_applicant, api_client, world, matrix_actors
-):
+def test_nobody_approves_themselves_and_only_the_admin_decides(make_applicant, api_client, world, matrix_actors):
     pending_id, _, pending = make_applicant("dealer")
     self_approval = rest("PATCH", "profiles", pending, f"id=eq.{pending_id}", {"account_status": "approved"})
     assert refused_by_rls(self_approval), self_approval.text
     # Not even the admin decides by a direct write: no audit row would follow it.
     direct = rest("PATCH", "profiles", world.admin.token, f"id=eq.{pending_id}", {"account_status": "approved"})
     assert refused_by_rls(direct), direct.text
-    no_mfa = api_client(
+    by_farmer = api_client(
         "PATCH",
         f"/api/v1/admin/users/{pending_id}/account-status",
-        matrix_actors["admin_aal1"],
+        matrix_actors["farmer"],
         json={"status": "approved"},
     )
-    assert no_mfa.status_code == 403, no_mfa.text
-    assert no_mfa.json()["code"] == "mfa_required"
+    assert by_farmer.status_code == 403, by_farmer.text
+    assert by_farmer.json()["code"] == "insufficient_role"
     via_own_session = api_client(
         "PATCH", f"/api/v1/admin/users/{pending_id}/account-status", pending, json={"status": "approved"}
     )
     assert via_own_session.status_code == 403, via_own_session.text
     assert own_profile(pending, pending_id)["account_status"] == "pending"
-    # The allowed path: the admin with a second factor.
+    # The allowed path: the admin, on a password-only session (D19).
     assert decide(api_client, world, pending_id, "approved").status_code == 200
 
 
@@ -216,7 +226,7 @@ def test_an_expert_applies_while_pending_and_is_approved_from_approvals(
         json={"decision": "approved", "notes": "Degree checked"},
     )
     assert decided.status_code == 200, decided.text
-    assert decided.json()["email_delivered"] is True
+    assert decided.json()["email_delivered"] is False  # no email from a test run (conftest)
     fresh = fresh_sign_in(expert_email)
     assert api_client("GET", "/api/v1/consultations/assigned", fresh).status_code == 200
     public = api_client("GET", f"/api/v1/expert/{expert_id}")

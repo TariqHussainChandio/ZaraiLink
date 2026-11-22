@@ -1,4 +1,4 @@
-"""P7 (7A): make the published OpenAPI document describe the API a client actually sees.
+"""Make the published OpenAPI document describe the API a client actually sees.
 
 FastAPI's generated spec is close, but the mobile client is generated from it, so three things must be true that
 FastAPI does not do on its own:

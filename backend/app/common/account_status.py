@@ -12,7 +12,7 @@ Decision = Literal["approved", "rejected"]
 
 async def decide(user: AuthenticatedUser, profile_id: str, decision: Decision, reason: str | None) -> dict:
     """Decides a pending dealer or expert application (SRDS §8, §11, §12) through the database's one decision path,
-    decide_account_status() (20261005080000_account_status.sql). That function checks the admin's second factor, the
+    decide_account_status() (20261005080000_account_status.sql). That function checks the caller is the admin, the
     target's role and status and the rejection reason, and writes the audit row in the same transaction (BR-15), so
     this caller writes no audit row of its own: a decision and its audit record cannot come apart.
 

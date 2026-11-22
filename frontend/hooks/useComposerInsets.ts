@@ -1,7 +1,7 @@
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useContext } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
+import { useInsets } from './useInsets';
 
 /** Insets for a screen with a control fixed to its bottom edge, such as a chat composer.
  *
@@ -12,7 +12,7 @@ import { useTheme } from '../theme';
  * KeyboardAvoidingView. */
 export function useComposerInsets(): { bottom: number; keyboardOffset: number } {
   const tabBarHeight = useContext(BottomTabBarHeightContext);
-  const insets = useSafeAreaInsets();
+  const insets = useInsets();
   const theme = useTheme();
   return {
     bottom: tabBarHeight === undefined ? insets.bottom : 0,

@@ -1,4 +1,4 @@
-import { apiFetch } from '../../services/api/client';
+import { apiFetch, apiFetchPage } from '../../services/api/client';
 import {
   createRequiredDocument,
   decideDealerApplication,
@@ -8,19 +8,32 @@ import {
   fetchDealerApplications,
   resolveDealerDocumentUrl,
   updateRequiredDocument,
-  fetchAllOrders,
-  fetchAllProfiles,
-  fetchAuditLogs,
+  ADMIN_PAGE_SIZE,
+  fetchAuditLogsPage,
+  fetchModerationListingsPage,
+  fetchOrdersPage,
+  fetchProfilesPage,
   fetchPlatformStats,
-  fetchReports,
+  fetchReportsPage,
   resolveReport,
   setProfileSuspended,
   updateUserRole,
+  cancelOrderAsAdmin,
+  fetchAdminQueues,
+  fetchAuditEvents,
+  fetchConsultationsForAdmin,
+  fetchReviewsForModeration,
+  hideReview,
+  moderateConsultation,
+  resolveDisputeAsAdmin,
+  restoreReview,
 } from './adminService';
 
 jest.mock('../../services/api/client');
 
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
+const mockApiFetchPage = apiFetchPage as jest.MockedFunction<typeof apiFetchPage>;
+const nextPage = { data: [], next: { limit: 50, offset: 50 } };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -47,21 +60,21 @@ describe('fetchPlatformStats', () => {
   });
 });
 
-describe('fetchAllProfiles', () => {
-  it('fetches the admin users list', async () => {
-    mockApiFetch.mockResolvedValue([{ id: 'p1' }]);
-    const result = await fetchAllProfiles();
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/users', {
-      query: { role: undefined, account_status: undefined },
+describe('fetchProfilesPage', () => {
+  it('asks for one page of users at the offset', async () => {
+    mockApiFetchPage.mockResolvedValue(nextPage);
+    const page = await fetchProfilesPage({}, 0);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/users', {
+      query: { role: undefined, account_status: undefined, limit: ADMIN_PAGE_SIZE, offset: 0 },
     });
-    expect(result).toEqual([{ id: 'p1' }]);
+    expect(page.next).toEqual({ limit: 50, offset: 50 });
   });
 
-  it('asks the API for the dealers waiting for a decision (filtered on the server, A3a)', async () => {
-    mockApiFetch.mockResolvedValue([]);
-    await fetchAllProfiles({ role: 'dealer', accountStatus: 'pending' });
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/users', {
-      query: { role: 'dealer', account_status: 'pending' },
+  it('filters on the server by role and account status (A3a), and continues from the offset', async () => {
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchProfilesPage({ role: 'dealer', accountStatus: 'pending' }, 100);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/users', {
+      query: { role: 'dealer', account_status: 'pending', limit: ADMIN_PAGE_SIZE, offset: 100 },
     });
   });
 });
@@ -88,17 +101,21 @@ describe('updateUserRole', () => {
   });
 });
 
-describe('fetchReports', () => {
-  it('passes the status filter as a query param', async () => {
-    mockApiFetch.mockResolvedValue([]);
-    await fetchReports('open');
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/reports', { query: { status: 'open' } });
+describe('fetchReportsPage', () => {
+  it('passes the status filter and the page as query params', async () => {
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchReportsPage('open', 50);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/reports', {
+      query: { status: 'open', limit: ADMIN_PAGE_SIZE, offset: 50 },
+    });
   });
 
   it('omits the filter when no status is given', async () => {
-    mockApiFetch.mockResolvedValue([]);
-    await fetchReports();
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/reports', { query: { status: undefined } });
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchReportsPage(undefined, 0);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/reports', {
+      query: { status: undefined, limit: ADMIN_PAGE_SIZE, offset: 0 },
+    });
   });
 });
 
@@ -122,29 +139,47 @@ describe('resolveReport / dismissReport', () => {
   });
 });
 
-describe('fetchAuditLogs', () => {
-  it('maps camelCase params to the snake_case query', async () => {
-    mockApiFetch.mockResolvedValue([]);
-    await fetchAuditLogs({ targetEntity: 'listings', actorId: 'admin-1' });
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/audit-logs', {
-      query: { target_entity: 'listings', actor_id: 'admin-1' },
+describe('fetchAuditLogsPage', () => {
+  it('maps camelCase params to the snake_case query, with the page', async () => {
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchAuditLogsPage({ targetEntity: 'listings', actorId: 'admin-1' }, 50);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/audit-logs', {
+      query: { target_entity: 'listings', actor_id: 'admin-1', limit: ADMIN_PAGE_SIZE, offset: 50 },
     });
   });
 
-  it('defaults to an empty params object', async () => {
-    mockApiFetch.mockResolvedValue([]);
-    await fetchAuditLogs();
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/audit-logs', {
-      query: { target_entity: undefined, actor_id: undefined },
+  it('reads every area when no entity is given', async () => {
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchAuditLogsPage({}, 0);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/audit-logs', {
+      query: { target_entity: undefined, actor_id: undefined, limit: ADMIN_PAGE_SIZE, offset: 0 },
     });
   });
 });
 
-describe('fetchAllOrders', () => {
-  it('fetches the platform-wide order list', async () => {
-    mockApiFetch.mockResolvedValue([]);
-    await fetchAllOrders();
-    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/orders');
+describe('fetchOrdersPage', () => {
+  it('pages the platform order list', async () => {
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchOrdersPage(50);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/orders', { query: { limit: ADMIN_PAGE_SIZE, offset: 50 } });
+  });
+
+  it('pages only the disputed orders when asked (SRDS §14 queue)', async () => {
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchOrdersPage(0, 'disputed');
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/orders', {
+      query: { status: 'disputed', limit: ADMIN_PAGE_SIZE, offset: 0 },
+    });
+  });
+});
+
+describe('fetchModerationListingsPage', () => {
+  it('pages the moderation list, which has no filter of its own', async () => {
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchModerationListingsPage(0);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/marketplace/listings/moderation', {
+      query: { limit: ADMIN_PAGE_SIZE, offset: 0 },
+    });
   });
 });
 
@@ -183,3 +218,53 @@ describe('required documents (A3b)', () => {
     expect(mockApiFetch).toHaveBeenNthCalledWith(3, '/api/v1/admin/required-documents/d1', { method: 'PATCH', body: { active: false } });
   });
 });
+
+describe('A7 moderation calls (SRDS §14)', () => {
+  beforeEach(() => mockApiFetch.mockResolvedValue(undefined as never));
+
+  it('reads the queues and the §51 event names', async () => {
+    await fetchAdminQueues();
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/queues');
+    await fetchAuditEvents();
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/audit-events');
+  });
+
+  it('filters the audit log by one event name', async () => {
+    mockApiFetchPage.mockResolvedValue({ data: [], next: null });
+    await fetchAuditLogsPage({ action: 'review_moderated' }, 0);
+    expect(mockApiFetchPage).toHaveBeenCalledWith('/api/v1/admin/audit-logs', {
+      query: { target_entity: undefined, actor_id: undefined, action: 'review_moderated', limit: ADMIN_PAGE_SIZE, offset: 0 },
+    });
+  });
+
+  it('cancels an order with a reason, and settles a dispute through the status route', async () => {
+    await cancelOrderAsAdmin('order-1', 'Fraud');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/orders/order-1/cancel', { method: 'POST', body: { reason: 'Fraud' } });
+    await resolveDisputeAsAdmin('order-1', 'refunded', 'Goods arrived spoiled');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/orders/order-1/status', {
+      method: 'PATCH',
+      body: { to: 'refunded', reason: 'Goods arrived spoiled' },
+    });
+  });
+
+  it('lists and moderates consultations', async () => {
+    await fetchConsultationsForAdmin({ status: 'requested', olderThanDays: 7 });
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/consultations', { query: { status: 'requested', older_than_days: 7 } });
+    await moderateConsultation('c-1', { action: 'close', reason: 'Duplicate' });
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/admin/consultations/c-1/moderate', {
+      method: 'PATCH',
+      body: { action: 'close', reason: 'Duplicate' },
+    });
+  });
+
+  it('lists every review with the hidden ones, hides with a reason and restores; nothing deletes', async () => {
+    await fetchReviewsForModeration();
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/reviews/admin', { query: { include_hidden: true } });
+    await hideReview('review-1', 'Abusive');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/reviews/review-1/hide', { method: 'PATCH', body: { reason: 'Abusive' } });
+    await restoreReview('review-1');
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/v1/reviews/review-1/restore', { method: 'PATCH' });
+    expect(mockApiFetch.mock.calls.some(([, options]) => (options as { method?: string } | undefined)?.method === 'DELETE')).toBe(false);
+  });
+});
+

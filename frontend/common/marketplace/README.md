@@ -8,7 +8,7 @@ Listings: browse and search, detail, create, edit and the seller's own listings;
 
 ## Public API
 
-Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `useCategories`, `useCrops`, `useListingOptions`, `useRelatedListings`, `createCategory`, `deleteCategory`, `fetchAllListingsForModeration`, `fetchListingById`, `updateCategory`, `updateListingStatus`, `CategoryInput`, `FetchListingsParams`, `Category`, `ListingStatus`, `ListingWithRelations`.
+Other modules import only what [`index.ts`](index.ts) exports; the reality gate's `module-boundary` rule fails a deep import. Today: `useCategories`, `useCrops`, `useListingOptions`, `useRelatedListings`, `createCategory`, `deleteCategory`, `fetchAllListingsForModeration`, `fetchListingById`, `updateCategory`, `updateListingStatus`, `CategoryInput`, `FetchListingsParams`, `Category`, `ListingStatus`, `ListingWithRelations`, and `digitsOnly` / `parseWhole` (a typed "1,500" is 1500, never 0; the cart and checkout use them too).
 
 ## Inside
 

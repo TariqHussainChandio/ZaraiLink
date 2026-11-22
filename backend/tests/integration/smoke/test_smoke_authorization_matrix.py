@@ -1,8 +1,8 @@
 """P5 (item 10) — role x route authorization matrix, generated from the real dependency tree.
 
 Every route is classified by walking FastAPI's own `route.dependant` for `get_current_user`, the
-`require_role(...)` dependencies (their roles are read from `auth.declared_roles`) and
-`require_admin_aal2`, and each is probed as every role over real HTTP with real tokens.
+`require_role(...)` dependencies (their roles are read from `auth.declared_roles`), and each is probed as every role
+over real HTTP with real tokens.
 
 Deriving the expectation from the route alone cannot notice a route whose requirement was weakened (the
 independent P5 verification swapped `require_dealer` for any-authenticated and the matrix stayed green), so
@@ -44,7 +44,6 @@ try:
         declared_roles,
         get_current_user,
         get_current_user_any_status,
-        require_admin_aal2,
     )
     from app.main import app
 except ValidationError:  # no Supabase settings available: the tests below skip via backend_url
@@ -57,7 +56,6 @@ AUTH_TITLES = {
     "Account suspended",
     "Account not approved",
     "Your account was approved. Sign in again to continue.",
-    "This action requires a verified second factor (MFA).",
 }
 
 EXPECTED_PUBLIC = {
@@ -94,8 +92,6 @@ def _classify(route: ApiRoute):
     (A3a, D10); every other authenticated route refuses them with 403 `account_not_approved`."""
     calls = list(_calls(route.dependant))
     any_status = any(call in declared_any_status for call in calls)
-    if require_admin_aal2 in calls:
-        return "aal2", ("admin",), False
     for call in calls:
         if call in declared_roles:
             return "roles", declared_roles[call], any_status
@@ -203,8 +199,3 @@ def test_authorization_matrix(method, path, kind, roles, any_status, matrix_acto
             else:
                 assert response.status_code == 403, f"{method} {path} as {actor} -> {response.status_code}"
                 assert response.json()["code"] == "account_not_approved", response.text
-
-    if kind == "aal2":
-        no_mfa = _call(api_client, method, path, matrix_actors["admin_aal1"])
-        assert no_mfa.status_code == 403, f"{method} {path} admin without MFA -> {no_mfa.status_code}"
-        assert "second factor" in no_mfa.json()["title"], no_mfa.text

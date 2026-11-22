@@ -4,7 +4,6 @@ from app.auth.dependencies import (
     AuthenticatedUser,
     get_optional_user,
     require_admin,
-    require_admin_aal2,
     require_authenticated_user,
 )
 from app.common.marketplace import service
@@ -78,11 +77,11 @@ async def delete_listing(listing_id: str, user: AuthenticatedUser = Depends(requ
     await service.delete_listing(user, listing_id)
 
 
-# Admin moderation of a listing's status, audited. Like every other admin write it needs a second factor, matching the
-# listings policy's admin branch (is_admin_aal2, migration 20260928090000); an admin cannot edit or delete the listing.
+# Admin moderation of a listing's status, audited, matching the listings policy's admin branch (migration
+# 20260928090000); an admin cannot edit or delete the listing. No second factor (D19).
 @router.patch("/listings/{listing_id}/status", status_code=204)
 async def update_listing_status(
-    listing_id: str, request: UpdateListingStatusRequest, user: AuthenticatedUser = Depends(require_admin_aal2)
+    listing_id: str, request: UpdateListingStatusRequest, user: AuthenticatedUser = Depends(require_admin)
 ) -> None:
     await service.update_listing_status(user, listing_id, request.status)
 
@@ -92,6 +91,7 @@ async def list_categories(page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_categories())
 
 
+# Category changes are admin writes, audited as category_changed (SRDS §51, BR-15).
 @router.post("/categories", response_model=Category)
 async def create_category(request: CategoryInput, user: AuthenticatedUser = Depends(require_admin)) -> dict:
     return await service.create_category(user, request.model_dump())

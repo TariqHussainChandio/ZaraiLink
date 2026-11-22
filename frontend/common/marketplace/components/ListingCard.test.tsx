@@ -19,6 +19,7 @@ const baseListing: ListingWithRelations = {
   condition: null,
   location: null,
   seller_role: 'dealer',
+  inventory_product_id: null,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
   category: { id: 'c1', name: 'Fertilizers', slug: 'fertilizers' },
@@ -26,11 +27,28 @@ const baseListing: ListingWithRelations = {
 };
 
 describe('ListingCard', () => {
-  it('renders title, price, and category', async () => {
-    await render(<ListingCard listing={baseListing} onPress={() => {}} />);
+  it('leads with the price and unit, then the name and who sells it', async () => {
+    await render(<ListingCard listing={{ ...baseListing, location: { country: 'Pakistan', province: 'Punjab', city: 'Sargodha' } }} onPress={() => {}} />);
+    expect(screen.getByLabelText('Rs 4,500, per bag')).toBeTruthy();
     expect(screen.getByText('DAP Fertilizer 50kg')).toBeTruthy();
-    expect(screen.getByText('Rs 4,500 / bag')).toBeTruthy();
-    expect(screen.getByText('Fertilizers')).toBeTruthy();
+    expect(screen.getByText('AgriMart · Sargodha')).toBeTruthy();
+  });
+
+  it('shows the seller alone when there is no town, and neither when the owner is unknown', async () => {
+    const { rerender } = await render(<ListingCard listing={baseListing} onPress={() => {}} />);
+    expect(screen.getByText('AgriMart')).toBeTruthy();
+    await rerender(<ListingCard listing={{ ...baseListing, owner: null }} onPress={() => {}} />);
+    expect(screen.queryByText('AgriMart')).toBeNull();
+  });
+
+  it('is one button whose spoken label carries the name, price, seller and stock', async () => {
+    await render(
+      <ListingCard
+        listing={{ ...baseListing, availability: 'low_stock', location: { country: null, province: null, city: 'Sargodha' } }}
+        onPress={() => {}}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'DAP Fertilizer 50kg, Rs 4,500 per bag, AgriMart · Sargodha, Low stock' })).toBeTruthy();
   });
 
   it.each([
@@ -39,7 +57,12 @@ describe('ListingCard', () => {
     ['out_of_stock', 'Out of stock'],
     ['unknown', 'Stock not known'],
   ] as const)('shows the %s stock word (A4)', async (availability, word) => {
-    await render(<ListingCard listing={{ ...baseListing, availability }} onPress={() => {}} />);
+    await render(
+      <ListingCard
+        listing={{ ...baseListing, availability }}
+        onPress={() => {}}
+      />,
+    );
     expect(screen.getByText(word)).toBeTruthy();
   });
 
@@ -57,7 +80,10 @@ describe('ListingCard', () => {
 
   it('renders brand and condition as chips when present', async () => {
     await render(
-      <ListingCard listing={{ ...baseListing, brand: 'Engro', condition: 'New' }} onPress={() => {}} />,
+      <ListingCard
+        listing={{ ...baseListing, brand: 'Engro', condition: 'New' }}
+        onPress={() => {}}
+      />,
     );
     expect(screen.getByText('Engro')).toBeTruthy();
     expect(screen.getByText('New')).toBeTruthy();

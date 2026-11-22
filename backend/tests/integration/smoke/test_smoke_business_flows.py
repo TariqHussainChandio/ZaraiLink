@@ -162,24 +162,25 @@ def test_disease_pipeline_end_to_end_on_a_database_built_only_from_migrations(wo
     """The concrete N3 exit bar: create_case + predict must work with zero manual grants — only
     the 20260923080000_service_role_disease_grants.sql migration, applied by `supabase db reset`
     like every other migration."""
+    # D11 (A6): the AI advisory is farmer-only, so the farmer runs it.
     buf = io.BytesIO()
     Image.new("RGB", (64, 64), (34, 110, 44)).save(buf, format="JPEG")
 
-    path = f"{world.buyer.id}/smoke-leaf.jpg"
+    path = f"{world.farmer.id}/smoke-leaf.jpg"
     upload = httpx.post(
         f"{LOCAL_URL}/storage/v1/object/disease-images/{path}",
-        headers={"apikey": ANON_KEY, "Authorization": f"Bearer {world.buyer.token}", "Content-Type": "image/jpeg"},
+        headers={"apikey": ANON_KEY, "Authorization": f"Bearer {world.farmer.token}", "Content-Type": "image/jpeg"},
         content=buf.getvalue(),
         timeout=30,
     )
     assert upload.status_code in (200, 201), upload.text
 
-    case = api_client("POST", "/api/v1/disease/cases", world.buyer.token, json={"storage_path": path})
+    case = api_client("POST", "/api/v1/disease/cases", world.farmer.token, json={"storage_path": path})
     assert case.status_code == 200, case.text
     assert "image_signed_url" in case.json()
 
     predict = api_client(
-        "POST", "/api/v1/disease/predict", world.buyer.token, json={"disease_case_id": case.json()["id"]}
+        "POST", "/api/v1/disease/predict", world.farmer.token, json={"disease_case_id": case.json()["id"]}
     )
     # 200 if a real model.pth is loaded, 503 only if the checkpoint itself is unavailable — either
     # way, N3's privilege gap must not be why this fails (that would be a plain, unmistakable 500).

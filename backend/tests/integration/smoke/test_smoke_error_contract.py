@@ -54,20 +54,12 @@ def test_every_error_kind_matches_its_recorded_fixture(world, api_client, make_a
     observed["unauthenticated"] = _observe(api_client("GET", "/api/v1/orders"))
     observed["token_invalid"] = _observe(api_client("GET", "/api/v1/orders", "not-a-real-token"))
     observed["insufficient_role"] = _observe(api_client("GET", "/api/v1/dealer/inventory", world.buyer.token))
-    observed["mfa_required"] = _observe(
-        api_client(
-            "POST",
-            "/api/v1/reference-data/units/rows",
-            matrix_actors["admin_aal1"],
-            json={"code": f"e{uuid.uuid4().hex[:6]}", "label": "x"},
-        )
-    )
     observed["not_found"] = _observe(api_client("GET", f"/api/v1/orders/{uuid.uuid4()}", world.buyer.token))
     observed["validation_failed"] = _observe(
         api_client("POST", "/api/v1/orders/checkout", world.buyer.token, json={"cart_items": "nope"})
     )
-    # Its own listing with a fixed quantity: since A4 dispatch draws down the shared listings, so the "Only N left" in
-    # the message would change with the order the tests run in.
+    # Its own listing with a fixed quantity, so the refusal does not depend on the order the tests run in. Since B3 the
+    # message names the listing, never the stock figure (verifier F3).
     short_listing = api_client(
         "POST",
         "/api/v1/marketplace/listings",

@@ -26,7 +26,6 @@ class AuthenticatedUser:
     email: str | None
     role: Role
     access_token: str
-    aal: str | None = None
     account_status: AccountStatus = "approved"
 
 
@@ -38,9 +37,9 @@ class _ProfileState:
     account_status_changed_at: datetime | None = None
 
 
-# P4 (4A.3): role/suspension resolved from the profile once per request, then cached briefly —
+# Role/suspension resolved from the profile once per request, then cached briefly —
 # a suspension or role change now takes effect within one TTL window instead of being read fresh
-# on literally every request forever. Deliberately small and in-process (no Redis; that's P5): a
+# on literally every request forever. Deliberately small and in-process (no Redis): a
 # multi-instance deployment would need a shared cache, but there is only ever one backend process
 # today. Never trust role/suspension from anywhere but this lookup.
 _profile_cache: TTLCache[str, _ProfileState] = TTLCache(maxsize=4096, ttl=10)
@@ -91,11 +90,11 @@ async def _fetch_profile_state(token: str, user_id: str) -> _ProfileState:
 async def _authenticate(token: str) -> AuthenticatedUser:
     """
     Authorization: Bearer <supabase_access_token>
-            -> local JWT verification against Supabase's JWKS (auth/jwt_verifier.py) — P4 (4A.2),
-               replaces the old per-request GET /auth/v1/user call
+            -> local JWT verification against Supabase's JWKS (auth/jwt_verifier.py),
+               which replaced the old per-request GET /auth/v1/user call
             -> verified Supabase user id
             -> profiles lookup (role, is_suspended, account_status), via a client authenticated as THAT
-               SAME token (RLS-respecting, not service-role), cached briefly per user id (P4, 4A.3)
+               SAME token (RLS-respecting, not service-role), cached briefly per user id
             -> AuthenticatedUser, or a 401/403 rejection
 
     role/is_suspended/account_status are NEVER taken from the request or the token — only from this lookup.
@@ -111,7 +110,7 @@ async def _authenticate(token: str) -> AuthenticatedUser:
 
     profile = _profile_cache.get(claims.sub)
     if profile is None:
-        # Cache-stampede judgment call (P5, item 2): concurrent first-requests for the same
+        # Cache-stampede judgment call: concurrent first-requests for the same
         # never-cached user can now genuinely overlap (async, non-blocking), each triggering its
         # own profile lookup — deliberately not guarded with a per-key lock. The blast radius is
         # bounded (a few duplicate cheap single-row selects, once per user per 10s TTL window), and
@@ -143,7 +142,6 @@ async def _authenticate(token: str) -> AuthenticatedUser:
         email=claims.email,
         role=profile.role,
         access_token=token,
-        aal=claims.aal,
         account_status=profile.account_status,
     )
 
@@ -223,14 +221,3 @@ require_marketplace_buyer = require_role("farmer", "buyer", "dealer")
 require_expert_any_status = require_role_any_status("expert")
 # A3b: a pending or rejected dealer fills in and sends their application.
 require_dealer_any_status = require_role_any_status("dealer")
-
-
-async def require_admin_aal2(user: AuthenticatedUser = Depends(require_admin)) -> AuthenticatedUser:
-    """P4 (4A.4): the small set of admin *write* endpoints (suspend/promote a user, resolve a
-    report, verify an expert, redact a message) need a second factor verified this session, not
-    just the admin role — matching the same requirement enforced at the RLS layer (see
-    supabase/migrations/*_admin_mfa_enforcement.sql). Admin *reads* stay at aal1; only writes use
-    this dependency instead of plain require_admin."""
-    if user.aal != "aal2":
-        raise AppHTTPException(403, "This action requires a verified second factor (MFA).", "mfa_required")
-    return user

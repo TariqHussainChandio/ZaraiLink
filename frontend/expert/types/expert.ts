@@ -67,6 +67,8 @@ export interface Consultation {
   images: string[];
   priority: ConsultationPriority;
   status: ConsultationStatus;
+  /** A6: the disease case the request was raised from, whose AI report the expert sees (SRDS §34). */
+  disease_case_id?: string | null;
   created_at: string;
   updated_at: string;
 }

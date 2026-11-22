@@ -4,6 +4,8 @@ import { renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { AuthApiError } from '@supabase/supabase-js';
 import { ResetPasswordScreen } from './ResetPasswordScreen';
 import { updatePassword } from '../../profile/services/profileService';
+import { useAuthStore } from '../../../state/authStore';
+import { PASSWORD_HELPER } from '../../validation/password';
 
 jest.mock('../../profile/services/profileService', () => ({
   updatePassword: jest.fn(),
@@ -16,29 +18,20 @@ beforeEach(() => {
 });
 
 describe('ResetPasswordScreen', () => {
-  it('renders the password fields', async () => {
+  it('asks for the new password once, with Show and the shared rule as its helper', async () => {
     await renderWithQuery(<ResetPasswordScreen />);
     expect(screen.getByLabelText('New password')).toBeTruthy();
-    expect(screen.getByLabelText('Confirm password')).toBeTruthy();
+    expect(screen.getByLabelText('Show password')).toBeTruthy();
+    expect(screen.getByText(PASSWORD_HELPER)).toBeTruthy();
+    expect(screen.getByLabelText('New password').props.autoComplete).toBe('new-password');
   });
 
-  it('shows a validation error for a too-short password', async () => {
+  it.each(['abc', 'abcdefgh', '12345678'])('refuses %s: Supabase would (8 characters, letters and numbers)', async password => {
     await renderWithQuery(<ResetPasswordScreen />);
-    await fireEvent.changeText(screen.getByLabelText('New password'), 'abc');
-    await fireEvent.changeText(screen.getByLabelText('Confirm password'), 'abc');
+    await fireEvent.changeText(screen.getByLabelText('New password'), password);
     await fireEvent.press(screen.getByText('Update password'));
 
-    expect(await screen.findByText('Password must be at least 6 characters')).toBeTruthy();
-    expect(mockUpdatePassword).not.toHaveBeenCalled();
-  });
-
-  it('shows a validation error when passwords do not match', async () => {
-    await renderWithQuery(<ResetPasswordScreen />);
-    await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
-    await fireEvent.changeText(screen.getByLabelText('Confirm password'), 'different1');
-    await fireEvent.press(screen.getByText('Update password'));
-
-    expect(await screen.findByText("Passwords don't match")).toBeTruthy();
+    expect((await screen.findAllByText(PASSWORD_HELPER)).length).toBeGreaterThan(0);
     expect(mockUpdatePassword).not.toHaveBeenCalled();
   });
 
@@ -48,7 +41,6 @@ describe('ResetPasswordScreen', () => {
     mockUpdatePassword.mockResolvedValue(undefined);
     await renderWithQuery(<ResetPasswordScreen />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
-    await fireEvent.changeText(screen.getByLabelText('Confirm password'), 'secret123');
     await fireEvent.press(screen.getByText('Update password'));
 
     expect(mockUpdatePassword).toHaveBeenCalledWith('secret123');
@@ -58,9 +50,16 @@ describe('ResetPasswordScreen', () => {
     mockUpdatePassword.mockRejectedValue(new AuthApiError('same', 422, 'same_password'));
     await renderWithQuery(<ResetPasswordScreen />);
     await fireEvent.changeText(screen.getByLabelText('New password'), 'secret123');
-    await fireEvent.changeText(screen.getByLabelText('Confirm password'), 'secret123');
     await fireEvent.press(screen.getByText('Update password'));
 
     expect(await screen.findByText('Choose a password different from your current one.')).toBeTruthy();
+  });
+
+  it('has a Cancel that signs out of the recovery session', async () => {
+    const signOut = jest.fn();
+    useAuthStore.setState({ signOut: signOut as never });
+    await renderWithQuery(<ResetPasswordScreen />);
+    await fireEvent.press(screen.getByText('Cancel'));
+    expect(signOut).toHaveBeenCalledTimes(1);
   });
 });

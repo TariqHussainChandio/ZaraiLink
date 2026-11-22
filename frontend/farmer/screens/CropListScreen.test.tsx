@@ -37,61 +37,49 @@ beforeEach(() => {
 });
 
 describe('CropListScreen', () => {
-  it('renders the crops for the farm', async () => {
+  it('renders the crops for the farm, with the planting day in words', async () => {
     mockFetchFarmCrops.mockResolvedValue([
       {
         id: 'crop-1',
         variety: 'HD-2967',
-        growth_stage: 'flowering',
-        planting_date: '2026-01-01',
+        growth_stage: 'Flowering',
+        planting_date: '2020-01-01',
         crop: { id: 'wheat', name: 'Wheat' },
       },
     ]);
     await renderWithQuery(<CropListScreen {...makeProps()} />);
 
     expect(await screen.findByText('Wheat')).toBeTruthy();
-    expect(screen.getByText('HD-2967 · flowering')).toBeTruthy();
-    expect(screen.getByText('Planted 2026-01-01')).toBeTruthy();
+    expect(screen.getByText('HD-2967 · Flowering · Planted 1 Jan 2020')).toBeTruthy();
     expect(mockFetchFarmCrops).toHaveBeenCalledWith('farm-1');
   });
 
-  it('shows the empty state when there are no crops', async () => {
+  it('shows an empty state that offers to add a crop', async () => {
     mockFetchFarmCrops.mockResolvedValue([]);
-    await renderWithQuery(<CropListScreen {...makeProps()} />);
+    const props = makeProps();
+    await renderWithQuery(<CropListScreen {...props} />);
     expect(await screen.findByText('No crops recorded')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Add crop'));
+    expect(props.navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.AddCrop, { farmId: 'farm-1' });
   });
 
-  it('shows a retry state when loading fails', async () => {
+  it('shows the failure with Try again, and recovers', async () => {
     mockFetchFarmCrops.mockRejectedValue(new Error('Network error'));
     await renderWithQuery(<CropListScreen {...makeProps()} />);
-    expect(await screen.findByText("Couldn't load crops")).toBeTruthy();
+    expect(await screen.findByText("Couldn't load the crops")).toBeTruthy();
 
     mockFetchFarmCrops.mockResolvedValue([]);
-    await fireEvent.press(screen.getByText('Retry'));
+    await fireEvent.press(screen.getByText('Try again'));
     expect(await screen.findByText('No crops recorded')).toBeTruthy();
   });
 
-  it('navigates to AddCrop with the crop id when a crop card is pressed', async () => {
-    mockFetchFarmCrops.mockResolvedValue([
-      { id: 'crop-1', variety: null, growth_stage: null, planting_date: null, crop: null },
-    ]);
+  it('opens the crop for editing when its row is pressed', async () => {
+    mockFetchFarmCrops.mockResolvedValue([{ id: 'crop-1', variety: null, growth_stage: null, planting_date: null, crop: null }]);
     const props = makeProps();
     await renderWithQuery(<CropListScreen {...props} />);
 
-    await fireEvent.press(await screen.findByText('Unspecified crop'));
-    expect(props.navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.AddCrop, {
-      farmId: 'farm-1',
-      cropId: 'crop-1',
-    });
-  });
-
-  it('navigates to AddCrop with no crop id via the FAB', async () => {
-    mockFetchFarmCrops.mockResolvedValue([]);
-    const props = makeProps();
-    await renderWithQuery(<CropListScreen {...props} />);
-    await screen.findByText('No crops recorded');
-
-    await fireEvent.press(screen.getByText('+ Add Crop'));
-    expect(props.navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.AddCrop, { farmId: 'farm-1' });
+    await fireEvent.press(await screen.findByText('Crop not chosen'));
+    expect(props.navigation.navigate).toHaveBeenCalledWith(HOME_ROUTES.AddCrop, { farmId: 'farm-1', cropId: 'crop-1' });
   });
 });

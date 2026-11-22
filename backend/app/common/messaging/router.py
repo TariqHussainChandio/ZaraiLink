@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.auth.dependencies import AuthenticatedUser, require_admin_aal2, require_authenticated_user
+from app.auth.dependencies import AuthenticatedUser, require_admin, require_authenticated_user
 from app.common.messaging import service
 from app.common.messaging.schemas import (
     Conversation,
@@ -26,7 +26,9 @@ async def find_or_create_conversation(
     request: FindOrCreateConversationRequest,
     user: AuthenticatedUser = Depends(require_authenticated_user),
 ) -> dict:
-    return await service.find_or_create_conversation(user, request.other_user_id)
+    return await service.find_or_create_conversation(
+        user, str(request.other_user_id), request.context_type, str(request.context_id)
+    )
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=list[Message])
@@ -60,5 +62,5 @@ async def get_message(message_id: str, user: AuthenticatedUser = Depends(require
 
 
 @router.patch("/messages/{message_id}/redact", status_code=204)
-async def redact_message(message_id: str, user: AuthenticatedUser = Depends(require_admin_aal2)) -> None:
+async def redact_message(message_id: str, user: AuthenticatedUser = Depends(require_admin)) -> None:
     await service.redact_message(user, message_id)

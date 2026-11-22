@@ -35,6 +35,8 @@ describeReal('order, payment, messaging and notification hooks against the real 
   let sellerToken = '';
   let buyerToken = '';
   let strangerToken = '';
+  // A5: a conversation needs a shared listing, order or consultation; the order placed in the first test is it.
+  let sharedOrderId = '';
   let market: typeof import('../../marketplace/hooks/marketplace');
   let orders: typeof import('./orders');
   let payments: typeof import('../../payments/hooks/payments');
@@ -108,6 +110,7 @@ describeReal('order, payment, messaging and notification hooks against the real 
       });
     });
     const orderId = placed[0]?.id ?? '';
+    sharedOrderId = orderId;
     expect(placed).toHaveLength(1);
     expect(placed[0]?.status).toBe('pending');
     // Checkout invalidated the buyer's order list, which refetches on its own.
@@ -207,7 +210,10 @@ describeReal('order, payment, messaging and notification hooks against the real 
     const buyer = await renderHook(() => ({ open: messaging.useOpenConversation() }), { wrapper });
     let conversation!: { id: string };
     await act(async () => {
-      conversation = await buyer.result.current.open.mutateAsync(idOf(sellerToken));
+      conversation = await buyer.result.current.open.mutateAsync({
+        otherUserId: idOf(sellerToken),
+        context: { type: 'order', id: sharedOrderId },
+      });
     });
 
     const chat = await renderHook(
