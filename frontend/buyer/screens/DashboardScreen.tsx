@@ -2,9 +2,9 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Banner, Button, ListGroup, ListRow, ScreenScaffold, Skeleton, StatusBadge } from '../../common/components';
+import { Banner, ListGroup, ListRow, ScreenScaffold, Skeleton, StatusBadge } from '../../common/components';
 import { StatTile } from '../../common/components/dashboards/StatTile';
-import { APP_TABS, HOME_ROUTES, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../common/constants/routes';
+import { APP_TABS, HOME_ROUTES, ORDERS_ROUTES } from '../../common/constants/routes';
 import { useOrders, type OrderWithItems } from '../../common/orders';
 import { navigateInTab } from '../../navigation/navigateInTab';
 import type { HomeStackParamList } from '../../navigation/stacks/HomeNavigator';
@@ -22,7 +22,8 @@ const IN_PROGRESS = ['pending', 'confirmed', 'processing', 'ready', 'dispatched'
 // (the same rule as `canPay` on the order screen). Disease Advisory is farmer-only: buyers get no entry into it here.
 const AWAITING_PAYMENT = ['pending', 'confirmed'];
 
-/** The buyer's home: what needs them first (orders to pay, goods to confirm), one next step, then recent purchases. */
+/** The buyer's home: their figures, what needs them (orders to pay, goods to confirm), then recent purchases. The market
+ * is a tab of its own, so the home carries no "find products" card (D20). */
 export function BuyerDashboardScreen() {
   // D20: the app bar names whose account this is.
   useNameTitle();
@@ -43,7 +44,6 @@ export function BuyerDashboardScreen() {
   );
 
   const openOrder = (orderId: string) => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderDetail, { orderId });
-  const findProducts = () => navigateInTab(tabs, APP_TABS.Marketplace, MARKETPLACE_ROUTES.Browse);
   const allOrders = () => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderHistory);
 
   // `orders` is undefined while loading or when the first load failed: figures are then unknown ("—"), never 0.
@@ -99,10 +99,6 @@ export function BuyerDashboardScreen() {
         </View>
       ) : null}
 
-      {needsYou.length === 0 && !isPending ? (
-        <Button label="Find seeds and fertiliser" size="lg" onPress={findProducts} />
-      ) : null}
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Recent purchases</Text>
         {isPending ? (
@@ -119,7 +115,8 @@ export function BuyerDashboardScreen() {
 
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
-    tiles: { flexDirection: 'row', gap: space[3] },
+    // Two tiles across, as on every dashboard (StatTile): Saved takes the next line instead of running off the screen.
+    tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },
     section: { gap: space[2] },
     sectionTitle: { ...typography.title, color: colors.ink },
     price: { ...typography.price, color: colors.ink },

@@ -58,7 +58,10 @@ export function ExpertDashboardScreen() {
 
   const openCase = (consultationId: string) =>
     navigateInTab(tabs, EXPERT_TABS.Consultations, CONSULTATIONS_ROUTES.ConsultationDetail, { consultationId });
-  const openCases = () => navigateInTab(tabs, EXPERT_TABS.Consultations, CONSULTATIONS_ROUTES.ConsultationList);
+  // Each figure opens the Cases list on the half it counts (D20): new requests and active cases under Active, the
+  // finished ones under Resolved.
+  const openCases = (show: 'active' | 'resolved') =>
+    navigateInTab(tabs, EXPERT_TABS.Consultations, CONSULTATIONS_ROUTES.ConsultationList, { show });
 
   const accept = async (request: ConsultationWithRelations) => {
     setAccepting(request.id);
@@ -118,13 +121,13 @@ export function ExpertDashboardScreen() {
 
       <View style={styles.statsRow}>
         <View style={styles.stat}>
-          <StatTile label="New requests" value={known ? requests.length : null} />
+          <StatTile label="New requests" value={known ? requests.length : null} onPress={() => openCases('active')} />
         </View>
         <View style={styles.stat}>
-          <StatTile label="Active cases" value={known ? active : null} onPress={openCases} />
+          <StatTile label="Active cases" value={known ? active : null} onPress={() => openCases('active')} />
         </View>
         <View style={styles.stat}>
-          <StatTile label="Resolved" value={known ? resolved : null} onPress={openCases} />
+          <StatTile label="Resolved" value={known ? resolved : null} onPress={() => openCases('resolved')} />
         </View>
       </View>
 

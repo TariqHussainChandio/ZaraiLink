@@ -50,8 +50,8 @@ function tabLabels(): string[] {
 describe('role shells', () => {
   it.each([
     // D20: the farmer's tabs are plain pictures with short words; the buyer has no experts, and a Cart of their own.
-    ['farmer', ['Home', 'Market', 'Orders', 'Plant doctor', 'Me']],
-    ['buyer', ['Dashboard', 'Market', 'Cart', 'Orders', 'Profile']],
+    ['farmer', ['Home', 'Market', 'Orders', 'AI', 'Account']],
+    ['buyer', ['Dashboard', 'Market', 'Cart', 'Orders', 'Account']],
     ['dealer', ['Home', 'Market', 'Orders', 'Messages', 'Account']],
     ['expert', ['Requests', 'Cases', 'Messages', 'Account']],
   ] as const)('gives the %s their own tabs, the first selected, in their accent', async (role, tabs) => {
@@ -59,8 +59,8 @@ describe('role shells', () => {
     expect(tabLabels()).toEqual(tabs);
     const first = screen.getByRole('tab', { name: tabs[0] });
     expect(first).toBeSelected();
-    // D20: the dealer's marketplace shell is drawn in the brand olive, not the dealer orange.
-    const accent = role === 'dealer' ? 'brand' : role;
+    // D20: the dealer's, the buyer's and the expert's shells are drawn in the brand olive, not their role colours.
+    const accent = role === 'farmer' ? role : 'brand';
     expect(StyleSheet.flatten(within(first).getByText(tabs[0]).props.style).color).toBe(lightColors.accent[accent].ink);
   });
 

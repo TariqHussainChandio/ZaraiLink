@@ -16,7 +16,7 @@ const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
 
 const CART_STACK_OPTIONS = stackOptionsWithActions({ [MARKETPLACE_ROUTES.Cart]: homeActions });
 
-/** The buyer's Cart tab (D20: Dashboard · Market · Cart · Orders · Profile): the cart, checkout, and the listings a cart
+/** The buyer's Cart tab (D20: Dashboard · Market · Cart · Orders · Account): the cart, checkout, and the listings a cart
  * line opens. The buyer's shell opens on this tab after a guest signed in to check out (AppNavigator), so this stack takes
  * that wish, which the market stack would otherwise take the first time Market opened. */
 export function CartNavigator() {

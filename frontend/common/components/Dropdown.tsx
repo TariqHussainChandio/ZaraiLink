@@ -42,6 +42,8 @@ export interface DropdownProps {
   label: string;
   /** Above the list and not scrolled with it, such as a search box. */
   header?: React.ReactNode;
+  /** The most height it may take; a list's default. A small form (the market's filters) needs more. */
+  maxHeight?: number;
   /** The list. It is given the height it may use, so a long one can virtualise inside a bounded box. */
   children: (listMaxHeight: number) => React.ReactNode;
 }
@@ -52,7 +54,7 @@ export interface DropdownProps {
  * back gesture, or choosing an option closes it. It replaces the bottom sheet for picking one option from a list; a sheet
  * stays for a task with its own form (a reason, a price range).
  */
-export function Dropdown({ visible, anchor, onClose, label, header, children }: DropdownProps) {
+export function Dropdown({ visible, anchor, onClose, label, header, maxHeight: tallest, children }: DropdownProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const window = useWindowDimensions();
@@ -60,7 +62,8 @@ export function Dropdown({ visible, anchor, onClose, label, header, children }: 
   const keyboard = useKeyboardHeight();
   const keyboardHeight = visible ? keyboard : 0;
   const [headerHeight, setHeaderHeight] = useState(0);
-  const { gap, margin, maxHeight, padding } = theme.components.dropdown;
+  const { gap, margin, padding } = theme.components.dropdown;
+  const maxHeight = tallest ?? theme.components.dropdown.maxHeight;
 
   // The room on each side of the control, inside the safe area and above the keyboard.
   const top = insets.top + margin;

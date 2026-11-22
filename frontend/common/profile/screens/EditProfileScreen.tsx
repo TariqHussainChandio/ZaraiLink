@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
-import { Avatar, Banner, Button, TextField, LocationPicker, PhoneInput, ScreenScaffold, isValidE164, useSnackbar } from '../../components';
+import { Avatar, Banner, Button, FormCard, TextField, LocationPicker, PhoneInput, ScreenScaffold, isValidE164, useSnackbar } from '../../components';
 import { FormErrorSummary } from '../../auth';
 import { COUNTRY } from '../../constants/locations';
 import { useFarmerProfile, useUpdateProfile, useUploadAvatar, useUpsertFarmerProfile } from '../hooks/profile';
@@ -147,116 +147,119 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   };
 
   return (
-    <ScreenScaffold>
-      <View style={styles.photo}>
-        <Avatar name={profile?.full_name} uri={avatarUri} role={profile?.role} size={theme.size.avatarLg} ring />
-        <Button label="Change photo" variant="secondary" size="sm" fullWidth={false} onPress={pickAvatar} />
-      </View>
-      {photoError ? <Banner tone="danger" title="Couldn't choose that photo">{photoError}</Banner> : null}
+    // D20: the form is a centred card, as sign-up and the listing forms are.
+    <ScreenScaffold centred>
+      <FormCard>
+        <View style={styles.photo}>
+          <Avatar name={profile?.full_name} uri={avatarUri} role={profile?.role} size={theme.size.avatarLg} ring />
+          <Button label="Change photo" variant="secondary" size="sm" fullWidth={false} onPress={pickAvatar} />
+        </View>
+        {photoError ? <Banner tone="danger" title="Couldn't choose that photo">{photoError}</Banner> : null}
 
-      <View>
-        <Controller
-          control={control}
-          name="fullName"
-          render={({ field: { ref, onChange, onBlur, value } }) => (
-            <TextField
-              ref={ref}
-              label="Full name"
-              helper="Letters only, with one space between names"
-              autoComplete="name"
-              textContentType="name"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={errors.fullName?.message}
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="phone"
-          render={({ field: { onChange, value } }) => (
-            <PhoneInput label="Phone" value={value} onChange={onChange} error={errors.phone?.message} />
-          )}
-        />
-        <LocationPicker
-          province={province || null}
-          city={city || null}
-          onProvinceChange={value => setValue('province', value ?? '')}
-          onCityChange={value => setValue('city', value ?? '')}
-        />
-        <Controller
-          control={control}
-          name="village"
-          render={({ field: { ref, onChange, onBlur, value } }) => (
-            <TextField
-              ref={ref}
-              label="Village"
-              optional
-              returnKeyType="next"
-              onSubmitEditing={() => setFocus('street')}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="street"
-          render={({ field: { ref, onChange, onBlur, value } }) => (
-            <TextField
-              ref={ref}
-              label="Street address"
-              optional
-              autoComplete="street-address"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-            />
-          )}
-        />
+        <View>
+          <Controller
+            control={control}
+            name="fullName"
+            render={({ field: { ref, onChange, onBlur, value } }) => (
+              <TextField
+                ref={ref}
+                label="Full name"
+                helper="Letters only, with one space between names"
+                autoComplete="name"
+                textContentType="name"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={errors.fullName?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field: { onChange, value } }) => (
+              <PhoneInput label="Phone" value={value} onChange={onChange} error={errors.phone?.message} />
+            )}
+          />
+          <LocationPicker
+            province={province || null}
+            city={city || null}
+            onProvinceChange={value => setValue('province', value ?? '')}
+            onCityChange={value => setValue('city', value ?? '')}
+          />
+          <Controller
+            control={control}
+            name="village"
+            render={({ field: { ref, onChange, onBlur, value } }) => (
+              <TextField
+                ref={ref}
+                label="Village"
+                optional
+                returnKeyType="next"
+                onSubmitEditing={() => setFocus('street')}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="street"
+            render={({ field: { ref, onChange, onBlur, value } }) => (
+              <TextField
+                ref={ref}
+                label="Street address"
+                optional
+                autoComplete="street-address"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
 
-        {profile?.role === 'farmer' ? (
-          <>
-            <Controller
-              control={control}
-              name="experience"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextField
-                  label="Experience"
-                  optional
-                  placeholder="e.g. 8 years growing wheat and cotton"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="agriculturalInfo"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextField
-                  label="Agricultural information"
-                  optional
-                  placeholder="Practices, specialties, certifications, etc."
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  multiline
-                  numberOfLines={3}
-                />
-              )}
-            />
-          </>
-        ) : null}
-      </View>
+          {profile?.role === 'farmer' ? (
+            <>
+              <Controller
+                control={control}
+                name="experience"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField
+                    label="Experience"
+                    optional
+                    placeholder="e.g. 8 years growing wheat and cotton"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                  />
+                )}
+              />
+              <Controller
+                control={control}
+                name="agriculturalInfo"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField
+                    label="Agricultural information"
+                    optional
+                    placeholder="Practices, specialties, certifications, etc."
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    multiline
+                    numberOfLines={3}
+                  />
+                )}
+              />
+            </>
+          ) : null}
+        </View>
 
-      <FormErrorSummary errors={errors} submitted={submitCount > 0} />
-      {saveError ? <Banner tone="danger" title="Couldn't save your profile">{saveError}</Banner> : null}
+        <FormErrorSummary errors={errors} submitted={submitCount > 0} />
+        {saveError ? <Banner tone="danger" title="Couldn't save your profile">{saveError}</Banner> : null}
 
-      <Button label="Save profile" size="lg" loading={submitting} onPress={handleSubmit(onSubmit)} />
+        <Button label="Save profile" size="lg" loading={submitting} onPress={handleSubmit(onSubmit)} />
+      </FormCard>
     </ScreenScaffold>
   );
 }

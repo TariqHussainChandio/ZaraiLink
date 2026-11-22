@@ -150,7 +150,7 @@ describe('an offline cold start', () => {
     await coldStartOffline('farmer-a');
 
     await screen.findAllByRole('tab');
-    expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'Plant doctor', 'Me']);
+    expect(tabLabels()).toEqual(['Home', 'Market', 'Orders', 'AI', 'Account']);
   });
 
   it('says the account cannot be checked when nothing is remembered, and opens no shell', async () => {

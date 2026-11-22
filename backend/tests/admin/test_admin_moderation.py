@@ -210,6 +210,15 @@ def test_the_consultation_list_passes_its_filters(as_user):
     fetch.assert_awaited_once_with(ADMIN, "requested", 7)
 
 
+def test_the_consultation_list_refuses_a_day_count_past_a_century(as_user):
+    # 739942 days back is before year 1: the date arithmetic overflowed and answered 500 (schemathesis smoke test).
+    as_user(ADMIN)
+    with patch("app.common.consultations.router.service.fetch_for_admin", new=AsyncMock(return_value=[])) as fetch:
+        response = client.get("/api/v1/admin/consultations?older_than_days=739942")
+    assert response.status_code == 422, response.text
+    fetch.assert_not_awaited()
+
+
 def test_moderating_a_consultation_needs_a_known_action_and_a_reason(as_user):
     as_user(ADMIN)
     with patch("app.common.consultations.router.service.moderate", new=AsyncMock()) as moderate:

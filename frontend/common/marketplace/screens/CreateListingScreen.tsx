@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { NavigationAction } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Banner, Button, ConfirmSheet, ScreenScaffold, StickyActionBar, useSnackbar } from '../../components';
+import { Banner, Button, ConfirmSheet, FormCard, ScreenScaffold, useSnackbar } from '../../components';
 import { ListingFormFields, listingFormDefaults, listingSchema, type ListingFormInput, type ListingFormValues } from '../components/ListingFormFields';
 import { ListingPhotos, MAX_LISTING_PHOTOS } from '../components/ListingPhotos';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
@@ -89,26 +89,24 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
 
   return (
     <>
-      <ScreenScaffold
-        footer={
-          <StickyActionBar>
-            <Button label="Publish listing" size="lg" loading={createListing.isPending} onPress={submit} />
-          </StickyActionBar>
-        }
-      >
-        {submitError ? (
-          <Banner tone="danger" title="Couldn't publish the listing">
-            {submitError}
-          </Banner>
-        ) : null}
-        <ListingPhotos
-          uris={images.map(image => image.uri)}
-          onAdd={pickImages}
-          onRemove={index => setImages(current => current.filter((_, i) => i !== index))}
-          error={photoError}
-          disabled={createListing.isPending}
-        />
-        <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
+      {/* D20: the form is a centred card with its button at the end, as sign-up is. */}
+      <ScreenScaffold centred>
+        <FormCard>
+          {submitError ? (
+            <Banner tone="danger" title="Couldn't publish the listing">
+              {submitError}
+            </Banner>
+          ) : null}
+          <ListingPhotos
+            uris={images.map(image => image.uri)}
+            onAdd={pickImages}
+            onRemove={index => setImages(current => current.filter((_, i) => i !== index))}
+            error={photoError}
+            disabled={createListing.isPending}
+          />
+          <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
+          <Button label="Publish listing" size="lg" loading={createListing.isPending} onPress={submit} />
+        </FormCard>
       </ScreenScaffold>
       <ConfirmSheet
         visible={discarding !== null}

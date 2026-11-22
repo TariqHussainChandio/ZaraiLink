@@ -5,7 +5,7 @@ import { Inbox, MessageCircle, Stethoscope, User } from 'lucide-react-native';
 import React from 'react';
 import { CONSULTATIONS_ROUTES, EXPERT_HOME_ROUTES, EXPERT_TABS } from '../../common/constants/routes';
 import { ConsultationDetailScreen } from '../../common/consultations/screens/ConsultationDetailScreen';
-import { ConsultationListScreen } from '../../common/consultations/screens/ConsultationListScreen';
+import { ConsultationListScreen, type ConsultationListShow } from '../../common/consultations/screens/ConsultationListScreen';
 import { NotificationListScreen } from '../../common/notifications/screens/NotificationListScreen';
 import { ExpertAnalyticsScreen } from '../../expert/screens/AnalyticsScreen';
 import { ExpertDashboardScreen } from '../../expert/screens/DashboardScreen';
@@ -51,7 +51,7 @@ function ExpertHomeNavigator() {
 }
 
 type ExpertConsultationsStackParamList = {
-  [CONSULTATIONS_ROUTES.ConsultationList]: undefined;
+  [CONSULTATIONS_ROUTES.ConsultationList]: { show?: ConsultationListShow } | undefined;
   [CONSULTATIONS_ROUTES.ConsultationDetail]: { consultationId: string; aiSuggestion?: { label: string; confidence: number } };
 };
 
@@ -91,11 +91,12 @@ const CASES_TAB = tabOptions('Cases', Stethoscope);
 const MESSAGES_TAB = tabOptions('Messages', MessageCircle);
 const ACCOUNT_TAB = tabOptions('Account', User);
 
-// The expert's shell (the approved design system's "Role shells"): Requests · Cases · Messages · Account, in the expert
-// accent. No Market or Orders: experts advise, they do not buy or sell.
+// The expert's shell (the approved design system's "Role shells"): Requests · Cases · Messages · Account, in the brand
+// olive since D20. No Market or Orders: experts advise, they do not buy or sell.
 export function ExpertNavigator() {
   return (
-    <RoleScopeProvider scope="expert">
+    // D20: drawn in the brand olive (prices in earth brown), like every marketplace shell.
+    <RoleScopeProvider scope="brand">
       <Tab.Navigator tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
         <Tab.Screen
           name={EXPERT_TABS.Home}

@@ -21,7 +21,7 @@ export const APP_TABS = {
   Home: 'Home',
   Marketplace: 'Marketplace',
   Orders: 'Orders',
-  // D20: the buyer's own Cart tab (Dashboard · Market · Cart · Orders · Profile). Not named `Cart`, which is the cart
+  // D20: the buyer's own Cart tab (Dashboard · Market · Cart · Orders · Account). Not named `Cart`, which is the cart
   // screen inside it: React Navigation warns about a screen nested under one of the same name.
   Cart: 'CartTab',
   Consultations: 'Consultations',
@@ -168,5 +168,4 @@ export const PROFILE_ROUTES = {
   BusinessDetails: 'ProfileBusinessDetails',
   DeleteAccount: 'DeleteAccount',
   // Development builds only (A2): every shared component in the current theme.
-  DesignCatalogue: 'DesignCatalogue',
 } as const;

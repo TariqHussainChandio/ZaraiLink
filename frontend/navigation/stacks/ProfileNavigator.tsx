@@ -16,8 +16,6 @@ import { EditProfileScreen } from '../../common/profile/screens/EditProfileScree
 import { MfaEnrollmentScreen } from '../../common/profile/screens/MfaEnrollmentScreen';
 import { SettingsScreen } from '../../common/profile/screens/SettingsScreen';
 import { ViewProfileScreen } from '../../common/profile/screens/ViewProfileScreen';
-import { DesignCatalogueScreen } from '../DesignCatalogueScreen';
-import { designCatalogueAction } from '../headerActions';
 import { stackOptionsWithActions } from '../stackHeader';
 
 export type ProfileStackParamList = {
@@ -28,7 +26,6 @@ export type ProfileStackParamList = {
   [PROFILE_ROUTES.MfaEnrollment]: undefined;
   [PROFILE_ROUTES.BusinessDetails]: undefined;
   [PROFILE_ROUTES.DeleteAccount]: undefined;
-  [PROFILE_ROUTES.DesignCatalogue]: undefined;
 };
 
 export type ProfileScreenProps<RouteName extends keyof ProfileStackParamList> =
@@ -52,10 +49,9 @@ function ProfileHeaderLeading({ back }: { back: boolean }) {
 const profileLeading = () => <ProfileHeaderLeading back={false} />;
 const adminProfileLeading = () => <ProfileHeaderLeading back />;
 
-/** The Account's app bar (D20): photo and name, no "Account" title, no bell and no menu. Development builds keep the
- * design catalogue button, A2's evidence that every component follows the design system. */
+/** The Account's app bar (D20): photo and name, no "Account" title, no bell, no menu and no buttons, for every role. */
 export function profileStackOptions(adminBack = false): NativeStackNavigationOptions {
-  return stackOptionsWithActions({ [PROFILE_ROUTES.ViewProfile]: designCatalogueAction }, 'marketplace', {
+  return stackOptionsWithActions({}, 'marketplace', {
     [PROFILE_ROUTES.ViewProfile]: adminBack ? adminProfileLeading : profileLeading,
   });
 }
@@ -101,9 +97,6 @@ export function ProfileNavigator({ screenOptions = PROFILE_STACK_OPTIONS }: { sc
         component={DeleteAccountScreen}
         options={{ title: 'Delete account' }}
       />
-      {__DEV__ ? (
-        <Stack.Screen name={PROFILE_ROUTES.DesignCatalogue} component={DesignCatalogueScreen} options={{ title: 'Design catalogue' }} />
-      ) : null}
     </Stack.Navigator>
   );
 }

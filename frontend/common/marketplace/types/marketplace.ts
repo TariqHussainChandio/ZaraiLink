@@ -65,3 +65,7 @@ export interface LinkableInventoryProduct {
   unit: string;
   is_active: boolean;
 }
+
+// D20: what the market's filters can offer right now (the cities and price range of what is for sale). The generated
+// contract is the source of truth.
+export type { ListingFilterOptions } from '../../../services/api/generated/types.gen';

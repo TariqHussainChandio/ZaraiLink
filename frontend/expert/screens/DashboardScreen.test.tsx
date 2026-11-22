@@ -131,6 +131,35 @@ describe('ExpertDashboardScreen', () => {
     expect(screen.queryByText('Accepted case')).toBeNull();
   });
 
+  it('opens the Cases tab from the New requests figure, as from the other figures (D20)', async () => {
+    mockFetchExpertProfile.mockResolvedValue(baseProfile);
+    mockFetchConsultationsForExpert.mockResolvedValue([consultation]);
+    await renderWithQuery(<ExpertDashboardScreen />);
+    const tile = await screen.findByRole('button', { name: /^New requests: 1/ });
+    await fireEvent.press(tile);
+    expect(mockTabNavigate).toHaveBeenCalledWith(
+      EXPERT_TABS.Consultations,
+      expect.objectContaining({ screen: CONSULTATIONS_ROUTES.ConsultationList, params: { show: 'active' } }),
+    );
+  });
+
+  it.each([
+    ['Active cases: 1', 'active'],
+    ['Resolved: 1', 'resolved'],
+  ])('opens Cases on the half the figure counts: %s shows %s', async (label, show) => {
+    mockFetchExpertProfile.mockResolvedValue(baseProfile);
+    mockFetchConsultationsForExpert.mockResolvedValue([
+      { ...consultation, id: 'a', status: 'accepted' },
+      { ...consultation, id: 'r', status: 'resolved' },
+    ]);
+    await renderWithQuery(<ExpertDashboardScreen />);
+    await fireEvent.press(await screen.findByRole('button', { name: new RegExp(`^${label}`) }));
+    expect(mockTabNavigate).toHaveBeenCalledWith(
+      EXPERT_TABS.Consultations,
+      expect.objectContaining({ screen: CONSULTATIONS_ROUTES.ConsultationList, params: { show } }),
+    );
+  });
+
   it('orders requests by priority, then by how long they have waited', async () => {
     mockFetchExpertProfile.mockResolvedValue(baseProfile);
     mockFetchConsultationsForExpert.mockResolvedValue([

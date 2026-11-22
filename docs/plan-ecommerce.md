@@ -309,7 +309,7 @@ third check of that found no false positive and one slow case (chained operators
 - **Components** (`frontend/common/components/`): Button, TextField, Chip and ChipRow, StatusBadge (replaces the four
   status badges), Card, ListRow, Sheet, Banner, EmptyState, Skeleton, Spinner, Avatar, RoleBadge, TopAppBar and
   IconButton, TabBar, PriceBreakdown (BR-09: the delivery charge is always its own line), OrderTimeline and
-  `dashboards/StatTile`, each with tests. A development-only design catalogue (Account, palette icon) shows every one.
+  `dashboards/StatTile`, each with tests. A development-only design catalogue (Account, palette icon) showed every one; removed by D20 (2026-11-22).
 - **Shells** (`frontend/navigation/`): Farmer (Home · Market · Orders · Advisory · Account), Buyer (Home · Market ·
   Orders · Experts · Account), Dealer (Home · Market · Orders · Messages · Account), Expert (Requests · Cases · Messages
   · Account) and Admin (Overview · Approvals · Moderation · Audit · Account). Farmers and buyers open Messages from
@@ -428,9 +428,9 @@ third check of that found no false positive and one slow case (chained operators
   is B4's; built now, each would be an unreachable or empty screen (AGENTS rule 2), so they come with their phases.
   The status tokens for `dispatched` come with that status in A4 (D5), and those for sync with B3; until then a status
   the app does not know reads as a neutral word with its own name, as a badge, in an order's history and as the
-  timeline's current step. The design catalogue opens from Account (development builds only)
-  instead of a `zarailink://dev/catalogue` deep link; its code still ships, unreachable, in the release bundle, since
-  Metro does not drop unused modules. Adopting list skeletons screen by screen is A8's work.
+  timeline's current step. The design catalogue opened from Account (development builds only)
+  instead of a `zarailink://dev/catalogue` deep link; D20 (2026-11-22) removed it, button, route and screen, so its code
+  no longer ships in the release bundle either. Adopting list skeletons screen by screen is A8's work.
 - **Known limits:** `raw-style` reads literals, not arithmetic: 33 half-step nudges (`space[1] / 2`) remain for A8's
   screen pass. With no profile loaded (offline at a cold start) an authenticated user's role is unknown and the
   shared navigator shows the buyer tabs (before A2, a generic tab set); A3 resolves role and account status. One

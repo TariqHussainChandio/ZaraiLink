@@ -86,6 +86,24 @@ async def fetch_listing_by_id(listing_id: str, user: AuthenticatedUser | None = 
     return _for_viewer(await _with_availability([listing], user.access_token if user else None), user)[0]
 
 
+async def fetch_filter_options() -> dict:
+    """The cities and the price range of what is for sale now, for the market's filters (D20): a city or a price is
+    never a list kept in the app. Cities are told apart ignoring case and spaces ("Okara", "okara ") and listed by
+    name."""
+    locations, lowest, highest = await repo.fetch_filter_option_rows()
+    cities: dict[str, str] = {}
+    for row in locations:
+        location = row.get("location")
+        city = location.get("city") if isinstance(location, dict) else None
+        if isinstance(city, str) and city.strip():
+            cities.setdefault(city.strip().casefold(), city.strip())
+    return {
+        "cities": sorted(cities.values(), key=str.casefold),
+        "min_price": lowest["price"] if lowest else None,
+        "max_price": highest["price"] if highest else None,
+    }
+
+
 async def fetch_categories() -> list[dict]:
     return await repo.fetch_categories()
 

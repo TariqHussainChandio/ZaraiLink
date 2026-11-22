@@ -12,6 +12,7 @@ export const queryKeys = {
     myListings: (ownerId: string) => ['marketplace', 'my-listings', ownerId] as const,
     listingOptions: () => ['marketplace', 'listing-options'] as const,
     categories: () => ['marketplace', 'categories'] as const,
+    filterOptions: () => ['marketplace', 'filter-options'] as const,
     crops: () => ['marketplace', 'crops'] as const,
   },
   analytics: {

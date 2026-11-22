@@ -10,7 +10,7 @@ import { useAuthStore } from '../../state/authStore';
 import { useCheckoutIntent } from '../../state/checkoutIntentStore';
 import { RoleScopeProvider } from '../../theme';
 import { AccountUnavailableScreen } from '../AccountUnavailableScreen';
-import { profileTabOptions, renderLargeTabBar, renderTabBar, tabOptions } from '../tabOptions';
+import { renderLargeTabBar, renderTabBar, tabOptions } from '../tabOptions';
 import { CartNavigator } from './CartNavigator';
 import { ConsultationsNavigator, type ConsultationsStackParamList } from './ConsultationsNavigator';
 import { HomeNavigator, type HomeStackParamList } from './HomeNavigator';
@@ -42,15 +42,14 @@ const HOME_TAB = tabOptions('Home', House);
 const MARKET_TAB = tabOptions('Market', Store);
 const ORDERS_TAB = tabOptions('Orders', Receipt);
 const MESSAGES_TAB = tabOptions('Messages', MessageCircle);
+// D20: one Account tab, the same word and mark for every role.
 const ACCOUNT_TAB = tabOptions('Account', User);
-// D20, the buyer: Dashboard · Market · Cart · Orders · Profile.
+// D20, the buyer: Dashboard · Market · Cart · Orders · Account.
 const DASHBOARD_TAB = tabOptions('Dashboard', LayoutDashboard);
 const CART_TAB = tabOptions('Cart', ShoppingCart);
-const PROFILE_TAB = profileTabOptions('Profile');
 // D20, the farmer: plain pictures with short words, drawn large (renderLargeTabBar).
 const FARMER_ORDERS_TAB = tabOptions('Orders', Package);
-const PLANT_DOCTOR_TAB = tabOptions('Plant doctor', Sprout);
-const ME_TAB = tabOptions('Me', User);
+const PLANT_DOCTOR_TAB = tabOptions('AI', Sprout);
 
 const Root = createNativeStackNavigator<MarketRootParamList>();
 type MarketRole = Extract<Role, 'farmer' | 'buyer' | 'dealer'>;
@@ -61,8 +60,8 @@ function isMarketRole(role: Role | null): role is MarketRole {
 
 // The marketplace roles' shells (the approved design system's "Role shells", revised by D20). Each has its own tabs and
 // accent; the route names stay shared so a screen used by several roles navigates the same way in each:
-//   Farmer: Home · Market · Orders · Plant doctor · Me, drawn large (Plant doctor: consultations and the disease scan)
-//   Buyer:  Dashboard · Market · Cart · Orders · Profile (no experts: advisory is the farmer's alone, D20)
+//   Farmer: Home · Market · Orders · AI · Account, drawn large (AI: the disease scan and consultations)
+//   Buyer:  Dashboard · Market · Cart · Orders · Account (no experts: advisory is the farmer's alone, D20)
 //   Dealer: Home · Market · Orders · Messages · Account (Home carries the inventory system's card)
 function MarketTabs({ role }: { role: MarketRole }) {
   // A guest who asked to check out lands on their cart (D18): the buyer's own Cart tab, or Market, where the cart they
@@ -85,7 +84,7 @@ function MarketTabs({ role }: { role: MarketRole }) {
       <Tab.Screen
         name={APP_TABS.Profile}
         component={ProfileNavigator}
-        options={role === 'buyer' ? PROFILE_TAB : farmer ? ME_TAB : ACCOUNT_TAB}
+        options={ACCOUNT_TAB}
       />
     </Tab.Navigator>
   );
@@ -97,8 +96,9 @@ export function AppNavigator() {
   // the buyer shell for an approved dealer who started offline (B4 verification, F1).
   if (!isMarketRole(role)) return <AccountUnavailableScreen />;
   return (
-    // D20: the dealer's marketplace shell is drawn in the brand olive; the inventory system sets its own earth brown.
-    <RoleScopeProvider scope={role === 'dealer' ? 'brand' : role}>
+    // D20: the dealer's and the buyer's shells are drawn in the brand olive (prices in earth brown); the inventory system
+    // sets its own earth brown.
+    <RoleScopeProvider scope={role === 'dealer' || role === 'buyer' ? 'brand' : role}>
       <Root.Navigator screenOptions={{ headerShown: false }}>
         <Root.Screen name="Tabs">{() => <MarketTabs role={role} />}</Root.Screen>
         {/* Farmers and buyers reach their conversations from Home's app bar; chat is a full-screen flow over the tabs.

@@ -61,7 +61,7 @@ function Harness({ defaults = listingFormDefaults, onValues }: { defaults?: List
   );
 }
 
-/** Renders the form and waits until its reference lists (categories, crops, units, the dealer's products) have loaded.
+/** Renders the form and waits until its reference lists (categories, units, the dealer's products) have loaded.
  * A dropdown opened before its list arrives shows no options, which on a busy CI runner made these tests fail now and
  * then; waiting for every query to settle first makes them deterministic. */
 async function renderSettled(ui: React.ReactElement, started: () => void = () => undefined) {
@@ -122,12 +122,10 @@ describe('ListingFormFields', () => {
     expect(seen.quantity).toBe('40');
   });
 
-  it('shows the crop chips once crops load, and toggles selection', async () => {
-    await renderWithQuery(<Harness />);
-    await fireEvent.press(await screen.findByText('Wheat'));
-    expect(screen.getByText('Wheat').parent?.props.accessibilityState.selected).toBe(true);
-    await fireEvent.press(screen.getByText('Wheat'));
-    expect(screen.getByText('Wheat').parent?.props.accessibilityState.selected).toBe(false);
+  it('never asks which crops the product suits (D20)', async () => {
+    await renderSettled(<Harness />, () => expect(fetchUnits).toHaveBeenCalled());
+    expect(screen.queryByText('Suits these crops')).toBeNull();
+    expect(screen.queryByText('Wheat')).toBeNull();
   });
 
   // D8: the linked inventory product picker.
@@ -161,8 +159,7 @@ describe('ListingFormFields', () => {
     ['a rejected dealer', { role: 'dealer', account_status: 'rejected' }],
   ])('shows %s no picker and never asks the inventory API', async (_who, profile) => {
     useAuthStore.setState({ profile: profile as never });
-    await renderWithQuery(<Harness />);
-    await screen.findByText('Wheat');
+    await renderSettled(<Harness />, () => expect(fetchUnits).toHaveBeenCalled());
     expect(screen.queryByText('Linked inventory product')).toBeNull();
     expect(mockFetchProducts).not.toHaveBeenCalled();
   });
@@ -183,10 +180,15 @@ describe('listingSchema', () => {
     expect(result.error?.issues[0]?.message).toBe('Enter the price in rupees, above Rs 0');
   });
 
-  it('refuses a missing unit and a quantity of zero', () => {
-    const result = listingSchema.safeParse({ ...valid, unit: '', quantity: '0' });
+  it('refuses a missing unit and an empty quantity', () => {
+    const result = listingSchema.safeParse({ ...valid, unit: '', quantity: '' });
     expect(result.error?.issues.map(issue => issue.message)).toEqual(
-      expect.arrayContaining(['Choose how it is sold, such as kg or bag', 'Enter how many you have, 1 or more']),
+      expect.arrayContaining(['Choose how it is sold, such as kg or bag', 'Enter how many you have; 0 shows it as out of stock']),
     );
+  });
+
+  it('accepts a quantity of 0: the listing then shows as out of stock (D20)', () => {
+    const parsed = listingSchema.parse({ ...valid, quantity: '0' });
+    expect(parsed.quantity).toBe(0);
   });
 });

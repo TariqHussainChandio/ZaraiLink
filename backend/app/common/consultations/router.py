@@ -129,7 +129,9 @@ admin_router = APIRouter(prefix="/api/v1/admin/consultations", tags=["admin"])
 @admin_router.get("", response_model=list[ConsultationWithRelations])
 async def admin_list(
     status: ConsultationStatus | None = None,
-    older_than_days: int | None = Query(default=None, ge=0),
+    # At most a century: further back than year 1 overflows the date arithmetic and answered 500 (found by the
+    # schemathesis smoke test with 739942); past the cap the caller now gets a 422.
+    older_than_days: int | None = Query(default=None, ge=0, le=36500),
     user: AuthenticatedUser = Depends(require_admin),
     page: Page = Depends(paginate),
 ) -> list[dict]:

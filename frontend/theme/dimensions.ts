@@ -51,6 +51,8 @@ export const size = {
   composerMax: 120,
   /** The tallest a list inside a sheet grows before it scrolls. */
   sheetListMax: 320,
+  /** The market's filter panel under the filter icon (D20): room for the price range, city, crops and its buttons. */
+  filterPanelMax: 520,
   /** The narrowest a dropdown opens, so a short field's options stay readable. */
   dropdownMinWidth: 200,
   /** The two-factor setup QR code: large enough for an authenticator app to read at arm's length. */

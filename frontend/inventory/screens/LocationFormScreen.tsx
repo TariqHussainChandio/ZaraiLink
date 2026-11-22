@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, Switch, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, ScreenState, SelectField, TextField, useToast } from '../../common/components';
+import { Banner, Button, FormCard, ScreenState, SelectField, TextField, useToast } from '../../common/components';
 import { useRoleAccent, useTheme } from '../../theme';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { cappedText, TEXT_LIMITS, toTextOrNull } from '../components/formValues';
@@ -111,72 +111,75 @@ export function LocationFormScreen({ route, navigation }: InventoryScreenProps<t
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Controller
-        control={control}
-        name="name"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField label="Name" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.name?.message} />
-        )}
-      />
-      <Controller
-        control={control}
-        name="kind"
-        render={({ field: { onChange, value } }) => (
-          <SelectField label="Kind" value={value} options={KIND_OPTIONS} onSelect={onChange} searchable={false} />
-        )}
-      />
-      <Controller
-        control={control}
-        name="address"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Address"
-            optional
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            multiline
-            error={errors.address?.message}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="isDefault"
-        render={({ field: { onChange, value } }) => (
-          <View style={styles.row}>
-            <View style={styles.grow}>
-              <Text style={styles.body}>Default location</Text>
-              <Text style={styles.caption}>
-                {location?.is_default
-                  ? 'The marketplace sells from this location. Make another one the default to change it.'
-                  : 'The marketplace sells from the default location.'}
-              </Text>
-            </View>
-            {/* Android: a Switch is found by role only with `accessible` and a label (AGENTS.md). */}
-            <Switch
-              accessible
-              accessibilityLabel="Default location"
-              accessibilityRole="switch"
-              accessibilityState={{ checked: value, disabled: !!location?.is_default }}
+    // D20: the form is a centred card on the page, as sign-up is.
+    <ScrollView style={styles.screen} contentContainerStyle={[styles.content, styles.centred]} keyboardShouldPersistTaps="handled">
+      <FormCard>
+        <Controller
+          control={control}
+          name="name"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField label="Name" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.name?.message} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="kind"
+          render={({ field: { onChange, value } }) => (
+            <SelectField label="Kind" value={value} options={KIND_OPTIONS} onSelect={onChange} searchable={false} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="address"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField
+              label="Address"
+              optional
               value={value}
-              onValueChange={onChange}
-              disabled={location?.is_default}
-              trackColor={{ true: accent.mark, false: theme.colors.lineStrong }}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              multiline
+              error={errors.address?.message}
             />
-          </View>
-        )}
-      />
-      {formError ? (
-        <Banner tone="danger" title="Not saved">
-          {formError}
-        </Banner>
-      ) : null}
-      <Button label={locationId ? 'Save changes' : 'Add location'} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
-      {locationId && !location?.is_default ? (
-        <Button label="Remove location" variant="danger" onPress={() => setConfirmingRemove(true)} />
-      ) : null}
+          )}
+        />
+        <Controller
+          control={control}
+          name="isDefault"
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.row}>
+              <View style={styles.grow}>
+                <Text style={styles.body}>Default location</Text>
+                <Text style={styles.caption}>
+                  {location?.is_default
+                    ? 'The marketplace sells from this location. Make another one the default to change it.'
+                    : 'The marketplace sells from the default location.'}
+                </Text>
+              </View>
+              {/* Android: a Switch is found by role only with `accessible` and a label (AGENTS.md). */}
+              <Switch
+                accessible
+                accessibilityLabel="Default location"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: value, disabled: !!location?.is_default }}
+                value={value}
+                onValueChange={onChange}
+                disabled={location?.is_default}
+                trackColor={{ true: accent.mark, false: theme.colors.lineStrong }}
+              />
+            </View>
+          )}
+        />
+        {formError ? (
+          <Banner tone="danger" title="Not saved">
+            {formError}
+          </Banner>
+        ) : null}
+        <Button label={locationId ? 'Save changes' : 'Add location'} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
+        {locationId && !location?.is_default ? (
+          <Button label="Remove location" variant="danger" onPress={() => setConfirmingRemove(true)} />
+        ) : null}
+      </FormCard>
       <ConfirmSheet
         visible={confirmingRemove}
         title="Remove this location?"
