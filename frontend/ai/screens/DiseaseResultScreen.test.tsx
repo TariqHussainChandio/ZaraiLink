@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { DiseaseResultScreen } from './DiseaseResultScreen';
 import { fetchDiseaseCaseWithPrediction } from '../services/diseaseService';
@@ -209,8 +209,9 @@ describe('DiseaseResultScreen', () => {
     });
     expect(mockFetchCase.mock.calls.length).toBe(callsBefore + 1);
     expect(mockFetchCase).toHaveBeenLastCalledWith('case-1');
-    await screen.findByLabelText('Your leaf photo');
-    expect(screen.getByLabelText('Your leaf photo').props.source).toEqual({ uri: fresh });
+    // The photo is already on screen with the old link, so wait for the refetched one to replace it rather than read the
+    // element the moment it is found (on a busy CI runner that read came before the new case arrived).
+    await waitFor(() => expect(screen.getByLabelText('Your leaf photo').props.source).toEqual({ uri: fresh }));
   });
 
   it('says the photo could not be analysed when the case failed', async () => {

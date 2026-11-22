@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { createTestQueryClient, renderWithQuery } from '../../../testUtils/renderWithProviders';
 import { Text } from 'react-native';
+import { fetchUnits } from '../../reference-data/services/referenceDataService';
 import { fetchLinkableInventoryProducts } from '../services/inventoryProductsService';
 import { useAuthStore } from '../../../state/authStore';
 import {
@@ -99,7 +100,7 @@ describe('ListingFormFields', () => {
   });
 
   it('offers units from the reference list, without area units, instead of free text', async () => {
-    await renderSettled(<Harness />);
+    await renderSettled(<Harness />, () => expect(fetchUnits).toHaveBeenCalled());
     await fireEvent.press(await screen.findByRole('button', { name: /Sold by/ }));
     expect(await screen.findByText('Kilogram (kg)', {}, { timeout: 3000 })).toBeTruthy();
     expect(screen.getByText('Bag (bag)')).toBeTruthy();
