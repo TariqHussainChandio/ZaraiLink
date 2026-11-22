@@ -50,6 +50,17 @@ _SKIP_REASON = (
 # LOCAL_SUPABASE_URL), instead of skipping cleanly. The guard belongs on the shared fixture every
 # smoke test depends on instead, which works regardless of which file requests it.
 
+
+@pytest.fixture(scope="session", autouse=True)
+def _needs_local_stack():
+    """Skips every smoke test when no local stack is configured. A session-scoped autouse fixture runs before any other
+    fixture, so module fixtures (an admin's sessions, a dealer's world) and tests that go straight to the database with
+    psql are skipped too; the guard on `backend_url` alone let those error in CI's mocked "Backend" job, which has no
+    stack (httpx.UnsupportedProtocol on an empty URL, StopIteration on a missing container)."""
+    if not (_is_local and ANON_KEY and SERVICE_KEY):
+        pytest.skip(_SKIP_REASON)
+
+
 PASSWORD = "Passw0rd!123"
 RUN = uuid.uuid4().hex[:8]
 
