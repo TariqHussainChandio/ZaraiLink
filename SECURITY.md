@@ -6,8 +6,7 @@ Please report security problems privately. Do not open a public issue, pull requ
 post details anywhere public until a fix is available.
 
 - **Preferred:** use GitHub's private vulnerability reporting: open the repository's **Security** tab, choose
-  **Report a vulnerability**, and describe the problem. (This is available once the repository is public and the
-  maintainer has enabled it; until then, contact the maintainer directly through GitHub.)
+  **Report a vulnerability**, and describe the problem. Only the maintainer sees the report.
 - Include what you found, the steps to reproduce it, and the impact you expect. A proof of concept against a
   local stack is ideal.
 

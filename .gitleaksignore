@@ -4,3 +4,5 @@
 # 2026-11-22, approved by the maintainer: the idempotency test sends the literal key "purchase-key-1" in an
 # Idempotency-Key header; gitleaks' generic-api-key rule reads any "...-Key" header value as a credential.
 573dac2097ecde5ec9450587ef35af53d0d1a9dd:backend/tests/integration/smoke/test_smoke_inventory_api.py:generic-api-key:891
+# The same line again, carried into main by the squash merge of #55.
+dd19790a139053651108480506b3035d501df6b5:backend/tests/integration/smoke/test_smoke_inventory_api.py:generic-api-key:891
