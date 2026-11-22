@@ -13,6 +13,7 @@ from app.common.marketplace.schemas import (
     CategoryUpdateInput,
     Crop,
     Listing,
+    ListingFilterOptions,
     ListingInput,
     ListingUpdateInput,
     ListingWithRelations,
@@ -53,6 +54,12 @@ async def list_listings_for_moderation(
     user: AuthenticatedUser = Depends(require_admin), page: Page = Depends(paginate)
 ) -> list[dict]:
     return page.finish(await service.fetch_all_listings_for_moderation(user))
+
+
+# Declared before /listings/{listing_id}, which would otherwise take "filter-options" for an id. Public, like browsing.
+@router.get("/listings/filter-options", response_model=ListingFilterOptions)
+async def get_listing_filter_options() -> dict:
+    return await service.fetch_filter_options()
 
 
 @router.get("/listings/{listing_id}", response_model=ListingWithRelations)

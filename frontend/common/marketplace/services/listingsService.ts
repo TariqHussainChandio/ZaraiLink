@@ -6,6 +6,7 @@ import type {
   Category,
   Crop,
   Listing,
+  ListingFilterOptions,
   ListingStatus,
   ListingWithRelations,
 } from '../types/marketplace';
@@ -53,6 +54,11 @@ export async function fetchListingById(
   id: string,
 ): Promise<ListingWithRelations> {
   return apiFetch(`/api/v1/marketplace/listings/${id}`);
+}
+
+/** The cities and the lowest and highest price of the listings for sale now, for the market's filters (D20). */
+export async function fetchListingFilterOptions(): Promise<ListingFilterOptions> {
+  return apiFetch('/api/v1/marketplace/listings/filter-options');
 }
 
 export async function fetchCategories(): Promise<Category[]> {

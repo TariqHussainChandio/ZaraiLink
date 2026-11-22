@@ -323,3 +323,44 @@ def test_the_moderation_list_does_not_show_the_admin_the_product_link(signed_in)
         response = client.get("/api/v1/marketplace/listings/moderation")
     assert response.status_code == 200, response.text
     assert response.json()[0]["inventory_product_id"] is None
+
+
+# D20: the market's filters offer the cities and the price range of what is for sale now.
+def test_filter_options_route_is_public_and_matched_before_the_listing_id_route():
+    options = {"cities": ["Okara"], "min_price": 100.0, "max_price": 900.0}
+    with patch("app.common.marketplace.router.service.fetch_filter_options", return_value=options) as mock_fetch:
+        response = client.get("/api/v1/marketplace/listings/filter-options")
+    assert response.status_code == 200
+    assert response.json() == options
+    mock_fetch.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_filter_options_list_each_city_once_by_name_and_the_price_range():
+    from app.common.marketplace import service
+
+    rows = [
+        {"location": {"country": "PK", "city": "Okara"}},
+        {"location": {"city": " okara "}},
+        {"location": {"city": "Lahore"}},
+        {"location": {"city": ""}},
+        {"location": None},
+        {"location": {"province": "Punjab"}},
+    ]
+    with patch(
+        "app.common.marketplace.service.repo.fetch_filter_option_rows",
+        AsyncMock(return_value=(rows, {"price": 150.0}, {"price": 4800.0})),
+    ):
+        options = await service.fetch_filter_options()
+    assert options == {"cities": ["Lahore", "Okara"], "min_price": 150.0, "max_price": 4800.0}
+
+
+@pytest.mark.asyncio
+async def test_filter_options_of_an_empty_market_have_no_cities_and_no_prices():
+    from app.common.marketplace import service
+
+    with patch(
+        "app.common.marketplace.service.repo.fetch_filter_option_rows", AsyncMock(return_value=([], None, None))
+    ):
+        options = await service.fetch_filter_options()
+    assert options == {"cities": [], "min_price": None, "max_price": None}

@@ -1,4 +1,4 @@
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
@@ -11,7 +11,9 @@ import { isActiveStatus } from '../utils/requests';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 
-type Show = 'active' | 'resolved';
+/** Which half of the list is shown; a dashboard figure opens the half it counts (`show` route param, D20). */
+export type ConsultationListShow = 'active' | 'resolved';
+type Show = ConsultationListShow;
 
 const SHOW_OPTIONS: { value: Show; label: string }[] = [
   { value: 'active', label: 'Active' },
@@ -30,7 +32,15 @@ export function ConsultationListScreen() {
   const role = useAuthStore(state => state.role);
   const navigation = useNavigation<any>();
   const isExpert = role === 'expert';
-  const [show, setShow] = useState<Show>('active');
+  const asked = (useRoute().params as { show?: Show } | undefined)?.show;
+  const [show, setShow] = useState<Show>(asked ?? 'active');
+  // Opened again from another figure while already mounted (a tab keeps its screens): show what that figure counts. The
+  // state is adjusted during render when the request changes, React's pattern for state derived from a prop.
+  const [lastAsked, setLastAsked] = useState(asked);
+  if (asked !== lastAsked) {
+    setLastAsked(asked);
+    if (asked) setShow(asked);
+  }
   const query = useConsultations(isExpert, !!userId);
   const { refetch } = query;
   const consultations = useMemo(() => query.data ?? [], [query.data]);

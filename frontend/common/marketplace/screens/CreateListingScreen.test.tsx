@@ -86,7 +86,7 @@ describe('CreateListingScreen', () => {
 
     expect(await screen.findByText('Enter a name of at least 2 letters')).toBeTruthy();
     expect(screen.getByText('Enter the price in rupees, above Rs 0')).toBeTruthy();
-    expect(screen.getByText('Enter how many you have, 1 or more')).toBeTruthy();
+    expect(screen.getByText('Enter how many you have; 0 shows it as out of stock')).toBeTruthy();
     expect(screen.getByText('Choose how it is sold, such as kg or bag')).toBeTruthy();
     expect(screen.getByText('Add at least one photo so buyers can see what you sell')).toBeTruthy();
     expect(mockCreateListing).not.toHaveBeenCalled();

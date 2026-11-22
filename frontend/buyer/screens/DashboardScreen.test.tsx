@@ -3,7 +3,7 @@ import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithQuery } from '../../testUtils/renderWithProviders';
 import { BuyerDashboardScreen } from './DashboardScreen';
 import { fetchOrdersForUser } from '../../common/orders/services/ordersService';
-import { APP_TABS, MARKETPLACE_ROUTES, ORDERS_ROUTES } from '../../common/constants/routes';
+import { APP_TABS, ORDERS_ROUTES } from '../../common/constants/routes';
 import { useAuthStore } from '../../state/authStore';
 import type { OrderWithItems } from '../../common/orders/types/orders';
 
@@ -58,8 +58,6 @@ describe('BuyerDashboardScreen', () => {
     expect(await screen.findByText('Needs you')).toBeTruthy();
     expect(screen.queryByText('1 order waiting for payment')).toBeNull();
     expect(screen.getByText('Open the order to pay')).toBeTruthy();
-    // With something waiting, the only call to action is the order itself.
-    expect(screen.queryByText('Find seeds and fertiliser')).toBeNull();
   });
 
   it('asks the buyer to confirm dispatched orders', async () => {
@@ -78,17 +76,12 @@ describe('BuyerDashboardScreen', () => {
     expect(screen.queryByText(/Rs 500 ·/)).toBeNull();
   });
 
-  it('offers one next step and an empty note when nothing is waiting', async () => {
+  it('shows an empty note and no "find products" card when nothing is waiting (D20: the market is its own tab)', async () => {
     mockFetchOrders.mockResolvedValue([]);
     await renderWithQuery(<BuyerDashboardScreen />);
     expect(await screen.findByText(/No purchases yet/)).toBeTruthy();
-
-    await fireEvent.press(screen.getByText('Find seeds and fertiliser'));
-    expect(mockTabNavigate).toHaveBeenCalledWith(APP_TABS.Marketplace, {
-      screen: MARKETPLACE_ROUTES.Browse,
-      params: undefined,
-      initial: false,
-    });
+    expect(screen.queryByText('Find seeds and fertiliser')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Find/ })).toBeNull();
   });
 
   it('tapping a purchase opens its order with the Orders tab root kept underneath', async () => {

@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { CONSULTATIONS_ROUTES } from '../../common/constants/routes';
 import { ConsultationDetailScreen } from '../../common/consultations/screens/ConsultationDetailScreen';
-import { ConsultationListScreen } from '../../common/consultations/screens/ConsultationListScreen';
+import { ConsultationListScreen, type ConsultationListShow } from '../../common/consultations/screens/ConsultationListScreen';
 import { ExpertListScreen } from '../../common/consultations/screens/ExpertListScreen';
 import { ExpertProfileScreen } from '../../common/consultations/screens/ExpertProfileScreen';
 import { RequestConsultationScreen } from '../../common/consultations/screens/RequestConsultationScreen';
@@ -13,7 +13,7 @@ import { consultationsActions } from '../headerActions';
 import { stackOptionsWithActions } from '../stackHeader';
 
 export type ConsultationsStackParamList = {
-  [CONSULTATIONS_ROUTES.ConsultationList]: undefined;
+  [CONSULTATIONS_ROUTES.ConsultationList]: { show?: ConsultationListShow } | undefined;
   [CONSULTATIONS_ROUTES.ExpertList]: { specialization?: ExpertSpecialization; prefill?: DiseasePrefill } | undefined;
   [CONSULTATIONS_ROUTES.ExpertProfile]: { expertId: string; prefill?: DiseasePrefill };
   [CONSULTATIONS_ROUTES.RequestConsultation]: { expertId: string; prefill?: DiseasePrefill };

@@ -6,7 +6,7 @@ import { Button, QueryState, ScreenScaffold, Spinner } from '../../components';
 import { FilterBar } from '../components/FilterBar';
 import { ListingCard } from '../components/ListingCard';
 import { MARKETPLACE_ROUTES } from '../../constants/routes';
-import { useCategories, useListings } from '../hooks/marketplace';
+import { useListings } from '../hooks/marketplace';
 import { useAuthStore } from '../../../state/authStore';
 import { useMarketplaceStore } from '../../../state/marketplaceStore';
 import { useTheme, type Theme } from '../../../theme';
@@ -21,7 +21,6 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   const role = useAuthStore(state => state.role);
   const canSell = role === 'farmer' || role === 'dealer';
   const { filters, setFilters, resetFilters } = useMarketplaceStore();
-  const { data: categories = [] } = useCategories();
   const [pulling, setPulling] = useState(false);
 
   const params = useMemo(
@@ -31,7 +30,6 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
       minPrice: filters.minPrice ?? undefined,
       maxPrice: filters.maxPrice ?? undefined,
       city: filters.city ?? undefined,
-      cropName: filters.cropName ?? undefined,
     }),
     [filters],
   );
@@ -64,13 +62,10 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
       <FilterBar
         search={filters.search}
         onSearchChange={search => setFilters({ search })}
-        categories={categories}
-        selectedCategoryId={filters.categoryId}
-        onSelectCategory={categoryId => setFilters({ categoryId })}
         minPrice={filters.minPrice}
         maxPrice={filters.maxPrice}
         city={filters.city}
-        cropName={filters.cropName}
+        categoryId={filters.categoryId}
         onApplyMoreFilters={setFilters}
       />
       <View style={styles.results}>

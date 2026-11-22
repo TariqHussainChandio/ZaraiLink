@@ -1,11 +1,11 @@
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useNavigation, type ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CircleUserRound, MessageCircle, Palette, Plus, ScanLine, Search, ShoppingCart, Warehouse } from 'lucide-react-native';
+import { CircleUserRound, MessageCircle, Plus, ScanLine, Search, ShoppingCart, Warehouse } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { Avatar, IconButton } from '../common/components';
-import { APP_TABS, AUTH_ROUTES, GUEST_SIGN_IN_TAB, CONSULTATIONS_ROUTES, HOME_ROUTES, MARKETPLACE_ROUTES, PROFILE_ROUTES } from '../common/constants/routes';
+import { APP_TABS, AUTH_ROUTES, GUEST_SIGN_IN_TAB, CONSULTATIONS_ROUTES, HOME_ROUTES, MARKETPLACE_ROUTES } from '../common/constants/routes';
 import { NotificationBellButton } from '../common/notifications';
 import { useUnreadConversationCount } from './useUnreadConversationCount';
 import { useStockAlerts } from '../inventory';
@@ -118,12 +118,6 @@ function ConsultationsActions() {
   );
 }
 
-/** Development builds only: the design catalogue, A2's evidence that every component follows the design system. */
-function DesignCatalogueAction() {
-  const navigation = useNavigation<StackNavigation>();
-  return <IconButton icon={Palette} label="Design catalogue" onPress={() => navigation.navigate(PROFILE_ROUTES.DesignCatalogue)} />;
-}
-
 /** The cart, with the number of items in it. It goes through the Marketplace tab, so it works from a listing opened in
  * Home's stack as well as from Market's own. */
 function CartAction() {
@@ -173,7 +167,6 @@ export const homeActions = () => <HomeActions />;
 export const consultationsActions = () => <ConsultationsActions />;
 export const cartAction = () => <CartAction />;
 export const browseActions = () => <BrowseActions />;
-export const designCatalogueAction = __DEV__ ? () => <DesignCatalogueAction /> : undefined;
 
 function makeStyles({ size }: Theme) {
   return StyleSheet.create({

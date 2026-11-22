@@ -47,7 +47,7 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
         <EmptyState
           icon={ShoppingCart}
           title="Your cart is empty"
-          description="Find seeds, fertiliser and produce in the market."
+          description="Find products in the market."
           actionLabel="Browse the market"
           onAction={() => openMarket(navigation)}
         />

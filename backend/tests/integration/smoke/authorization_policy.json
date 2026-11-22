@@ -990,6 +990,16 @@
    "farmer"
   ]
  },
+ "GET /api/v1/marketplace/listings/filter-options": {
+  "kind": "public",
+  "roles": [
+   "admin",
+   "buyer",
+   "dealer",
+   "expert",
+   "farmer"
+  ]
+ },
  "GET /api/v1/marketplace/listings/{listing_id}": {
   "kind": "public",
   "roles": [

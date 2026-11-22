@@ -10,6 +10,7 @@ export * from './DocumentTile';
 export * from './Dropdown';
 export * from './EmptyState';
 export * from './ErrorBoundary';
+export * from './FormCard';
 export * from './ListRow';
 export * from './LocationPicker';
 export * from './OfflineBanner';

@@ -8,9 +8,9 @@ import {
 } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
-import { Chip, LocationPicker, SelectField, TextField, type SelectOption } from '../../components';
+import { LocationPicker, SelectField, TextField, type SelectOption } from '../../components';
 import { useUnits } from '../../reference-data';
-import { useCategories, useCrops, useLinkableInventoryProducts } from '../hooks/marketplace';
+import { useCategories, useLinkableInventoryProducts } from '../hooks/marketplace';
 import { useAuthStore } from '../../../state/authStore';
 import { useTheme, type Theme } from '../../../theme';
 import { digitsOnly } from '../utils/digits';
@@ -22,15 +22,25 @@ const positiveWhole = (message: string) =>
     .transform(text => Number(digitsOnly(text) || 0))
     .refine(value => value > 0, message);
 
+/** A whole number of zero or more (D20: a quantity of 0 lists the product as out of stock); the box must not be empty. */
+const wholeOrZero = (message: string) =>
+  z
+    .string()
+    .refine(text => digitsOnly(text) !== '', message)
+    .transform(text => Number(digitsOnly(text)));
+
 export const listingSchema = z.object({
   title: z.string().trim().min(2, 'Enter a name of at least 2 letters'),
   description: z.string().optional(),
   categoryId: z.string().nullable(),
   price: positiveWhole('Enter the price in rupees, above Rs 0'),
   unit: z.string().min(1, 'Choose how it is sold, such as kg or bag'),
-  quantity: positiveWhole('Enter how many you have, 1 or more'),
+  // 0 is allowed: the listing then shows as out of stock (listing_availability, 20261022090000_inventory_sync.sql).
+  quantity: wholeOrZero('Enter how many you have; 0 shows it as out of stock'),
   brand: z.string(),
   condition: z.string(),
+  // D20: the form no longer asks which crops a product suits. The field stays so an edit keeps what an older listing
+  // saved, and a new listing sends none.
   cropCompatibility: z.array(z.string()),
   country: z.string().nullable(),
   province: z.string().nullable(),
@@ -77,7 +87,6 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { data: categories = [] } = useCategories();
-  const { data: crops = [] } = useCrops();
   const { data: units = [], isPending: unitsLoading } = useUnits();
   // Only an approved dealer has an inventory to link (BR-03/04, D8); the API refuses anyone else, so nobody else asks.
   const canLinkProduct = useAuthStore(
@@ -98,7 +107,6 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
   const province = watch('province');
   const city = watch('city');
   const unit = watch('unit');
-  const cropCompatibility = watch('cropCompatibility');
 
   const categoryOptions = useMemo<SelectOption[]>(() => categories.map(category => ({ id: category.id, label: category.name })), [categories]);
   // A listing is sold by weight, volume or count, never by area. A unit saved before this list existed ("40kg bag") still
@@ -217,27 +225,6 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
         </View>
       </View>
 
-      {crops.length > 0 ? (
-        <View style={styles.group}>
-          <Text style={styles.label}>Suits these crops</Text>
-          <View style={styles.chips} testID="crop-chips">
-            {crops.map(crop => {
-              const selected = cropCompatibility.includes(crop.name);
-              return (
-                <Chip
-                  key={crop.id}
-                  label={crop.name}
-                  selected={selected}
-                  onPress={() =>
-                    setValue('cropCompatibility', selected ? cropCompatibility.filter(name => name !== crop.name) : [...cropCompatibility, crop.name])
-                  }
-                />
-              );
-            })}
-          </View>
-        </View>
-      ) : null}
-
       {canLinkProduct ? (
         <Controller
           control={control}
@@ -268,9 +255,6 @@ function makeStyles({ colors, space, typography }: Theme) {
     form: { gap: 0 },
     heading: { ...typography.title, color: colors.ink, marginBottom: space[3] },
     group: { gap: space[2], marginBottom: space[4] },
-    label: { ...typography.label, color: colors.ink },
-    // Wrapped with a gap, so the chips neither touch nor share a touch area (MK-17).
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
     row: { flexDirection: 'row', gap: space[3] },
     rowItem: { flex: 1 },
     helper: { ...typography.caption, color: colors.ink2 },

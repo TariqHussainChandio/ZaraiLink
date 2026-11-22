@@ -5056,6 +5056,45 @@
         "title": "Listing",
         "type": "object"
       },
+      "ListingFilterOptions": {
+        "description": "What the market's filters can offer right now (D20), from the listings for sale: the cities they are in and the\nlowest and highest price. Both prices are null when nothing is for sale.",
+        "properties": {
+          "cities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cities",
+            "type": "array"
+          },
+          "max_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Price"
+          },
+          "min_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Price"
+          }
+        },
+        "required": [
+          "cities"
+        ],
+        "title": "ListingFilterOptions",
+        "type": "object"
+      },
       "ListingInput": {
         "properties": {
           "brand": {
@@ -21537,6 +21576,45 @@
           }
         ],
         "summary": "Create Listing",
+        "tags": [
+          "marketplace"
+        ]
+      }
+    },
+    "/api/v1/marketplace/listings/filter-options": {
+      "get": {
+        "operationId": "marketplace_get_listing_filter_options",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingFilterOptions"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Echo of, or the generated, request id",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Error (application/problem+json)"
+          }
+        },
+        "summary": "Get Listing Filter Options",
         "tags": [
           "marketplace"
         ]

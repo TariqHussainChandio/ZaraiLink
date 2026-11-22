@@ -5,6 +5,7 @@ import {
   fetchCategories,
   fetchCrops,
   fetchListingById,
+  fetchListingFilterOptions,
   fetchListings,
   recordListingView,
   updateListing,
@@ -24,6 +25,15 @@ export function useCategories() {
     queryKey: queryKeys.marketplace.categories(),
     queryFn: fetchCategories,
     staleTime: REFERENCE_STALE_TIME,
+  });
+}
+
+/** The cities and price range of what is for sale now (D20). Listings come and go, so it is asked for again whenever the
+ * filters open rather than kept for a day like the reference data. */
+export function useListingFilterOptions() {
+  return useQuery({
+    queryKey: queryKeys.marketplace.filterOptions(),
+    queryFn: fetchListingFilterOptions,
   });
 }
 

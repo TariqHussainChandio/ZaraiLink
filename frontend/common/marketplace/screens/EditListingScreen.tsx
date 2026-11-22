@@ -1,14 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { NavigationAction } from '@react-navigation/native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
-import { Banner, Button, ConfirmSheet, QueryState, ScreenScaffold, StickyActionBar, useSnackbar } from '../../components';
+import { Banner, Button, ConfirmSheet, FormCard, QueryState, ScreenScaffold, useSnackbar } from '../../components';
 import { ListingFormFields, listingFormDefaults, listingSchema, type ListingFormInput, type ListingFormValues } from '../components/ListingFormFields';
 import { ListingPhotos, MAX_LISTING_PHOTOS } from '../components/ListingPhotos';
 import { useDeleteListing, useListing, useUpdateListing } from '../hooks/marketplace';
 import { useAuthStore } from '../../../state/authStore';
-import { useTheme, type Theme } from '../../../theme';
 import { pickPhotos, type PickedPhoto } from '../../../utils/photoPicker';
 import type { MarketplaceScreenProps } from '../../../navigation/stacks/MarketplaceNavigator';
 import { errorMessage } from '../../../utils/errorMessage';
@@ -18,8 +16,6 @@ const NO_PHOTO = 'Keep at least one photo so buyers can see what you sell';
 /** Edit or delete one of your listings. The form fills from the current copy of the listing (never a cached one about to
  * be replaced), photos can be removed and added, and leaving with unsaved changes asks first. */
 export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<'EditListing'>) {
-  const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { listingId } = route.params;
   const userId = useAuthStore(state => state.user?.id);
   const snackbar = useSnackbar();
@@ -139,37 +135,29 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
       if (photoCount === 0) setPhotoError(NO_PHOTO);
     })();
 
-  const ready = listing !== undefined && !waitingForCurrent;
-
   return (
     <>
-      <ScreenScaffold
-        footer={
-          ready ? (
-            <StickyActionBar>
-              <Button label="Save changes" size="lg" loading={updateListing.isPending} onPress={submit} />
-            </StickyActionBar>
-          ) : undefined
-        }
-      >
+      {/* D20: the form is a centred card with its buttons at the end, as sign-up is. */}
+      <ScreenScaffold centred>
         {/* While the current copy is on its way the cached one is not shown, so the screen reads as loading. */}
         <QueryState query={waitingForCurrent ? { ...query, isPending: true, data: undefined } : query} failureTitle="Couldn't load this listing">
-          {submitError ? (
-            <Banner tone="danger" title="Couldn't save the changes">
-              {submitError}
-            </Banner>
-          ) : null}
-          <ListingPhotos
-            uris={[...existingImages, ...newImages.map(image => image.uri)]}
-            onAdd={pickImages}
-            onRemove={removePhoto}
-            error={photoError}
-            disabled={updateListing.isPending}
-          />
-          <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
-          <View style={styles.danger}>
+          <FormCard>
+            {submitError ? (
+              <Banner tone="danger" title="Couldn't save the changes">
+                {submitError}
+              </Banner>
+            ) : null}
+            <ListingPhotos
+              uris={[...existingImages, ...newImages.map(image => image.uri)]}
+              onAdd={pickImages}
+              onRemove={removePhoto}
+              error={photoError}
+              disabled={updateListing.isPending}
+            />
+            <ListingFormFields control={control} errors={errors} setValue={setValue} watch={watch} />
+            <Button label="Save changes" size="lg" loading={updateListing.isPending} onPress={submit} />
             <Button label="Delete listing" variant="danger" onPress={() => setDeleting(true)} />
-          </View>
+          </FormCard>
         </QueryState>
       </ScreenScaffold>
       <ConfirmSheet
@@ -203,10 +191,4 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
       />
     </>
   );
-}
-
-function makeStyles({ space }: Theme) {
-  return StyleSheet.create({
-    danger: { marginBottom: space[4] },
-  });
 }

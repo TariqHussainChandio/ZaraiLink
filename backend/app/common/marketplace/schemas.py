@@ -91,6 +91,15 @@ class OwnerRef(BaseModel):
     avatar_url: str | None = None
 
 
+class ListingFilterOptions(BaseModel):
+    """What the market's filters can offer right now (D20), from the listings for sale: the cities they are in and the
+    lowest and highest price. Both prices are null when nothing is for sale."""
+
+    cities: list[str]
+    min_price: float | None = None
+    max_price: float | None = None
+
+
 class Crop(BaseModel):
     id: str
     name: str

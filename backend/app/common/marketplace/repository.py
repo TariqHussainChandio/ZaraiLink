@@ -97,6 +97,39 @@ async def fetch_listing_by_id(listing_id: str, access_token: str | None = None) 
     return rows[0] if rows else None
 
 
+# PostgREST answers at most this many rows per request, so the cities are read in pages of it.
+FILTER_OPTIONS_CHUNK = 1000
+
+
+async def fetch_filter_option_rows() -> tuple[list[dict], dict | None, dict | None]:
+    """The rows the market's filter options come from (D20): every listing for sale's location, and its cheapest and
+    dearest listing. Read as anon, so only active listings count, the same ones anyone browsing sees; the explicit
+    status filter keeps it so if the policy ever widens."""
+    client = get_public_client()
+    locations: list[dict] = []
+    offset = 0
+    while True:
+        response = await (
+            client.table("listings")
+            .select("location")
+            .eq("status", "active")
+            .order("id")
+            .range(offset, offset + FILTER_OPTIONS_CHUNK - 1)
+            .execute()
+        )
+        rows = as_rows(response)
+        locations.extend(rows)
+        if len(rows) < FILTER_OPTIONS_CHUNK:
+            break
+        offset += FILTER_OPTIONS_CHUNK
+    lowest, highest = await asyncio.gather(
+        client.table("listings").select("price").eq("status", "active").order("price").limit(1).execute(),
+        client.table("listings").select("price").eq("status", "active").order("price", desc=True).limit(1).execute(),
+    )
+    # An empty market has no cheapest listing: None, never the 404 first_row raises.
+    return locations, next(iter(as_rows(lowest)), None), next(iter(as_rows(highest)), None)
+
+
 async def fetch_categories() -> list[dict]:
     response = await get_public_client().table("categories").select("*").order("name").range(*page_range()).execute()
     return as_rows(response)

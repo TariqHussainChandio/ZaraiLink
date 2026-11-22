@@ -2680,6 +2680,27 @@ export type Listing = {
 };
 
 /**
+ * ListingFilterOptions
+ *
+ * What the market's filters can offer right now (D20), from the listings for sale: the cities they are in and the
+ * lowest and highest price. Both prices are null when nothing is for sale.
+ */
+export type ListingFilterOptions = {
+    /**
+     * Cities
+     */
+    cities: Array<string>;
+    /**
+     * Max Price
+     */
+    max_price?: number | null;
+    /**
+     * Min Price
+     */
+    min_price?: number | null;
+};
+
+/**
  * ListingInput
  */
 export type ListingInput = {
@@ -10806,6 +10827,31 @@ export type MarketplaceCreateListingResponses = {
 };
 
 export type MarketplaceCreateListingResponse = MarketplaceCreateListingResponses[keyof MarketplaceCreateListingResponses];
+
+export type MarketplaceGetListingFilterOptionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/marketplace/listings/filter-options';
+};
+
+export type MarketplaceGetListingFilterOptionsErrors = {
+    /**
+     * Error (application/problem+json)
+     */
+    default: ProblemDetail;
+};
+
+export type MarketplaceGetListingFilterOptionsError = MarketplaceGetListingFilterOptionsErrors[keyof MarketplaceGetListingFilterOptionsErrors];
+
+export type MarketplaceGetListingFilterOptionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ListingFilterOptions;
+};
+
+export type MarketplaceGetListingFilterOptionsResponse = MarketplaceGetListingFilterOptionsResponses[keyof MarketplaceGetListingFilterOptionsResponses];
 
 export type MarketplaceListListingsForModerationData = {
     body?: never;

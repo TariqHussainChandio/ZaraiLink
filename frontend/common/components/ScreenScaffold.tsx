@@ -14,13 +14,16 @@ export interface ScreenScaffoldProps {
   onRefresh?: () => void;
   refreshing?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  /** Centres the content in the height of the screen while it is shorter than the screen (a form card, D20); a longer
+   * one scrolls from the top as usual. */
+  centred?: boolean;
   testID?: string;
 }
 
 /** The frame of a screen: `ground` behind everything (never `surface`), the screen margin and the gap between sections,
  * safe areas, and a body that scrolls clear of the keyboard and keeps taps on buttons while a field is focused
  * (`keyboardShouldPersistTaps="handled"`). On a tablet the content is a centred column of at most `contentMax`. */
-export function ScreenScaffold({ children, scroll = true, footer, onRefresh, refreshing = false, contentStyle, testID }: ScreenScaffoldProps) {
+export function ScreenScaffold({ children, scroll = true, footer, onRefresh, refreshing = false, contentStyle, centred = false, testID }: ScreenScaffoldProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -52,7 +55,7 @@ export function ScreenScaffold({ children, scroll = true, footer, onRefresh, ref
               ) : undefined
             }
           >
-            <View style={[styles.column, contentStyle]}>{children}</View>
+            <View style={[styles.column, centred && styles.centredColumn, contentStyle]}>{children}</View>
           </ScrollView>
         ) : (
           <View style={[styles.fill, styles.centre, sides, styles.listTop, { paddingBottom: bottomClearance }]}>
@@ -76,6 +79,7 @@ function makeStyles({ colors, components, size }: Theme) {
     scrollContent: { flexGrow: 1, alignItems: 'center', paddingTop: components.screen.sectionGap },
     // The centred column of a tablet; on a phone it is simply the width of the screen.
     column: { width: '100%', maxWidth: size.contentMax, gap: components.screen.sectionGap },
+    centredColumn: { flexGrow: 1, justifyContent: 'center' },
     fillColumn: { flex: 1, width: '100%', maxWidth: size.contentMax },
   });
 }

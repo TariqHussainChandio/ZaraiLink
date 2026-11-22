@@ -8,6 +8,7 @@ import { useAuthStore } from '../../../state/authStore';
 import type { ConsultationWithRelations } from '../../../expert/types/expert';
 
 const mockNavigate = jest.fn();
+let mockRouteParams: { show?: 'active' | 'resolved' } | undefined;
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -20,6 +21,7 @@ jest.mock('@react-navigation/native', () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, []),
     useNavigation: () => ({ navigate: mockNavigate }),
+    useRoute: () => ({ params: mockRouteParams }),
   };
 });
 
@@ -58,6 +60,19 @@ describe('ConsultationListScreen', () => {
       user: { id: 'u1' } as never,
       role: 'farmer' as never,
     });
+  });
+
+  it('opens on Resolved when a dashboard figure asks for the finished cases (D20)', async () => {
+    useAuthStore.setState({ user: { id: 'e1' } as never, role: 'expert' as never });
+    mockRouteParams = { show: 'resolved' };
+    mockFetchForExpert.mockResolvedValue([
+      { ...consultation, id: 'open', subject: 'Still open', status: 'accepted' },
+      { ...consultation, id: 'done', subject: 'All done', status: 'resolved' },
+    ]);
+    await renderWithQuery(<ConsultationListScreen />);
+    expect(await screen.findByText('All done')).toBeTruthy();
+    expect(screen.queryByText('Still open')).toBeNull();
+    mockRouteParams = undefined;
   });
 
   it('loads the requester’s own consultations and shows the expert as the counterparty', async () => {

@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, View } from 'react-native';
 import { z } from 'zod';
-import { Banner, Button, ScreenState, SelectField, TextField, useToast } from '../../common/components';
+import { Banner, Button, FormCard, ScreenState, SelectField, TextField, useToast } from '../../common/components';
 import { useTheme } from '../../theme';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { optionalNumber, TEXT_LIMITS, toNumberOrNull } from '../components/formValues';
@@ -119,104 +119,107 @@ export function ProductFormScreen({ route, navigation }: InventoryScreenProps<ty
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Controller
-        control={control}
-        name="name"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField label="Product name" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.name?.message} />
-        )}
-      />
-      <Controller
-        control={control}
-        name="sku"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="SKU"
-            helper="Your own code for this product; unique among your products."
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            autoCapitalize="characters"
-            error={errors.sku?.message}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="unit"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField label="Unit" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.unit?.message} />
-        )}
-      />
-      <Controller
-        control={control}
-        name="costPrice"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Cost price"
-            optional
-            prefix="Rs"
-            numeric
-            keyboardType="decimal-pad"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            helper="What one unit costs you; the dashboard values your stock with it."
-            error={errors.costPrice?.message}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="sellingPrice"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Selling price"
-            optional
-            prefix="Rs"
-            numeric
-            keyboardType="decimal-pad"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.sellingPrice?.message}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="reorderThreshold"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Reorder threshold"
-            optional
-            numeric
-            keyboardType="decimal-pad"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            helper="At or below this quantity the product shows as low stock."
-            error={errors.reorderThreshold?.message}
-          />
-        )}
-      />
-      <Controller
-        control={control}
-        name="status"
-        render={({ field: { onChange, value } }) => (
-          <SelectField label="Status" value={value} options={STATUS_OPTIONS} onSelect={onChange} searchable={false} />
-        )}
-      />
-      {formError ? (
-        <Banner tone="danger" title="Not saved">
-          {formError}
-        </Banner>
-      ) : null}
-      <Button label={productId ? 'Save changes' : 'Add product'} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
-      {productId ? (
-        <Button label="Remove product" variant="danger" onPress={() => setConfirmingRemove(true)} />
-      ) : null}
+    // D20: the form is a centred card on the page, as sign-up is.
+    <ScrollView style={styles.screen} contentContainerStyle={[styles.content, styles.centred]} keyboardShouldPersistTaps="handled">
+      <FormCard>
+        <Controller
+          control={control}
+          name="name"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField label="Product name" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.name?.message} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="sku"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField
+              label="SKU"
+              helper="Your own code for this product; unique among your products."
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              autoCapitalize="characters"
+              error={errors.sku?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="unit"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField label="Unit" value={value} onChangeText={onChange} onBlur={onBlur} error={errors.unit?.message} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="costPrice"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField
+              label="Cost price"
+              optional
+              prefix="Rs"
+              numeric
+              keyboardType="decimal-pad"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              helper="What one unit costs you; the dashboard values your stock with it."
+              error={errors.costPrice?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="sellingPrice"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField
+              label="Selling price"
+              optional
+              prefix="Rs"
+              numeric
+              keyboardType="decimal-pad"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.sellingPrice?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="reorderThreshold"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextField
+              label="Reorder threshold"
+              optional
+              numeric
+              keyboardType="decimal-pad"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              helper="At or below this quantity the product shows as low stock."
+              error={errors.reorderThreshold?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="status"
+          render={({ field: { onChange, value } }) => (
+            <SelectField label="Status" value={value} options={STATUS_OPTIONS} onSelect={onChange} searchable={false} />
+          )}
+        />
+        {formError ? (
+          <Banner tone="danger" title="Not saved">
+            {formError}
+          </Banner>
+        ) : null}
+        <Button label={productId ? 'Save changes' : 'Add product'} loading={save.isPending} onPress={handleSubmit(onSubmit)} />
+        {productId ? (
+          <Button label="Remove product" variant="danger" onPress={() => setConfirmingRemove(true)} />
+        ) : null}
+      </FormCard>
       <ConfirmSheet
         visible={confirmingRemove}
         title="Remove this product?"
