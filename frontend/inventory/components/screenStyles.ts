@@ -1,3 +1,4 @@
+// Inventory: shared page styles for the inventory screens.
 import { StyleSheet } from 'react-native';
 import type { Theme } from '../../theme';
 

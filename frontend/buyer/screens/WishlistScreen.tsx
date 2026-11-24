@@ -1,3 +1,4 @@
+// Wishlist screen: listings the buyer saved on this phone, with remove and open.
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Heart, Trash2 } from 'lucide-react-native';
@@ -65,6 +66,7 @@ export function WishlistScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, size, radius, typography }: Theme) {
   return StyleSheet.create({
     count: { ...typography.caption, color: colors.ink2 },

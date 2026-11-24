@@ -1,3 +1,5 @@
+"""Shared approve/reject decision for dealer and expert applications."""
+
 from typing import Literal
 
 from postgrest.exceptions import APIError

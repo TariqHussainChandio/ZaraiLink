@@ -1,3 +1,4 @@
+// Screen for a suspended account: the reason and a sign-out button.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, ScreenScaffold, StatusBadge } from '../../components';
@@ -36,6 +37,7 @@ export function SuspendedScreen() {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     heading: { gap: space[2] },

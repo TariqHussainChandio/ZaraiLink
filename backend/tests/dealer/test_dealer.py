@@ -67,9 +67,9 @@ async def test_adjust_stock_rejects_going_negative():
         patch(f"{INV_REPO}.fetch_product", return_value=_product(10)),
         patch(f"{INV_REPO}.fetch_default_location", return_value=SHOP),
         patch(f"{INV_REPO}.record_movement", side_effect=negative_stock_error),
+        pytest.raises(HTTPException) as exc_info,
     ):
-        with pytest.raises(HTTPException) as exc_info:
-            await service.adjust_stock_as_user(DEALER, "inv-1", "sale", 999, None)
+        await service.adjust_stock_as_user(DEALER, "inv-1", "sale", 999, None)
     assert exc_info.value.status_code == 422
     assert exc_info.value.detail == "Only 10 in stock at this location"
 
@@ -81,9 +81,9 @@ async def test_adjust_stock_rejects_missing_inventory_item():
     with (
         patch(f"{INV_REPO}.fetch_product", return_value=None),
         patch(f"{INV_REPO}.record_movement") as mock_rpc,
+        pytest.raises(HTTPException) as exc_info,
     ):
-        with pytest.raises(HTTPException) as exc_info:
-            await service.adjust_stock_as_user(DEALER, "missing", "sale", 1, None)
+        await service.adjust_stock_as_user(DEALER, "missing", "sale", 1, None)
     assert exc_info.value.status_code == 404
     mock_rpc.assert_not_called()
 

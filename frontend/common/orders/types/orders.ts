@@ -15,6 +15,7 @@ export type OrderStatus =
   | 'refunded'
   | 'expired';
 
+// One order: products subtotal, delivery charge (BR-09) and total.
 export interface Order {
   id: string;
   buyer_id: string;
@@ -30,6 +31,7 @@ export interface Order {
   updated_at: string;
 }
 
+// One item of an order.
 interface OrderItem {
   id: string;
   order_id: string;
@@ -39,12 +41,14 @@ interface OrderItem {
   created_at: string;
 }
 
+// An order with its items, buyer and seller.
 export interface OrderWithItems extends Order {
   order_items: (OrderItem & { listing: { title: string; unit: string } | null })[];
   buyer: { id: string; full_name: string } | null;
   seller: { id: string; full_name: string } | null;
 }
 
+// One change in an order's status.
 export interface OrderStatusHistoryEntry {
   id: string;
   order_id: string;

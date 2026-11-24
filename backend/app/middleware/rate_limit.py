@@ -1,3 +1,5 @@
+"""Rate limiting with slowapi: per user or per IP, with per-route limits."""
+
 import hashlib
 from collections.abc import Callable
 
@@ -72,6 +74,7 @@ class RateLimitMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
+    # Checks the route's rate limit before running it, and returns 429 when it is exceeded.
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
@@ -96,6 +99,7 @@ class RateLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # Adds the X-RateLimit headers to the response.
         async def send_with_limit_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
                 # slowapi writes its headers onto a Response object; borrow that and copy only its own.

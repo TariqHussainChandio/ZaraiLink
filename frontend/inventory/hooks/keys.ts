@@ -1,3 +1,4 @@
+// Inventory: React Query cache keys for inventory data.
 import type { MovementFilters, PeriodReportName, PurchaseStatus, ReportRange } from '../types/inventory';
 
 /**

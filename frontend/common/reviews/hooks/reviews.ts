@@ -1,7 +1,9 @@
+// Review hooks: load reviews and write one.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createReview, fetchReviewsForListing, fetchReviewsForSeller } from '../services/reviewsService';
 import { queryKeys } from '../../../hooks/keys';
 
+// Loads the reviews of a listing.
 export function useListingReviews(listingId: string) {
   return useQuery({
     queryKey: queryKeys.reviews.forListing(listingId),
@@ -17,6 +19,7 @@ export function useSellerReviews(sellerId: string) {
   });
 }
 
+// Inputs for writing an order review.
 interface CreateReviewVariables {
   orderId: string;
   listingId: string | null;
@@ -24,6 +27,7 @@ interface CreateReviewVariables {
   comment: string | null;
 }
 
+// Saves an order review, then refreshes the related caches.
 export function useCreateReview() {
   const queryClient = useQueryClient();
   return useMutation({

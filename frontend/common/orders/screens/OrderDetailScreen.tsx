@@ -1,3 +1,4 @@
+// Order detail: items, totals, status history and the actions each side may take.
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -67,6 +68,7 @@ const SELLER_STEP: Partial<Record<OrderStatus, { to: OrderStatus; label: string 
   dispatched: { to: 'completed', label: 'Complete order' },
 };
 
+// Which action button is busy.
 type Pending = 'reject' | 'cancel' | 'dispute' | 'dispatch' | 'paid' | 'notPaid';
 
 // Untyped navigation/route: this screen is mounted inside two different stacks (the buyer/farmer/dealer Orders tab, and
@@ -105,6 +107,7 @@ export function OrderDetailScreen() {
     if (to === 'confirmed') hapticSuccess();
     snackbar.show(DONE[to]);
   };
+  // Moves the order to a new status and shows any error.
   const advanceDirect = async (to: OrderStatus) => {
     setActionError(null);
     try {
@@ -114,12 +117,14 @@ export function OrderDetailScreen() {
     }
   };
 
+  // Marks the payment as received or failed.
   const resolvePayment = async (action: 'received' | 'failed', reason: string) => {
     if (!payment) return;
     await paymentMutation.mutateAsync({ paymentId: payment.id, action, reason });
     snackbar.show(action === 'received' ? 'Payment marked as received' : 'Payment marked as not received');
   };
 
+  // Opens a chat with the other party.
   const openChat = async () => {
     if (!userId || !order) return;
     setActionError(null);
@@ -334,6 +339,7 @@ export function OrderDetailScreen() {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     summary: { gap: space[3], alignItems: 'flex-start' },

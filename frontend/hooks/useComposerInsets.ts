@@ -1,3 +1,4 @@
+// Hook giving bottom and keyboard offsets for screens with a bottom composer.
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useContext } from 'react';
 import { useTheme } from '../theme';

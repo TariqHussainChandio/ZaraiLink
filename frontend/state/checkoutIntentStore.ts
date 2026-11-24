@@ -1,3 +1,4 @@
+// Remembers that a guest pressed "Go to checkout" so the cart reopens after sign-in.
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
 
@@ -13,9 +14,11 @@ interface CheckoutIntentState {
   take: () => boolean;
 }
 
+// Store holding the pending checkout flag with request() and take().
 export const useCheckoutIntent = create<CheckoutIntentState>((set, get) => ({
   pending: false,
   request: () => set({ pending: true }),
+  // Returns the flag and clears it, so the cart reopens only once.
   take: () => {
     const pending = get().pending;
     if (pending) set({ pending: false });

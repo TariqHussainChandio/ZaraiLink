@@ -1,3 +1,4 @@
+// Standard screen frame: background, margins, safe areas, scrolling and an optional footer.
 import React, { useMemo } from 'react';
 import { KeyboardAvoidingView, RefreshControl, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useComposerInsets } from '../../hooks/useComposerInsets';
@@ -68,6 +69,7 @@ export function ScreenScaffold({ children, scroll = true, footer, onRefresh, ref
   );
 }
 
+// Theme-based styles for the screen frame.
 function makeStyles({ colors, components, size }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.ground },

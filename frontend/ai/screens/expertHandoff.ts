@@ -1,9 +1,11 @@
+// Hands a scan over to an expert: opens the expert list with the photo and crop prefilled.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { AppTabParamList } from '../../navigation/stacks/AppNavigator';
 import { navigateInTab } from '../../navigation/navigateInTab';
 import { APP_TABS, CONSULTATIONS_ROUTES } from '../../common/constants/routes';
 import type { DiseasePrefill } from '../types/disease';
 
+// What the scan passes on to the consultation request.
 interface HandoffContext {
   /** The matching row of the shared crops table, when the chosen crop has one (null otherwise). */
   cropId: string | null;

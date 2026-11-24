@@ -1,3 +1,5 @@
+"""Marketplace database access: listings, categories, crops and listing views."""
+
 import asyncio
 import logging
 from typing import Any
@@ -28,6 +30,7 @@ AVAILABILITY_FAULTS = (APIError, httpx.HTTPError, TimeoutError, KeyError, TypeEr
 AVAILABILITY_TIMEOUT_SECONDS = 2.0
 
 
+# Reads the listings that match the browse filters (category, search, price and more).
 async def fetch_listings(
     category_id: str | None,
     search: str | None,
@@ -90,6 +93,7 @@ async def fetch_availability(listing_ids: list[str], access_token: str | None = 
     return {listing_id: words.get(listing_id, "unknown") for listing_id in listing_ids}
 
 
+# Reads one listing with its relations, or None.
 async def fetch_listing_by_id(listing_id: str, access_token: str | None = None) -> dict | None:
     client = await get_user_scoped_client(access_token) if access_token else get_public_client()
     response = await client.table("listings").select(LISTING_SELECT).eq("id", listing_id).limit(1).execute()
@@ -130,11 +134,13 @@ async def fetch_filter_option_rows() -> tuple[list[dict], dict | None, dict | No
     return locations, next(iter(as_rows(lowest)), None), next(iter(as_rows(highest)), None)
 
 
+# Reads all categories, sorted by name.
 async def fetch_categories() -> list[dict]:
     response = await get_public_client().table("categories").select("*").order("name").range(*page_range()).execute()
     return as_rows(response)
 
 
+# Inserts a category (admin).
 async def create_category(access_token: str, fields: dict[str, Any]) -> dict:
     # N1 fix: insert() has no .select() on the pinned postgrest-py client — the write's own
     # returning=representation default already includes the full row.
@@ -143,22 +149,26 @@ async def create_category(access_token: str, fields: dict[str, Any]) -> dict:
     return first_row(response)
 
 
+# Updates a category (admin).
 async def update_category(access_token: str, category_id: str, fields: dict[str, Any]) -> dict:
     client = await get_user_scoped_client(access_token)
     response = await client.table("categories").update(fields).eq("id", category_id).execute()
     return first_row(response)
 
 
+# Deletes a category (admin).
 async def delete_category(access_token: str, category_id: str) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("categories").delete().eq("id", category_id).execute()
 
 
+# Reads all crops, sorted by name.
 async def fetch_crops() -> list[dict]:
     response = await get_public_client().table("crops").select("*").order("name").range(*page_range()).execute()
     return as_rows(response)
 
 
+# Inserts a listing for its owner.
 async def create_listing(access_token: str, owner_id: str, fields: dict[str, Any]) -> dict:
     # N1 fix — see create_category's comment above.
     client = await get_user_scoped_client(access_token)
@@ -174,12 +184,14 @@ async def update_listing(access_token: str, listing_id: str, owner_id: str, fiel
     return first_row(response)
 
 
+# Deletes the owner's own listing.
 async def delete_listing(access_token: str, listing_id: str, owner_id: str) -> None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("listings").delete().eq("id", listing_id).eq("owner_id", owner_id).execute()
     first_row(response)
 
 
+# Changes a listing's status (moderation).
 async def update_listing_status(access_token: str, listing_id: str, status: str) -> None:
     # first_row: a listing that does not exist (or that the policies refuse) is a 404, so no audit row is written for
     # a change that did not happen.
@@ -188,6 +200,7 @@ async def update_listing_status(access_token: str, listing_id: str, status: str)
     first_row(response)
 
 
+# Reads all listings for the admin moderation screen.
 async def fetch_all_listings_for_moderation(access_token: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = (
@@ -200,6 +213,7 @@ async def fetch_all_listings_for_moderation(access_token: str) -> list[dict]:
     return as_rows(response)
 
 
+# Records that a user viewed a listing.
 async def record_listing_view(access_token: str, listing_id: str, viewer_id: str) -> None:
     client = await get_user_scoped_client(access_token)
     try:
@@ -216,6 +230,7 @@ async def record_listing_view(access_token: str, listing_id: str, viewer_id: str
         # Row-level security refuses a view of your own listing on purpose (an owner's own visits are not counted).
 
 
+# Counts the views of each given listing.
 async def fetch_listing_view_counts(access_token: str, listing_ids: list[str]) -> dict[str, int]:
     if not listing_ids:
         return {}

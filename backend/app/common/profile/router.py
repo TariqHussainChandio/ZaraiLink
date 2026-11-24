@@ -1,3 +1,5 @@
+"""Profile routes: update the profile, delete the account, and the dealer/expert application."""
+
 from fastapi import APIRouter, Depends
 
 from app.auth.dependencies import AuthenticatedUser, get_current_user_any_status
@@ -8,6 +10,7 @@ from app.common.schemas import RequiredDocument
 router = APIRouter(prefix="/api/v1/profile", tags=["profile"])
 
 
+# Updates the signed-in user's own profile fields.
 @router.patch("", status_code=204)
 async def update_profile(
     request: ProfileUpdateRequest,
@@ -18,6 +21,7 @@ async def update_profile(
     await service.update_profile(user, request.model_dump(exclude_unset=True))
 
 
+# Deletes the caller's own account after checking their password.
 @router.delete("/me", status_code=204)
 async def delete_own_account(
     request: DeleteAccountRequest,

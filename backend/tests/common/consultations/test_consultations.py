@@ -27,33 +27,41 @@ async def test_requester_cannot_accept_their_own_consultation():
     # Before this migration, RLS only checked "is a participant" — a requester calling this
     # directly (bypassing the UI, which just hides the button) could previously have accepted
     # their own request. This is the regression test for that closed gap.
-    with patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION):
-        with pytest.raises(HTTPException) as exc_info:
-            await service.update_status(REQUESTER, "c-1", "accepted")
+    with (
+        patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await service.update_status(REQUESTER, "c-1", "accepted")
     assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_expert_can_accept_a_requested_consultation():
-    with patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION):
-        with patch("app.common.consultations.service.repo.update_status") as mock_update:
-            await service.update_status(EXPERT, "c-1", "accepted")
+    with (
+        patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION),
+        patch("app.common.consultations.service.repo.update_status") as mock_update,
+    ):
+        await service.update_status(EXPERT, "c-1", "accepted")
     mock_update.assert_called_once_with(EXPERT.access_token, "c-1", "accepted")
 
 
 @pytest.mark.asyncio
 async def test_expert_cannot_cancel_a_requested_consultation_only_requester_can():
-    with patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION):
-        with pytest.raises(HTTPException) as exc_info:
-            await service.update_status(EXPERT, "c-1", "cancelled")
+    with (
+        patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await service.update_status(EXPERT, "c-1", "cancelled")
     assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_requester_can_cancel_a_requested_consultation():
-    with patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION):
-        with patch("app.common.consultations.service.repo.update_status") as mock_update:
-            await service.update_status(REQUESTER, "c-1", "cancelled")
+    with (
+        patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION),
+        patch("app.common.consultations.service.repo.update_status") as mock_update,
+    ):
+        await service.update_status(REQUESTER, "c-1", "cancelled")
     mock_update.assert_called_once_with(REQUESTER.access_token, "c-1", "cancelled")
 
 
@@ -61,17 +69,21 @@ async def test_requester_can_cancel_a_requested_consultation():
 async def test_stranger_gets_404_not_a_403_leak():
     # get_by_id uses the caller's own RLS-scoped client, so a non-participant naturally gets
     # None back (RLS hides the row), not a 403 that would confirm the id exists.
-    with patch("app.common.consultations.service.repo.get_by_id", return_value=None):
-        with pytest.raises(HTTPException) as exc_info:
-            await service.update_status(STRANGER, "c-1", "accepted")
+    with (
+        patch("app.common.consultations.service.repo.get_by_id", return_value=None),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await service.update_status(STRANGER, "c-1", "accepted")
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_invalid_transition_rejected_with_422():
-    with patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION):
-        with pytest.raises(HTTPException) as exc_info:
-            await service.update_status(EXPERT, "c-1", "closed")  # requested -> closed is never valid
+    with (
+        patch("app.common.consultations.service.repo.get_by_id", return_value=REQUESTED_CONSULTATION),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await service.update_status(EXPERT, "c-1", "closed")  # requested -> closed is never valid
     assert exc_info.value.status_code == 422
 
 

@@ -1,3 +1,4 @@
+// Admin: API calls for the admin screens (all routes need the admin role).
 import { apiFetch, apiFetchPage, type Page } from '../../services/api/client';
 import type { ListingWithRelations } from '../../common/marketplace';
 import type { Profile } from '../../common/types/profile';
@@ -33,6 +34,7 @@ interface ApiPlatformStats {
   total_orders: number;
 }
 
+// Reads the platform totals and maps them to the app's shape.
 export async function fetchPlatformStats(): Promise<PlatformStats> {
   const data = await apiFetch<ApiPlatformStats>('/api/v1/admin/stats');
   return {
@@ -49,6 +51,7 @@ export const ADMIN_PAGE_SIZE = 50;
 /** One page of a list: the rows and where the next page starts (null on the last page). */
 export type AdminPage<T> = Page<T[]>;
 
+// The limit and offset query for one page.
 const pageQuery = (offset: number) => ({ limit: ADMIN_PAGE_SIZE, offset });
 
 /** One page of users, filtered on the server by role and account status (a queue filtered in the app lost everyone past
@@ -93,14 +96,17 @@ export async function decideDealerApplication(
   });
 }
 
+// Reads one page of abuse reports, optionally by status.
 export function fetchReportsPage(status: ReportStatus | undefined, offset: number): Promise<AdminPage<ReportWithReporter>> {
   return apiFetchPage('/api/v1/admin/reports', { query: { status, ...pageQuery(offset) } });
 }
 
+// Marks a report resolved with the admin's notes.
 export async function resolveReport(reportId: string, notes: string | null): Promise<void> {
   await apiFetch(`/api/v1/admin/reports/${reportId}/resolve`, { method: 'PATCH', body: { notes } });
 }
 
+// Marks a report dismissed with the admin's notes.
 export async function dismissReport(reportId: string, notes: string | null): Promise<void> {
   await apiFetch(`/api/v1/admin/reports/${reportId}/dismiss`, { method: 'PATCH', body: { notes } });
 }
@@ -181,6 +187,7 @@ export async function resolveDisputeAsAdmin(orderId: string, outcome: DisputeOut
 
 // ---- consultations (SRDS §14). Moderation is audited by the API (BR-15).
 
+// Lists consultations, optionally by status and age.
 export async function fetchConsultationsForAdmin(
   filter: { status?: ConsultationStatus; olderThanDays?: number } = {},
 ): Promise<ConsultationWithRelations[]> {
@@ -189,10 +196,12 @@ export async function fetchConsultationsForAdmin(
   });
 }
 
+// Reads one consultation for the admin.
 export async function fetchConsultationForAdmin(consultationId: string): Promise<ConsultationDetail> {
   return apiFetch(`/api/v1/admin/consultations/${consultationId}`);
 }
 
+// Closes or cancels a consultation with a reason.
 export async function moderateConsultation(consultationId: string, body: ModerateConsultationRequest): Promise<ConsultationDetail> {
   return apiFetch(`/api/v1/admin/consultations/${consultationId}/moderate`, { method: 'PATCH', body });
 }
@@ -200,14 +209,17 @@ export async function moderateConsultation(consultationId: string, body: Moderat
 // ---- reviews (SRDS §14). An admin hides a review with a reason, or restores it; nothing is deleted. Both are
 // audited by the API (BR-15).
 
+// Reads the reviews for moderation.
 export async function fetchReviewsForModeration(): Promise<ReviewWithBuyer[]> {
   return apiFetch('/api/v1/reviews/admin', { query: { include_hidden: true } });
 }
 
+// Hides a review with a reason.
 export async function hideReview(reviewId: string, reason: string): Promise<Review> {
   return apiFetch(`/api/v1/reviews/${reviewId}/hide`, { method: 'PATCH', body: { reason } });
 }
 
+// Restores a hidden review.
 export async function restoreReview(reviewId: string): Promise<Review> {
   return apiFetch(`/api/v1/reviews/${reviewId}/restore`, { method: 'PATCH' });
 }
@@ -241,6 +253,7 @@ export async function fetchDealerApplications(
   return apiFetch('/api/v1/admin/dealer-applications', { query: { status } });
 }
 
+// Reads one dealer's application.
 export async function fetchDealerApplication(dealerId: string): Promise<DealerApplicationForAdmin> {
   return apiFetch(`/api/v1/admin/dealer-applications/${dealerId}`);
 }
@@ -262,14 +275,17 @@ export interface RequiredDocumentInput {
   sort_order: number;
 }
 
+// Reads every required-document entry.
 export async function fetchAllRequiredDocuments(): Promise<RequiredDocument[]> {
   return apiFetch('/api/v1/admin/required-documents');
 }
 
+// Creates a required-document entry.
 export async function createRequiredDocument(input: RequiredDocumentInput): Promise<RequiredDocument> {
   return apiFetch('/api/v1/admin/required-documents', { method: 'POST', body: input });
 }
 
+// Updates a required-document entry.
 export async function updateRequiredDocument(
   id: string,
   changes: Partial<Pick<RequiredDocument, 'label' | 'description' | 'is_required' | 'active' | 'sort_order'>>,
@@ -284,10 +300,12 @@ export async function fetchAiActivity(): Promise<AiActivity> {
   return apiFetch('/api/v1/admin/ai-activity');
 }
 
+// Reads every disease knowledge entry.
 export async function fetchDiseaseKnowledge(): Promise<DiseaseKnowledgeEntry[]> {
   return apiFetch('/api/v1/admin/disease-knowledge');
 }
 
+// Reads one disease knowledge entry by class label.
 export async function fetchDiseaseKnowledgeEntry(classLabel: string): Promise<DiseaseKnowledgeEntry> {
   return apiFetch(`/api/v1/admin/disease-knowledge/${encodeURIComponent(classLabel)}`);
 }

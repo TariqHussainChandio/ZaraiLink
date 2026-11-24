@@ -1,3 +1,4 @@
+// Live updates for the signed-in user's notifications, via Supabase Realtime.
 import { useEffect, useId } from 'react';
 import { supabase } from '../../services/supabase/client';
 import type { Notification } from '../../common/notifications';

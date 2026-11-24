@@ -1,3 +1,4 @@
+// The Account tab stack: profile, edit profile, settings and related screens.
 import type { NativeStackNavigationOptions, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -46,6 +47,7 @@ function ProfileHeaderLeading({ back }: { back: boolean }) {
     </View>
   );
 }
+// Render functions for the Account app bar's leading corner (with or without Back).
 const profileLeading = () => <ProfileHeaderLeading back={false} />;
 const adminProfileLeading = () => <ProfileHeaderLeading back />;
 
@@ -101,6 +103,7 @@ export function ProfileNavigator({ screenOptions = PROFILE_STACK_OPTIONS }: { sc
   );
 }
 
+// Theme-based styles for the Account header.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     leading: { flexDirection: 'row', alignItems: 'center', gap: space[1], paddingLeft: space[2] },

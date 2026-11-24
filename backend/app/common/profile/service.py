@@ -1,3 +1,5 @@
+"""Profile business logic: profile updates, account deletion and application submit."""
+
 from fastapi import HTTPException
 
 from app.auth.dependencies import AuthenticatedUser, forget_profile
@@ -10,6 +12,7 @@ from app.common.profile import repository as repo
 ADMIN_FIXED_FIELDS = frozenset({"full_name", "phone", "location", "country", "province", "city", "village", "street"})
 
 
+# Updates the caller's profile; the admin cannot change the fields the system sets.
 async def update_profile(user: AuthenticatedUser, patch: dict) -> None:
     if user.role == "admin" and ADMIN_FIXED_FIELDS & patch.keys():
         raise AppHTTPException(403, "The admin account's details are set by the system.", "forbidden")
@@ -53,12 +56,14 @@ async def delete_own_account(user: AuthenticatedUser, password: str) -> None:
     await repo.soft_delete_auth_user(user.id)
 
 
+# Returns the documents a dealer or expert must upload; empty for other roles.
 async def fetch_required_documents(user: AuthenticatedUser) -> list[dict]:
     if user.role not in ("dealer", "expert"):
         return []
     return await repo.fetch_required_documents(user.access_token, user.role)
 
 
+# Sends the caller's application for review and clears the cached profile.
 async def submit_application(user: AuthenticatedUser) -> None:
     await repo.submit_application(user.access_token)
     forget_profile(user.id)

@@ -1,3 +1,4 @@
+// Form to request a consultation from an expert: subject, crop, details and photos.
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ImagePlus, ScanLine, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
@@ -36,6 +37,7 @@ const PRIORITY_OPTIONS: { value: ConsultationPriority; label: string }[] = [
   { value: 'high', label: 'High' },
 ];
 
+// Builds the form's validation schema.
 function buildRequestSchema() {
   return z.object({
     subject: z.string().min(3, 'Enter a subject'),
@@ -101,10 +103,12 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
     });
     if (picked.length > 0) setImages(current => [...current, ...picked].slice(0, MAX_PHOTOS));
   };
+  // Removes one attached photo.
   const removePhoto = (uri: string) => setImages(current => current.filter(image => image.uri !== uri));
 
   const expertName = expertProfile?.expert.profile?.full_name;
 
+  // Sends the consultation request with its photos, then opens the case.
   const onSubmit = async (values: RequestFormValues) => {
     if (!userId) return;
     setFailure(null);
@@ -282,6 +286,7 @@ export function RequestConsultationScreen({ route, navigation }: ConsultationsSc
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, radius, typography, size }: Theme) {
   return StyleSheet.create({
     label: { ...typography.label, color: colors.ink, marginBottom: space[2] },

@@ -1,3 +1,5 @@
+"""Request and response models for the messaging routes."""
+
 from typing import Literal
 from uuid import UUID
 
@@ -7,12 +9,14 @@ from pydantic import BaseModel
 ConversationContextType = Literal["listing", "order", "consultation"]
 
 
+# The other person's public name and photo.
 class ParticipantProfile(BaseModel):
     id: str
     full_name: str
     avatar_url: str | None = None
 
 
+# One chat message.
 class Message(BaseModel):
     id: str
     conversation_id: str
@@ -23,6 +27,7 @@ class Message(BaseModel):
     created_at: str
 
 
+# A conversation between two users.
 class Conversation(BaseModel):
     id: str
     participant_one: str
@@ -34,16 +39,19 @@ class Conversation(BaseModel):
     participant_two_profile: ParticipantProfile | None = None
 
 
+# A conversation plus the other person and the last message, for the inbox.
 class ConversationWithPreview(Conversation):
     otherParticipant: ParticipantProfile | None = None
     lastMessage: Message | None = None
 
 
+# Body for sending a message: text and photo storage paths.
 class SendMessageRequest(BaseModel):
     body: str
     attachments: list[str] = []
 
 
+# Body for opening a chat with another user about a listing, order or consultation.
 class FindOrCreateConversationRequest(BaseModel):
     # UUIDs, not free strings: other_user_id is interpolated into a PostgREST or_() filter, and a malformed context_id
     # must be refused even when the pair already has a conversation (A5 verifier).

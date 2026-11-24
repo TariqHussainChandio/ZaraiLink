@@ -1,3 +1,4 @@
+// Typed helper to open a screen inside another tab's stack.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams, ParamListBase } from '@react-navigation/native';
 

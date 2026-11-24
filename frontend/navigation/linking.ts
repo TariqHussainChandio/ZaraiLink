@@ -1,3 +1,4 @@
+// Deep-link settings for React Navigation (the zarailink:// scheme).
 import type { LinkingOptions } from '@react-navigation/native';
 
 // The zarailink:// scheme is registered natively from `scheme` in app.config.ts.

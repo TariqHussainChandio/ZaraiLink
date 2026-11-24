@@ -1,3 +1,4 @@
+// Expert profile screen: the professional details form, reused from the application wizard.
 import React from 'react';
 import { ExpertProfessionalStep } from '../../common/auth';
 import { ScreenScaffold, useSnackbar } from '../../common/components';

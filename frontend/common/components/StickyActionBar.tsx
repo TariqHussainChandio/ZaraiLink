@@ -1,3 +1,4 @@
+// Bar fixed to the bottom of a screen holding its main action buttons.
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useComposerInsets } from '../../hooks/useComposerInsets';
@@ -27,6 +28,7 @@ export function StickyActionBar({ leading, children }: StickyActionBarProps) {
   );
 }
 
+// Theme-based styles for the action bar.
 function makeStyles({ colors, space, borders, shadows }: Theme) {
   return StyleSheet.create({
     bar: {

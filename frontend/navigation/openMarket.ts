@@ -1,3 +1,4 @@
+// Helper that opens the market's Browse screen from any stack.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { ParamListBase } from '@react-navigation/native';
 import { APP_TABS, MARKETPLACE_ROUTES } from '../common/constants/routes';

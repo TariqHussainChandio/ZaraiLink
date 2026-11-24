@@ -1,3 +1,4 @@
+// Turns Supabase auth errors into plain messages the user can act on.
 import { AuthError } from '@supabase/supabase-js';
 import { ERROR_CODE_MESSAGES, errorMessage } from '../../../utils/errorMessage';
 

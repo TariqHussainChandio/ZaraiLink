@@ -1,3 +1,4 @@
+// Small store for a one-time message shown on the sign-in screen.
 import { create } from 'zustand';
 
 /** A message the sign-in screen shows once, left by the screen that sent the person there: the account was deleted, or an
@@ -17,6 +18,7 @@ interface LoginNoticeState {
   clear: () => void;
 }
 
+// Store holding the current notice, with actions to leave or clear it.
 export const useLoginNotice = create<LoginNoticeState>(set => ({
   notice: null,
   leave: notice => set({ notice }),

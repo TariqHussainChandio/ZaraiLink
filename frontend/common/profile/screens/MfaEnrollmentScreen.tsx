@@ -1,3 +1,4 @@
+// Two-step verification screen: turn the authenticator app on or off.
 import { ShieldCheck } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
@@ -44,6 +45,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
   const state = stateOverride ?? loadedState;
   const loadErrorMessage = loadError ? 'Could not check two-step verification. Try again.' : null;
 
+  // Starts the setup and gets the key for the authenticator app.
   const onStartEnroll = async () => {
     setError(null);
     setSubmitting(true);
@@ -58,6 +60,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
     }
   };
 
+  // Confirms the setup with the first code from the authenticator app.
   const onVerify = async (token: string) => {
     if (!enrollment || submitting) return;
     setCodeError(null);
@@ -183,6 +186,7 @@ export function MfaEnrollmentScreen(_props: ProfileScreenProps<'MfaEnrollment'>)
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, size, typography, radius }: Theme) {
   return StyleSheet.create({
     subtitle: { ...typography.body, color: colors.ink2 },

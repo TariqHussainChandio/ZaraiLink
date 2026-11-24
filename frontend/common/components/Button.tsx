@@ -1,3 +1,4 @@
+// The shared button: primary, secondary, quiet and danger styles, sizes, icon and loading state.
 import type { LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import {
@@ -32,6 +33,7 @@ export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> 
   style?: StyleProp<ViewStyle>;
 }
 
+// Pressable button in the role's accent, with a spinner while loading and a 48 dp target.
 export function Button({
   label,
   variant = 'primary',
@@ -78,12 +80,14 @@ export function Button({
   );
 }
 
+// Picks the label and icon colour for a button variant.
 function foreground({ colors }: Theme, accent: Accent, variant: ButtonVariant): string {
   if (variant === 'primary' || variant === 'danger') return colors.onAccent;
   if (variant === 'dangerQuiet') return colors.status.danger.ink;
   return accent.ink;
 }
 
+// Theme-based styles for each button variant and size.
 function makeStyles({ colors, components, borders, typography, fontWeight }: Theme, accent: Accent) {
   return StyleSheet.create({
     fullWidth: { alignSelf: 'stretch' },

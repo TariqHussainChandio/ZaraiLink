@@ -1,3 +1,4 @@
+// The buyer's Cart tab stack: cart, checkout and listing detail.
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { MARKETPLACE_ROUTES } from '../../common/constants/routes';

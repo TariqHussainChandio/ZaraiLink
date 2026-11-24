@@ -1,3 +1,4 @@
+// Admin: list of consultations to moderate, filtered by status.
 import { useFocusEffect } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -89,6 +90,7 @@ export function ConsultationModerationScreen({ navigation, route }: AdminScreenP
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.surface, paddingTop: space[3] },

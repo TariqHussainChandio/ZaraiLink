@@ -1,3 +1,4 @@
+// React Query hooks for the notifications list, unread count and marking as read.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchNotifications,
@@ -9,6 +10,7 @@ import { useAuthStore } from '../../../state/authStore';
 import { useRealtimeNotifications } from '../../../hooks/realtime/useRealtimeNotifications';
 import { queryKeys } from '../../../hooks/keys';
 
+// Loads the signed-in user's notifications.
 export function useNotifications(enabled: boolean) {
   return useQuery({ queryKey: queryKeys.notifications.list(), queryFn: fetchNotifications, enabled, staleTime: 0 });
 }
@@ -29,16 +31,19 @@ export function useUnreadNotificationsCount() {
   return { count, refresh: refetch };
 }
 
+// Returns a function that refreshes all notification data.
 function useInvalidateNotifications() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
 }
 
+// Marks one notification as read.
 export function useMarkNotificationRead() {
   const invalidate = useInvalidateNotifications();
   return useMutation({ mutationFn: (notificationId: string) => markRead(notificationId), onSuccess: invalidate });
 }
 
+// Marks every notification as read.
 export function useMarkAllNotificationsRead() {
   const invalidate = useInvalidateNotifications();
   return useMutation({ mutationFn: () => markAllRead(), onSuccess: invalidate });

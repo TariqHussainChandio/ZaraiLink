@@ -1,3 +1,4 @@
+// Inventory: list row that a screen reader reads as one item.
 import { ChevronRight } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -49,6 +50,7 @@ export function SpokenRow({ label, selected, onPress, trailing, ...row }: Spoken
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     trailing: { flexDirection: 'row', alignItems: 'center', gap: space[2] },

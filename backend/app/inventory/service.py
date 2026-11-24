@@ -39,6 +39,7 @@ LISTING_TAKEN = "This listing already has an inventory item"
 _SOURCE_TO_TYPE = {"RESTOCK": "restock", "ZARAILINK_ORDER": "sale", "MANUAL_ADJUSTMENT": "adjustment"}
 
 
+# The legacy `status` text from the IMS `is_active` flag.
 def _status(row: dict) -> str:
     return "active" if row.get("is_active", True) else "inactive"
 
@@ -56,6 +57,7 @@ def _active(fields: dict) -> dict:
 # --- inventory items ----------------------------------------------------------------------------------------------
 
 
+# A product view in the old inventory item shape.
 def _legacy_item(view: dict) -> dict:
     listings = view.get("listings") or []
     listing = listings[0] if listings else None
@@ -74,11 +76,13 @@ def _legacy_item(view: dict) -> dict:
     }
 
 
+# The id of the dealer's default location, or None.
 async def _default_location_id(user: AuthenticatedUser) -> str | None:
     default = await repo.fetch_default_location(user.access_token)
     return default["id"] if default else None
 
 
+# Returns an active product, or 404 (a deactivated one counts as deleted).
 async def _active_product(user: AuthenticatedUser, item_id: str) -> dict:
     # A deactivated product is a deleted item to the old screens.
     row = await repo.fetch_product(user.access_token, item_id)
@@ -87,12 +91,14 @@ async def _active_product(user: AuthenticatedUser, item_id: str) -> dict:
     return row
 
 
+# Lists the dealer's products as legacy inventory items.
 async def legacy_list_inventory(user: AuthenticatedUser) -> list[dict]:
     rows = await repo.fetch_products(user.access_token, include_inactive=False)
     default_id = await _default_location_id(user)
     return [_legacy_item(product_view(row, default_id)) for row in rows]
 
 
+# Returns one product as a legacy inventory item.
 async def legacy_get_inventory(user: AuthenticatedUser, item_id: str) -> dict:
     row = await _active_product(user, item_id)
     return _legacy_item(product_view(row, await _default_location_id(user)))
@@ -112,6 +118,7 @@ async def _move_to(user: AuthenticatedUser, item_id: str, target: float, reason:
         )
 
 
+# Returns one of the dealer's own listings; refuses one linked to another item.
 async def _owned_listing(user: AuthenticatedUser, listing_id: str, item_id: str | None = None) -> dict:
     listing = await repo.fetch_owned_listing(user.access_token, user.id, listing_id)
     if listing is None:
@@ -179,6 +186,7 @@ async def _move_listing(user: AuthenticatedUser, item_id: str, new_listing: str 
     await repo.unlink_product_listings(user.access_token, user.id, item_id, except_listing_id=new_listing or None)
 
 
+# Updates a product through the legacy item fields.
 async def legacy_update_inventory(user: AuthenticatedUser, item_id: str, fields: dict) -> dict:
     await _active_product(user, item_id)
     # The listing first: it is the step another request can win, and losing it must leave the item unchanged.
@@ -209,6 +217,7 @@ async def legacy_delete_inventory(user: AuthenticatedUser, item_id: str) -> None
     await repo.delete_or_deactivate(user.access_token, PRODUCTS, item_id)
 
 
+# A ledger movement in the old inventory transaction shape.
 def _legacy_transaction(movement: dict) -> dict:
     quantity = float(movement["quantity"])
     signed = quantity if movement["direction"] == "in" else -quantity
@@ -224,6 +233,7 @@ def _legacy_transaction(movement: dict) -> dict:
     }
 
 
+# Lists a product's movements as legacy transactions.
 async def legacy_list_transactions(user: AuthenticatedUser, item_id: str) -> list[dict]:
     await _active_product(user, item_id)
     movements = await repo.fetch_movements(user.access_token, product_id=item_id)
@@ -263,6 +273,7 @@ async def legacy_adjust_stock(
 # --- stores (locations) -------------------------------------------------------------------------------------------
 
 
+# A location in the old store shape.
 def _legacy_store(location: dict) -> dict:
     # The old store's contact, opening hours and structured location have no IMS column; they read as empty.
     return {
@@ -279,6 +290,7 @@ def _legacy_store(location: dict) -> dict:
     }
 
 
+# Maps legacy store fields to location fields.
 def _location_fields(fields: dict) -> dict:
     mapped = _active(fields)
     return {
@@ -286,10 +298,12 @@ def _location_fields(fields: dict) -> dict:
     }
 
 
+# Lists the dealer's locations as legacy stores.
 async def legacy_list_stores(user: AuthenticatedUser) -> list[dict]:
     return [_legacy_store(row) for row in await repo.list_rows(user.access_token, LOCATIONS)]
 
 
+# Returns one location as a legacy store, or 404.
 async def legacy_get_store(user: AuthenticatedUser, store_id: str) -> dict:
     location = await repo.fetch_row(user.access_token, LOCATIONS, store_id)
     if location is None:
@@ -297,14 +311,17 @@ async def legacy_get_store(user: AuthenticatedUser, store_id: str) -> dict:
     return _legacy_store(location)
 
 
+# Creates a location from a legacy store body.
 async def legacy_create_store(user: AuthenticatedUser, fields: dict) -> dict:
     return _legacy_store(await create_location(user, {**_location_fields(fields), "kind": "shop"}))
 
 
+# Updates a location from a legacy store body.
 async def legacy_update_store(user: AuthenticatedUser, store_id: str, fields: dict) -> dict:
     return _legacy_store(await update_location(user, store_id, _location_fields(fields)))
 
 
+# Deletes (or deactivates) a location.
 async def legacy_delete_store(user: AuthenticatedUser, store_id: str) -> None:
     await delete_location(user, store_id)
 
@@ -312,21 +329,25 @@ async def legacy_delete_store(user: AuthenticatedUser, store_id: str) -> None:
 # --- suppliers ----------------------------------------------------------------------------------------------------
 
 
+# A supplier in the old supplier shape.
 def _legacy_supplier(row: dict) -> dict:
     supplier = {k: row.get(k) for k in ("id", "dealer_id", "name", "contact", "products_supplied", "notes")}
     return {**supplier, "status": _status(row), "created_at": row["created_at"], "updated_at": row["updated_at"]}
 
 
+# Maps legacy supplier fields to IMS supplier fields.
 def _supplier_fields(fields: dict) -> dict:
     mapped = _active(fields)
     allowed = ("name", "contact", "products_supplied", "notes", "is_active")
     return {k: v for k, v in mapped.items() if k in allowed and not (k == "name" and v is None)}
 
 
+# Lists the dealer's suppliers in the old shape.
 async def legacy_list_suppliers(user: AuthenticatedUser) -> list[dict]:
     return [_legacy_supplier(row) for row in await repo.list_rows(user.access_token, SUPPLIERS)]
 
 
+# Returns one supplier in the old shape, or 404.
 async def legacy_get_supplier(user: AuthenticatedUser, supplier_id: str) -> dict:
     supplier = await repo.fetch_row(user.access_token, SUPPLIERS, supplier_id)
     if supplier is None:
@@ -334,10 +355,12 @@ async def legacy_get_supplier(user: AuthenticatedUser, supplier_id: str) -> dict
     return _legacy_supplier(supplier)
 
 
+# Creates a supplier from the legacy body.
 async def legacy_create_supplier(user: AuthenticatedUser, fields: dict) -> dict:
     return _legacy_supplier(await repo.create_row(user.access_token, SUPPLIERS, user.id, _supplier_fields(fields)))
 
 
+# Updates a supplier from the legacy body.
 async def legacy_update_supplier(user: AuthenticatedUser, supplier_id: str, fields: dict) -> dict:
     mapped = _supplier_fields(fields)
     if not mapped:
@@ -345,6 +368,7 @@ async def legacy_update_supplier(user: AuthenticatedUser, supplier_id: str, fiel
     return _legacy_supplier(await repo.update_row(user.access_token, SUPPLIERS, supplier_id, mapped))
 
 
+# Deletes a supplier through the legacy route.
 async def legacy_delete_supplier(user: AuthenticatedUser, supplier_id: str) -> None:
     await legacy_get_supplier(user, supplier_id)
     await repo.delete_row(user.access_token, SUPPLIERS, supplier_id)

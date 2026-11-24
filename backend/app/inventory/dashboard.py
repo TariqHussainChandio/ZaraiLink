@@ -57,6 +57,7 @@ async def trend_movements(user: AuthenticatedUser, days: int = TREND_DAYS) -> li
     return [row for row in rows if row["source"] != "TRANSFER"]
 
 
+# Gathers the totals, recent movements, alerts, trend and sync failures in one answer.
 async def build_dashboard(user: AuthenticatedUser) -> dict:
     token = user.access_token
     # Eight reads in parallel; asyncio.gather is typed only up to six awaitables, so the results are named and typed
@@ -107,6 +108,7 @@ async def build_dashboard(user: AuthenticatedUser) -> dict:
 # --- routes -----------------------------------------------------------------------------------------------------------
 
 
+# GET: the dealer's inventory dashboard.
 @router.get("/dashboard", response_model=Dashboard)
 async def get_dashboard(user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await build_dashboard(user)

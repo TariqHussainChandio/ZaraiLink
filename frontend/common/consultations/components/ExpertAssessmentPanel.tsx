@@ -1,9 +1,11 @@
+// Panel listing the expert's assessments of a case, newest first.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Card, StatusBadge } from '../../components';
 import { useTheme, type Theme } from '../../../theme';
 import type { ConsultationAssessment } from '../types/consultations';
 
+// Props for ExpertAssessmentPanel.
 interface ExpertAssessmentPanelProps {
   assessments: ConsultationAssessment[];
   expertName: string;
@@ -16,6 +18,7 @@ interface ExpertAssessmentPanelProps {
 export function ExpertAssessmentPanel({ assessments, expertName, action }: ExpertAssessmentPanelProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  // Sorts the assessments so the newest comes first.
   const newestFirst = useMemo(
     () => [...assessments].sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [assessments],
@@ -56,6 +59,7 @@ export function ExpertAssessmentPanel({ assessments, expertName, action }: Exper
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     card: {

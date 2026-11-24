@@ -1,3 +1,4 @@
+// Card layout shared by the sign-in, sign-up, code and password reset screens.
 import { ArrowLeft, Wheat } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -54,6 +55,7 @@ export function AuthScreen({ title, subtitle, brand = false, onBack, children, t
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography, components, borders, shadows }: Theme) {
   return StyleSheet.create({
     // The card sits in the middle of the screen when it is shorter than the screen, and scrolls when it is not.

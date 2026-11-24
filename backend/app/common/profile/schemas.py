@@ -1,3 +1,5 @@
+"""Request bodies for the profile routes."""
+
 from pydantic import BaseModel
 
 
@@ -8,6 +10,7 @@ class DeleteAccountRequest(BaseModel):
     password: str
 
 
+# Fields a user may change on their own profile; all optional.
 class ProfileUpdateRequest(BaseModel):
     full_name: str | None = None
     phone: str | None = None

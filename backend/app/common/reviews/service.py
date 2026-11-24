@@ -1,3 +1,5 @@
+"""Review service: who may review what, reads and admin moderation."""
+
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
@@ -49,6 +51,7 @@ async def create_consultation_review(
     )
 
 
+# Returns one review, or 404.
 async def fetch_review_by_id(review_id: str) -> dict:
     review = await repo.fetch_review_by_id(review_id)
     if review is None:
@@ -56,6 +59,7 @@ async def fetch_review_by_id(review_id: str) -> dict:
     return review
 
 
+# Turns the signed-in user into a (token, id) pair, or None for a guest.
 def _viewer(user: AuthenticatedUser | None) -> tuple[str, str] | None:
     return (user.access_token, user.id) if user is not None else None
 
@@ -65,26 +69,32 @@ async def fetch_review_by_order_id(order_id: str, user: AuthenticatedUser | None
     return await repo.fetch_review_by_order_id(order_id, _viewer(user))
 
 
+# Returns the review of a consultation, or None.
 async def fetch_review_by_consultation_id(consultation_id: str, user: AuthenticatedUser | None = None) -> dict | None:
     return await repo.fetch_review_by_consultation_id(consultation_id, _viewer(user))
 
 
+# Lists the reviews of a listing.
 async def fetch_reviews_for_listing(listing_id: str) -> list[dict]:
     return await repo.fetch_reviews_for_listing(listing_id)
 
 
+# Lists the reviews of a seller.
 async def fetch_reviews_for_seller(seller_id: str) -> list[dict]:
     return await repo.fetch_reviews_for_seller(seller_id)
 
 
+# Lists the reviews of an expert.
 async def fetch_reviews_for_expert(expert_id: str) -> list[dict]:
     return await repo.fetch_reviews_for_expert(expert_id)
 
 
+# Lists reviews for admin moderation.
 async def fetch_reviews_for_moderation(user: AuthenticatedUser, include_hidden: bool) -> list[dict]:
     return await repo.fetch_reviews_for_moderation(user.access_token, include_hidden)
 
 
+# Turns a database refusal into a clear HTTP error.
 def _raise_moderation_refusal(exc: APIError) -> None:
     # guard_reviews_update: 42501 for anyone but the admin (or an edit beyond the hidden_* columns),
     # 23514 for a hide without a reason. Anything else stays the generic database error.

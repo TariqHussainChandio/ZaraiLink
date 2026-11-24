@@ -1,3 +1,4 @@
+// Full-screen photo viewer with pinch zoom, drag, next/previous and zoom buttons.
 import { ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -28,6 +29,7 @@ const MAX_ZOOM = 4;
 const ZOOM_STEP = 1;
 const DOUBLE_TAP_ZOOM = 2.5;
 
+// Keeps a zoom level between the minimum and maximum.
 const clampZoom = (zoom: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
 
 /** One photo's zoom and position: the Animated values the image is drawn from, and where the last gesture left them, so
@@ -51,6 +53,7 @@ class Zoom {
     return this.zoom;
   }
 
+  // Back to normal size and centred.
   reset() {
     this.set(MIN_ZOOM, 0, 0);
   }
@@ -61,15 +64,18 @@ class Zoom {
     this.set(next, next === MIN_ZOOM ? 0 : this.x, next === MIN_ZOOM ? 0 : this.y);
   }
 
+  // Follows a pinch gesture live.
   pinch(gestureScale: number) {
     this.liveZoom = clampZoom(this.zoom * gestureScale);
     this.scale.setValue(this.liveZoom);
   }
 
+  // Keeps the zoom where the pinch ended.
   endPinch() {
     this.to(this.liveZoom);
   }
 
+  // Moves a zoomed photo with the finger.
   drag(translationX: number, translationY: number) {
     // A photo that is not zoomed has nowhere to go.
     if (!this.isZoomed) return;
@@ -78,6 +84,7 @@ class Zoom {
     this.pan.setValue({ x: this.liveX, y: this.liveY });
   }
 
+  // Keeps the position where the drag ended.
   endDrag() {
     if (this.isZoomed) {
       this.x = this.liveX;
@@ -85,6 +92,7 @@ class Zoom {
     }
   }
 
+  // Sets zoom and position at once, without animation.
   private set(zoom: number, x: number, y: number) {
     this.zoom = this.liveZoom = zoom;
     this.x = this.liveX = x;
@@ -118,11 +126,13 @@ export function PhotoViewer({ visible, onClose, photos, initialIndex = 0, action
     onClose();
   };
 
+  // Shows another photo, starting unzoomed.
   const go = (to: number) => {
     zoom.reset();
     setIndex(to);
   };
 
+  // Pinch and pan gestures, handled together.
   const gestures = useMemo(
     () =>
       Gesture.Simultaneous(
@@ -201,6 +211,7 @@ export function PhotoViewer({ visible, onClose, photos, initialIndex = 0, action
   );
 }
 
+// Theme-based styles for the photo viewer.
 function makeStyles({ colors, dark, space, size, typography }: Theme) {
   return StyleSheet.create({
     // Near-black in both themes from the tokens that already are: `ground` in the dark theme, `ink` in the light one.

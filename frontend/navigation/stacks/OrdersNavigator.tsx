@@ -1,3 +1,4 @@
+// The Orders tab stack: order list, order detail, payment and review screens.
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
@@ -28,6 +29,7 @@ const Stack = createNativeStackNavigator<OrdersStackParamList>();
 // on their home screen only.
 const ORDERS_STACK_OPTIONS = stackOptionsWithActions({ [ORDERS_ROUTES.OrderHistory]: homeActions });
 
+// Renders the Orders tab's screens with their app-bar actions.
 export function OrdersNavigator() {
   return (
     <Stack.Navigator screenOptions={ORDERS_STACK_OPTIONS}>

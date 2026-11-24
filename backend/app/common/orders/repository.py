@@ -1,3 +1,5 @@
+"""Order database access: checkout reads, orders, order items and status history."""
+
 from typing import Any
 
 from app.common.pagination import page_range
@@ -14,6 +16,7 @@ ORDER_SELECT = (
 )
 
 
+# Reads the cart's listings with today's price and seller.
 async def fetch_listings_for_checkout(access_token: str, listing_ids: list[str]) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = (
@@ -36,6 +39,7 @@ async def get_available_stock(listing_ids: list[str]) -> list[dict]:
     return as_rows(response)
 
 
+# Inserts one order; the delivery charge is its own column (BR-09).
 async def insert_order(
     access_token: str, buyer_id: str, seller_id: str, subtotal: float, delivery_charge: float
 ) -> dict:
@@ -58,11 +62,13 @@ async def insert_order(
     return first_row(response)
 
 
+# Inserts the items of an order.
 async def insert_order_items(access_token: str, order_id: str, items: list[dict[str, Any]]) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("order_items").insert([{"order_id": order_id, **item} for item in items]).execute()
 
 
+# Lists the user's orders as buyer or as seller.
 async def fetch_orders_for_user(access_token: str, user_id: str, as_: str) -> list[dict]:
     column = "buyer_id" if as_ == "buyer" else "seller_id"
     client = await get_user_scoped_client(access_token)
@@ -77,6 +83,7 @@ async def fetch_orders_for_user(access_token: str, user_id: str, as_: str) -> li
     return as_rows(response)
 
 
+# Lists all orders (admin), optionally by status.
 async def fetch_all_orders(access_token: str, status: str | None = None) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table("orders").select(ORDER_SELECT)
@@ -86,6 +93,7 @@ async def fetch_all_orders(access_token: str, status: str | None = None) -> list
     return as_rows(response)
 
 
+# Reads one order with its items, or None.
 async def fetch_order_by_id(access_token: str, order_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("orders").select(ORDER_SELECT).eq("id", order_id).limit(1).execute()
@@ -93,6 +101,7 @@ async def fetch_order_by_id(access_token: str, order_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
+# Reads the status history of an order.
 async def fetch_order_status_history(access_token: str, order_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -106,6 +115,7 @@ async def fetch_order_status_history(access_token: str, order_id: str) -> list[d
     return as_rows(response)
 
 
+# Sets an order's status (with an admin reason when settling a dispute).
 async def update_order_status(
     access_token: str, order_id: str, status: str, admin_action_reason: str | None = None
 ) -> None:
@@ -118,6 +128,7 @@ async def update_order_status(
     await client.table("orders").update(fields).eq("id", order_id).execute()
 
 
+# Cancels an order as an admin, with a reason.
 async def cancel_order_as_admin(access_token: str, order_id: str, reason: str) -> dict:
     # The admin's own token, never the service role: orders_update_participants lets an admin reach an order only before
     # dispatch (or in dispute), and guard_orders_update allows the move to cancelled only with this reason.
@@ -131,6 +142,7 @@ async def cancel_order_as_admin(access_token: str, order_id: str, reason: str) -
     return first_row(response)
 
 
+# Finds the user's pending orders older than the cutoff.
 async def fetch_stale_pending_order_ids(access_token: str, user_id: str, cutoff_iso: str) -> list[str]:
     client = await get_user_scoped_client(access_token)
     response = await (

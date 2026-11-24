@@ -1,3 +1,5 @@
+"""Payment routes: start a payment, read it, and mark it received or failed."""
+
 from fastapi import APIRouter, Depends, Header
 
 from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
@@ -9,6 +11,7 @@ from app.common.payments.schemas import InitiatePaymentRequest, MarkPaymentFaile
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
 
+# Starts a payment for an order (safe to retry with an idempotency key).
 @router.post("", response_model=Payment)
 async def initiate_payment(
     request: InitiatePaymentRequest,
@@ -30,11 +33,13 @@ async def initiate_payment(
             await claim.abandon()
 
 
+# Returns one payment.
 @router.get("/{payment_id}", response_model=Payment)
 async def get_payment(payment_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> dict:
     return await service.fetch_payment_by_id(user, payment_id)
 
 
+# Returns the payment of an order, or null.
 @router.get("/by-order/{order_id}", response_model=Payment | None)
 async def get_payment_by_order(
     order_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)
@@ -42,6 +47,7 @@ async def get_payment_by_order(
     return await service.fetch_payment_by_order_id(user, order_id)
 
 
+# Lists the transaction events of a payment.
 @router.get("/{payment_id}/transactions", response_model=list[PaymentTransaction])
 async def list_payment_transactions(
     payment_id: str, user: AuthenticatedUser = Depends(require_authenticated_user), page: Page = Depends(paginate)
@@ -49,11 +55,13 @@ async def list_payment_transactions(
     return page.finish(await service.fetch_payment_transactions(user, payment_id))
 
 
+# Marks a payment as received.
 @router.patch("/{payment_id}/received", response_model=Payment)
 async def mark_received(payment_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> dict:
     return await service.mark_payment_received(user, payment_id)
 
 
+# Marks a payment as failed, with an optional reason.
 @router.patch("/{payment_id}/failed", response_model=Payment)
 async def mark_failed(
     payment_id: str,

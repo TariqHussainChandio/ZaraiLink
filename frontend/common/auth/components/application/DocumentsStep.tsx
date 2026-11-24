@@ -1,3 +1,4 @@
+// Application documents step: add, list and remove the files a dealer or expert must send.
 import * as ImagePicker from 'expo-image-picker';
 import { Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -61,6 +62,7 @@ export function DocumentsStep({ role, userId, editable, onDone, onBack }: Docume
     return () => subscription.remove();
   }, [editable, checkCamera]);
 
+  // Groups the uploaded files by the required document they belong to.
   const byRequirement = useMemo(() => {
     const groups = new Map<string | null, ApplicationDocument[]>();
     for (const document of documents.data ?? []) {
@@ -70,6 +72,7 @@ export function DocumentsStep({ role, userId, editable, onDone, onBack }: Docume
     return groups;
   }, [documents.data]);
 
+  // Picks a file, uploads and attaches it, and shows any error in that document's card.
   const add = async (requiredDocumentId: string) => {
     setFailures(current => ({ ...current, [requiredDocumentId]: '' }));
     try {
@@ -198,6 +201,7 @@ export function DocumentsStep({ role, userId, editable, onDone, onBack }: Docume
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     list: { gap: space[3] },

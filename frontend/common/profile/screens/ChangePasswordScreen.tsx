@@ -1,3 +1,4 @@
+// Change password screen; asks for an email code when Supabase requires it.
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthError } from '@supabase/supabase-js';
 import React, { useMemo, useState } from 'react';
@@ -43,11 +44,13 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
     defaultValues: { password: '' },
   });
 
+  // Shows a success message and goes back.
   const done = () => {
     snackbar.show('Password updated');
     navigation.goBack();
   };
 
+  // Tries the new password; if a code is needed, sends one and shows the code field.
   const submit = async (values: ChangePasswordFormValues) => {
     setSubmitError(null);
     try {
@@ -68,6 +71,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
     }
   };
 
+  // Saves the new password using the code from the email.
   const confirm = async (token: string) => {
     if (!pendingPassword || confirming) return;
     setSubmitError(null);
@@ -82,6 +86,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
     }
   };
 
+  // Sends a new code and restarts the cooldown.
   const resend = async () => {
     setResendResult(null);
     try {
@@ -154,6 +159,7 @@ export function ChangePasswordScreen({ navigation }: ProfileScreenProps<'ChangeP
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     text: { ...typography.body, color: colors.ink2 },

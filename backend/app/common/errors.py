@@ -54,6 +54,7 @@ DEFAULT_CODES: dict[int, ErrorCode] = {
 }
 
 
+# The default error code for an HTTP status.
 def default_code(status_code: int) -> ErrorCode:
     if status_code in DEFAULT_CODES:
         return DEFAULT_CODES[status_code]
@@ -63,6 +64,7 @@ def default_code(status_code: int) -> ErrorCode:
 class AppHTTPException(HTTPException):
     """An HTTPException that names its error code, for the cases the app must distinguish."""
 
+    # Stores the stable error code next to the usual status, detail and headers.
     def __init__(self, status_code: int, detail: str, code: ErrorCode, headers: dict[str, str] | None = None) -> None:
         super().__init__(status_code=status_code, detail=detail, headers=headers)
         self.code = code

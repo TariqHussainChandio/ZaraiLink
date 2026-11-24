@@ -1,3 +1,4 @@
+// Edit profile screen: name, phone, location and profile photo.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -14,6 +15,7 @@ import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavig
 import { errorMessage } from '../../../utils/errorMessage';
 import { personNameSchema } from '../../validation/personName';
 
+// Builds the form rules for the edit profile fields.
 function makeEditProfileSchema() {
   return z.object({
     fullName: personNameSchema,
@@ -33,6 +35,7 @@ function makeEditProfileSchema() {
 
 type EditProfileFormValues = z.infer<ReturnType<typeof makeEditProfileSchema>>;
 
+// Profile form filled from the saved profile; saves through the API.
 export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfile'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -90,6 +93,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   const province = watch('province');
   const city = watch('city');
 
+  // Picks a new photo from the gallery to preview before saving.
   const pickAvatar = async () => {
     setPhotoError(null);
     try {
@@ -103,6 +107,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
     }
   };
 
+  // Uploads a new photo if one was picked, then saves the profile changes.
   const onSubmit = async (values: EditProfileFormValues) => {
     if (!userId) return;
     setSubmitting(true);
@@ -264,6 +269,7 @@ export function EditProfileScreen({ navigation }: ProfileScreenProps<'EditProfil
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     photo: { flexDirection: 'row', alignItems: 'center', gap: space[4] },

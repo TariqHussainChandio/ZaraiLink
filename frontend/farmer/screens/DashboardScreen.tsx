@@ -1,3 +1,4 @@
+// Farmer dashboard: Scan Disease card, pending tasks, quick actions, numbers and shortcuts.
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChartColumn, Camera, Clock, MessageCircle, Package, Stethoscope, Tractor, Truck, Wheat } from 'lucide-react-native';
@@ -17,6 +18,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { formatRs } from '../../utils/money';
 import { useNameTitle } from '../../hooks/useNameTitle';
 
+// "1 order" or "3 orders".
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** The farmer's home (FA-23): the crop-health check first, then what is waiting for the farmer, one way to sell, the
@@ -50,6 +52,7 @@ export function FarmerDashboardScreen() {
   const openMessages = () => tabs?.navigate(APP_TABS.Messages);
 
   // `stats` is undefined while loading or when the first load failed: figures are then unknown, never 0.
+  // Alert rows for things waiting on the farmer; only those with a count above zero show.
   const needs = stats
     ? [
         { key: 'ready', count: stats.readyToDispatch, icon: Truck, title: plural(stats.readyToDispatch, 'order', 'orders') + ' ready to dispatch', meta: 'Dispatch it from the order', onPress: openOrders },
@@ -144,6 +147,7 @@ function ScanCard({ onTakePhoto }: { onTakePhoto: () => void }) {
   );
 }
 
+// Builds the dashboard's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     section: { gap: space[2] },
@@ -153,6 +157,7 @@ function makeStyles({ colors, space, typography }: Theme) {
   });
 }
 
+// Builds the scan card's styles from the theme and the AI accent colour.
 function makeScanStyles({ space, typography, colors, borders }: Theme, accent: Accent) {
   return StyleSheet.create({
     card: { gap: space[3], backgroundColor: accent.soft, borderColor: accent.mark, borderWidth: borders.hairline },

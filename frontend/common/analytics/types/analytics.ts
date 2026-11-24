@@ -1,3 +1,5 @@
+// Analytics types: the dashboard numbers each role receives.
+// A best-selling listing and how many units sold.
 interface PopularProduct {
   listingId: string;
   title: string;
@@ -11,6 +13,7 @@ interface MonthlyPoint {
   value: number;
 }
 
+// The numbers on the farmer dashboard.
 export interface FarmerAnalytics {
   totalListingViews: number;
   activeListings: number;
@@ -26,6 +29,7 @@ export interface FarmerAnalytics {
   resolvedConsultations: number;
 }
 
+// The numbers on the dealer dashboard.
 export interface DealerAnalytics {
   totalSales: number;
   totalOrders: number;
@@ -40,6 +44,7 @@ export interface DealerAnalytics {
   supplierCount: number;
 }
 
+// The numbers on the expert dashboard.
 export interface ExpertAnalytics {
   totalConsultations: number;
   completedConsultations: number;
@@ -48,6 +53,7 @@ export interface ExpertAnalytics {
   consultationsByMonth: MonthlyPoint[];
 }
 
+// The numbers on the admin dashboard.
 export interface AdminAnalytics {
   userGrowth: MonthlyPoint[];
   usersByRole: Record<string, number>;

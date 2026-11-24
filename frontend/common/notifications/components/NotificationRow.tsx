@@ -1,3 +1,4 @@
+// One row in the notifications list: icon, message and time.
 import {
   AlertTriangle,
   Bell,
@@ -126,6 +127,7 @@ export function NotificationRow({ notification, onPress, opens = false, now }: N
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, radius, typography, size, components }: Theme) {
   const { row } = components;
   return StyleSheet.create({

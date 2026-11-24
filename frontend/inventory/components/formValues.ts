@@ -1,9 +1,11 @@
+// Inventory: shared zod rules and converters for number and text form fields.
 import { z } from 'zod';
 
 // The text-field rules the inventory forms share. Fields hold the typed text; it becomes a number only on submit.
 // They mirror the API's own checks (backend/app/inventory/schemas.py), so the dealer is told on the phone, field by
 // field, instead of by a refused request.
 
+// Digits with at most two decimals.
 const NUMBER = /^\d+(\.\d{1,2})?$/;
 
 /** What numeric(12, 2) holds: every quantity and amount stays below it (NUMERIC_LIMIT in the API). */
@@ -19,6 +21,7 @@ export const TEXT_LIMITS = {
   text: 1000,
 } as const;
 
+// Error messages for number fields.
 const NUMBER_HINT = 'Enter a number, such as 12 or 12.5 (at most two decimals)';
 const TOO_LARGE = 'Enter a smaller number';
 

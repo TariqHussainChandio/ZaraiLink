@@ -1,3 +1,4 @@
+// Shared form fields for creating and editing a listing.
 import React, { useMemo } from 'react';
 import {
   Controller,
@@ -29,6 +30,7 @@ const wholeOrZero = (message: string) =>
     .refine(text => digitsOnly(text) !== '', message)
     .transform(text => Number(digitsOnly(text)));
 
+// Validation rules for the listing form.
 export const listingSchema = z.object({
   title: z.string().trim().min(2, 'Enter a name of at least 2 letters'),
   description: z.string().optional(),
@@ -52,6 +54,7 @@ export const listingSchema = z.object({
 // The price and quantity boxes hold text (digits), the submitted values are numbers: react-hook-form's useForm needs the
 // input shape for the fields and the output shape for what handleSubmit hands over.
 export type ListingFormInput = z.input<typeof listingSchema>;
+// The form values after validation.
 export type ListingFormValues = z.output<typeof listingSchema>;
 
 /** Price and quantity start empty, not as a visible "0" the seller must type after (MK-09). */
@@ -74,6 +77,7 @@ export const listingFormDefaults: ListingFormInput = {
 /** The picker's "no product" choice; SelectField needs a string id for it. */
 const NO_PRODUCT = 'none';
 
+// Props for ListingFormFields.
 export interface ListingFormFieldsProps {
   control: Control<ListingFormInput, any, ListingFormValues>;
   errors: FieldErrors<ListingFormInput>;
@@ -93,6 +97,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
     state => state.profile?.role === 'dealer' && state.profile.account_status === 'approved',
   );
   const products = useLinkableInventoryProducts(canLinkProduct);
+  // The dealer's inventory products to link, starting with "None".
   const productOptions = useMemo<SelectOption[]>(
     () => [
       { id: NO_PRODUCT, label: 'None' },
@@ -108,6 +113,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
   const city = watch('city');
   const unit = watch('unit');
 
+  // The category choices for the picker.
   const categoryOptions = useMemo<SelectOption[]>(() => categories.map(category => ({ id: category.id, label: category.name })), [categories]);
   // A listing is sold by weight, volume or count, never by area. A unit saved before this list existed ("40kg bag") still
   // shows, instead of reading as nothing chosen.
@@ -250,6 +256,7 @@ export function ListingFormFields({ control, errors, setValue, watch }: ListingF
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     form: { gap: 0 },

@@ -1,3 +1,4 @@
+// One row in the inbox: the other person, last message, time and unread dot.
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '../../components';
@@ -77,6 +78,7 @@ export function ConversationListItem({ conversation, userId, unread, onPress }: 
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography, components, size, radius }: Theme) {
   const { row } = components;
   return StyleSheet.create({

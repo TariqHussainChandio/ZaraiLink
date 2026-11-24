@@ -95,9 +95,12 @@ async def test_jwks_unavailable_rejected_with_503_not_401():
 
 @pytest.mark.asyncio
 async def test_valid_token_but_no_profile_rejected_with_401():
-    with _mock_verify(VerifiedClaims(sub="user-1", email="a@b.com")), _mock_profile_lookup(rows=[]):
-        with pytest.raises(HTTPException) as exc_info:
-            await get_current_user(token="good-token")
+    with (
+        _mock_verify(VerifiedClaims(sub="user-1", email="a@b.com")),
+        _mock_profile_lookup(rows=[]),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await get_current_user(token="good-token")
     assert exc_info.value.status_code == 401
 
 

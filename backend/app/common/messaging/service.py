@@ -1,3 +1,5 @@
+"""Messaging business logic: turns database refusals into clear 403 and 404 errors."""
+
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
@@ -5,14 +7,17 @@ from app.auth.dependencies import AuthenticatedUser
 from app.common.messaging import repository as repo
 
 
+# Returns the caller's conversations.
 async def fetch_conversations(user: AuthenticatedUser) -> list[dict]:
     return await repo.fetch_conversations(user.access_token, user.id)
 
 
+# Returns the messages of one conversation.
 async def fetch_messages(user: AuthenticatedUser, conversation_id: str) -> list[dict]:
     return await repo.fetch_messages(user.access_token, conversation_id)
 
 
+# Sends a message; a non-participant gets 403.
 async def send_message(user: AuthenticatedUser, conversation_id: str, body: str, attachments: list[str]) -> dict:
     # RLS (`messages_insert_participant`, see repo.send_message's comment) rejects a
     # non-participant's insert at the database as a 42501 (insufficient_privilege), which
@@ -28,6 +33,7 @@ async def send_message(user: AuthenticatedUser, conversation_id: str, body: str,
         raise
 
 
+# Reuses the chat with this user if one exists, otherwise creates it.
 async def find_or_create_conversation(
     user: AuthenticatedUser, other_user_id: str, context_type: str, context_id: str
 ) -> dict:
@@ -50,6 +56,7 @@ async def find_or_create_conversation(
         raise
 
 
+# Returns one message, or 404 if it is missing or not visible.
 async def fetch_message_by_id(user: AuthenticatedUser, message_id: str) -> dict:
     message = await repo.fetch_message_by_id(user.access_token, message_id)
     if message is None:
@@ -57,10 +64,12 @@ async def fetch_message_by_id(user: AuthenticatedUser, message_id: str) -> dict:
     return message
 
 
+# Redacts a message as an admin.
 async def redact_message(user: AuthenticatedUser, message_id: str) -> None:
     await repo.redact_message(user.access_token, message_id)
     # The audit row is written atomically by the database (20261023080000).
 
 
+# Marks the conversation's incoming messages as read.
 async def mark_conversation_read(user: AuthenticatedUser, conversation_id: str) -> None:
     await repo.mark_conversation_read(user.access_token, conversation_id, user.id)

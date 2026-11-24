@@ -1,3 +1,4 @@
+// Types for Scan Disease (from the generated API contract) and the confidence-level helper.
 import type {
   DiseaseCaseResponse,
   DiseaseCaseWithPredictionResponse,
@@ -46,6 +47,7 @@ export interface DiseasePrefill {
 /** Above this a confident result reads "Very likely"; the backend's band decides "Not sure" (below 0.60). */
 const HIGH_CONFIDENCE_THRESHOLD = 0.85;
 
+// The three confidence words the result screen can show.
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
 /** Confidence in words (FA-06). Low is the backend's `confidence_band`, so the app and the expert's view never

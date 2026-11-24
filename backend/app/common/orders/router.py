@@ -1,3 +1,5 @@
+"""Order routes: checkout, list, read, status history and status changes."""
+
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, Query
@@ -25,6 +27,7 @@ router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 admin_router = APIRouter(prefix="/api/v1/admin/orders", tags=["orders"])
 
 
+# Places orders from the cart, one per seller (safe to retry with an idempotency key).
 @router.post("/checkout", response_model=list[Order])
 async def checkout(
     request: CheckoutRequest,
@@ -48,6 +51,7 @@ async def checkout(
             await claim.abandon()
 
 
+# Lists the user's orders as buyer or as seller.
 @router.get("", response_model=list[OrderWithItems])
 async def list_orders(
     as_: Literal["buyer", "seller"] = Query(default="buyer", alias="as"),
@@ -57,11 +61,13 @@ async def list_orders(
     return page.finish(await service.fetch_orders_for_user(user, as_))
 
 
+# Returns one order.
 @router.get("/{order_id}", response_model=OrderWithItems)
 async def get_order(order_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> dict:
     return await service.fetch_order_by_id(user, order_id)
 
 
+# Returns an order's status history.
 @router.get("/{order_id}/status-history", response_model=list[OrderStatusHistoryEntry])
 async def get_status_history(
     order_id: str, user: AuthenticatedUser = Depends(require_authenticated_user), page: Page = Depends(paginate)
@@ -69,6 +75,7 @@ async def get_status_history(
     return page.finish(await service.fetch_order_status_history(user, order_id))
 
 
+# Moves an order to a new status (accept, dispatch, complete, cancel and so on).
 @router.patch("/{order_id}/status", status_code=204)
 async def update_order_status(
     order_id: str, request: UpdateOrderStatusRequest, user: AuthenticatedUser = Depends(require_authenticated_user)

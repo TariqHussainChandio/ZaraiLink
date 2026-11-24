@@ -1,3 +1,4 @@
+// Hook that opens the dealer's inventory system.
 import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { useCallback } from 'react';
 import type { MarketRootParamList } from './AppNavigator';

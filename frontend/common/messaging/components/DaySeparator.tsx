@@ -1,3 +1,4 @@
+// Day label ("Today", "Yesterday", a date) between chat messages.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
@@ -16,6 +17,7 @@ export function DaySeparator({ label }: { label: string }) {
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography, radius }: Theme) {
   return StyleSheet.create({
     wrap: { alignItems: 'center', paddingVertical: space[3] },

@@ -66,6 +66,7 @@ router = APIRouter()
 # --- the period and the shared reads ----------------------------------------------------------------------------------
 
 
+# The report's first and last day (default: the last days up to today); refuses a bad range.
 def report_period(date_from: date | None, date_to: date | None) -> tuple[date, date]:
     to = date_to or datetime.now(UTC).date()
     start = date_from or to - timedelta(days=DEFAULT_DAYS - 1)
@@ -83,18 +84,22 @@ def _q(figure: float) -> float:
     return round(figure, 2) + 0.0
 
 
+# Every day from `start` to `to`, inclusive.
 def _days(start: date, to: date) -> list[date]:
     return [start + timedelta(days=offset) for offset in range((to - start).days + 1)]
 
 
+# The period fields every report answer starts with.
 def _envelope(start: date, to: date) -> dict:
     return {"from": start, "to": to, "generated_at": datetime.now(UTC).isoformat()}
 
 
+# The UTC day (YYYY-MM-DD) a movement happened on.
 def _day_of(movement: dict) -> str:
     return datetime.fromisoformat(movement["created_at"]).astimezone(UTC).date().isoformat()
 
 
+# Every movement of the dealer inside the period.
 async def _movements(user: AuthenticatedUser, start: date, to: date) -> list[dict]:
     # `to` is a whole day, so the bound is the start of the next one.
     return await repo.fetch_all_movements(
@@ -111,6 +116,7 @@ async def _products(user: AuthenticatedUser) -> tuple[dict[str, dict], str | Non
     return {row["id"]: product_view(row, default_id) for row in rows}, default_id
 
 
+# A product's SKU and name for a report row.
 def _label(products: dict[str, dict], product_id: str) -> dict:
     product = products.get(product_id) or {}
     return {"product_id": product_id, "sku": product.get("sku", ""), "name": product.get("name", "")}
@@ -135,6 +141,7 @@ def _sold(movement: dict) -> float:
 # --- the reports ------------------------------------------------------------------------------------------------------
 
 
+# Stock summary: each product's stock now and its units in and out in the period.
 async def stock_summary(user: AuthenticatedUser, start: date, to: date) -> dict:
     (products, _), locations, movements = await asyncio.gather(
         _products(user), repo.fetch_all_names(user.access_token, "inventory_locations"), _movements(user, start, to)
@@ -384,6 +391,7 @@ async def reconciliation(user: AuthenticatedUser) -> dict:
     }
 
 
+# The reconciliation report with the period signature (the period is ignored).
 async def _reconciliation_report(user: AuthenticatedUser, _start: date, _to: date) -> dict:
     # The ledger must add up to the stock on hand, which is cumulative, so a period cannot narrow it.
     return await reconciliation(user)
@@ -413,6 +421,7 @@ async def period_query(
     return report_period(date_from, date_to)
 
 
+# GET: the stock summary report.
 @router.get("/reports/stock-summary", response_model=StockSummaryReport)
 async def get_stock_summary(
     user: AuthenticatedUser = Depends(require_dealer), period: tuple[date, date] = Depends(period_query)
@@ -420,6 +429,7 @@ async def get_stock_summary(
     return await stock_summary(user, *period)
 
 
+# GET: the stock valuation report.
 @router.get("/reports/valuation", response_model=ValuationReport)
 async def get_valuation(
     user: AuthenticatedUser = Depends(require_dealer), period: tuple[date, date] = Depends(period_query)
@@ -427,6 +437,7 @@ async def get_valuation(
     return await valuation(user, *period)
 
 
+# GET: the movements-by-source report.
 @router.get("/reports/movements-by-source", response_model=MovementsBySourceReport)
 async def get_movements_by_source(
     user: AuthenticatedUser = Depends(require_dealer), period: tuple[date, date] = Depends(period_query)
@@ -434,6 +445,7 @@ async def get_movements_by_source(
     return await movements_by_source(user, *period)
 
 
+# GET: the low and out-of-stock report.
 @router.get("/reports/low-out-of-stock", response_model=LowOutOfStockReport)
 async def get_low_out_of_stock(
     user: AuthenticatedUser = Depends(require_dealer), period: tuple[date, date] = Depends(period_query)
@@ -441,6 +453,7 @@ async def get_low_out_of_stock(
     return await low_out_of_stock(user, *period)
 
 
+# GET: the supplier purchases report.
 @router.get("/reports/supplier-purchases", response_model=SupplierPurchasesReport)
 async def get_supplier_purchases(
     user: AuthenticatedUser = Depends(require_dealer), period: tuple[date, date] = Depends(period_query)
@@ -448,6 +461,7 @@ async def get_supplier_purchases(
     return await supplier_purchases(user, *period)
 
 
+# GET: the marketplace against local sales report.
 @router.get("/reports/sales-split", response_model=SalesSplitReport)
 async def get_sales_split(
     user: AuthenticatedUser = Depends(require_dealer), period: tuple[date, date] = Depends(period_query)
@@ -455,6 +469,7 @@ async def get_sales_split(
     return await sales_split(user, *period)
 
 
+# GET: the analytics report (trend, fast and slow movers, best sellers).
 @router.get("/reports/analytics", response_model=AnalyticsReport)
 async def get_analytics(
     user: AuthenticatedUser = Depends(require_dealer), period: tuple[date, date] = Depends(period_query)
@@ -462,6 +477,7 @@ async def get_analytics(
     return await analytics(user, *period)
 
 
+# GET: the reconciliation report over the whole ledger.
 @router.get("/reports/reconciliation", response_model=ReconciliationReport)
 async def get_reconciliation_report(user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await reconciliation(user)

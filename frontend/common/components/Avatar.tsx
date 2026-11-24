@@ -1,3 +1,4 @@
+// Round avatar: the person's photo, or their initials on their role's colour.
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { Role } from '../constants/roles';
@@ -14,6 +15,7 @@ export interface AvatarProps {
   ring?: boolean;
 }
 
+// Takes the first letters of up to two words of a name, or "?" when there is no name.
 function getInitials(name?: string) {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
@@ -42,6 +44,7 @@ export function Avatar({ uri, name, role, size, ring = false }: AvatarProps) {
   );
 }
 
+// Theme-based styles for the avatar.
 function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
     image: { backgroundColor: colors.surfaceSunken },

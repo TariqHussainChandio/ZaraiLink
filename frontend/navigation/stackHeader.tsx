@@ -1,3 +1,4 @@
+// The custom app bar every stack uses, and the helper that sets its actions per screen.
 import type { NativeStackHeaderProps, NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import React from 'react';
 import { TopAppBar } from '../common/components';
@@ -11,6 +12,7 @@ export type AppBarActions = Partial<Record<string, () => React.ReactNode>>;
  * so a dealer always knows which system they are in. */
 export type StackSystem = 'marketplace' | 'inventory';
 
+// Draws the app bar for a stack screen: title, back, leading and trailing actions.
 function StackHeader({
   navigation,
   route,

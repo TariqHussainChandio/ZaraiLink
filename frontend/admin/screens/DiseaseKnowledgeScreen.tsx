@@ -1,3 +1,4 @@
+// Admin: list of disease knowledge entries, filtered by review status.
 import { useFocusEffect } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -76,6 +77,7 @@ export function DiseaseKnowledgeScreen({ navigation }: AdminScreenProps<typeof A
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.surface },

@@ -1,3 +1,4 @@
+// Inventory: one form for Stock In, Stock Out, Adjustment and Transfer.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
@@ -41,6 +42,7 @@ import {
 /** Why stock left, as the dealer thinks of it. Own use is recorded as OTHER with the words "Own use" (SRDS §22). */
 type OutReason = 'LOCAL_SALE' | 'DAMAGE' | 'EXPIRY' | 'OWN_USE' | 'OTHER';
 
+// Choices for why stock left.
 const OUT_REASONS: { value: OutReason; label: string }[] = [
   { value: 'LOCAL_SALE', label: 'Local sale' },
   { value: 'DAMAGE', label: 'Damage' },
@@ -49,11 +51,13 @@ const OUT_REASONS: { value: OutReason; label: string }[] = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+// Choices for an adjustment: add stock or remove stock.
 const DIRECTIONS: { value: 'in' | 'out'; label: string }[] = [
   { value: 'in', label: 'Add to stock' },
   { value: 'out', label: 'Take from stock' },
 ];
 
+// Screen title of each stock operation.
 export const OPERATION_TITLES: Record<StockOperation, string> = {
   in: 'Stock in',
   out: 'Stock out',
@@ -61,6 +65,7 @@ export const OPERATION_TITLES: Record<StockOperation, string> = {
   transfer: 'Transfer',
 };
 
+// Short help text of each stock operation.
 const DESCRIPTIONS: Record<StockOperation, string> = {
   in: 'New stock arriving by hand: a restock not bought through a recorded purchase.',
   out: 'Stock leaving outside the marketplace: a sale in your shop, damage, expiry or your own use.',
@@ -70,6 +75,7 @@ const DESCRIPTIONS: Record<StockOperation, string> = {
     'Move stock from one of your locations to another. The total does not change.',
 };
 
+// Builds the validation rules for the chosen operation.
 function makeSchema(operation: StockOperation) {
   return z
     .object({
@@ -163,6 +169,7 @@ export function OperationScreen({
       ?.quantity ?? 0;
   const unit = product.data?.unit;
 
+  // Product choices for the picker.
   const productOptions = useMemo(
     () =>
       (products.data ?? [])
@@ -170,11 +177,13 @@ export function OperationScreen({
         .map(item => ({ id: item.id, label: `${item.name} (${item.sku})` })),
     [products.data, initialProductId],
   );
+  // Location choices for the picker.
   const locationOptions = useMemo(
     () => locations.map(item => ({ id: item.id, label: item.name })),
     [locations],
   );
 
+  // Sends the stock operation to the API and goes back on success.
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
     const quantity = Number(values.quantity);

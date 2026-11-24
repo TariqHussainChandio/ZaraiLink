@@ -1,3 +1,4 @@
+// Inventory: alert centre listing low and out-of-stock products.
 import { FlashList } from '@shopify/flash-list';
 import { CircleCheck, Settings } from 'lucide-react-native';
 import React, { useMemo } from 'react';
@@ -85,6 +86,7 @@ export function AlertsScreen({ navigation }: InventoryScreenProps<typeof INVENTO
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

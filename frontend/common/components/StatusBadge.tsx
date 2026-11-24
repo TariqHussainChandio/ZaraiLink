@@ -1,3 +1,4 @@
+// Badge that shows a status with its icon and word from the shared status list.
 import React from 'react';
 import { statusMeta, type StatusKind, type StatusOf } from '../constants/status';
 import { Badge } from './Badge';

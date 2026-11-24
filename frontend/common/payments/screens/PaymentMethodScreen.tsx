@@ -1,3 +1,4 @@
+// Screen to choose a payment method for an order.
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, Card, PriceBreakdown, QueryState, ScreenScaffold, StickyActionBar } from '../../components';
@@ -30,6 +31,7 @@ export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'Pa
     if (existingPayment) navigation.replace(ORDERS_ROUTES.PaymentProcessing, { paymentId: existingPayment.id });
   }, [existingPayment, navigation]);
 
+  // Starts the payment with the chosen method.
   const onSubmit = async () => {
     if (!userId || !context) return;
     setFailure(null);
@@ -81,6 +83,7 @@ export function PaymentMethodScreen({ route, navigation }: OrdersScreenProps<'Pa
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: { gap: space[3] },

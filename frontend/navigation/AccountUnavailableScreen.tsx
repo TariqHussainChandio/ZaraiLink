@@ -1,3 +1,4 @@
+// Screen shown when the account could not be checked: retry or sign out.
 import { LogOut, RefreshCw, ShieldAlert, WifiOff } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -34,6 +35,7 @@ export function AccountUnavailableScreen() {
   const copy = offline ? COPY.offline : COPY.failed;
   const Icon = offline ? WifiOff : ShieldAlert;
 
+  // Reads the profile again; the app moves on if the account can now be checked.
   const retry = async () => {
     setRetrying(true);
     try {
@@ -45,6 +47,7 @@ export function AccountUnavailableScreen() {
     }
   };
 
+  // Signs the user out.
   const leave = () => {
     signOut().catch(err => logger.warn('AccountUnavailableScreen: sign-out failed', err));
   };
@@ -66,6 +69,7 @@ export function AccountUnavailableScreen() {
   );
 }
 
+// Theme-based styles for this screen.
 function makeStyles({ colors, space, size, radius, typography }: Theme) {
   return StyleSheet.create({
     container: {

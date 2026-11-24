@@ -1,3 +1,4 @@
+// Zod rule and helper text for new passwords, matching Supabase Auth's own rule.
 import { z } from 'zod';
 
 // The one password rule (D15 AU findings): it matches what Supabase Auth enforces (supabase/config.toml,

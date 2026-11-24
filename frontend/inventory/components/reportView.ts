@@ -1,3 +1,4 @@
+// Inventory: turns each report's API data into the charts, totals and rows the Reports tab draws.
 import type { BarChartDatum } from '../../common/components';
 import { statusMeta } from '../../common/constants/status';
 import type { AnalyticsReport, PeriodReportName, PeriodReports } from '../types/inventory';
@@ -9,6 +10,7 @@ import { formatDayMonth, formatMoney, formatNet, formatQuantity } from './format
 /** Which theme colour a chart's bars take: the scope's accent, stock coming in, or a warning. */
 export type ChartTone = 'accent' | 'in' | 'warning';
 
+// The shapes the Reports screen draws: charts, totals, rows and sections.
 export interface ReportChart {
   title: string;
   data: BarChartDatum[];
@@ -47,6 +49,7 @@ export interface ReportView {
   sections: ReportSection[];
 }
 
+// The period reports the dealer can pick, with their labels.
 export const REPORT_OPTIONS: { id: PeriodReportName; label: string }[] = [
   { id: 'stock-summary', label: 'Stock summary' },
   { id: 'valuation', label: 'Stock value' },
@@ -62,6 +65,7 @@ const MAX_BARS = 12;
 // A ranked chart (value, cost) shows the top few; the table below lists them all.
 const TOP_BARS = 6;
 
+// Text helpers: join the non-empty parts with dots, and a count with its noun.
 const join = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(' · ');
 const plural = (count: number, one: string, many: string) => `${formatQuantity(count)} ${count === 1 ? one : many}`;
 
@@ -86,6 +90,7 @@ function top<T>(rows: T[], value: (row: T) => number, label: (row: T) => string)
     .map(row => ({ label: label(row), value: value(row) }));
 }
 
+// View of the stock summary report.
 function stockSummary(report: PeriodReports['stock-summary']): ReportView {
   const byLocation = new Map<string, number>();
   for (const row of report.rows) byLocation.set(row.location_name, (byLocation.get(row.location_name) ?? 0) + row.quantity);
@@ -114,6 +119,7 @@ function stockSummary(report: PeriodReports['stock-summary']): ReportView {
   };
 }
 
+// View of the stock valuation report.
 function valuation(report: PeriodReports['valuation']): ReportView {
   const missing = report.products_without_cost;
   return {
@@ -150,6 +156,7 @@ function valuation(report: PeriodReports['valuation']): ReportView {
   };
 }
 
+// View of the movements-by-source report.
 function movementsBySource(report: PeriodReports['movements-by-source']): ReportView {
   const used = report.rows.filter(row => row.movements > 0);
   return {
@@ -177,6 +184,7 @@ function movementsBySource(report: PeriodReports['movements-by-source']): Report
   };
 }
 
+// View of the low and out-of-stock report.
 function lowOutOfStock(report: PeriodReports['low-out-of-stock']): ReportView {
   return {
     totals: [
@@ -220,6 +228,7 @@ function lowOutOfStock(report: PeriodReports['low-out-of-stock']): ReportView {
   };
 }
 
+// View of the supplier purchases report.
 function supplierPurchases(report: PeriodReports['supplier-purchases']): ReportView {
   return {
     totals: [
@@ -255,6 +264,7 @@ function supplierPurchases(report: PeriodReports['supplier-purchases']): ReportV
   };
 }
 
+// View of the marketplace against local sales report.
 function salesSplit(report: PeriodReports['sales-split']): ReportView {
   const sold = report.marketplace_total + report.local_total;
   return {
@@ -297,8 +307,10 @@ function salesSplit(report: PeriodReports['sales-split']): ReportView {
   };
 }
 
+// View of the analytics report (trend, movers, best sellers).
 function analytics(report: AnalyticsReport): ReportView {
   const moved = report.trend.some(point => point.in > 0 || point.out > 0);
+  // Rows for the fast or slow movers list.
   const moverRows = (rows: AnalyticsReport['fast_movers']): ReportRow[] =>
     rows.map(row => ({
       key: row.product_id,

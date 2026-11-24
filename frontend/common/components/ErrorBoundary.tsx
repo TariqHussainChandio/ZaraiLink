@@ -1,3 +1,4 @@
+// Catches render errors in a part of the app and shows a "Try again" screen instead of crashing.
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { logger } from '../../utils/logger';
@@ -13,6 +14,7 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
+// The fallback screen with a retry button.
 function Fallback({ onRetry }: { onRetry: () => void }) {
   return (
     <View style={styles.container}>
@@ -36,10 +38,12 @@ function Fallback({ onRetry }: { onRetry: () => void }) {
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
 
+  // Saves the error so the next render shows the fallback.
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
 
+  // Logs the error and the component stack.
   componentDidCatch(error: Error, info: ErrorInfo): void {
     logger.warn(`ErrorBoundary:${this.props.name}`, error);
     logger.warn(`ErrorBoundary:${this.props.name}:componentStack`, info.componentStack ?? undefined);
@@ -47,6 +51,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   private retry = () => this.setState({ error: null });
 
+  // Shows the fallback after an error, otherwise the children.
   render(): ReactNode {
     return this.state.error ? <Fallback onRetry={this.retry} /> : this.props.children;
   }

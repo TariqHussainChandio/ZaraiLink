@@ -1,3 +1,4 @@
+// Hook that reports whether the phone's "reduce motion" setting is on.
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
 

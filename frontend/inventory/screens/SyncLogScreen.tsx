@@ -1,3 +1,4 @@
+// Inventory: marketplace sync log, with a retry for failed entries.
 import { useFocusEffect, useNavigation, type NavigationProp } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import { ExternalLink, Receipt, RefreshCw } from 'lucide-react-native';
@@ -34,6 +35,7 @@ export function SyncLogScreen(_props: InventoryScreenProps<typeof INVENTORY_ROUT
   const { data, refetch, isRefetching } = result;
   // The log carries ids; the dealer's own listings (the product link's choices) give each line its listing's title.
   const listings = useListingOptions(true);
+  // Listing titles by id, to name each entry.
   const titleById = useMemo(
     () => new Map((listings.data ?? []).map(listing => [listing.id, listing.title])),
     [listings.data],
@@ -45,6 +47,7 @@ export function SyncLogScreen(_props: InventoryScreenProps<typeof INVENTORY_ROUT
   const order = viewing ? sales.data?.find(item => item.id === viewing) : undefined;
   const retry = useRetrySync();
   const toast = useToast();
+  // How many entries failed.
   const failedCount = (data ?? []).filter(entry => entry.status === 'failed').length;
 
   // A dispatch can land while the dealer is elsewhere in the app; coming back shows it.
@@ -54,6 +57,7 @@ export function SyncLogScreen(_props: InventoryScreenProps<typeof INVENTORY_ROUT
     }, [refetch]),
   );
 
+  // Retries the failed entries and shows how many were applied.
   const onRetry = async () => {
     try {
       const { applied } = await retry.mutateAsync();
@@ -73,6 +77,7 @@ export function SyncLogScreen(_props: InventoryScreenProps<typeof INVENTORY_ROUT
     });
   };
 
+  // One sync log entry card.
   const renderEntry = ({ item: entry }: { item: SyncLogEntry }) => {
     const orderId = entry.order_id;
     const listingTitle = entry.listing_id ? (titleById.get(entry.listing_id) ?? 'A listing no longer yours') : null;
@@ -192,6 +197,7 @@ export function SyncLogScreen(_props: InventoryScreenProps<typeof INVENTORY_ROUT
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

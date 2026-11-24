@@ -1,3 +1,4 @@
+// Consultation API calls and photo uploads to Supabase Storage.
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { extensionFromMimeType } from '../../../utils/mimeExtension';
 import { apiFetch } from '../../../services/api/client';
@@ -16,6 +17,7 @@ import type {
 
 const ATTACHMENTS_BUCKET = 'consultation-attachments';
 
+// Inputs for a new consultation request.
 export interface ConsultationRequestInput {
   expertId: string;
   subject: string;
@@ -79,6 +81,7 @@ export async function uploadConsultationAttachments(
   return paths;
 }
 
+// Creates short-lived signed URLs for attachment paths.
 export async function resolveConsultationAttachmentUrls(paths: string[]): Promise<Record<string, string>> {
   if (paths.length === 0) return {};
 
@@ -92,6 +95,7 @@ export async function resolveConsultationAttachmentUrls(paths: string[]): Promis
   return urls;
 }
 
+// Saves the photo paths of a consultation.
 export async function updateConsultationImages(id: string, images: string[]): Promise<void> {
   await apiFetch(`/api/v1/consultations/${id}/images`, { method: 'PATCH', body: { images } });
 }
@@ -121,6 +125,7 @@ export async function updateConsultationStatus(id: string, to: Consultation['sta
   await apiFetch(`/api/v1/consultations/${id}/status`, { method: 'PATCH', body: { to } });
 }
 
+// Fetches the messages of a consultation.
 export async function fetchConsultationMessages(consultationId: string): Promise<ConsultationMessageWithListing[]> {
   return apiFetch(`/api/v1/consultations/${consultationId}/messages`);
 }

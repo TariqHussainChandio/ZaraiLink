@@ -1,3 +1,4 @@
+// Expert analytics screen: consultation totals, average rating and a by-month bar chart.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -10,6 +11,7 @@ import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { formatMonth } from '../../utils/dates';
 
+// Shows the signed-in expert's consultation numbers; refreshes when opened.
 export function ExpertAnalyticsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -71,6 +73,7 @@ export function ExpertAnalyticsScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },

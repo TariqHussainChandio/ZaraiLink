@@ -1,3 +1,4 @@
+// Human-readable labels for database codes (specialisations, payment methods, business types).
 import type { ExpertSpecialization } from '../../expert';
 import type { BusinessType } from '../auth';
 import type { PaymentMethod } from '../payments';
@@ -15,6 +16,7 @@ export const SPECIALIZATION_LABELS: Record<ExpertSpecialization, string> = {
   general_agriculture: 'General agriculture',
 };
 
+// Labels for the two payment methods (cash on delivery, bank transfer).
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cod: 'Cash on delivery',
   bank_transfer: 'Bank transfer',

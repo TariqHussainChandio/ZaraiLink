@@ -1,3 +1,4 @@
+// Admin: every marketplace listing, to hide or show it again.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -56,6 +57,7 @@ export function ListingModerationScreen() {
     l => (filter === 'all' || l.status === filter) && (!needle || `${l.title} ${l.owner?.full_name ?? ''}`.toLowerCase().includes(needle)),
   );
 
+  // Prepares the confirm sheet to hide an active listing or restore a hidden one.
   const toggle = (listing: ListingWithRelations) => {
     const hiding = listing.status === 'active';
     setSelected(null);
@@ -128,6 +130,7 @@ export function ListingModerationScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
     price: { ...typography.price, color: colors.ink },

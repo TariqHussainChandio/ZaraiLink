@@ -1,3 +1,4 @@
+// Last application step: a summary of details and documents, then submit for review.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, Card, StatusBadge, useToast } from '../../../components';
@@ -78,6 +79,7 @@ export function ReviewStep({ role, editable, onSubmitted, onBack, onChangeDetail
   const checklist = (required.data ?? []).filter(r => r.is_required).map(r => ({ label: r.label, done: attached.has(r.id) }));
   const ready = !detailsMissing && checklist.every(item => item.done);
 
+  // Submits the application for review and shows a toast once it is sent.
   const onSubmit = async () => {
     // A refusal (application_incomplete) is shown from the mutation's own error.
     const sent = await submit.mutateAsync().then(() => true, () => false);
@@ -139,6 +141,7 @@ export function ReviewStep({ role, editable, onSubmitted, onBack, onChangeDetail
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     list: { gap: space[3] },

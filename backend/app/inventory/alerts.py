@@ -39,6 +39,7 @@ def stock_alert(view: dict, default_location_id: str | None) -> dict | None:
     }
 
 
+# Builds the alert list for many products, dropping those with no alert.
 def alerts_for(views: list[dict], default_location_id: str | None) -> list[dict]:
     alerts = [stock_alert(view, default_location_id) for view in views]
     # Out of stock first (it stops marketplace sales), then the lowest quantity.
@@ -47,6 +48,7 @@ def alerts_for(views: list[dict], default_location_id: str | None) -> list[dict]
     )
 
 
+# Lists the dealer's stock alerts, optionally only low or only out of stock.
 async def list_alerts(user: AuthenticatedUser, status: str | None = None) -> list[dict]:
     # Every active product is weighed, not a page of them: an alert list that skips products is wrong, not short.
     rows = await repo.fetch_products(user.access_token, include_inactive=False, paged=False)
@@ -56,6 +58,7 @@ async def list_alerts(user: AuthenticatedUser, status: str | None = None) -> lis
     return [a for a in alerts if status is None or a["status"] == status]
 
 
+# Reads the dealer's alert settings, or the defaults if never saved.
 async def get_settings(user: AuthenticatedUser) -> dict:
     # A dealer who never saved settings sees the table's defaults; a read writes nothing.
     settings = await repo.fetch_alert_settings(user.access_token)
@@ -64,6 +67,7 @@ async def get_settings(user: AuthenticatedUser) -> dict:
     return {"dealer_id": user.id, **AlertSettingsInput().model_dump(), "updated_at": None}
 
 
+# Saves the dealer's alert settings.
 async def save_settings(user: AuthenticatedUser, fields: dict) -> dict:
     return await repo.upsert_alert_settings(user.access_token, user.id, fields)
 
@@ -71,26 +75,31 @@ async def save_settings(user: AuthenticatedUser, fields: dict) -> dict:
 # --- routes -----------------------------------------------------------------------------------------------------------
 
 
+# GET: every stock alert of the dealer.
 @router.get("/alerts", response_model=list[StockAlert])
 async def get_alerts(user: AuthenticatedUser = Depends(require_dealer)) -> list[dict]:
     return await list_alerts(user)
 
 
+# GET: only the low-stock alerts.
 @router.get("/alerts/low-stock", response_model=list[StockAlert])
 async def get_low_stock(user: AuthenticatedUser = Depends(require_dealer)) -> list[dict]:
     return await list_alerts(user, "low_stock")
 
 
+# GET: only the out-of-stock alerts.
 @router.get("/alerts/out-of-stock", response_model=list[StockAlert])
 async def get_out_of_stock(user: AuthenticatedUser = Depends(require_dealer)) -> list[dict]:
     return await list_alerts(user, "out_of_stock")
 
 
+# GET: the dealer's alert settings.
 @router.get("/alerts/settings", response_model=AlertSettings)
 async def get_alert_settings(user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await get_settings(user)
 
 
+# PUT: saves the dealer's alert settings.
 @router.put("/alerts/settings", response_model=AlertSettings)
 async def put_alert_settings(request: AlertSettingsInput, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await save_settings(user, request.model_dump())

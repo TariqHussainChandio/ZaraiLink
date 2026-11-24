@@ -1,3 +1,4 @@
+// Admin: list of users, to suspend or reactivate them and change their role.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -101,6 +102,7 @@ export function UserManagementScreen({ route }: Partial<AdminScreenProps<'UserMa
   const filtered = needle.length > 0 || role !== 'all' || status !== 'all';
 
 
+  // Prepares the confirm sheet to suspend or reactivate a user.
   const askSuspend = (profile: Profile) => {
     const name = nameOf(profile);
     const lifting = profile.is_suspended;
@@ -127,6 +129,7 @@ export function UserManagementScreen({ route }: Partial<AdminScreenProps<'UserMa
     );
   };
 
+  // Prepares the confirm sheet to change a user's role.
   const askRole = (profile: Profile, to: Role) => {
     const name = nameOf(profile);
     setAction({
@@ -231,6 +234,7 @@ function identifier(profile: Profile, isSelf: boolean): string {
     .join(' · ');
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space[1] },

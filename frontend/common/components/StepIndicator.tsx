@@ -1,3 +1,4 @@
+// Numbered step circles showing progress through a multi-step form.
 import { Check } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -41,6 +42,7 @@ export function StepIndicator({ steps, current }: StepIndicatorProps) {
   );
 }
 
+// Theme-based styles for the step indicator.
 function makeStyles({ colors, space, size, radius, borders, typography }: Theme) {
   return StyleSheet.create({
     row: { flexDirection: 'row', gap: space[2] },

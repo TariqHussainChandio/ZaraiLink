@@ -1,9 +1,11 @@
+// Radio list of payment methods (cash on delivery, bank transfer).
 import { Check } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme, type Theme, useRoleAccent, type Accent } from '../../../theme';
 import type { PaymentMethod } from '../types/payments';
 
+// Props for PaymentMethodOptions.
 export interface PaymentMethodOptionsProps {
   value: PaymentMethod;
   onChange: (method: PaymentMethod) => void;
@@ -13,6 +15,7 @@ export interface PaymentMethodOptionsProps {
   label?: string;
 }
 
+// One payment method choice.
 interface Option {
   id: PaymentMethod;
   title: string;
@@ -67,6 +70,7 @@ export function PaymentMethodOptions({ value, onChange, sellerName, label = 'How
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, size, radius, borders, typography }: Theme, accent: Accent) {
   return StyleSheet.create({
     group: { gap: space[2] },

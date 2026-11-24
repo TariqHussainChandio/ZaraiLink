@@ -1,3 +1,4 @@
+// React Query hooks for Scan Disease: supported crops, running the analysis, and loading a result.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import {
@@ -29,6 +30,7 @@ export function useSupportedCrops() {
   });
 }
 
+// Which step of the analysis is running: uploading the photo, or checking it.
 export type AnalysisStage = 'sending' | 'checking';
 
 /**
@@ -72,6 +74,7 @@ export function useRunDiseaseAnalysis() {
   return { ...mutation, stage, createdCaseId };
 }
 
+// The kinds of failure the processing screen explains differently.
 type FailureCause = 'photo' | 'offline' | 'unavailable' | 'other';
 
 /** Why a check failed, in the terms the farmer can act on (FA-07): a bad photo, no connection, or the service. */

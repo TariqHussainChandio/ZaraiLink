@@ -1,3 +1,4 @@
+// Bottom message bar with one optional action (like Undo), shown above the tab bar.
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -69,7 +70,9 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
   const [shown, setShown] = useState<Shown | null>(null);
   const lastId = useRef(0);
 
+  // Hides the snackbar.
   const dismiss = useCallback(() => setShown(null), []);
+  // Shows a message with an optional action at the given distance from the bottom.
   const showAbove = useCallback((clearance: number, message: string, action?: SnackbarAction) => {
     lastId.current += 1;
     setShown({ id: lastId.current, message, action, clearance });
@@ -128,6 +131,7 @@ export function useSnackbar(): SnackbarApi {
   );
 }
 
+// Theme-based styles for the snackbar.
 function makeStyles({ colors, components, size, shadows, typography, space }: Theme) {
   const { snackbar } = components;
   return StyleSheet.create({

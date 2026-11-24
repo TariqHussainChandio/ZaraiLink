@@ -1,3 +1,4 @@
+// Chat message box: type text, attach up to four photos, and send.
 import { ImagePlus, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -16,6 +17,7 @@ export interface ChatInputProps {
 
 const MAX_PHOTOS = 4;
 
+// Message composer with photo previews and a send button.
 export function ChatInput({ onSend, sending = false }: ChatInputProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -26,15 +28,18 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
   const busy = sending || submitting;
   const empty = !value.trim() && images.length === 0;
 
+  // Opens the photo picker and adds the chosen photos, up to the limit.
   const pickImages = async () => {
     const assets = await pickPhotos({ selectionLimit: MAX_PHOTOS });
     if (assets.length > 0) setImages(current => [...current, ...assets].slice(0, MAX_PHOTOS));
   };
 
+  // Removes one photo from the message before it is sent.
   const removeImage = (uri: string | undefined) => {
     setImages(current => current.filter(image => image.uri !== uri));
   };
 
+  // Sends the text and photos, then clears the box; keeps them if sending fails.
   const submit = async () => {
     const trimmed = value.trim();
     if (!trimmed && images.length === 0) return;
@@ -102,6 +107,7 @@ export function ChatInput({ onSend, sending = false }: ChatInputProps) {
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, size, borders, components, typography }: Theme) {
   return StyleSheet.create({
     container: {

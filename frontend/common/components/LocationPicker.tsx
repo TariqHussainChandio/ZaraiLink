@@ -1,3 +1,4 @@
+// Province select plus city text field, used on profile and listing forms.
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { COUNTRY, PROVINCES } from '../constants/locations';
@@ -29,6 +30,7 @@ export function LocationPicker({
   labels,
   errors,
 }: LocationPickerProps) {
+  // Province options; keeps an old saved value visible even if it is not in the list.
   const options = useMemo<SelectOption[]>(() => {
     const listed = PROVINCES.map(name => ({ id: name, label: name }));
     // A value saved before this list existed ("Sind") still shows, instead of reading as nothing chosen.

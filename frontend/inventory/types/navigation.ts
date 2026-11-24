@@ -1,3 +1,4 @@
+// Inventory: route names, tabs and screen prop types of the inventory navigator.
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { StockOperation } from './inventory';
 
@@ -35,6 +36,7 @@ export const INVENTORY_ROUTES = {
   Reconciliation: 'InventoryReconciliation',
 } as const;
 
+// The params each inventory screen takes.
 export type InventoryStackParamList = {
   [INVENTORY_ROUTES.Dashboard]: undefined;
   [INVENTORY_ROUTES.Products]: undefined;
@@ -58,6 +60,7 @@ export type InventoryStackParamList = {
   [INVENTORY_ROUTES.Reconciliation]: undefined;
 };
 
+// The params of each tab.
 export type InventoryTabParamList = {
   [INVENTORY_TABS.Dashboard]: undefined;
   [INVENTORY_TABS.Products]: undefined;
@@ -66,6 +69,7 @@ export type InventoryTabParamList = {
   [INVENTORY_TABS.More]: undefined;
 };
 
+// Props type of an inventory screen, by route name.
 export type InventoryScreenProps<RouteName extends keyof InventoryStackParamList> = NativeStackScreenProps<
   InventoryStackParamList,
   RouteName

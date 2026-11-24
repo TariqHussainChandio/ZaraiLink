@@ -1,3 +1,4 @@
+// Profile photo with tap to view, and change it from the gallery.
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Avatar, PhotoViewer, Spinner, useSnackbar } from '../../components';
@@ -39,6 +40,7 @@ export function ProfilePhoto({ compact = false }: { compact?: boolean }) {
 
   if (!profile) return null;
 
+  // Asks first, picks a photo from the gallery, uploads it and saves it on the profile.
   const changePhoto = async () => {
     setViewing(false);
     if (!userId || !(await askToOpenGallery())) return;
@@ -86,6 +88,7 @@ export function ProfilePhoto({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// Builds the round photo styles for the given size.
 function makeStyles(side: number) {
   return StyleSheet.create({
     photo: { width: side, height: side, alignItems: 'center', justifyContent: 'center' },

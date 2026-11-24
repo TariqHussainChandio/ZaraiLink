@@ -18,10 +18,12 @@ type BreadcrumbSink = (breadcrumb: ApiBreadcrumb) => void;
 
 let sink: BreadcrumbSink | null = null;
 
+// Sets (or clears) where API breadcrumbs are sent.
 export function setBreadcrumbSink(next: BreadcrumbSink | null): void {
   sink = next;
 }
 
+// Sends one API breadcrumb to the sink, if one is set.
 export function addApiBreadcrumb(breadcrumb: ApiBreadcrumb): void {
   sink?.(breadcrumb);
 }

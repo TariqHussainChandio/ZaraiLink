@@ -1,3 +1,4 @@
+// Inventory: formatters for quantities, money, dates and stock status.
 import type { StatusOf } from '../../common/constants/status';
 
 // How the inventory system writes numbers and dates. Quantities can be fractional (kg of seed), so up to two decimals.
@@ -19,6 +20,7 @@ const DAY_MONTH = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'n
 // A report's days are UTC dates ("2026-10-11"), so they are written in UTC or a negative offset would show the day before.
 const REPORT_DAY = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
+// A quantity with its unit, such as "12.5 kg".
 export function formatQuantity(quantity: number, unit?: string): string {
   return unit ? `${QUANTITY.format(quantity)} ${unit}` : QUANTITY.format(quantity);
 }
@@ -34,11 +36,13 @@ export function formatNet(quantity: number): string {
   return `${quantity > 0 ? '+' : '−'}${QUANTITY.format(Math.abs(quantity))}`;
 }
 
+// An amount in rupees, with paisa only when there are any.
 export function formatMoney(amount: number): string {
   const paisa = Math.round(amount * 100) % 100 !== 0;
   return `Rs ${(paisa ? RUPEES_AND_PAISA : RUPEES).format(amount)}`;
 }
 
+// A timestamp as a short date and time in the phone's time zone.
 export function formatDateTime(iso: string): string {
   return DATE_TIME.format(new Date(iso));
 }

@@ -1,3 +1,4 @@
+// Tab bar render functions shared by every shell (normal, large for farmers, none).
 import type { BottomTabBarProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import type { LucideIcon } from 'lucide-react-native';
 import React from 'react';

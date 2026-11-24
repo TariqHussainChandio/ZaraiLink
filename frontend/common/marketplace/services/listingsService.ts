@@ -1,3 +1,4 @@
+// Listing API calls and listing photo uploads.
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { extensionFromMimeType } from '../../../utils/mimeExtension';
 import { apiFetch } from '../../../services/api/client';
@@ -12,6 +13,7 @@ import type {
 } from '../types/marketplace';
 import type { Role } from '../../constants/roles';
 
+// Filters for the listings list.
 export interface FetchListingsParams {
   categoryId?: string;
   search?: string;
@@ -24,6 +26,7 @@ export interface FetchListingsParams {
   ownerId?: string;
 }
 
+// Fetches the listings that match the filters.
 export async function fetchListings({
   categoryId,
   search,
@@ -50,6 +53,7 @@ export async function fetchListings({
   });
 }
 
+// Fetches one listing by id.
 export async function fetchListingById(
   id: string,
 ): Promise<ListingWithRelations> {
@@ -61,10 +65,12 @@ export async function fetchListingFilterOptions(): Promise<ListingFilterOptions>
   return apiFetch('/api/v1/marketplace/listings/filter-options');
 }
 
+// Fetches all categories.
 export async function fetchCategories(): Promise<Category[]> {
   return apiFetch('/api/v1/marketplace/categories');
 }
 
+// Inputs for creating or editing a category.
 export interface CategoryInput {
   name: string;
   slug: string;
@@ -80,6 +86,7 @@ export async function createCategory(input: CategoryInput): Promise<Category> {
   });
 }
 
+// Updates a category (admin).
 export async function updateCategory(
   id: string,
   input: Partial<CategoryInput>,
@@ -90,14 +97,17 @@ export async function updateCategory(
   });
 }
 
+// Deletes a category (admin).
 export async function deleteCategory(id: string): Promise<void> {
   await apiFetch(`/api/v1/marketplace/categories/${id}`, { method: 'DELETE' });
 }
 
+// Fetches all crops.
 export async function fetchCrops(): Promise<Crop[]> {
   return apiFetch('/api/v1/marketplace/crops');
 }
 
+// Inputs for creating or editing a listing.
 export interface ListingInput {
   title: string;
   description: string;
@@ -116,6 +126,7 @@ export interface ListingInput {
   inventoryProductId?: string | null;
 }
 
+// Converts form input to the API's field names, sending only the given fields.
 function toApiListing(input: Partial<ListingInput>) {
   return {
     ...(input.title !== undefined && { title: input.title }),
@@ -147,6 +158,7 @@ export async function createListing(input: ListingInput): Promise<Listing> {
   });
 }
 
+// Updates a listing.
 export async function updateListing(
   id: string,
   input: Partial<ListingInput>,
@@ -157,6 +169,7 @@ export async function updateListing(
   });
 }
 
+// Deletes a listing.
 export async function deleteListing(id: string): Promise<void> {
   await apiFetch(`/api/v1/marketplace/listings/${id}`, { method: 'DELETE' });
 }
@@ -177,6 +190,7 @@ export async function updateListingStatus(
   });
 }
 
+// Fetches all listings for admin moderation.
 export async function fetchAllListingsForModeration(): Promise<
   ListingWithRelations[]
 > {
@@ -202,6 +216,7 @@ export async function fetchListingViewCounts(
   });
 }
 
+// Uploads listing photos to storage and returns their URLs.
 export async function uploadListingImages(
   userId: string,
   images: PickedPhoto[],

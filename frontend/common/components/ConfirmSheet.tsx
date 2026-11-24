@@ -1,3 +1,4 @@
+// Bottom sheet that confirms a destructive or important action, optionally asking for a reason.
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { type Theme, useTheme } from '../../theme';
@@ -77,10 +78,12 @@ export function ConfirmSheet({
   // Only once something is typed, or an attempt was made: a fresh sheet does not open already scolding.
   const shortMessage = tooShort && text.length > 0 ? `Write at least ${needed} characters` : undefined;
 
+  // Closes the sheet unless the action is still running.
   const dismiss = () => {
     if (!pending) onClose();
   };
 
+  // Runs the confirmed action, showing progress and any failure inside the sheet.
   const confirm = async () => {
     setPending(true);
     setFailure(null);
@@ -148,6 +151,7 @@ export function ConfirmSheet({
   );
 }
 
+// Theme-based styles for the confirm sheet.
 function makeStyles({ colors, space, size, typography }: Theme) {
   return StyleSheet.create({
     body: { gap: space[4] },

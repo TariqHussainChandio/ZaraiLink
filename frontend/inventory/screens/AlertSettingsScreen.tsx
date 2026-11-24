@@ -1,3 +1,4 @@
+// Inventory: screen for the dealer's stock alert settings.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Switch, Text, View } from 'react-native';
 import { Banner, Button, Card, ScreenState, TextField, useToast } from '../../common/components';
@@ -15,6 +16,7 @@ interface ToggleProps {
   onChange: (value: boolean) => void;
 }
 
+// A labelled on/off switch row for one setting.
 function Toggle({ label, description, value, onChange }: ToggleProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
@@ -71,6 +73,7 @@ export function AlertSettingsScreen({ navigation }: InventoryScreenProps<typeof 
     );
   }
 
+  // Checks the threshold, saves the settings and shows the result.
   const onSave = async () => {
     setFormError(null);
     const parsed = optionalNumber.safeParse(threshold);

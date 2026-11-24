@@ -57,10 +57,12 @@ async def _make_default(user: AuthenticatedUser, location_id: str) -> dict:
     return await get_location(user, location_id)
 
 
+# Lists the dealer's locations, inactive ones too unless asked not to.
 async def list_locations(user: AuthenticatedUser, include_inactive: bool = True) -> list[dict]:
     return await repo.list_active_or_all(user.access_token, LOCATIONS, include_inactive)
 
 
+# Returns one location, or 404.
 async def get_location(user: AuthenticatedUser, location_id: str) -> dict:
     location = await repo.fetch_row(user.access_token, LOCATIONS, location_id)
     if location is None:
@@ -73,6 +75,7 @@ async def get_location(user: AuthenticatedUser, location_id: str) -> dict:
 INACTIVE_DEFAULT = "The default location must be active"
 
 
+# Creates a location; the first one, or one asked for, becomes the default.
 async def create_location(user: AuthenticatedUser, fields: dict) -> dict:
     wants_default = bool(fields.pop("is_default", False))
     # The dealer's first location is the default whatever they asked: dispatch needs one (D8).
@@ -87,6 +90,7 @@ async def create_location(user: AuthenticatedUser, fields: dict) -> dict:
     return await _make_default(user, location["id"]) if wants_default else location
 
 
+# Updates a location, and moves the default to it when asked.
 async def update_location(user: AuthenticatedUser, location_id: str, fields: dict) -> dict:
     current = await get_location(user, location_id)
     if current["is_default"] and (fields.get("is_default") is False or fields.get("is_active") is False):
@@ -108,6 +112,7 @@ async def delete_location(user: AuthenticatedUser, location_id: str) -> None:
     await repo.delete_or_deactivate(user.access_token, LOCATIONS, location_id)
 
 
+# Lists stock levels, optionally for one product or one location.
 async def list_stock(user: AuthenticatedUser, product_id: str | None, location_id: str | None) -> list[dict]:
     return await repo.fetch_stock(user.access_token, product_id, location_id)
 
@@ -129,6 +134,7 @@ async def transfer(user: AuthenticatedUser, fields: dict) -> list[dict]:
 # --- routes -----------------------------------------------------------------------------------------------------------
 
 
+# GET: stock levels by product and location.
 @router.get("/stock", response_model=list[StockLevel])
 async def get_stock(
     product_id: str | None = None,
@@ -139,6 +145,7 @@ async def get_stock(
     return page.finish(await list_stock(user, product_id, location_id))
 
 
+# POST: moves stock between two locations (once per Idempotency-Key).
 @router.post("/stock/transfer", response_model=list[Movement], status_code=201)
 async def post_transfer(
     request: TransferInput,
@@ -149,6 +156,7 @@ async def post_transfer(
     return await run_once(user, key, "inventory.transfer", request, 201, lambda: transfer(user, request.model_dump()))
 
 
+# GET: the dealer's locations.
 @router.get("/locations", response_model=list[Location])
 async def get_locations(
     include_inactive: bool = True, user: AuthenticatedUser = Depends(require_dealer), page: Page = Depends(paginate)
@@ -156,16 +164,19 @@ async def get_locations(
     return page.finish(await list_locations(user, include_inactive))
 
 
+# POST: creates a location.
 @router.post("/locations", response_model=Location, status_code=201)
 async def post_location(request: LocationInput, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await create_location(user, request.model_dump())
 
 
+# GET: one location.
 @router.get("/locations/{location_id}", response_model=Location)
 async def get_one_location(location_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await get_location(user, location_id)
 
 
+# PATCH: updates a location.
 @router.patch("/locations/{location_id}", response_model=Location)
 async def patch_location(
     location_id: str, request: LocationUpdateInput, user: AuthenticatedUser = Depends(require_dealer)
@@ -173,6 +184,7 @@ async def patch_location(
     return await update_location(user, location_id, request.model_dump(exclude_unset=True))
 
 
+# DELETE: removes or deactivates a location.
 @router.delete("/locations/{location_id}", status_code=204)
 async def remove_location(location_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> None:
     await delete_location(user, location_id)

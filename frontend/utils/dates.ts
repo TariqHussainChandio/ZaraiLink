@@ -24,11 +24,13 @@ export interface DateOptions {
 /** Shown in place of a date the app could not read: never "Invalid Date". */
 export const UNKNOWN_DATE = '—';
 
+// Turns a date, string or timestamp into a Date, or null when it is not a valid date.
 function toDate(value: DateInput): Date | null {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+// Splits a date into named parts (year, month, day, hour...) for the given time zone.
 function parts(date: Date, options: Intl.DateTimeFormatOptions, timeZone?: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const part of new Intl.DateTimeFormat(LOCALE, { ...options, timeZone }).formatToParts(date)) {

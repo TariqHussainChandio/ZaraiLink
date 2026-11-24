@@ -1,3 +1,4 @@
+// List of verified experts, optionally filtered by specialisation.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -30,6 +31,7 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
     }, [refetch]),
   );
 
+  // Clears the specialisation filter.
   const showEveryone = () => navigation.setParams({ specialization: undefined });
   const filterName = specialization ? sentenceCase(SPECIALIZATION_LABELS[specialization]) : null;
 
@@ -82,6 +84,7 @@ export function ExpertListScreen({ route, navigation }: ConsultationsScreenProps
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     list: { flex: 1 },

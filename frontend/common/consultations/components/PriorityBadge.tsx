@@ -1,3 +1,4 @@
+// Badge showing a consultation's priority with a flag icon.
 import { Flag } from 'lucide-react-native';
 import React from 'react';
 import { Badge } from '../../components';
@@ -12,6 +13,7 @@ const PRIORITY: Record<ConsultationPriority, { label: string; tone: ToneKey }> =
   low: { label: 'Low priority', tone: 'neutral' },
 };
 
+// Returns the readable label of a priority.
 export function priorityLabel(priority: ConsultationPriority): string {
   return PRIORITY[priority].label;
 }

@@ -1,8 +1,10 @@
+// Inventory: report period presets and the dates each one covers.
 import type { ReportRange } from '../types/inventory';
 
 /** The periods a dealer picks a report by: rolling days, or a calendar month. */
 export type RangePreset = '7' | '30' | '90' | 'this-month' | 'last-month';
 
+// The preset choices shown to the dealer.
 export const RANGE_PRESETS: { value: RangePreset; label: string }[] = [
   { value: '7', label: '7 days' },
   { value: '30', label: '30 days' },
@@ -13,6 +15,7 @@ export const RANGE_PRESETS: { value: RangePreset; label: string }[] = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// A time in milliseconds as a UTC day (YYYY-MM-DD).
 function isoDay(epochMs: number): string {
   return new Date(epochMs).toISOString().slice(0, 10);
 }

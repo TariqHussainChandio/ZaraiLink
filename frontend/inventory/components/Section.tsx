@@ -1,3 +1,4 @@
+// Inventory: titled block of a screen with an optional action link.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../common/components';
@@ -28,6 +29,7 @@ export function Section({ title, actionLabel, onAction, children }: SectionProps
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     section: { gap: space[2] },

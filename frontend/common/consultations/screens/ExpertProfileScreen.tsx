@@ -1,3 +1,4 @@
+// Expert profile: details, reviews and a button to request a consultation.
 import { MessageSquarePlus, UserX } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -9,6 +10,7 @@ import { useTheme, type Theme } from '../../../theme';
 import type { ConsultationsScreenProps } from '../../../navigation/stacks/ConsultationsNavigator';
 import { SPECIALIZATION_LABELS } from '../../constants/labels';
 
+// Shows one expert's profile and lets the user ask them for help.
 export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenProps<'ExpertProfile'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -105,6 +107,7 @@ export function ExpertProfileScreen({ route, navigation }: ConsultationsScreenPr
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     header: {

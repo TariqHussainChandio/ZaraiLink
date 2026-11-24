@@ -1,3 +1,4 @@
+// A settings row with a label, description and an on/off switch.
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { type Theme, useRoleAccent, useTheme } from '../../theme';
@@ -51,6 +52,7 @@ export function SwitchRow({ label, description, value, onValueChange, disabled =
   );
 }
 
+// Theme-based styles for the switch row.
 function makeStyles({ colors, space, size, typography }: Theme) {
   return StyleSheet.create({
     row: {

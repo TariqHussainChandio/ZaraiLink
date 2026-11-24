@@ -1,3 +1,5 @@
+"""Admin request and response models for the admin API."""
+
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -11,6 +13,7 @@ ReportStatus = Literal["open", "investigating", "resolved", "dismissed"]
 AccountStatus = Literal["pending", "approved", "rejected"]
 
 
+# A user profile as the admin sees it.
 class Profile(BaseModel):
     id: str
     role: Role
@@ -31,6 +34,7 @@ class Profile(BaseModel):
     updated_at: str
 
 
+# Platform totals for the dashboard.
 class PlatformStats(BaseModel):
     total_users: int
     users_by_role: dict[str, int]
@@ -38,19 +42,23 @@ class PlatformStats(BaseModel):
     total_orders: int
 
 
+# Body to suspend or reactivate a user.
 class SuspendUserRequest(BaseModel):
     is_suspended: bool
 
 
+# Body to change a user's role (never to admin).
 class UpdateUserRoleRequest(BaseModel):
     role: AssignableRole
 
 
+# The person who filed a report.
 class ReporterRef(BaseModel):
     id: str
     full_name: str
 
 
+# An abuse report.
 class Report(BaseModel):
     id: str
     reporter_id: str
@@ -64,14 +72,17 @@ class Report(BaseModel):
     created_at: str
 
 
+# A report with its reporter.
 class ReportWithReporter(Report):
     reporter: ReporterRef | None = None
 
 
+# Body to resolve or dismiss a report, with optional notes.
 class ResolveReportRequest(BaseModel):
     notes: str | None = None
 
 
+# The person who did an audited action.
 class ActorRef(BaseModel):
     id: str
     full_name: str
@@ -91,6 +102,7 @@ class AuditEventNameEntry(BaseModel):
     label: str
 
 
+# One audit-log row with its actor and readable label.
 class AuditLogEntryWithActor(BaseModel):
     id: str
     actor_id: str | None
@@ -124,6 +136,7 @@ class DecideAccountRequest(BaseModel):
     status: Literal["approved", "rejected"]
     reason: str | None = Field(default=None, max_length=1000)
 
+    # Refuses a rejection without a reason of at least 10 characters.
     @model_validator(mode="after")
     def _rejection_has_reason(self) -> "DecideAccountRequest":
         if self.status == "rejected" and len((self.reason or "").strip()) < 10:
@@ -182,6 +195,7 @@ class AiActivity(BaseModel):
     days: list[AiActivityDay]
 
 
+# One disease knowledge entry and its review status.
 class DiseaseKnowledgeEntry(BaseModel):
     class_label: str
     crop: str
@@ -208,6 +222,7 @@ class DiseaseKnowledgeUpdate(BaseModel):
     precautions: list[str] | None = Field(default=None, max_length=30)
     advisory: str | None = Field(default=None, min_length=1, max_length=4000)
 
+    # Refuses blank crop, disease or advisory text.
     @model_validator(mode="after")
     def _no_blank_text(self) -> "DiseaseKnowledgeUpdate":
         # The table's checks reject a blank crop, disease or advisory; saying so here gives a 422 instead of a 500.

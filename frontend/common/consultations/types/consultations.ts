@@ -1,7 +1,9 @@
+// Consultation types: the AI case summary and expert assessments.
 import type { ConsultationWithRelations } from '../../../expert';
 
 // Mirrors the A6 contract (`AiCaseSummary`, `DiseaseReport`, `ConsultationAssessment` in backend/openapi.json).
 
+// How sure the AI was, and whether its disease text has been reviewed.
 type ConfidenceBand = 'confident' | 'low';
 type KnowledgeReviewStatus = 'pending_review' | 'reviewed';
 
@@ -24,6 +26,7 @@ interface DiseaseReport {
   created_at: string;
 }
 
+// The AI case shown with a consultation: its report and photo.
 export interface AiCaseSummary {
   case_id: string;
   /** Signed and short-lived; null when the photo could not be signed. */
@@ -36,6 +39,7 @@ export interface ConsultationDetail extends ConsultationWithRelations {
   ai_report?: AiCaseSummary | null;
 }
 
+// The verdicts an expert can give on the AI result.
 export type AssessmentVerdict = 'agree' | 'correct' | 'additional_diagnosis' | 'request_information';
 
 /** The Expert Assessment (SRDS §35): stored apart from the AI report, append-only, always shown as the expert's. */
@@ -49,6 +53,7 @@ export interface ConsultationAssessment {
   created_at: string;
 }
 
+// Inputs for adding an expert assessment.
 export interface ConsultationAssessmentInput {
   verdict: AssessmentVerdict;
   diagnosis?: string | null;

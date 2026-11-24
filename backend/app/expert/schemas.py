@@ -1,9 +1,12 @@
+"""Request and response models for the expert API."""
+
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 from app.common.schemas import ApplicationDocument, Location
 
+# The allowed specialisations and verification statuses.
 Specialization = Literal[
     "crop_management",
     "plant_diseases",
@@ -17,6 +20,7 @@ Specialization = Literal[
 VerificationStatus = Literal["pending", "approved", "rejected", "suspended"]
 
 
+# Body for creating or editing an expert's professional profile.
 class ExpertProfileInput(BaseModel):
     qualifications: str
     degree: str
@@ -51,16 +55,19 @@ class ReviewVerificationRequest(BaseModel):
 # ---- response models (P7 7A)
 
 
+# An expert's name and photo, joined in from their profile.
 class ExpertProfileRef(BaseModel):
     id: str
     full_name: str
     avatar_url: str | None = None
 
 
+# One specialisation of an expert.
 class ExpertSpecializationRef(BaseModel):
     specialization: Specialization
 
 
+# One admin review record of an expert application.
 class ExpertVerification(BaseModel):
     id: str
     notes: str | None = None
@@ -70,6 +77,7 @@ class ExpertVerification(BaseModel):
     document_url: str | None = None
 
 
+# An expert as the public API returns them.
 class Expert(BaseModel):
     id: str
     qualifications: str | None = None

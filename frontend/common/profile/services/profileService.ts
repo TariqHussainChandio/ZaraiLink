@@ -1,3 +1,4 @@
+// Profile calls: update profile, upload photo, change password and delete account.
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { extensionFromMimeType } from '../../../utils/mimeExtension';
 import { apiFetch } from '../../../services/api/client';

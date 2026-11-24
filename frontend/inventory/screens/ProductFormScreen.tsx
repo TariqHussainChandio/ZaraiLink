@@ -1,3 +1,4 @@
+// Inventory: form to add or edit a product.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -12,8 +13,10 @@ import { inventoryErrorMessage } from '../hooks/errors';
 import { useProduct, useRemoveProduct, useSaveProduct } from '../hooks/inventory';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
 
+// Message for text that is too long.
 const tooLong = (max: number) => `Use at most ${max} characters`;
 
+// Validation rules for the form.
 const schema = z.object({
   name: z.string().trim().min(1, 'Enter the product name').max(TEXT_LIMITS.name, tooLong(TEXT_LIMITS.name)),
   sku: z.string().trim().min(1, 'Enter a SKU or code for this product').max(TEXT_LIMITS.name, tooLong(TEXT_LIMITS.name)),
@@ -30,6 +33,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+// Active or inactive choices.
 const STATUS_OPTIONS = [
   { id: 'active', label: 'Active' },
   { id: 'inactive', label: 'Inactive (hidden from operations)' },
@@ -75,6 +79,7 @@ export function ProductFormScreen({ route, navigation }: InventoryScreenProps<ty
     });
   }, [product, reset]);
 
+  // Saves the product (create or update) and goes back.
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
     const input = {
@@ -96,6 +101,7 @@ export function ProductFormScreen({ route, navigation }: InventoryScreenProps<ty
     }
   };
 
+  // Removes the product after the dealer confirms.
   const onRemove = async () => {
     if (!productId) return;
     setFormError(null);

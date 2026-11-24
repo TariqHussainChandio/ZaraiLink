@@ -1,3 +1,4 @@
+// React Query setup: the client, retry rules, offline cache on disk and network detection.
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
@@ -20,6 +21,7 @@ export function shouldRetry(failureCount: number, error: unknown): boolean {
   return false;
 }
 
+// Creates the React Query client with the app's default cache and retry settings.
 function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
@@ -35,6 +37,7 @@ function createQueryClient(): QueryClient {
   });
 }
 
+// The one React Query client the whole app shares.
 export const queryClient = createQueryClient();
 
 /**
@@ -47,6 +50,7 @@ export const queryClient = createQueryClient();
  */
 const PERSISTED_ROOTS = new Set<unknown>(['marketplace', 'inventory']);
 
+// True when a query should be saved to disk: only successful public or inventory reads.
 export function shouldPersist(query: Query): boolean {
   return query.state.status === 'success' && PERSISTED_ROOTS.has(query.queryKey[0]);
 }
@@ -81,10 +85,12 @@ async function claimCache(userId: string): Promise<void> {
   await AsyncStorage.setItem(CACHE_OWNER_KEY, userId);
 }
 
+// Logs a failure to clear the saved cache without crashing.
 function reportWipeFailure(err: unknown): void {
   logger.warn('queryClient: could not wipe the persisted cache', err);
 }
 
+// Settings for saving the query cache to the device (storage, max age, version).
 export const persistOptions: PersistQueryClientProviderProps['persistOptions'] = {
   persister,
   maxAge: 24 * HOUR,
@@ -130,12 +136,14 @@ export function connectQueryManagers(): () => void {
   // NetInfo is confirmed by reaching the backend before the app stops fetching, and re-checked until it clears.
   let retry: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
+  // Marks the app online or offline for React Query and the offline banner.
   const apply = (online: boolean) => {
     onlineManager.setOnline(online);
     // The offline banner follows the same answer: airplane mode shows it once the check fails, and it clears as soon
     // as the backend answers, before any screen's request has to succeed to say so.
     useNetworkStore.getState().setOffline(!online);
   };
+  // Checks the backend is reachable; if not, stays offline and checks again later.
   const confirm = () => {
     if (retry) clearTimeout(retry);
     retry = null;

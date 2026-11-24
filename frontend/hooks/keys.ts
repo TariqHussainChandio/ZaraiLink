@@ -1,3 +1,4 @@
+// All React Query cache keys, grouped by feature.
 import type { FetchListingsParams } from '../common/marketplace';
 
 /**

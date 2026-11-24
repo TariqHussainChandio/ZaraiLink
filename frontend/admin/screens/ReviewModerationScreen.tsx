@@ -1,3 +1,4 @@
+// Admin: product reviews, to hide them with a reason or restore them.
 import { useFocusEffect } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -37,6 +38,7 @@ export function ReviewModerationScreen() {
     }, [refetch]),
   );
 
+  // Hides (with a reason) or restores a review and shows the result.
   const run = async (id: string, hideReason: string | null) => {
     setFailure(null);
     try {
@@ -47,6 +49,7 @@ export function ReviewModerationScreen() {
     }
   };
 
+  // Checks the hide reason and hides the selected review.
   const confirmHide = async () => {
     if (!hiding) return;
     const trimmed = reason.trim();
@@ -144,6 +147,7 @@ export function ReviewModerationScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.ground },

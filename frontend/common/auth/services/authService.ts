@@ -1,3 +1,4 @@
+// Supabase Auth calls: sign-up, sign-in, sign-out and the email code flows.
 import { supabase } from '../../../services/supabase/client';
 import type { RegistrableRole } from '../../constants/roles';
 
@@ -26,6 +27,7 @@ export interface SignInInput {
   password: string;
 }
 
+// Creates the account; profile details go as metadata for handle_new_user().
 export async function signUp({ email, password, fullName, role, phone, country, province, city, street, village }: SignUpInput) {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -39,23 +41,27 @@ export async function signUp({ email, password, fullName, role, phone, country, 
   return data;
 }
 
+// Signs in with email and password.
 export async function signIn({ email, password }: SignInInput) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
 }
 
+// Signs the user out.
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
 
+// Checks the sign-up code from the email.
 export async function verifySignupOtp(email: string, token: string) {
   const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
   if (error) throw error;
   return data;
 }
 
+// Sends the sign-up code again.
 export async function resendSignupOtp(email: string) {
   const { error } = await supabase.auth.resend({ type: 'signup', email });
   if (error) throw error;
@@ -70,6 +76,7 @@ export async function resetPassword(email: string) {
   if (error) throw error;
 }
 
+// Checks the reset code, which starts a password-recovery session.
 export async function verifyRecoveryOtp(email: string, token: string) {
   const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
   if (error) throw error;

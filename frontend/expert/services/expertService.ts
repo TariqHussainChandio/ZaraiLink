@@ -1,3 +1,4 @@
+// API calls for experts: application and profile, directory, and admin review of applications.
 import { apiFetch } from '../../services/api/client';
 import type {
   Expert,
@@ -7,6 +8,7 @@ import type {
   VerificationStatus,
 } from '../types/expert';
 
+// What the expert profile form sends (camelCase, mapped to snake_case below).
 export interface ExpertProfileInput {
   qualifications: string;
   degree: string;
@@ -22,6 +24,7 @@ export interface ExpertProfileInput {
   institutionAffiliation?: string;
 }
 
+// Converts profile input to the API's snake_case body.
 function toApiProfile(input: ExpertProfileInput) {
   return {
     qualifications: input.qualifications,
@@ -47,10 +50,12 @@ export async function createExpertApplication(input: ExpertProfileInput): Promis
   return apiFetch('/api/v1/expert/application', { method: 'POST', body: toApiProfile(input) });
 }
 
+// Updates the caller's own expert profile.
 export async function updateExpertProfile(input: ExpertProfileInput): Promise<Expert> {
   return apiFetch('/api/v1/expert/application', { method: 'PATCH', body: toApiProfile(input) });
 }
 
+// Gets the caller's own expert profile, or null if they have not applied.
 export async function fetchExpertProfile(): Promise<ExpertWithProfile | null> {
   return apiFetch('/api/v1/expert/me');
 }
@@ -60,6 +65,7 @@ export async function fetchExpertById(expertId: string): Promise<ExpertWithProfi
   return apiFetch(`/api/v1/expert/${expertId}`);
 }
 
+// Filters for the expert directory.
 export interface FetchExpertsParams {
   specialization?: ExpertSpecialization;
 }
@@ -69,6 +75,7 @@ export async function fetchExperts({ specialization }: FetchExpertsParams = {}):
   return apiFetch('/api/v1/expert', { query: { specialization } });
 }
 
+// One uploaded application document, with its required-document type.
 interface ExpertApplicationDocument {
   id: string;
   required_document_id: string | null;

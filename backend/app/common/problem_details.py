@@ -23,11 +23,13 @@ from app.middleware.request_context import request_id_var
 logger = logging.getLogger(__name__)
 
 
+# One field error: where it is (loc) and what is wrong (msg).
 class FieldError(BaseModel):
     loc: list[str | int]
     msg: str
 
 
+# The RFC 9457 error body every API error uses.
 class ProblemDetail(BaseModel):
     type: str = "about:blank"
     title: str
@@ -38,6 +40,7 @@ class ProblemDetail(BaseModel):
     errors: list[FieldError] | None = None
 
 
+# Builds a JSON error response in the problem-details format.
 def problem_response(
     status_code: int,
     title: str,
@@ -63,6 +66,7 @@ def problem_response(
     )
 
 
+# Turns an HTTPException into a problem-details response.
 async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # Starlette's `add_exception_handler` types every handler as `Callable[[Request, Exception],
     # ...]` (a callback parameter is contravariant, so a handler can't be typed to accept only a
@@ -79,6 +83,7 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
     )
 
 
+# Turns a request validation error (422) into a problem-details response with field errors.
 async def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     exc = cast(RequestValidationError, exc)
     # The offending input is dropped on purpose: it can hold a password or a token, and `loc` and `msg` are what a
@@ -93,6 +98,7 @@ async def validation_exception_handler(request: Request, exc: Exception) -> JSON
     )
 
 
+# Turns a rate limit error into a 429 problem-details response.
 async def rate_limit_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     exc = cast(RateLimitExceeded, exc)
     return problem_response(
@@ -105,6 +111,7 @@ async def rate_limit_exception_handler(request: Request, exc: Exception) -> JSON
     )
 
 
+# Logs an unexpected error and returns a generic 500 response.
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # This is the last resort — anything that reaches here is a real bug, not an expected 4xx, so
     # it's logged with the full traceback (request-id-tagged, via the JSON formatter reading the
@@ -146,6 +153,7 @@ _DATABASE_ERRORS: dict[str, tuple[int, str]] = {
 }
 
 
+# Maps known database errors to clear API errors, others to a 500.
 async def database_error_handler(request: Request, exc: Exception) -> JSONResponse:
     exc = cast(APIError, exc)
     mapped = _DATABASE_ERRORS.get(str(exc.code))

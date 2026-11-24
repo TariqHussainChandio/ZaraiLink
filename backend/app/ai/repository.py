@@ -1,6 +1,9 @@
+"""Database and storage access for disease cases, predictions and the disease knowledge base."""
+
 from app.common.rows import as_rows, first_row, maybe_row
 from app.database.supabase_client import get_service_role_client, get_user_scoped_client
 
+# Columns for a case read: the case, its crop and its predictions.
 _CASE_WITH_PREDICTION = "*, crop:crops(id,name), prediction:disease_predictions(*)"
 
 # The writes, the storage calls and the single-case read for prediction use the service-role client, not the
@@ -11,6 +14,7 @@ _CASE_WITH_PREDICTION = "*, crop:crops(id,name), prediction:disease_predictions(
 # service layer never lets an unowned storage_path reach either of them.
 
 
+# Gets one disease case by id (service role; the service checks ownership).
 async def get_disease_case(disease_case_id: str) -> dict | None:
     response = (
         await get_service_role_client().table("disease_cases").select("*").eq("id", disease_case_id).limit(1).execute()
@@ -19,6 +23,7 @@ async def get_disease_case(disease_case_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
+# Inserts a new disease case for the user's uploaded photo.
 async def create_case(user_id: str, crop_id: str | None, storage_path: str) -> dict:
     response = await (
         get_service_role_client()
@@ -49,6 +54,7 @@ async def download_case_image(storage_path: str) -> bytes:
     return bytes(data)
 
 
+# Stores one model prediction for a case.
 async def insert_prediction(
     disease_case_id: str,
     predicted_disease: str,
@@ -107,6 +113,7 @@ async def get_knowledge(class_label: str) -> dict | None:
 # from the database's own rule.
 
 
+# Gets a case with crop and predictions, as the caller (RLS decides access).
 async def get_case_with_prediction_as_user(access_token: str, disease_case_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -115,6 +122,7 @@ async def get_case_with_prediction_as_user(access_token: str, disease_case_id: s
     return maybe_row(response)
 
 
+# Lists every disease knowledge row, sorted by crop and disease.
 async def list_knowledge_as_user(access_token: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await client.table("disease_knowledge").select("*").order("crop").order("disease").execute()

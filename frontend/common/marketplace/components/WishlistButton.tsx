@@ -1,3 +1,4 @@
+// Heart button that adds a listing to, or removes it from, the buyer's wishlist.
 import { Heart } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
@@ -47,6 +48,7 @@ export function WishlistButton({ listing }: { listing: ListingWithRelations }) {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, size, radius, shadows }: Theme) {
   return StyleSheet.create({
     // A paper disc, so the heart reads on any photo.

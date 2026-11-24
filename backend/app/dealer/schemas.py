@@ -1,3 +1,5 @@
+"""Dealer request and response models: legacy inventory, stores, suppliers, dealer application."""
+
 from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
@@ -29,6 +31,7 @@ _Text = Annotated[str, Field(max_length=TEXT_MAX)]
 _Place = Annotated[str, Field(max_length=100)]  # the dealer application's country, province and city cap
 
 
+# Body to create a legacy inventory item.
 class InventoryInput(BaseModel):
     listing_id: str | None
     stock_quantity: WholeStock
@@ -38,6 +41,7 @@ class InventoryInput(BaseModel):
     min_stock_threshold: WholeStock
 
 
+# Body to update a legacy inventory item; every field is optional.
 class InventoryUpdateInput(BaseModel):
     listing_id: str | None = None
     unit: _Unit | None = None
@@ -58,6 +62,7 @@ class AdjustStockRequest(BaseModel):
     quantity: WholeStock
     notes: _Text | None = None
 
+    # Refuses a zero or negative quantity for a change-type adjustment.
     @model_validator(mode="after")
     def _positive_change(self) -> Self:
         if self.type in CHANGE_TYPES and self.quantity <= 0:
@@ -65,6 +70,7 @@ class AdjustStockRequest(BaseModel):
         return self
 
 
+# Body to create a store (an inventory location).
 class StoreInput(BaseModel):
     name: _Name
     address: _Address | None = None
@@ -76,6 +82,7 @@ class StoreInput(BaseModel):
     city: _Place | None = None
 
 
+# Body to update a store; every field is optional.
 class StoreUpdateInput(BaseModel):
     name: _Name | None = None
     address: _Address | None = None
@@ -87,6 +94,7 @@ class StoreUpdateInput(BaseModel):
     city: _Place | None = None
 
 
+# Body to create a supplier.
 class SupplierInput(BaseModel):
     name: _Name
     contact: _Contact | None = None
@@ -95,6 +103,7 @@ class SupplierInput(BaseModel):
     status: DealerEntityStatus = "active"
 
 
+# Body to update a supplier; every field is optional.
 class SupplierUpdateInput(BaseModel):
     name: _Name | None = None
     contact: _Contact | None = None
@@ -106,11 +115,13 @@ class SupplierUpdateInput(BaseModel):
 # ---- response models (P7 7A): shapes proven against the real API, see tests/integration/smoke/test_smoke_contract.py
 
 
+# The id and title of a linked marketplace listing.
 class ListingSummary(BaseModel):
     id: str
     title: str
 
 
+# A legacy inventory item as the API returns it.
 class InventoryItem(BaseModel):
     id: str
     dealer_id: str
@@ -130,6 +141,7 @@ class InventoryItemWithListing(InventoryItem):
     listing: ListingSummary | None = None
 
 
+# One stock change of a legacy inventory item.
 class InventoryTransaction(BaseModel):
     id: str
     inventory_id: str
@@ -140,6 +152,7 @@ class InventoryTransaction(BaseModel):
     created_at: str
 
 
+# A store as the legacy API returns it.
 class DealerStore(BaseModel):
     id: str
     dealer_id: str
@@ -153,6 +166,7 @@ class DealerStore(BaseModel):
     updated_at: str
 
 
+# A supplier as the legacy API returns it.
 class Supplier(BaseModel):
     id: str
     dealer_id: str
@@ -183,6 +197,7 @@ class DealerApplicationInput(BaseModel):
     city: str = Field(min_length=2, max_length=100)
 
 
+# A dealer's saved business details, with the row's ids.
 class DealerProfile(DealerApplicationInput):
     id: str
     created_at: str
@@ -201,6 +216,7 @@ class DealerApplicant(BaseModel):
     created_at: str
 
 
+# A dealer application as an admin reviews it: account plus business details.
 class DealerApplicationForAdmin(DealerApplicant):
     dealer_profile: DealerProfile | None = None
     dealer_documents: list[ApplicationDocument] = []

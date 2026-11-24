@@ -1,3 +1,4 @@
+// List of the user's consultations, split into active and past.
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -13,6 +14,7 @@ import { useTheme, type Theme } from '../../../theme';
 
 /** Which half of the list is shown; a dashboard figure opens the half it counts (`show` route param, D20). */
 export type ConsultationListShow = 'active' | 'resolved';
+// The two tabs: active or past consultations.
 type Show = ConsultationListShow;
 
 const SHOW_OPTIONS: { value: Show; label: string }[] = [
@@ -44,6 +46,7 @@ export function ConsultationListScreen() {
   const query = useConsultations(isExpert, !!userId);
   const { refetch } = query;
   const consultations = useMemo(() => query.data ?? [], [query.data]);
+  // The consultations of the chosen tab.
   const shown = useMemo(
     () => consultations.filter(c => isActiveStatus(c.status) === (show === 'active')),
     [consultations, show],
@@ -100,6 +103,7 @@ export function ConsultationListScreen() {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     list: { flex: 1 },

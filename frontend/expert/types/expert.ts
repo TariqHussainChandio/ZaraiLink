@@ -1,7 +1,10 @@
+// Data types for experts, their verification records, and consultations, as the API returns them.
 import type { GeoLocation } from '../../common/types/referenceData';
 
+// Where an expert's application stands.
 export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 
+// The fields an expert can specialise in.
 export type ExpertSpecialization =
   | 'crop_management'
   | 'plant_diseases'
@@ -12,6 +15,7 @@ export type ExpertSpecialization =
   | 'crop_nutrition'
   | 'general_agriculture';
 
+// An expert's professional record.
 export interface Expert {
   id: string;
   qualifications: string | null;
@@ -28,11 +32,13 @@ export interface Expert {
   updated_at: string;
 }
 
+// An expert with their name, photo and specialisations joined in.
 export interface ExpertWithProfile extends Expert {
   profile: { id: string; full_name: string; avatar_url: string | null } | null;
   expert_specializations: { specialization: ExpertSpecialization }[];
 }
 
+// One admin review of an expert's application.
 export interface ExpertVerification {
   id: string;
   expert_id: string;
@@ -44,6 +50,7 @@ export interface ExpertVerification {
   created_at: string;
 }
 
+// The life cycle of a consultation request.
 export type ConsultationStatus =
   | 'requested'
   | 'accepted'
@@ -54,8 +61,10 @@ export type ConsultationStatus =
   | 'cancelled'
   | 'expired';
 
+// How urgent the person marked the request.
 export type ConsultationPriority = 'low' | 'medium' | 'high';
 
+// A request for advice from a farmer or buyer to an expert.
 export interface Consultation {
   id: string;
   user_id: string;
@@ -73,12 +82,14 @@ export interface Consultation {
   updated_at: string;
 }
 
+// A consultation with the requester, expert and crop joined in.
 export interface ConsultationWithRelations extends Consultation {
   user: { id: string; full_name: string; avatar_url: string | null } | null;
   expert: { id: string; full_name: string; avatar_url: string | null } | null;
   crop: { id: string; name: string } | null;
 }
 
+// One message inside a consultation chat.
 export interface ConsultationMessage {
   id: string;
   consultation_id: string;
@@ -89,6 +100,7 @@ export interface ConsultationMessage {
   created_at: string;
 }
 
+// A message with the product listing the expert recommended, if any.
 export interface ConsultationMessageWithListing extends ConsultationMessage {
   recommended_listing: { id: string; title: string; price: number; unit: string } | null;
 }

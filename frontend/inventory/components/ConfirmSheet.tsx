@@ -1,3 +1,4 @@
+// Inventory: bottom sheet that asks the dealer to confirm a change.
 import type { LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -56,6 +57,7 @@ export function ConfirmSheet({
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     body: { gap: space[3] },

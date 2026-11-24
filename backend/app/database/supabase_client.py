@@ -1,3 +1,5 @@
+"""Builds the Supabase clients: service role, public, per-user (RLS) and re-auth."""
+
 from functools import lru_cache
 
 import httpx._transports.default as _httpx_transport

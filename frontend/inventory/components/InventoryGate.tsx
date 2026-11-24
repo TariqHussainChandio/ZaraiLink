@@ -1,3 +1,4 @@
+// Inventory: gate that lets only approved dealers into the inventory system.
 import { LockKeyhole } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -50,6 +51,7 @@ export function InventoryGate({ onExit, children }: { onExit: () => void; childr
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.ground },

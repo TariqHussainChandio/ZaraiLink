@@ -1,3 +1,4 @@
+// Admin: the documents dealers and experts must upload when they apply.
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
@@ -67,6 +68,7 @@ export function RequiredDocumentsScreen() {
     .filter(d => d.role === role)
     .sort((a, b) => Number(b.active) - Number(a.active) || a.sort_order - b.sort_order);
 
+  // Opens the editor for a new document entry or an existing one.
   const openEditor = (document: RequiredDocument | 'new') => {
     setSelected(null);
     setLabel(document === 'new' ? '' : document.label);
@@ -77,6 +79,7 @@ export function RequiredDocumentsScreen() {
     setEditing(document);
   };
 
+  // Validates and saves the document entry being edited.
   const submitEditor = async () => {
     const trimmed = label.trim();
     if (trimmed.length < 2) {
@@ -101,6 +104,7 @@ export function RequiredDocumentsScreen() {
     }
   };
 
+  // Asks the admin to confirm retiring a document entry.
   const askRetire = (document: RequiredDocument) => {
     const retiring = document.active;
     setSelected(null);
@@ -201,6 +205,7 @@ export function RequiredDocumentsScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     intro: { ...typography.body, color: colors.ink2, marginBottom: space[3] },

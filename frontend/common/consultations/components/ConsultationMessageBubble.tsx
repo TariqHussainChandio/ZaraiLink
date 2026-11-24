@@ -1,3 +1,4 @@
+// Chat bubble for one consultation message, with photos or a recommended listing.
 import { ShoppingBag } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -6,6 +7,7 @@ import type { ConsultationMessageWithListing } from '../../../expert';
 import { formatTime } from '../../../utils/dates';
 import { formatRs } from '../../../utils/money';
 
+// Props for ConsultationMessageBubble.
 export interface ConsultationMessageBubbleProps {
   message: ConsultationMessageWithListing;
   isOwn: boolean;
@@ -18,6 +20,7 @@ export interface ConsultationMessageBubbleProps {
   onPressPhoto?: (index: number) => void;
 }
 
+// Joins a count with the singular or plural word, e.g. "1 photo", "3 photos".
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** One message in a consultation. The sender is written and spoken, not only shown by side and colour; the text is one
@@ -107,6 +110,7 @@ export function ConsultationMessageBubble({
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, radius, typography, fontWeight, size }: Theme, accent: Accent) {
   return StyleSheet.create({
     row: {

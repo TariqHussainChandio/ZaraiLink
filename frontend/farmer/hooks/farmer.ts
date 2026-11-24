@@ -1,3 +1,4 @@
+// React Query hooks for the farmer's farms and crops (read, create, update, delete).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createFarm,
@@ -13,6 +14,7 @@ import {
 } from '../services/farmService';
 import { queryKeys } from '../../hooks/keys';
 
+// Input shapes taken from the service functions.
 type FarmInput = Parameters<typeof createFarm>[0];
 type FarmCropInput = Parameters<typeof createFarmCrop>[1];
 
@@ -26,29 +28,35 @@ function useInvalidateFarmer() {
     ]);
 }
 
+// Loads the signed-in farmer's farms.
 export function useFarms(enabled: boolean) {
   return useQuery({ queryKey: queryKeys.farmer.farms(), queryFn: fetchFarms, enabled });
 }
 
+// Loads one farm by id.
 export function useFarm(id: string) {
   return useQuery({ queryKey: queryKeys.farmer.farm(id), queryFn: () => fetchFarmById(id) });
 }
 
+// Creates a farm, then refreshes farmer data.
 export function useCreateFarm() {
   const invalidate = useInvalidateFarmer();
   return useMutation({ mutationFn: (input: FarmInput) => createFarm(input), onSuccess: invalidate });
 }
 
+// Updates one farm, then refreshes farmer data.
 export function useUpdateFarm(id: string) {
   const invalidate = useInvalidateFarmer();
   return useMutation({ mutationFn: (input: Partial<FarmInput>) => updateFarm(id, input), onSuccess: invalidate });
 }
 
+// Deletes a farm, then refreshes farmer data.
 export function useDeleteFarm() {
   const invalidate = useInvalidateFarmer();
   return useMutation({ mutationFn: (id: string) => deleteFarm(id), onSuccess: invalidate });
 }
 
+// Loads the crops recorded on one farm.
 export function useFarmCrops(farmId: string) {
   return useQuery({ queryKey: queryKeys.farmer.crops(farmId), queryFn: () => fetchFarmCrops(farmId) });
 }
@@ -72,6 +80,7 @@ export function useSaveFarmCrop(farmId: string) {
   });
 }
 
+// Removes a crop from a farm, then refreshes farmer data.
 export function useDeleteFarmCrop() {
   const invalidate = useInvalidateFarmer();
   return useMutation({ mutationFn: (id: string) => deleteFarmCrop(id), onSuccess: invalidate });

@@ -1,3 +1,4 @@
+// Zustand store for the theme choice (light, dark or follow the phone), saved on the device.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -9,6 +10,7 @@ interface ThemeState {
   setMode: (mode: ThemeMode) => void;
 }
 
+// The saved theme mode and its setter.
 export const useThemeStore = create<ThemeState>()(
   persist(
     set => ({

@@ -1,3 +1,4 @@
+// Simple bar chart for dashboard figures, with a spoken summary.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { type Theme, useRoleAccent, useTheme } from '../../../theme';
@@ -31,6 +32,7 @@ export function summarizeBars(data: BarChartDatum[], formatValue?: (value: numbe
   return `${data.length} ${data.length === 1 ? 'bar' : 'bars'}. Highest: ${top.label}, ${shown}.`;
 }
 
+// Draws one bar per data point, scaled to the highest value.
 export function BarChart({ data, color, height, formatValue, emptyMessage = 'No data yet', accessibilityLabel }: BarChartProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
@@ -42,6 +44,7 @@ export function BarChart({ data, color, height, formatValue, emptyMessage = 'No 
 
   const barArea = height ?? theme.size.chartBars;
   const max = Math.max(1, ...data.map(d => d.value));
+  // Formats a value for display.
   const show = (value: number) => (formatValue ? formatValue(value) : String(value));
   const summary = accessibilityLabel ?? data.map(d => `${d.label} ${show(d.value)}`).join(', ');
 
@@ -75,6 +78,7 @@ export function BarChart({ data, color, height, formatValue, emptyMessage = 'No 
   );
 }
 
+// Theme-based styles for the chart.
 function makeStyles({ colors, space, radius, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'flex-end', gap: space[2] },

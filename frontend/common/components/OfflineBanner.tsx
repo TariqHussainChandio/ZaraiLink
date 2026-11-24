@@ -1,3 +1,4 @@
+// Banner shown while the phone is offline, and the frame that places it above the screens.
 import React, { useMemo } from 'react';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
@@ -53,6 +54,7 @@ export function OfflineFrame({ children }: { children: React.ReactNode }) {
 
 const frame = StyleSheet.create({ fill: { flex: 1 } });
 
+// Theme-based styles for the offline banner.
 function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     wrap: { paddingHorizontal: space[4], paddingBottom: space[2], backgroundColor: colors.ground },

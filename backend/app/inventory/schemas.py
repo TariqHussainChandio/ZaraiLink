@@ -14,9 +14,6 @@ from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Fie
 MovementSource = Literal[
     "ZARAILINK_ORDER", "LOCAL_SALE", "PURCHASE", "RESTOCK", "MANUAL_ADJUSTMENT", "DAMAGE", "EXPIRY", "TRANSFER", "OTHER"
 ]
-# The sources a dealer records by hand; orders, purchases and transfers have their own flows (record_movement refuses
-# them).
-ManualMovementSource = Literal["LOCAL_SALE", "RESTOCK", "MANUAL_ADJUSTMENT", "DAMAGE", "EXPIRY", "OTHER"]
 MovementDirection = Literal["in", "out"]
 LocationKind = Literal["shop", "godown", "shelf", "other"]
 PurchaseStatus = Literal["draft", "received", "cancelled"]
@@ -60,6 +57,7 @@ def _calendar_day(value: object) -> object:
     raise ValueError("Use a date written YYYY-MM-DD")
 
 
+# Refuses a day outside the range the API accepts.
 def _within_range(value: date) -> date:
     if not FIRST_DAY <= value <= LAST_DAY:
         raise ValueError(f"Use a date from {FIRST_DAY.isoformat()} to {LAST_DAY.isoformat()}")
@@ -97,6 +95,7 @@ EARLIEST_PURCHASE = date(2000, 1, 1)
 PURCHASE_LEAD = timedelta(days=365)
 
 
+# Refuses a purchase date too far in the past or the future.
 def _plausible_purchase_day(value: date) -> date:
     latest = datetime.now(UTC).date() + PURCHASE_LEAD
     if not EARLIEST_PURCHASE <= value <= latest:
@@ -111,6 +110,7 @@ PurchaseDay = Annotated[date, AfterValidator(_plausible_purchase_day)]
 PURCHASE_LINES_MAX = 200
 
 
+# A storage place (shop, godown, shelf) as the API returns it.
 class Location(BaseModel):
     id: str
     dealer_id: str
@@ -123,6 +123,7 @@ class Location(BaseModel):
     updated_at: str
 
 
+# Body to create a location.
 class LocationInput(BaseModel):
     name: Name
     kind: LocationKind = "shop"
@@ -131,6 +132,7 @@ class LocationInput(BaseModel):
     is_active: bool = True
 
 
+# A supplier as the API returns it.
 class Supplier(BaseModel):
     id: str
     dealer_id: str
@@ -143,6 +145,7 @@ class Supplier(BaseModel):
     updated_at: str
 
 
+# Body to create a supplier.
 class SupplierInput(BaseModel):
     name: Name
     contact: Contact | None = None
@@ -151,6 +154,7 @@ class SupplierInput(BaseModel):
     is_active: bool = True
 
 
+# A product in the dealer's own catalogue.
 class Product(BaseModel):
     id: str
     dealer_id: str
@@ -166,6 +170,7 @@ class Product(BaseModel):
     updated_at: str
 
 
+# Body to create a product.
 class ProductInput(BaseModel):
     sku: Name
     name: Name
@@ -177,6 +182,7 @@ class ProductInput(BaseModel):
     is_active: bool = True
 
 
+# The quantity of one product at one location.
 class StockLevel(BaseModel):
     product_id: str
     location_id: str
@@ -185,6 +191,7 @@ class StockLevel(BaseModel):
     updated_at: str
 
 
+# One line of the stock ledger.
 class Movement(BaseModel):
     id: str
     dealer_id: str
@@ -204,15 +211,7 @@ class Movement(BaseModel):
     created_at: str
 
 
-class MovementInput(BaseModel):
-    product_id: str
-    location_id: str
-    direction: MovementDirection
-    source: ManualMovementSource
-    quantity: Quantity
-    reason: Note | None = None
-
-
+# Body to move stock from one location to another.
 class TransferInput(BaseModel):
     product_id: str
     from_location_id: str
@@ -221,6 +220,7 @@ class TransferInput(BaseModel):
     reason: Note | None = None
 
 
+# One line of a purchase.
 class PurchaseItem(BaseModel):
     id: str
     purchase_id: str
@@ -232,6 +232,7 @@ class PurchaseItem(BaseModel):
     created_at: str
 
 
+# One line of a purchase as the dealer sends it.
 class PurchaseItemInput(BaseModel):
     product_id: str
     location_id: str
@@ -239,6 +240,7 @@ class PurchaseItemInput(BaseModel):
     unit_cost: Amount | None = None
 
 
+# A purchase with its lines.
 class Purchase(BaseModel):
     id: str
     dealer_id: str
@@ -253,6 +255,7 @@ class Purchase(BaseModel):
     items: list[PurchaseItem] = []
 
 
+# Body to create a draft purchase.
 class PurchaseInput(BaseModel):
     supplier_id: str | None = None
     reference: Reference | None = None
@@ -261,6 +264,7 @@ class PurchaseInput(BaseModel):
     items: Annotated[list[PurchaseItemInput], Field(max_length=PURCHASE_LINES_MAX)] = []
 
 
+# The dealer's alert settings.
 class AlertSettings(BaseModel):
     dealer_id: str
     default_reorder_threshold: float
@@ -270,12 +274,14 @@ class AlertSettings(BaseModel):
     updated_at: str | None = None
 
 
+# Body to save the alert settings.
 class AlertSettingsInput(BaseModel):
     default_reorder_threshold: Amount = 0
     notify_low_stock: bool = True
     notify_sync_failure: bool = True
 
 
+# One entry of the marketplace sync log.
 class SyncLogEntry(BaseModel):
     id: str
     dealer_id: str
@@ -310,6 +316,7 @@ class ReconciliationRow(BaseModel):
 # ---- B2 additions -------------------------------------------------------------------------------------------------
 
 
+# Body to update a location; every field is optional.
 class LocationUpdateInput(BaseModel):
     name: Name | None = None
     kind: LocationKind | None = None
@@ -318,6 +325,7 @@ class LocationUpdateInput(BaseModel):
     is_active: bool | None = None
 
 
+# Body to update a supplier; every field is optional.
 class SupplierUpdateInput(BaseModel):
     name: Name | None = None
     contact: Contact | None = None
@@ -326,6 +334,7 @@ class SupplierUpdateInput(BaseModel):
     is_active: bool | None = None
 
 
+# Body to update a product; every field is optional.
 class ProductUpdateInput(BaseModel):
     sku: Name | None = None
     name: Name | None = None
@@ -337,11 +346,13 @@ class ProductUpdateInput(BaseModel):
     is_active: bool | None = None
 
 
+# The id and title of a linked marketplace listing.
 class ListingSummary(BaseModel):
     id: str
     title: str
 
 
+# A product's quantity at one location.
 class ProductStock(BaseModel):
     location_id: str
     quantity: float
@@ -357,6 +368,7 @@ class ProductView(Product):
     listings: list[ListingSummary] = []
 
 
+# Body to link a marketplace listing to a product.
 class ListingLinkInput(BaseModel):
     listing_id: str
 
@@ -383,6 +395,7 @@ class StockOutInput(BaseModel):
     quantity: Quantity
     reason: Note | None = None
 
+    # Requires a reason for every stock-out except a local sale.
     @model_validator(mode="after")
     def _reason_when_required(self) -> Self:
         if self.source != "LOCAL_SALE" and not (self.reason and self.reason.strip()):
@@ -413,6 +426,7 @@ class PurchaseUpdateInput(BaseModel):
 StockAlertStatus = Literal["low_stock", "out_of_stock"]
 
 
+# One low or out-of-stock alert.
 class StockAlert(BaseModel):
     product_id: str
     sku: str
@@ -424,6 +438,7 @@ class StockAlert(BaseModel):
     status: StockAlertStatus
 
 
+# The headline figures of the dashboard.
 class DashboardTotals(BaseModel):
     products: int
     stock_units: float
@@ -433,6 +448,7 @@ class DashboardTotals(BaseModel):
     inventory_value: float
 
 
+# Units in and out on one day.
 class TrendPoint(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -454,6 +470,7 @@ class Dashboard(BaseModel):
     sync_failures: int
 
 
+# How many sync events a retry applied.
 class RetryResult(BaseModel):
     applied: int
 
@@ -482,6 +499,7 @@ class ReportPeriod(BaseModel):
     generated_at: str
 
 
+# One product's row of the stock summary report.
 class StockSummaryRow(BaseModel):
     product_id: str
     sku: str
@@ -495,11 +513,13 @@ class StockSummaryRow(BaseModel):
     period_out: float
 
 
+# The stock summary report.
 class StockSummaryReport(ReportPeriod):
     rows: list[StockSummaryRow]
     total_quantity: float
 
 
+# One product's row of the valuation report.
 class ValuationRow(BaseModel):
     product_id: str
     sku: str
@@ -513,6 +533,7 @@ class ValuationRow(BaseModel):
     period_out: float
 
 
+# The stock valuation report.
 class ValuationReport(ReportPeriod):
     rows: list[ValuationRow]
     total_value: float
@@ -520,6 +541,7 @@ class ValuationReport(ReportPeriod):
     products_without_cost: int
 
 
+# Units in and out for one movement source.
 class SourceTotal(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -530,10 +552,12 @@ class SourceTotal(BaseModel):
     movements: int
 
 
+# The movements-by-source report.
 class MovementsBySourceReport(ReportPeriod):
     rows: list[SourceTotal]
 
 
+# An alert row with the period's outflow and the days the stock will last.
 class LowStockRow(StockAlert):
     period_out: float
     daily_out: float
@@ -541,12 +565,14 @@ class LowStockRow(StockAlert):
     days_of_cover: float | None = None
 
 
+# The low and out-of-stock report.
 class LowOutOfStockReport(ReportPeriod):
     rows: list[LowStockRow]
     low_stock: int
     out_of_stock: int
 
 
+# One supplier's received purchases in the period.
 class SupplierPurchaseRow(BaseModel):
     supplier_id: str | None = None
     supplier_name: str
@@ -557,6 +583,7 @@ class SupplierPurchaseRow(BaseModel):
     lines_without_cost: int
 
 
+# The supplier purchases report.
 class SupplierPurchasesReport(ReportPeriod):
     rows: list[SupplierPurchaseRow]
     total_purchases: int
@@ -564,12 +591,14 @@ class SupplierPurchasesReport(ReportPeriod):
     total_cost: float
 
 
+# Marketplace and local sales on one day.
 class SalesDay(BaseModel):
     date: str
     marketplace: float
     local: float
 
 
+# One product's marketplace and local sales.
 class SalesProduct(BaseModel):
     product_id: str
     sku: str
@@ -588,6 +617,7 @@ class SalesSplitReport(ReportPeriod):
     local_total: float
 
 
+# A product with its units out, for the fast and slow movers.
 class MoverRow(BaseModel):
     product_id: str
     sku: str
@@ -596,6 +626,7 @@ class MoverRow(BaseModel):
     daily_out: float
 
 
+# A best-selling product with its units sold.
 class BestSellerRow(BaseModel):
     product_id: str
     sku: str
@@ -603,6 +634,7 @@ class BestSellerRow(BaseModel):
     quantity: float
 
 
+# The analytics report: trend, fast and slow movers, best sellers.
 class AnalyticsReport(ReportPeriod):
     trend: list[TrendPoint]
     fast_movers: list[MoverRow]
@@ -610,6 +642,7 @@ class AnalyticsReport(ReportPeriod):
     best_sellers: list[BestSellerRow]
 
 
+# A reconciliation row with the product's SKU and name.
 class ReconciliationReportRow(ReconciliationRow):
     sku: str
     name: str
@@ -623,6 +656,7 @@ class ReconciliationReport(BaseModel):
     rows: list[ReconciliationReportRow]
 
 
+# Body to export a report as a CSV file.
 class ExportInput(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -632,6 +666,7 @@ class ExportInput(BaseModel):
     to: Day | None = None
 
 
+# The signed download link of an export.
 class ExportResult(BaseModel):
     url: str
     expires_at: str

@@ -1,3 +1,4 @@
+// Inventory: quantity field with minus and plus buttons.
 import { Minus, Plus } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -15,6 +16,7 @@ export interface QuantityStepperProps {
   step?: number;
 }
 
+// Reads the typed text as a number, or 0 when it is not a number.
 function parse(value: string): number {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
@@ -28,6 +30,7 @@ export function QuantityStepper({ label, value, onChange, unit, error, step = 1 
   const styles = useMemo(() => makeStyles(theme, accent), [theme, accent]);
   const current = parse(value);
 
+  // Adds `delta` to the value, never below zero, rounded to two decimals.
   const change = (delta: number) => onChange(String(Math.max(0, Math.round((current + delta) * 100) / 100)));
 
   return (
@@ -65,6 +68,7 @@ export function QuantityStepper({ label, value, onChange, unit, error, step = 1 
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ space, size, radius, borders }: Theme, accent: Accent) {
   return StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'flex-start', gap: space[2] },

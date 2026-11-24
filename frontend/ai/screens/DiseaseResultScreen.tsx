@@ -1,3 +1,4 @@
+// Scan Disease result screen: the advisory AI report with an "Ask an expert" button (BR-13).
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { CircleAlert, ImageOff } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
@@ -19,6 +20,7 @@ import { useDiseaseCase } from '../hooks/disease';
 import { confidenceLevel, type ConfidenceLevel, type DiseaseCaseWithPrediction } from '../types/disease';
 import { navigateToConsultExpert } from './expertHandoff';
 
+// What the processing screen passes in: the case id and whether the crop matched.
 interface RouteParams {
   diseaseCaseId: string;
   /** From the predict answer: false when the model read the photo as another crop than the chosen one (D16). */
@@ -34,11 +36,13 @@ const CONFIDENCE_WORDS: Record<ConfidenceLevel, { badge: string; sentence: strin
   low: { badge: 'Not sure', sentence: 'The scan is not sure' },
 };
 
+// The style sheet type, passed down to the child components.
 type Styles = ReturnType<typeof makeStyles>;
 
 // Only ever reached by Farmer — Disease Advisory is farmer-only (like Inventory is
 // dealer-only), gated at the farmer home's "Is a crop sick?" card, so the expert action and the
 // marketplace tap-through can assume a farmer's nav tree.
+// Loads the case and shows the result, a loading skeleton, or an error.
 export function DiseaseResultScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -97,6 +101,7 @@ function ResultSkeleton({ styles }: { styles: Styles }) {
   );
 }
 
+// The result body: disclaimer, photo, disease name, confidence and the report lists.
 function ResultContent({
   diseaseCase,
   mismatch,
@@ -269,6 +274,7 @@ function ReportList({ title, items = [], styles }: { title: string; items?: stri
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, radius, typography, size }: Theme) {
   return StyleSheet.create({
     skeleton: { flex: 1, backgroundColor: colors.surface, padding: space[4], gap: space[2] },

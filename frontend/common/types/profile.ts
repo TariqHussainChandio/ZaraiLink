@@ -1,3 +1,4 @@
+// The Profile type: the signed-in user's role, name, contact details and account status.
 import type { Role } from '../constants/roles';
 
 /** A dealer's or expert's application (A3a; SRDS §8, §11, §13). Farmers and buyers are always `approved`. */

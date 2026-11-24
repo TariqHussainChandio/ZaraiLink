@@ -1,3 +1,5 @@
+"""Pydantic models shared by several modules: location, decisions and application documents."""
+
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -40,6 +42,7 @@ class RequiredDocument(BaseModel):
     sort_order: int
 
 
+# The required document a file was attached for.
 class RequiredDocumentRef(BaseModel):
     id: str
     code: str
@@ -55,6 +58,7 @@ class RegisterDocumentRequest(BaseModel):
     required_document_id: str | None = None
 
 
+# One attached application document.
 class ApplicationDocument(BaseModel):
     id: str
     required_document_id: str | None = None
@@ -65,5 +69,6 @@ class ApplicationDocument(BaseModel):
     required_document: RequiredDocumentRef | None = None
 
 
+# A temporary signed link for opening a file.
 class SignedUrl(BaseModel):
     url: str

@@ -1,3 +1,4 @@
+// Sign-up role picker: farmer, buyer, dealer or expert.
 import { LogIn, ShoppingBag, Sprout, Stethoscope, Store, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -16,6 +17,7 @@ const CHOICES: { role: RegistrableRole; title: string; meta: string; icon: Lucid
   { role: 'expert', title: 'Agricultural expert', meta: 'Advise farmers. Reviewed by an administrator', icon: Stethoscope },
 ];
 
+// Shows one card per public role; picking one opens the registration form.
 export function CreateAccountScreen({ navigation }: AuthScreenProps<typeof AUTH_ROUTES.CreateAccount>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -43,6 +45,7 @@ export function CreateAccountScreen({ navigation }: AuthScreenProps<typeof AUTH_
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     footer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: space[1] },

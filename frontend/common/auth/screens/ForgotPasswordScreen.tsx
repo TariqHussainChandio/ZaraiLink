@@ -1,3 +1,4 @@
+// Forgot password screen: asks for the email and sends a reset code.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -17,6 +18,7 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
+// Email form that sends a reset code and opens the code screen.
 export function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPassword'>) {
   const { mutateAsync: resetPassword } = useResetPassword();
   const [submitError, setSubmitError] = useState<string | null>(null);

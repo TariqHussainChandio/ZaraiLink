@@ -1,3 +1,4 @@
+// Admin: one consultation, with actions to close or cancel it with a reason.
 import { Ban, CircleCheck } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -82,12 +83,14 @@ export function ConsultationModerationDetailScreen({
   const report = consultation.ai_report?.report;
   const canModerate = MODERATABLE.includes(consultation.status);
 
+  // Opens the reason sheet for closing or cancelling.
   const open = (next: Action) => {
     setReason('');
     setReasonError(undefined);
     setAction(next);
   };
 
+  // Checks the reason and sends the close or cancel action to the API.
   const confirm = async () => {
     if (!action) return;
     const trimmed = reason.trim();
@@ -221,6 +224,7 @@ export function ConsultationModerationDetailScreen({
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.ground },

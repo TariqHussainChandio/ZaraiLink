@@ -1,3 +1,4 @@
+// Zustand store for the shopping cart, saved on the device and tied to its owner.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -29,12 +30,14 @@ interface CartState {
  * rehydrate callback has run, so the callback could not rely on it. */
 let cartRead = false;
 
+// The cart store: its items, its owner and the add, remove, update and clear actions.
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
       ownerId: null,
 
+      // Adds a listing to the cart, or raises its quantity if it is already there.
       addItem: (item, quantity = 1) => {
         const existing = get().items.find(i => i.listingId === item.listingId);
         if (existing) {
@@ -50,6 +53,7 @@ export const useCartStore = create<CartState>()(
 
       removeItem: listingId => set({ items: get().items.filter(i => i.listingId !== listingId) }),
 
+      // Sets a line's quantity; zero or less removes the line.
       updateQuantity: (listingId, quantity) => {
         if (quantity <= 0) {
           get().removeItem(listingId);
@@ -68,6 +72,7 @@ export const useCartStore = create<CartState>()(
       // Version 1 (D18) gives a guest's cart the owner `null`. A version-0 cart saved without an owner predates owners
       // altogether, so it may be anyone's lines: it is dropped rather than adopted as a guest's.
       version: 1,
+      // Upgrades a cart saved by an older app version; an ownerless old cart is dropped.
       migrate: (persisted, version) => {
         const saved = persisted as Partial<Pick<CartState, 'items' | 'ownerId'>> | null;
         if (version === 0 && !saved?.ownerId) return { items: [], ownerId: null };
@@ -110,10 +115,12 @@ export function connectCartToAuth(): () => void {
   });
 }
 
+// Total price of the cart lines (price times quantity).
 export function cartTotal(items: CartItem[]): number {
   return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 }
 
+// Number of units in the cart, for the cart badge.
 export function cartItemCount(items: CartItem[]): number {
   return items.reduce((sum, item) => sum + item.quantity, 0);
 }

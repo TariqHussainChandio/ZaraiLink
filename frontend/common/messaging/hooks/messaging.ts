@@ -1,3 +1,4 @@
+// React Query hooks for conversations, messages, sending and photo links.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
@@ -22,6 +23,7 @@ export function useOpenConversation() {
   });
 }
 
+// Loads the signed-in user's conversations for the inbox.
 export function useConversations(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.messaging.conversations(),
@@ -31,6 +33,7 @@ export function useConversations(enabled: boolean) {
   });
 }
 
+// Adds an incoming message unless it is already in the list.
 const withoutDuplicate = (messages: Message[], incoming: Message) =>
   messages.some(message => message.id === incoming.id) ? messages : [...messages, incoming];
 

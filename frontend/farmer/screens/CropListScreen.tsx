@@ -1,3 +1,4 @@
+// Crop list screen: every crop recorded on one farm.
 import { useFocusEffect } from '@react-navigation/native';
 import { Plus, Sprout } from 'lucide-react-native';
 import React, { useCallback } from 'react';

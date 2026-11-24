@@ -1,3 +1,4 @@
+// Opens the camera or photo library and returns compressed photos ready to upload.
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
 import { compressPhoto } from './photoCompression';
@@ -32,6 +33,7 @@ const EXPECTED_CAMERA_ERROR_CODES = new Set([
   'ERR_MISSING_ACTIVITY_TO_HANDLE_INTENT',
 ]);
 
+// True when a camera error just means "permission refused" or "no camera app".
 function isExpectedCameraError(error: unknown): boolean {
   return (
     typeof error === 'object' &&
@@ -72,6 +74,7 @@ export async function pickFromLibrary({ selectionLimit = 1 }: PickPhotosOptions 
   return result.canceled ? [] : Promise.all(result.assets.map(toPickedPhoto));
 }
 
+// Opens the camera after asking permission; returns the photo, or an empty list if refused.
 export async function takePhoto(): Promise<PickedPhoto[]> {
   // Ask first, so a refusal is a plain "not granted" result and never depends on an error code. The
   // native launch below asks again (and, on Android 9 and older, also asks for storage), which is

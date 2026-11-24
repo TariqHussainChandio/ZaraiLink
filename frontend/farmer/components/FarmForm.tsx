@@ -1,3 +1,4 @@
+// Shared farm form used by "Add farm" and "Edit farm", with zod validation.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -9,6 +10,7 @@ import { isValidArea, parseArea } from '../constants/forms';
 import type { Farm } from '../types/farmer';
 import { ChoiceField } from './ChoiceField';
 
+// Validation rules: a name is required, area is a number, and an area needs a unit.
 const farmSchema = z
   .object({
     name: z.string().trim().min(2, 'Enter a farm name'),
@@ -22,8 +24,10 @@ const farmSchema = z
 
 export type FarmFormValues = z.infer<typeof farmSchema>;
 
+// Starting values for a new, empty farm.
 const EMPTY_FARM: FarmFormValues = { name: '', area: '', landUnit: '', notes: '', province: null, city: null };
 
+// Turns a saved farm from the API into form values for editing.
 export function farmToFormValues(farm: Farm): FarmFormValues {
   return {
     name: farm.name,
@@ -50,6 +54,7 @@ export function farmInputFromValues(values: FarmFormValues) {
   };
 }
 
+// Props for FarmForm: starting values, button label, busy flag and the save handler.
 interface FarmFormProps {
   initial?: FarmFormValues;
   submitLabel: string;

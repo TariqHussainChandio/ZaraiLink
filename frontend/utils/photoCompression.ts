@@ -1,7 +1,9 @@
+// Shrinks and re-encodes photos to JPEG before upload, which also removes location data.
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 /** Longest edge of an uploaded photo. A phone camera's 12 MP original is far beyond what a listing or a leaf diagnosis needs. */
 export const MAX_PHOTO_EDGE = 1600;
+// JPEG quality used when re-encoding a photo (0 to 1).
 export const PHOTO_QUALITY = 0.8;
 
 /** The photo as it will be uploaded: a JPEG that fits in MAX_PHOTO_EDGE. */

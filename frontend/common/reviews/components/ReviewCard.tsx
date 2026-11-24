@@ -1,3 +1,4 @@
+// Card for one review: reviewer, stars, date and comment.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Avatar, Banner, Card } from '../../components';
@@ -52,6 +53,7 @@ export function ReviewCard({ review }: { review: ReviewWithBuyer }) {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: {

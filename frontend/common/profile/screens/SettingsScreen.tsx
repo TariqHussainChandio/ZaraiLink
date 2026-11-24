@@ -1,3 +1,4 @@
+// Settings screen: shows the shared account sections.
 import React from 'react';
 import { ScreenScaffold } from '../../components';
 import type { ProfileScreenProps } from '../../../navigation/stacks/ProfileNavigator';

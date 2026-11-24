@@ -1,3 +1,4 @@
+// Inventory: hook that finds products and locations by id.
 import { useMemo } from 'react';
 import type { InventoryLocation, ProductView } from '../types/inventory';
 import { useLocations, useProducts } from './inventory';

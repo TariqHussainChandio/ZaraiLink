@@ -1,3 +1,4 @@
+// Add Crop / Edit Crop screen: the form for one crop on a farm, with remove.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -21,8 +22,10 @@ import { DATE_HELPER, growthStageOptions, isValidArea, isValidDate, parseArea } 
 import { useDeleteFarmCrop, useFarm, useFarmCrop, useSaveFarmCrop } from '../hooks/farmer';
 import type { FarmCropWithCrop } from '../types/farmer';
 
+// Error shown when a date is not in year-month-day form.
 const dateMessage = 'Use year-month-day, for example 2026-03-14';
 
+// Validation rules for the crop form.
 const cropSchema = z
   .object({
     cropId: z.string().min(1, 'Choose a crop'),
@@ -41,6 +44,7 @@ const cropSchema = z
 
 type CropFormValues = z.infer<typeof cropSchema>;
 
+// Starting values for a new crop.
 const EMPTY_CROP: CropFormValues = {
   cropId: '',
   variety: '',
@@ -51,6 +55,7 @@ const EMPTY_CROP: CropFormValues = {
   notes: '',
 };
 
+// Turns a saved crop from the API into form values for editing.
 function cropToFormValues(crop: FarmCropWithCrop): CropFormValues {
   return {
     cropId: crop.crop_id ?? '',
@@ -88,6 +93,7 @@ export function AddCropScreen({ route, navigation }: HomeScreenProps<'AddCrop'>)
   );
 }
 
+// Props for the inner crop form.
 interface CropFormProps {
   farmId: string;
   cropId?: string;
@@ -95,6 +101,7 @@ interface CropFormProps {
   goBack: () => void;
 }
 
+// The crop form itself: fields, save button and the remove confirm sheet.
 function CropForm({ farmId, cropId, initial, goBack }: CropFormProps) {
   const isEditing = Boolean(cropId);
   const snackbar = useSnackbar();
@@ -116,6 +123,7 @@ function CropForm({ farmId, cropId, initial, goBack }: CropFormProps) {
   const farmUnit = units.find(u => u.code === farm?.land_unit)?.label ?? farm?.land_unit ?? undefined;
   const chosenCrop = crops.find(c => c.id === watch('cropId'))?.name;
 
+  // Saves the crop, shows a message, and goes back; shows the error on failure.
   const onSubmit = async (values: CropFormValues) => {
     try {
       await saveCrop.mutateAsync({
@@ -138,6 +146,7 @@ function CropForm({ farmId, cropId, initial, goBack }: CropFormProps) {
     goBack();
   };
 
+  // Deletes the crop after the farmer confirms, then goes back.
   const onRemove = async () => {
     if (!cropId) return;
     await removeCrop.mutateAsync(cropId);

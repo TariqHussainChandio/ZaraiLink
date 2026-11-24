@@ -1,3 +1,4 @@
+// Consultation hooks: queries and mutations for requests, messages, assessments and reviews.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
@@ -31,6 +32,7 @@ export function useConsultations(asExpert: boolean, enabled: boolean) {
   });
 }
 
+// Loads one consultation by id.
 export function useConsultation(id: string) {
   return useQuery({
     queryKey: queryKeys.consultations.detail(id),
@@ -49,6 +51,7 @@ export function useConsultationAssessments(consultationId: string) {
   });
 }
 
+// Saves an expert assessment, then refreshes the case.
 export function useCreateConsultationAssessment(consultationId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -57,6 +60,7 @@ export function useCreateConsultationAssessment(consultationId: string) {
   });
 }
 
+// Adds an incoming message unless it is already in the list.
 const withoutDuplicate = (messages: ConsultationMessageWithListing[], incoming: ConsultationMessageWithListing) =>
   messages.some(message => message.id === incoming.id) ? messages : [...messages, incoming];
 
@@ -77,6 +81,7 @@ export function useConsultationMessages(consultationId: string) {
   return query;
 }
 
+// Loads the review of a consultation, if there is one.
 export function useConsultationReview(consultationId: string) {
   return useQuery({
     queryKey: queryKeys.consultations.review(consultationId),
@@ -96,6 +101,7 @@ export function useConsultationAttachmentUrls(paths: string[]) {
   });
 }
 
+// Returns a function that refreshes the cached consultation lists and details.
 function useInvalidateConsultations() {
   const queryClient = useQueryClient();
   return () =>
@@ -105,6 +111,7 @@ function useInvalidateConsultations() {
     ]);
 }
 
+// Moves a consultation to a new status, then refreshes the lists.
 export function useUpdateConsultationStatus(consultationId: string) {
   const invalidate = useInvalidateConsultations();
   return useMutation({
@@ -122,6 +129,7 @@ export function useDecideConsultation() {
   });
 }
 
+// Inputs for sending a consultation message.
 interface SendConsultationMessageVariables {
   body: string;
   images?: PickedPhoto[];
@@ -149,6 +157,7 @@ export function useSendConsultationMessage(consultationId: string, userId: strin
   });
 }
 
+// Saves the requester's review of the expert, then refreshes the review.
 export function useCreateConsultationReview(consultationId: string) {
   const queryClient = useQueryClient();
   return useMutation({

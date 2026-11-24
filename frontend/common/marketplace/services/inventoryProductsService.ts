@@ -1,3 +1,4 @@
+// Fetches the dealer's inventory products for the listing form's link picker.
 import { apiFetchPage, type Page } from '../../../services/api/client';
 import type { LinkableInventoryProduct } from '../types/marketplace';
 

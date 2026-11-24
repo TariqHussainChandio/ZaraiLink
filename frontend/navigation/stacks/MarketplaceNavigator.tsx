@@ -1,3 +1,4 @@
+// The Market tab stack: browse, listings, create/edit, cart, checkout, seller page.
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useRef, useState } from 'react';
@@ -59,6 +60,7 @@ function useResumeCheckout(): boolean {
 const GUEST_BROWSE_OPTIONS = { title: 'ZaraiLink', headerTitleAlign: 'center' } as const;
 const BROWSE_OPTIONS = { title: 'Market' } as const;
 
+// Renders the Market stack and reopens the cart when a guest's checkout was waiting.
 export function MarketplaceNavigator() {
   const resume = useResumeCheckout();
   const guest = useAuthStore(state => state.status !== 'authenticated');

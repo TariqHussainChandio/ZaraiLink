@@ -1,3 +1,4 @@
+// Labelled text input with helper text, error, prefix/suffix and a password eye toggle.
 import { CircleAlert, Eye, EyeOff } from 'lucide-react-native';
 import React, { forwardRef, useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
@@ -32,6 +33,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(
     // The box holds the input; a tap anywhere in it (its border, the prefix, the suffix) focuses the input, so the whole
     // 52 dp box is the target, not only the text line inside it (A8 accessibility run).
     const inputRef = useRef<TextInput | null>(null);
+    // Passes the input to both the local ref and the caller's ref.
     const setRefs = useCallback(
       (node: TextInput | null) => {
         inputRef.current = node;
@@ -107,6 +109,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(
 
 TextField.displayName = 'TextField';
 
+// Theme-based styles for the text field.
 function makeStyles({ colors, space, borders, components, typography }: Theme) {
   return StyleSheet.create({
     container: { marginBottom: space[4], gap: space[2] },

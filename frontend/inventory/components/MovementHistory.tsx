@@ -1,3 +1,4 @@
+// Inventory: filterable list of stock movements (the activity history).
 import { FlashList } from '@shopify/flash-list';
 import { History } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
@@ -12,6 +13,7 @@ import { MOVEMENT_SOURCES, type MovementFilters, type MovementSource } from '../
 import { MovementRow } from './MovementRow';
 import { makeScreenStyles } from './screenStyles';
 
+// The period filter choices, and the 'all products' filter value.
 type Period = '7' | '30' | '90' | 'all';
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -62,11 +64,13 @@ export function MovementHistory({ initialProductId, header }: MovementHistoryPro
   const result = useMovements(filters);
   const { data, refetch, isRefetching } = result;
 
+  // Product filter choices, starting with all products.
   const productOptions = useMemo(
     () => [{ id: ALL_PRODUCTS, label: 'All products' }, ...products.map(item => ({ id: item.id, label: item.name }))],
     [products],
   );
 
+  // Turns one source filter on or off.
   const toggle = (source: MovementSource) =>
     setSources(current => (current.includes(source) ? current.filter(item => item !== source) : [...current, source]));
 
@@ -121,6 +125,7 @@ export function MovementHistory({ initialProductId, header }: MovementHistoryPro
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

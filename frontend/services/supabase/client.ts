@@ -1,3 +1,4 @@
+// Creates the app's Supabase client with encrypted session storage.
 import 'react-native-url-polyfill/auto';
 import { AppState } from 'react-native';
 import { createClient } from '@supabase/supabase-js';

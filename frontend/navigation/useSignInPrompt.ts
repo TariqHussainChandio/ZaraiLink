@@ -1,3 +1,4 @@
+// Hook that asks a guest to sign in before an action that needs an account.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useCallback } from 'react';
 import { useLoginNotice } from '../common/auth';

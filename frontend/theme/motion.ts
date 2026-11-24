@@ -1,3 +1,4 @@
+// Animation durations and easing curves shared by every animated interaction.
 import { Easing } from 'react-native';
 
 // Shared duration/easing pairs so every animated interaction in the app (press feedback, list
@@ -16,4 +17,5 @@ const easing = {
   accelerate: Easing.in(Easing.cubic),
 } as const;
 
+// The motion tokens the theme exposes as `theme.motion`.
 export const motion = { duration, easing } as const;

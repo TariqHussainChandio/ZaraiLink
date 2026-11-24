@@ -1,3 +1,4 @@
+// Small coloured label with an optional icon, tinted by a status tone.
 import type { LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -29,6 +30,7 @@ export function Badge({ label, tone = 'neutral', icon: Icon, size = 'md' }: Badg
   );
 }
 
+// Theme-based styles for the badge.
 function makeStyles({ components, space, typography, fontWeight }: Theme) {
   const { badge } = components;
   return StyleSheet.create({

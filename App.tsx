@@ -1,3 +1,4 @@
+// The app's root component: sets up providers, auth, cache and navigation.
 import {
   DarkTheme,
   DefaultTheme,
@@ -47,6 +48,7 @@ function buildNavigationTheme(isDark: boolean) {
   };
 }
 
+// Holds the navigation container, status bar, offline banner and the root navigator.
 function AppShell() {
   const isDark = useIsDarkMode();
 
@@ -63,6 +65,7 @@ function AppShell() {
   );
 }
 
+// Root component: starts auth and store listeners, then mounts every app-wide provider.
 function App() {
   useEffect(() => {
     const unsubscribe = useAuthStore.getState().initialize();

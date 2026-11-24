@@ -1,3 +1,4 @@
+// Bottom sheet with a title, scrolling body and footer, sliding over a dimmed screen.
 import { X } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import {
@@ -106,6 +107,7 @@ export function Sheet({ visible, onClose, title, children, footer, scroll = true
   );
 }
 
+// Theme-based styles for the sheet.
 function makeStyles({ colors, space, size, components, shadows, typography, radius, borders }: Theme) {
   const { sheet } = components;
   return StyleSheet.create({

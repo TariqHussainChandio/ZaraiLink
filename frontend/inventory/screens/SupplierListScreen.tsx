@@ -1,3 +1,4 @@
+// Inventory: list of the dealer's suppliers.
 import { FlashList } from '@shopify/flash-list';
 import { Plus, Truck } from 'lucide-react-native';
 import React, { useMemo } from 'react';
@@ -47,6 +48,7 @@ export function SupplierListScreen({ navigation }: InventoryScreenProps<typeof I
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

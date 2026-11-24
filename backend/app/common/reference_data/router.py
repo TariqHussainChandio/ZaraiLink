@@ -1,3 +1,5 @@
+"""Reference data routes: public lists of currencies and units, admin create, update, delete."""
+
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -16,16 +18,19 @@ router = APIRouter(prefix="/api/v1/reference-data", tags=["reference-data"])
 # "consistency for its own sake."
 
 
+# Public list of currencies.
 @router.get("/currencies", response_model=list[Currency])
 async def list_currencies(page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_currencies())
 
 
+# Public list of measurement units.
 @router.get("/units", response_model=list[Unit])
 async def list_units(page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_units())
 
 
+# Every row of one reference table, for the admin editor.
 @router.get("/{table}/rows", response_model=list[Currency | Unit])
 async def list_rows(table: RefDataTable, page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_rows(table))
@@ -34,6 +39,7 @@ async def list_rows(table: RefDataTable, page: Page = Depends(paginate)) -> list
 # Writes: admin-only, matching the `<table>_admin_insert/update/delete` RLS policies on both tables.
 
 
+# Admin only: adds a row to a reference table.
 @router.post("/{table}/rows", response_model=Currency | Unit, status_code=201)
 async def create_row(
     table: RefDataTable,
@@ -43,6 +49,7 @@ async def create_row(
     return await service.create_row(user, table, row)
 
 
+# Admin only: edits a row of a reference table.
 @router.patch("/{table}/rows/{row_id}", status_code=204)
 async def update_row(
     table: RefDataTable,
@@ -53,6 +60,7 @@ async def update_row(
     await service.update_row(user, table, row_id, patch)
 
 
+# Admin only: deletes a row of a reference table.
 @router.delete("/{table}/rows/{row_id}", status_code=204)
 async def delete_row(
     table: RefDataTable,

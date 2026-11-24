@@ -1,3 +1,4 @@
+// Labelled group of selectable chips, with an error or helper line under it.
 import { CircleAlert } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -40,6 +41,7 @@ export function ChoiceGroup({ label, optional, error, single = false, helper, ch
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: { marginBottom: space[4], gap: space[2] },

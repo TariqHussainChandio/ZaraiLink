@@ -1,3 +1,5 @@
+"""Admin routes: users, approvals, moderation, reports, AI knowledge and the audit log (BR-15)."""
+
 from fastapi import APIRouter, Depends
 
 from app.admin import service
@@ -32,6 +34,7 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 # Every route in this router is require_admin, no exceptions.
 
 
+# Returns the platform totals for the dashboard.
 @router.get("/stats", response_model=PlatformStats)
 async def get_platform_stats(user: AuthenticatedUser = Depends(require_admin)) -> dict:
     return await service.fetch_platform_stats(user)
@@ -43,6 +46,7 @@ async def get_admin_queues(user: AuthenticatedUser = Depends(require_admin)) -> 
     return await service.fetch_queue_counts(user)
 
 
+# Lists users, optionally by role and account status, a page at a time.
 @router.get("/users", response_model=list[Profile])
 async def list_users(
     role: Role | None = None,
@@ -53,6 +57,7 @@ async def list_users(
     return page.finish(await service.fetch_all_profiles(user, role, account_status))
 
 
+# Suspends or reactivates a user (audited, BR-15).
 @router.patch("/users/{profile_id}/suspend", status_code=204)
 async def suspend_user(
     profile_id: str, request: SuspendUserRequest, user: AuthenticatedUser = Depends(require_admin)
@@ -60,6 +65,7 @@ async def suspend_user(
     await service.set_profile_suspended(user, profile_id, request.is_suspended)
 
 
+# Changes a user's role (audited, BR-15).
 @router.patch("/users/{profile_id}/role", status_code=204)
 async def change_user_role(
     profile_id: str, request: UpdateUserRoleRequest, user: AuthenticatedUser = Depends(require_admin)
@@ -67,6 +73,7 @@ async def change_user_role(
     await service.update_user_role(user, profile_id, request.role)
 
 
+# Approves or rejects a dealer application (audited, BR-15).
 @router.patch("/users/{profile_id}/account-status", response_model=AccountDecision)
 async def decide_dealer_application(
     profile_id: str, request: DecideAccountRequest, user: AuthenticatedUser = Depends(require_admin)
@@ -82,6 +89,7 @@ async def list_dealer_applications(
     return page.finish(await service.fetch_dealer_applications(user, status))
 
 
+# Returns one dealer application.
 @router.get("/dealer-applications/{dealer_id}", response_model=DealerApplicationForAdmin)
 async def get_dealer_application(dealer_id: str, user: AuthenticatedUser = Depends(require_admin)) -> dict:
     return await service.fetch_dealer_application(user, dealer_id)
@@ -95,11 +103,13 @@ async def get_dealer_document_url(
     return SignedUrl(url=await service.dealer_document_url(user, dealer_id, document_id))
 
 
+# Lists every required-document entry.
 @router.get("/required-documents", response_model=list[RequiredDocument])
 async def list_required_documents(user: AuthenticatedUser = Depends(require_admin)) -> list[dict]:
     return await service.fetch_required_documents(user)
 
 
+# Creates a required-document entry (audited, BR-15).
 @router.post("/required-documents", response_model=RequiredDocument, status_code=201)
 async def create_required_document(
     request: RequiredDocumentInput, user: AuthenticatedUser = Depends(require_admin)
@@ -107,6 +117,7 @@ async def create_required_document(
     return await service.create_required_document(user, request.model_dump())
 
 
+# Updates or retires a required-document entry (audited, BR-15).
 @router.patch("/required-documents/{document_id}", response_model=RequiredDocument)
 async def update_required_document(
     document_id: str, request: RequiredDocumentUpdate, user: AuthenticatedUser = Depends(require_admin)
@@ -114,6 +125,7 @@ async def update_required_document(
     return await service.update_required_document(user, document_id, request.model_dump(exclude_unset=True))
 
 
+# Lists abuse reports, optionally by status.
 @router.get("/reports", response_model=list[ReportWithReporter])
 async def list_reports(
     status: str | None = None, user: AuthenticatedUser = Depends(require_admin), page: Page = Depends(paginate)
@@ -121,6 +133,7 @@ async def list_reports(
     return page.finish(await service.fetch_reports(user, status))
 
 
+# Resolves a report (audited, BR-15).
 @router.patch("/reports/{report_id}/resolve", status_code=204)
 async def resolve_report(
     report_id: str, request: ResolveReportRequest, user: AuthenticatedUser = Depends(require_admin)
@@ -128,6 +141,7 @@ async def resolve_report(
     await service.resolve_report(user, report_id, request.notes)
 
 
+# Dismisses a report (audited, BR-15).
 @router.patch("/reports/{report_id}/dismiss", status_code=204)
 async def dismiss_report(
     report_id: str, request: ResolveReportRequest, user: AuthenticatedUser = Depends(require_admin)
@@ -153,6 +167,7 @@ async def list_audit_events(user: AuthenticatedUser = Depends(require_admin)) ->
     return await service.fetch_audit_event_names(user)
 
 
+# Lists every order on the platform, optionally by status.
 @router.get("/orders", response_model=list[OrderWithItems])
 async def list_all_orders(
     user: AuthenticatedUser = Depends(require_admin),
@@ -174,6 +189,7 @@ async def list_disease_knowledge(user: AuthenticatedUser = Depends(require_admin
     return await service.fetch_disease_knowledge(user)
 
 
+# Returns one disease knowledge entry.
 @router.get("/disease-knowledge/{class_label}", response_model=DiseaseKnowledgeEntry)
 async def get_disease_knowledge(class_label: str, user: AuthenticatedUser = Depends(require_admin)) -> dict:
     return await service.fetch_disease_knowledge_entry(user, class_label)

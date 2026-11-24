@@ -1,3 +1,4 @@
+// Inventory: stock at the selected location, with the stock operation buttons.
 import { FlashList } from '@shopify/flash-list';
 import { Boxes, MapPin } from 'lucide-react-native';
 import React, { useMemo } from 'react';
@@ -26,6 +27,7 @@ export function StockScreen({ navigation }: InventoryScreenProps<typeof INVENTOR
   const { data, refetch, isRefetching } = result;
   const { productById } = useLookups();
 
+  // The stock rows of this location.
   const rows = useMemo(
     () =>
       (data ?? [])
@@ -34,6 +36,7 @@ export function StockScreen({ navigation }: InventoryScreenProps<typeof INVENTOR
     [data, productById],
   );
 
+  // Opens the form of a stock operation.
   const operate = (operation: StockOperation) => navigation.navigate(INVENTORY_ROUTES.Operation, { operation });
 
   // Stock is kept per location, so with none chosen there is nothing to read: the stock query stays disabled, and
@@ -119,6 +122,7 @@ export function StockScreen({ navigation }: InventoryScreenProps<typeof INVENTOR
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

@@ -1,3 +1,4 @@
+// Sign-in screen: email and password, then the app routes by role.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -21,6 +22,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+// Sign-in form; also shows a notice left by the previous screen.
 export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -48,6 +50,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
     if (notice?.email) setValue('email', notice.email);
   }, [notice, setValue]);
 
+  // Signs in; if the email is not confirmed yet, offers to enter the code instead.
   const onSubmit = async (values: LoginFormValues) => {
     setSubmitError(null);
     setUnconfirmedEmail(null);
@@ -156,6 +159,7 @@ export function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     links: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: space[2] },

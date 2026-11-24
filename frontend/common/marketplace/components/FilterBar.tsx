@@ -1,3 +1,4 @@
+// Marketplace filter bar: search box and a panel for price, city and category.
 import { SlidersHorizontal, X } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { type GestureResponderEvent, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -15,6 +16,7 @@ const SEARCH_DEBOUNCE_MS = 400;
 const ALL_CATEGORIES = 'all';
 const ALL_CITIES = '__all_cities__';
 
+// The filters in the "more filters" panel.
 interface MoreFilters {
   minPrice: number | null;
   maxPrice: number | null;
@@ -22,6 +24,7 @@ interface MoreFilters {
   categoryId: string | null;
 }
 
+// Props for FilterBar.
 export interface FilterBarProps {
   search: string;
   onSearchChange: (value: string) => void;
@@ -62,6 +65,7 @@ export function FilterBar({
   // The categories the platform lists now, from the database, never a list kept in the app: one an admin adds appears
   // here the next time the filters open (they are asked for again then, see openSheet).
   const { data: categories = [], refetch: refetchCategories } = useCategories();
+  // The category choices, starting with "All categories".
   const categoryOptions = useMemo<SelectOption[]>(
     () => [{ id: ALL_CATEGORIES, label: 'All categories' }, ...categories.map(category => ({ id: category.id, label: category.name }))],
     [categories],
@@ -98,6 +102,7 @@ export function FilterBar({
     return () => clearTimeout(timer);
   }, [text, onSearchChange]);
 
+  // Sends the typed search if it changed.
   const submitSearch = () => {
     const trimmed = text.trim();
     if (trimmed !== sent.current) {
@@ -108,6 +113,7 @@ export function FilterBar({
 
   const activeCount = [minPrice, maxPrice, city, categoryId].filter(v => v !== null).length;
 
+  // Opens the filter panel under the filter icon.
   const openSheet = (event?: GestureResponderEvent) => {
     // The panel spans the screen between the same margins as the page, just below the filter icon. Its top comes from
     // the press itself, not measureInWindow, which never answered on some Android phones (see AdminMenu); a press with
@@ -133,12 +139,14 @@ export function FilterBar({
   const max = parseWhole(draftMax);
   const rangeError = min !== null && max !== null && max <= min ? 'The maximum must be more than the minimum' : undefined;
 
+  // Applies the panel's filters and closes it.
   const apply = () => {
     if (rangeError) return;
     onApplyMoreFilters({ minPrice: min, maxPrice: max, city: draftCity || null, categoryId: draftCategory });
     setSheetOpen(false);
   };
 
+  // Clears the panel's filters and closes it.
   const clear = () => {
     onApplyMoreFilters({ minPrice: null, maxPrice: null, city: null, categoryId: null });
     setSheetOpen(false);
@@ -266,6 +274,7 @@ export function FilterBar({
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, size, radius, borders, typography }: Theme) {
   return StyleSheet.create({
     container: { paddingTop: space[3] },

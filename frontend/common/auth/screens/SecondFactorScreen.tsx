@@ -1,3 +1,4 @@
+// Asks for the authenticator app code to finish signing in.
 import React, { useState } from 'react';
 import { Button, CodeField } from '../../components';
 import { useVerifySecondFactor } from '../hooks/mfa';
@@ -15,6 +16,7 @@ export function SecondFactorScreen() {
   const verify = useVerifySecondFactor();
   const [code, setCode] = useState('');
 
+  // Checks the code unless a check is already running.
   const submit = (value: string) => {
     if (!verify.isPending) verify.mutate(value);
   };

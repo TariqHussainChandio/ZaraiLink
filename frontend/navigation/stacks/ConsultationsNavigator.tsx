@@ -1,3 +1,4 @@
+// Stack where farmers and buyers find experts and track their consultations.
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';

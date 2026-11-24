@@ -1,3 +1,4 @@
+// Inventory: the location chosen in the app bar switcher, remembered on the phone.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMemo } from 'react';
 import { create } from 'zustand';

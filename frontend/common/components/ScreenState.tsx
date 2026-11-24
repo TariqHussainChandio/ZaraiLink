@@ -1,3 +1,4 @@
+// Wraps a screen's query: shows loading, error, offline or empty states before the content.
 import type { LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -45,6 +46,7 @@ export interface ScreenStateProps<T> {
 
 const DEFAULT_ERROR_TITLE = "Couldn't load this";
 
+// Default empty check: an empty array counts as no data.
 function defaultIsEmpty(data: unknown): boolean {
   return Array.isArray(data) && data.length === 0;
 }
@@ -90,6 +92,7 @@ export function ScreenState<T>({
     isFetching = false,
     refetch,
   } = query;
+  // Fetches the data again.
   const retry = () => {
     refetch();
   };
@@ -141,6 +144,7 @@ export function ScreenState<T>({
   );
 }
 
+// Theme-based styles for the screen states.
 function makeStyles({ components }: Theme) {
   return StyleSheet.create({
     fill: { flex: 1 },

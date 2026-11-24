@@ -1,3 +1,4 @@
+// Notifications screen: today's and older notifications, with mark all as read.
 import { useFocusEffect } from '@react-navigation/native';
 import { Bell, CheckCheck } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -49,6 +50,7 @@ export function NotificationListScreen({ header }: { header?: React.ReactNode } 
   const { today, earlier } = splitByDay(notifications, now);
   const hasUnread = notifications.some(n => !n.read);
 
+  // Marks the notification read and opens the screen it points to.
   const open = (notification: Notification) => {
     if (!notification.read) {
       // Fire-and-forget: opening the notification must not wait for, or fail on, clearing its unread dot.
@@ -57,6 +59,7 @@ export function NotificationListScreen({ header }: { header?: React.ReactNode } 
     notificationTarget(notification, tabs)?.();
   };
 
+  // Marks every notification as read and keeps any error to show.
   const markAll = async () => {
     setMarkAllError(null);
     try {
@@ -66,6 +69,7 @@ export function NotificationListScreen({ header }: { header?: React.ReactNode } 
     }
   };
 
+  // Reloads the list on pull-to-refresh.
   const pull = async () => {
     setPulling(true);
     try {
@@ -75,6 +79,7 @@ export function NotificationListScreen({ header }: { header?: React.ReactNode } 
     }
   };
 
+  // Draws one titled group of notifications, or nothing if it is empty.
   const section = (title: string, rows: Notification[]) =>
     rows.length === 0 ? null : (
       <View style={styles.section}>
@@ -134,6 +139,7 @@ export function NotificationListScreen({ header }: { header?: React.ReactNode } 
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     markAll: { alignItems: 'flex-end' },

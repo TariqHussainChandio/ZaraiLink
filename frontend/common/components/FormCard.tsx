@@ -1,3 +1,4 @@
+// Raised card that holds a form (sign-in, sign-up and other form screens).
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { type Theme, useTheme } from '../../theme';
@@ -20,6 +21,7 @@ export function FormCard({ children, testID }: FormCardProps) {
   );
 }
 
+// Theme-based styles for the form card.
 function makeStyles({ colors, space, components, borders, shadows }: Theme) {
   return StyleSheet.create({
     card: {

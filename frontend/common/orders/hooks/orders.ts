@@ -1,3 +1,4 @@
+// Order hooks: queries and mutations for orders, checkout and status changes.
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   checkout,
@@ -83,11 +84,13 @@ export function useUpdateOrderStatus(orderId: string) {
   return useMutation({ mutationFn: (to: OrderStatus) => updateOrderStatus(orderId, to), onSuccess: invalidate });
 }
 
+// Inputs for checkout.
 interface CheckoutVariables {
   items: CartItem[];
   deliveryChargeBySeller: Record<string, number>;
 }
 
+// Places the orders from the cart, then refreshes the order lists.
 export function useCheckout() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,3 +1,5 @@
+"""Messaging database access: conversations, messages, read receipts and redaction."""
+
 from datetime import UTC, datetime
 
 from app.common.pagination import page_range
@@ -14,6 +16,7 @@ CONVERSATION_SELECT = (
 )
 
 
+# Lists the caller's conversations with the other person and the last message, newest first.
 async def fetch_conversations(access_token: str, user_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     conversations_response = await (
@@ -56,6 +59,7 @@ async def fetch_conversations(access_token: str, user_id: str) -> list[dict]:
             }
         )
 
+    # Sorts by the last message time, or the conversation's start when it has none.
     def sort_key(c: dict) -> str:
         last = c["lastMessage"]
         return last["created_at"] if last else c["created_at"]
@@ -63,6 +67,7 @@ async def fetch_conversations(access_token: str, user_id: str) -> list[dict]:
     return sorted(with_preview, key=sort_key, reverse=True)
 
 
+# Loads the messages of one conversation.
 async def fetch_messages(access_token: str, conversation_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -76,6 +81,7 @@ async def fetch_messages(access_token: str, conversation_id: str) -> list[dict]:
     return as_rows(response)
 
 
+# Inserts a new message from the caller into a conversation.
 async def send_message(
     access_token: str, conversation_id: str, sender_id: str, body: str, attachments: list[str]
 ) -> dict:
@@ -93,6 +99,7 @@ async def send_message(
     return first_row(response)
 
 
+# Finds an existing conversation between the caller and another user.
 async def find_conversation(access_token: str, user_id: str, other_user_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -108,6 +115,7 @@ async def find_conversation(access_token: str, user_id: str, other_user_id: str)
     return rows[0] if rows else None
 
 
+# Creates a new conversation about a listing, order or consultation.
 async def create_conversation(
     access_token: str, user_id: str, other_user_id: str, context_type: str, context_id: str
 ) -> dict:
@@ -128,6 +136,7 @@ async def create_conversation(
     return first_row(response)
 
 
+# Loads one message by id, or None.
 async def fetch_message_by_id(access_token: str, message_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("messages").select("*").eq("id", message_id).limit(1).execute()
@@ -135,11 +144,13 @@ async def fetch_message_by_id(access_token: str, message_id: str) -> dict | None
     return rows[0] if rows else None
 
 
+# Replaces a message's text with a "removed by moderator" note (admin).
 async def redact_message(access_token: str, message_id: str) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("messages").update({"body": "[removed by moderator]"}).eq("id", message_id).execute()
 
 
+# Marks the other person's unread messages in a conversation as read.
 async def mark_conversation_read(access_token: str, conversation_id: str, user_id: str) -> None:
     client = await get_user_scoped_client(access_token)
     await (

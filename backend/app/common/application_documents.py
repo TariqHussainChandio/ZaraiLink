@@ -31,6 +31,7 @@ DOCUMENT_COLUMNS = (
 SIGNED_URL_SECONDS = 600
 
 
+# Where one role's application documents live: table, owner column and Storage bucket.
 @dataclass(frozen=True)
 class Kind:
     table: str
@@ -44,6 +45,7 @@ EXPERT = Kind(table="expert_documents", owner_column="expert_id", bucket="expert
 LOCKED = "This application cannot be changed now: it is under review, or already approved"
 
 
+# Lists the documents attached to one application.
 async def list_documents(access_token: str, kind: Kind, owner_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = (
@@ -56,6 +58,7 @@ async def list_documents(access_token: str, kind: Kind, owner_id: str) -> list[d
     return as_rows(response)
 
 
+# Records an uploaded document after checking it is in the owner's own folder.
 async def register(
     access_token: str, kind: Kind, owner_id: str, storage_path: str, file_name: str, required_document_id: str | None
 ) -> dict:
@@ -91,6 +94,7 @@ async def register(
     return rows[0] if rows else row
 
 
+# Deletes a document row and its file from Storage.
 async def remove(access_token: str, kind: Kind, owner_id: str, document_id: str) -> None:
     client = await get_user_scoped_client(access_token)
     found = as_rows(

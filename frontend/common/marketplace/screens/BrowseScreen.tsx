@@ -1,3 +1,4 @@
+// Marketplace browse screen: filters and a paged grid of listings.
 import { Plus, SearchX, Store } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
@@ -23,6 +24,7 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   const { filters, setFilters, resetFilters } = useMarketplaceStore();
   const [pulling, setPulling] = useState(false);
 
+  // The API filters built from the current filter state.
   const params = useMemo(
     () => ({
       categoryId: filters.categoryId ?? undefined,
@@ -38,16 +40,19 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   const listings = useMemo(() => data?.pages.flat() ?? [], [data]);
   const filtered = Object.values(params).some(value => value !== undefined);
 
+  // Pull to refresh: reloads the listings.
   const onRefresh = async () => {
     setPulling(true);
     await refetch();
     setPulling(false);
   };
 
+  // Loads the next page when the list nears its end.
   const onEndReached = () => {
     if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) fetchNextPage();
   };
 
+  // Opens the create listing form.
   const newListing = () => navigation.navigate(MARKETPLACE_ROUTES.CreateListing);
 
   return (
@@ -109,6 +114,7 @@ export function BrowseScreen({ navigation }: MarketplaceScreenProps<'Browse'>) {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     // The grid fills the screen under the filters; the scaffold's gap between sections would push it down.

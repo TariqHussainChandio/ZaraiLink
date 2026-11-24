@@ -1,3 +1,4 @@
+// Inventory: turns API errors into plain messages for the dealer.
 import { isApiError, type FieldError } from '../../services/api/errors';
 import { errorMessage } from '../../utils/errorMessage';
 
@@ -88,6 +89,7 @@ export function inventoryErrorMessage(error: unknown): string {
 /** A write whose answer never arrived: it may well have been saved, so it is not called "not saved". */
 const UNCONFIRMED_WRITE =
   "We couldn't confirm this was saved. Check Activity history before entering it again.";
+// Shown when the same entry was already sent with other details.
 const ENTRY_ALREADY_SENT =
   'This entry was already sent with different details; check Activity history.';
 

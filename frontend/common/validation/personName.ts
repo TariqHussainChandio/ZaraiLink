@@ -1,3 +1,4 @@
+// Zod rule for a person's name: letters (English or Urdu) and single spaces only.
 import { z } from 'zod';
 
 // D20: a person's name is letters only, one space between words; no digits, no symbols. Letters are English (A–Z) and

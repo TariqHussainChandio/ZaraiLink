@@ -1,3 +1,4 @@
+// Consultation request helpers: status groups and queue sorting.
 import type { ConsultationPriority, ConsultationStatus } from '../../../expert';
 
 const PRIORITY_RANK: Record<ConsultationPriority, number> = {
@@ -12,7 +13,9 @@ const ACTIVE_STATUSES: readonly ConsultationStatus[] = ['requested', 'accepted',
 /** Nobody can add to these any more: the thread is read-only. (A resolved case still takes a follow-up question.) */
 const CLOSED_STATUSES: readonly ConsultationStatus[] = ['closed', 'rejected', 'cancelled', 'expired'];
 
+// True while the case is still being worked on.
 export const isActiveStatus = (status: ConsultationStatus) => ACTIVE_STATUSES.includes(status);
+// True when the thread is closed to new messages.
 export const isClosedStatus = (status: ConsultationStatus) => CLOSED_STATUSES.includes(status);
 
 /** The expert's queue: most urgent first, and within a priority the request that has waited longest (FA-16). */

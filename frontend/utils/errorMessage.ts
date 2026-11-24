@@ -1,3 +1,4 @@
+// Turns any error (API, Supabase, network) into a short message a user can act on.
 import { isApiError, type ApiErrorKind, type ErrorCode } from '../services/api/errors';
 
 /**
@@ -72,6 +73,7 @@ function plainFieldName(loc: (string | number)[]): string | null {
     .toLowerCase();
 }
 
+// Joins names as "a, b and c" for a readable sentence.
 function joinNames(names: string[]): string {
   if (names.length <= 1) return names[0] ?? '';
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;

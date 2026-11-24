@@ -1,3 +1,4 @@
+// Farmer analytics screen: sales totals and products ranked by revenue.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -8,6 +9,7 @@ import { useAuthStore } from '../../state/authStore';
 import { useTheme, type Theme } from '../../theme';
 import { formatRs } from '../../utils/money';
 
+// "1 unit sold" or "3 units sold".
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** The farmer's sales picture (FA-24): the totals as tiles, then the products ranked by what they earned. One list, not a
@@ -73,6 +75,7 @@ export function FarmerAnalyticsScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     summary: { ...typography.titleLg, color: colors.ink },

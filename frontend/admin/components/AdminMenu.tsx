@@ -1,3 +1,4 @@
+// Admin: the drop-down side menu of admin screens, grouped, with waiting-queue counts.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
@@ -175,6 +176,7 @@ export function AdminMenu({ onClose, currentRoute, top }: { onClose: () => void;
     }).start();
   }, [reduceMotion, slide, theme.motion]);
 
+  // Opens or closes one menu group.
   const toggle = (title: string) =>
     setOpen(previous => {
       const next = new Set(previous);
@@ -183,6 +185,7 @@ export function AdminMenu({ onClose, currentRoute, top }: { onClose: () => void;
       return next;
     });
 
+  // Closes the menu and goes to the chosen screen.
   const choose = (item: MenuItem) => {
     onClose();
     item.go(tabs as Tabs);
@@ -271,6 +274,7 @@ export function AdminMenu({ onClose, currentRoute, top }: { onClose: () => void;
   );
 }
 
+// Small badge showing how many items wait in a queue (99+ when large).
 function Count({ value, styles }: { value: number; styles: ReturnType<typeof makeStyles> }) {
   return (
     <View style={styles.count}>
@@ -292,6 +296,7 @@ export function AdminMenuBar() {
   const q = queues.data;
   const waiting = q ? q.pending_dealer_applications + q.pending_expert_applications + q.open_reports + q.disputed_orders : 0;
   const open = top !== null;
+  // Opens the menu below the bar, or closes it if it is already open.
   const toggle = (event: GestureResponderEvent) => {
     if (open) {
       setTop(null);
@@ -324,6 +329,7 @@ export function AdminMenuBar() {
   );
 }
 
+// Builds the menu's styles from the theme and the admin accent colour.
 function makeStyles({ colors, space, size, radius, typography, components, shadows, borders }: Theme, accent: Accent) {
   const { menu } = components;
   return StyleSheet.create({

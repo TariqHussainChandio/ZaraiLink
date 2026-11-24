@@ -1,3 +1,4 @@
+// Inventory: form to create or edit a draft purchase and its lines.
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Lock, Plus, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -44,8 +45,10 @@ import {
   type InventoryScreenProps,
 } from '../types/navigation';
 
+// Picker value that means no supplier.
 const NO_SUPPLIER = 'none';
 
+// Validation rules for one purchase line.
 const lineSchema = z.object({
   productId: z.string().min(1, 'Choose a product'),
   locationId: z.string().min(1, 'Choose where it goes'),
@@ -53,6 +56,7 @@ const lineSchema = z.object({
   unitCost: optionalNumber,
 });
 
+// Validation rules for the whole purchase form.
 const schema = z.object({
   supplierId: z.string(),
   reference: cappedText(TEXT_LIMITS.reference),
@@ -133,6 +137,7 @@ export function PurchaseFormScreen({
     });
   }, [purchase, reset]);
 
+  // Supplier choices for the picker.
   const supplierOptions = useMemo(
     () => [
       { id: NO_SUPPLIER, label: 'No supplier' },
@@ -142,6 +147,7 @@ export function PurchaseFormScreen({
     ],
     [suppliers.data],
   );
+  // Product choices for each line.
   const productOptions = useMemo(
     () =>
       (products.data ?? [])
@@ -149,11 +155,13 @@ export function PurchaseFormScreen({
         .map(item => ({ id: item.id, label: `${item.name} (${item.sku})` })),
     [products.data],
   );
+  // Location choices for each line.
   const locationOptions = useMemo(
     () => locations.map(item => ({ id: item.id, label: item.name })),
     [locations],
   );
 
+  // Saves the draft purchase (create or update).
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
     const input = {

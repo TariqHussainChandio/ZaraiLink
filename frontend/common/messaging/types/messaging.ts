@@ -1,3 +1,4 @@
+// Types for conversations, messages and messages waiting to be sent.
 import type { PickedPhoto } from '../../../utils/photoPicker';
 
 export interface Message {

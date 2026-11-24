@@ -1,3 +1,5 @@
+"""Review database access: order and consultation reviews, reads and moderation."""
+
 from datetime import UTC, datetime
 
 from app.common.pagination import page_range
@@ -15,6 +17,7 @@ REVIEW_SELECT = "*, buyer:profiles_public!reviews_buyer_id_fkey(id,full_name,ava
 # average honest even if one of these reads is ever moved to a broader client (a service-role client sees every row).
 
 
+# Reads the order a review is about, or None.
 async def get_order_for_review(access_token: str, order_id: str) -> dict | None:
     # User-scoped client, so this is also naturally RLS-restricted to the caller's own order.
     client = await get_user_scoped_client(access_token)
@@ -29,6 +32,7 @@ async def get_order_for_review(access_token: str, order_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
+# Reads the consultation a review is about, or None.
 async def get_consultation_for_review(access_token: str, consultation_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = (
@@ -42,6 +46,7 @@ async def get_consultation_for_review(access_token: str, consultation_id: str) -
     return rows[0] if rows else None
 
 
+# Inserts a review of an order.
 async def create_review(
     access_token: str,
     order_id: str,
@@ -71,6 +76,7 @@ async def create_review(
     return first_row(response)
 
 
+# Inserts a review of an expert's consultation.
 async def create_consultation_review(
     access_token: str,
     consultation_id: str,
@@ -98,6 +104,7 @@ async def create_consultation_review(
     return first_row(response)
 
 
+# Reads one review by id (public).
 async def fetch_review_by_id(review_id: str) -> dict | None:
     response = await (
         get_public_client()
@@ -128,14 +135,17 @@ async def _fetch_one_review_for_subject(column: str, subject_id: str, viewer: tu
     return rows[0] if rows else None
 
 
+# Reads the review of an order, or None.
 async def fetch_review_by_order_id(order_id: str, viewer: tuple[str, str] | None = None) -> dict | None:
     return await _fetch_one_review_for_subject("order_id", order_id, viewer)
 
 
+# Reads the review of a consultation, or None.
 async def fetch_review_by_consultation_id(consultation_id: str, viewer: tuple[str, str] | None = None) -> dict | None:
     return await _fetch_one_review_for_subject("consultation_id", consultation_id, viewer)
 
 
+# Lists the reviews of a listing.
 async def fetch_reviews_for_listing(listing_id: str) -> list[dict]:
     response = await (
         get_public_client()
@@ -150,6 +160,7 @@ async def fetch_reviews_for_listing(listing_id: str) -> list[dict]:
     return as_rows(response)
 
 
+# Lists the reviews of a seller.
 async def fetch_reviews_for_seller(seller_id: str) -> list[dict]:
     response = await (
         get_public_client()
@@ -164,6 +175,7 @@ async def fetch_reviews_for_seller(seller_id: str) -> list[dict]:
     return as_rows(response)
 
 
+# Lists the reviews of an expert.
 async def fetch_reviews_for_expert(expert_id: str) -> list[dict]:
     response = await (
         get_public_client()
@@ -184,6 +196,7 @@ async def fetch_reviews_for_expert(expert_id: str) -> list[dict]:
 # change the three hidden_* columns (SRDS §14).
 
 
+# Reads one review for admin moderation, or None.
 async def fetch_review_for_moderation(access_token: str, review_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("reviews").select("*").eq("id", review_id).limit(1).execute()
@@ -191,6 +204,7 @@ async def fetch_review_for_moderation(access_token: str, review_id: str) -> dict
     return rows[0] if rows else None
 
 
+# Lists reviews for moderation; hidden ones only when asked.
 async def fetch_reviews_for_moderation(access_token: str, include_hidden: bool) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table("reviews").select(REVIEW_SELECT)
@@ -200,6 +214,7 @@ async def fetch_reviews_for_moderation(access_token: str, include_hidden: bool) 
     return as_rows(response)
 
 
+# Hides or restores a review, with a reason.
 async def set_review_hidden(access_token: str, review_id: str, reason: str | None) -> dict:
     # guard_reviews_update stamps hidden_at (the first hide time is kept) and hidden_by from the session, and clears
     # all three on restore, so the client only states the intent: a reason to hide, nothing to restore. The time sent

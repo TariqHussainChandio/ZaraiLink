@@ -1,3 +1,4 @@
+// Custom bottom tab bar used by every role shell.
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -22,6 +23,7 @@ export function TabBar({ state, descriptors, navigation, large = false }: Bottom
         const focused = state.index === index;
         const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : (options.title ?? route.name);
         const colour = focused ? accent.ink : theme.colors.ink2;
+        // Opens the tab unless it is already open or the press was cancelled.
         const onPress = () => {
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
           if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
@@ -55,6 +57,7 @@ export function TabBar({ state, descriptors, navigation, large = false }: Bottom
   );
 }
 
+// Theme-based styles for the tab bar (normal or large).
 function makeStyles({ colors, space, size, radius, borders, components, typography, fontWeight }: Theme, accent: Accent, large: boolean) {
   return StyleSheet.create({
     bar: { flexDirection: 'row', backgroundColor: colors.surface, borderTopWidth: borders.hairline, borderTopColor: colors.line },

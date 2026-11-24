@@ -1,3 +1,4 @@
+// Inventory: dashboard with stock totals, in/out charts, recent activity and sync status.
 import { useFocusEffect } from '@react-navigation/native';
 import { Ban, Boxes, Package, RefreshCw, TriangleAlert, Wallet } from 'lucide-react-native';
 import React, { useCallback, useMemo } from 'react';
@@ -49,17 +50,20 @@ export function DashboardScreen({ navigation }: InventoryScreenProps<typeof INVE
     }, [refetch]),
   );
 
+  // The daily in/out trend from the dashboard answer.
   const trend = useMemo(() => data?.trend ?? [], [data]);
   // A month with nothing moving is shown as the chart's empty message, not thirty empty bars.
   const inData = useMemo(
     () => (trend.some(point => point.in > 0) ? trend.map(point => ({ label: formatDay(point.date), value: point.in })) : []),
     [trend],
   );
+  // Units out per day, for the second chart.
   const outData = useMemo(
     () => (trend.some(point => point.out > 0) ? trend.map(point => ({ label: formatDay(point.date), value: point.out })) : []),
     [trend],
   );
 
+  // Retries failed marketplace sync events and shows the result.
   const onRetry = async () => {
     try {
       const { applied } = await retry.mutateAsync();
@@ -69,6 +73,7 @@ export function DashboardScreen({ navigation }: InventoryScreenProps<typeof INVE
     }
   };
 
+  // One recent movement row.
   const renderMovement = (movement: Movement) => (
     <MovementRow
       key={movement.id}
@@ -87,6 +92,7 @@ export function DashboardScreen({ navigation }: InventoryScreenProps<typeof INVE
   }
 
   const { totals } = data;
+  // The three newest sync log entries.
   const recentSync = (syncLog.data ?? []).slice(0, 3);
 
   return (
@@ -233,6 +239,7 @@ export function DashboardScreen({ navigation }: InventoryScreenProps<typeof INVE
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return makeScreenStyles(theme);
 }

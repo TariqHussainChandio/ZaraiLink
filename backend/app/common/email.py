@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 _TIMEOUT_SECONDS = 15
 
 
+# Builds the email message (plain text, with optional HTML).
 def _build(to: str, subject: str, text: str, html: str | None) -> EmailMessage:
     message = EmailMessage()
     message["From"] = get_settings().smtp_from
@@ -33,6 +34,7 @@ def _build(to: str, subject: str, text: str, html: str | None) -> EmailMessage:
     return message
 
 
+# Sends the message through the configured SMTP server.
 def _deliver(message: EmailMessage) -> None:
     settings = get_settings()
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=_TIMEOUT_SECONDS) as server:

@@ -1,3 +1,4 @@
+// Order API calls: checkout, list, read and change status.
 import { apiFetch } from '../../../services/api/client';
 import { idempotencyKeyFor, releaseIdempotencyKey } from '../../../services/api/idempotency';
 import type { CartItem } from '../../../state/cartStore';
@@ -36,10 +37,12 @@ export async function fetchOrdersForUser(as: 'buyer' | 'seller'): Promise<OrderW
   return apiFetch('/api/v1/orders', { query: { as } });
 }
 
+// Fetches one order.
 export async function fetchOrderById(id: string): Promise<OrderWithItems> {
   return apiFetch(`/api/v1/orders/${id}`);
 }
 
+// Fetches an order's status history.
 export async function fetchOrderStatusHistory(orderId: string): Promise<OrderStatusHistoryEntry[]> {
   return apiFetch(`/api/v1/orders/${orderId}/status-history`);
 }

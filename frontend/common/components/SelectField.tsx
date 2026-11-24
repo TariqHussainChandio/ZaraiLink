@@ -1,3 +1,4 @@
+// Select input that opens a searchable list of options under the field.
 import { Check, ChevronDown, CircleAlert } from 'lucide-react-native';
 import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -60,12 +61,14 @@ export function SelectField({
 
   const selectedLabel = options.find(option => option.id === value)?.label ?? null;
 
+  // Options that match the search text.
   const filteredOptions = useMemo(() => {
     if (!query.trim()) return options;
     const needle = query.trim().toLowerCase();
     return options.filter(option => option.label.toLowerCase().includes(needle));
   }, [options, query]);
 
+  // Closes the list and clears the search.
   const close = () => {
     setOpen(false);
     setQuery('');
@@ -78,6 +81,7 @@ export function SelectField({
     measureAnchor(fieldRef.current).then(setAnchor, () => setAnchor(null));
   };
 
+  // Draws one option, with a check on the selected one.
   const renderOption = (item: SelectOption) => (
     <Pressable
       key={item.id}
@@ -162,6 +166,7 @@ export function SelectField({
   );
 }
 
+// Theme-based styles for the select field and its list.
 function makeStyles({ colors, space, radius, typography, size, borders, components }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: {

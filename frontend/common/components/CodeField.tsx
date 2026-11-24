@@ -1,3 +1,4 @@
+// Input for a one-time code, drawn as separate digit boxes.
 import React, { forwardRef, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { type Theme, useTheme } from '../../theme';
@@ -28,6 +29,7 @@ export const CodeField = forwardRef<TextInput, CodeFieldProps>(({ value, onChang
   const cells = Array.from({ length }, (_, i) => value[i] ?? '');
   const current = Math.min(value.length, length - 1);
 
+  // Keeps only digits up to the code length, and calls onComplete when the code is full.
   const handleChange = (text: string) => {
     const digits = text.replace(/\D/g, '').slice(0, length);
     onChange(digits);
@@ -78,6 +80,7 @@ export const CodeField = forwardRef<TextInput, CodeFieldProps>(({ value, onChang
 
 CodeField.displayName = 'CodeField';
 
+// Theme-based styles for the code boxes.
 function makeStyles({ colors, space, size, borders, radius, typography }: Theme) {
   return StyleSheet.create({
     container: { gap: space[2], marginBottom: space[4] },

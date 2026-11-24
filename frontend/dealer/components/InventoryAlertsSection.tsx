@@ -1,3 +1,4 @@
+// Dealer: inventory stock alerts shown at the top of the dealer's notifications.
 import { TriangleAlert } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -41,6 +42,7 @@ export function InventoryAlertsSection() {
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     section: { gap: space[2] },

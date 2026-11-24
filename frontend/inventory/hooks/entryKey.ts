@@ -1,6 +1,8 @@
+// Inventory: hook that gives each form entry its own Idempotency-Key.
 import * as Crypto from 'expo-crypto';
 import { useCallback, useState } from 'react';
 
+// Makes a new random key.
 function newKey(): string {
   return `zl-${Crypto.randomUUID()}`;
 }

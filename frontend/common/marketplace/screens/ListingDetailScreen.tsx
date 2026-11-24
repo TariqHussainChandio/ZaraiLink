@@ -1,3 +1,4 @@
+// Listing detail: photos, price, seller, reviews and add to cart.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View, useWindowDimensions, type ViewToken } from 'react-native';
 import { ImageOff } from 'lucide-react-native';
@@ -80,6 +81,7 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
   // Measured when laid out; the window's width until then (and in tests, which have no layout pass).
   const width = pagerWidth || window.width - theme.components.screen.margin * 2;
 
+  // Adds this listing to the cart.
   const addToCart = () => {
     if (!listing) return;
     addItem(
@@ -102,6 +104,7 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
   };
 
   const promptSignIn = useSignInPrompt();
+  // Opens a chat with the seller (a guest is sent to sign in first).
   const messageSeller = async () => {
     if (!listing?.owner) return;
     // A guest may look but needs an account to talk to a seller (D18); the button says so and opens sign-in.
@@ -272,6 +275,7 @@ export function ListingDetailScreen({ route, navigation }: MarketplaceScreenProp
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, radius, size, typography }: Theme) {
   return StyleSheet.create({
     photo: { width: '100%', height: size.photoHero, borderRadius: radius.md, backgroundColor: colors.surfaceSunken },

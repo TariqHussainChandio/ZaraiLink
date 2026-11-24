@@ -1,3 +1,4 @@
+// Inventory: activity history screen listing every stock movement.
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { useTheme } from '../../theme';

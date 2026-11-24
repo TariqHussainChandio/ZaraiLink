@@ -1,3 +1,4 @@
+// Theme provider and hooks: picks the light or dark theme and hands it to useTheme().
 import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { useThemeStore } from '../state/themeStore';

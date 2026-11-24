@@ -34,6 +34,7 @@ def day_start(day: date) -> str:
     return datetime.combine(day, time.min, tzinfo=UTC).isoformat()
 
 
+# Lists the dealer's stock movements with the given filters.
 async def list_movements(
     user: AuthenticatedUser,
     sources: Sequence[str] | None = None,
@@ -55,6 +56,7 @@ async def list_movements(
     )
 
 
+# Returns one movement, or 404.
 async def get_movement(user: AuthenticatedUser, movement_id: str) -> dict:
     movement = await repo.fetch_row(user.access_token, "inventory_movements", movement_id)
     if movement is None:
@@ -99,6 +101,7 @@ async def get_movements(
     return page.finish(await list_movements(user, sources, product_id, location_id, direction, date_from, date_to))
 
 
+# GET: one movement.
 @router.get("/movements/{movement_id}", response_model=Movement)
 async def get_one_movement(movement_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await get_movement(user, movement_id)
@@ -107,6 +110,7 @@ async def get_one_movement(movement_id: str, user: AuthenticatedUser = Depends(r
 # The three writes take an optional Idempotency-Key, so a retried request records its movement once (idempotent.py).
 
 
+# POST: records new stock arriving (Stock In).
 @router.post("/movements/stock-in", response_model=Movement, status_code=201)
 async def post_stock_in(
     request: StockInInput,
@@ -125,6 +129,7 @@ async def post_stock_in(
     )
 
 
+# POST: records stock leaving (Stock Out).
 @router.post("/movements/stock-out", response_model=Movement, status_code=201)
 async def post_stock_out(
     request: StockOutInput,
@@ -143,6 +148,7 @@ async def post_stock_out(
     )
 
 
+# POST: records a manual correction with its reason.
 @router.post("/movements/adjustment", response_model=Movement, status_code=201)
 async def post_adjustment(
     request: AdjustmentInput,

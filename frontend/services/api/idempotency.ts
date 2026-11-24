@@ -1,3 +1,4 @@
+// Makes Idempotency-Key headers so a repeated checkout or payment is not done twice.
 import * as Crypto from 'expo-crypto';
 
 /**
@@ -12,10 +13,12 @@ const KEY_LIFETIME_MS = 15 * 60 * 1000;
 
 const keys = new Map<string, { key: string; createdAt: number }>();
 
+// Map key for one action and its payload.
 function slot(scope: string, payload: unknown): string {
   return `${scope}:${stableStringify(payload)}`;
 }
 
+// JSON with sorted object keys, so equal payloads always give the same string.
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
   if (value && typeof value === 'object') {
@@ -27,6 +30,7 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(value);
 }
 
+// Returns the same key for the same action and payload, or a new one; drops expired keys.
 export function idempotencyKeyFor(scope: string, payload: unknown): string {
   const now = Date.now();
   for (const [name, entry] of keys) {

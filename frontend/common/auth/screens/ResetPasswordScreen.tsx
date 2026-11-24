@@ -1,3 +1,4 @@
+// Set-new-password screen shown after the reset code is accepted.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -34,6 +35,7 @@ export function ResetPasswordScreen() {
     defaultValues: { password: '' },
   });
 
+  // Saves the new password and shows a toast.
   const onSubmit = async (values: ResetPasswordFormValues) => {
     setSubmitError(null);
     try {

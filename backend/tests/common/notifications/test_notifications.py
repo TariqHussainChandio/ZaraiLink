@@ -17,17 +17,21 @@ USER = AuthenticatedUser(id="user-1", email="u@x.com", role="buyer", access_toke
 async def test_mark_read_rejects_notification_that_does_not_belong_to_caller():
     # get_notification uses the caller's own RLS-scoped client, so a stranger's notification id
     # simply comes back as None — mark_read must turn that into a 404, not silently no-op.
-    with patch("app.common.notifications.service.repo.get_notification", return_value=None):
-        with pytest.raises(HTTPException) as exc_info:
-            await service.mark_read(USER, "someone-elses-notification")
+    with (
+        patch("app.common.notifications.service.repo.get_notification", return_value=None),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await service.mark_read(USER, "someone-elses-notification")
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_mark_read_updates_when_notification_belongs_to_caller():
-    with patch("app.common.notifications.service.repo.get_notification", return_value={"id": "n-1"}):
-        with patch("app.common.notifications.service.repo.mark_read") as mock_mark:
-            await service.mark_read(USER, "n-1")
+    with (
+        patch("app.common.notifications.service.repo.get_notification", return_value={"id": "n-1"}),
+        patch("app.common.notifications.service.repo.mark_read") as mock_mark,
+    ):
+        await service.mark_read(USER, "n-1")
     mock_mark.assert_called_once_with(USER.access_token, "n-1")
 
 

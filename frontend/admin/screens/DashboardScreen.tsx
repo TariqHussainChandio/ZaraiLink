@@ -1,3 +1,4 @@
+// Admin: the Overview: platform totals and the queues waiting for the admin.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import { BadgeCheck, Flag, Scale, Stethoscope } from 'lucide-react-native';
@@ -20,6 +21,7 @@ function count(known: number | undefined): string {
   return known === undefined ? '—' : figure.format(known);
 }
 
+// Shows the admin Overview with stats and the 'needs attention' queues.
 export function AdminDashboardScreen({ navigation }: AdminScreenProps<'Dashboard'>) {
   // D20: the app bar names whose account this is.
   useNameTitle();
@@ -32,6 +34,7 @@ export function AdminDashboardScreen({ navigation }: AdminScreenProps<'Dashboard
 
   const { refetch: refetchStats } = stats;
   const { refetch: refetchQueues } = queues;
+  // Reloads both the stats and the queue counts.
   const refetchAll = useCallback(() => {
     refetchStats();
     refetchQueues();
@@ -46,6 +49,7 @@ export function AdminDashboardScreen({ navigation }: AdminScreenProps<'Dashboard
   const q = queues.data;
   const applications = q ? q.pending_dealer_applications + q.pending_expert_applications : undefined;
 
+  // Renders one 'needs attention' row with its count and target screen.
   const needsRow = (title: string, value: number | undefined, waiting: string, icon: typeof BadgeCheck, onPress: () => void) => (
     <ListRow
       key={title}
@@ -132,6 +136,7 @@ export function AdminDashboardScreen({ navigation }: AdminScreenProps<'Dashboard
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     heading: { ...typography.bodyStrong, color: colors.ink, marginBottom: space[2] },

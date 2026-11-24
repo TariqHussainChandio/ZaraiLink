@@ -1,3 +1,4 @@
+// React Query hooks for two-factor sign-in with an authenticator app.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   enrollTotp,
@@ -25,20 +26,24 @@ export function useVerifiedTotpFactor() {
   });
 }
 
+// Starts adding an authenticator app (returns the QR code).
 export function useEnrollTotp() {
   return useMutation({ mutationFn: () => enrollTotp() });
 }
 
+// Confirms the new authenticator app with its first code.
 export function useVerifyTotpEnrollment() {
   return useMutation({
     mutationFn: ({ factorId, code }: { factorId: string; code: string }) => verifyTotpEnrollment(factorId, code),
   });
 }
 
+// Checks the authenticator code at sign-in.
 export function useVerifySecondFactor() {
   return useMutation({ mutationFn: (code: string) => verifySecondFactor(code) });
 }
 
+// Removes the authenticator app from the account.
 export function useUnenrollTotp() {
   return useMutation({ mutationFn: (factorId: string) => unenrollTotp(factorId) });
 }

@@ -1,3 +1,4 @@
+// Vertical timeline of an order's steps with the time each was reached.
 import { Ban, Check, Gavel, Hourglass, Receipt, TriangleAlert, X, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -48,6 +49,7 @@ export function OrderTimeline({ status, reachedAt = {} }: OrderTimelineProps) {
   const stop = STOPS[status];
   const after = AFTER[status];
   const current = STEPS.findIndex(([s]) => s === status);
+  // Builds a "done" row for a step the order has passed.
   const reached = ([s, label]: [OrderStatus, string]): Row => ({ state: 'done', label, time: reachedAt[s], icon: Check });
 
   const rows: Row[] = [];
@@ -104,10 +106,12 @@ export function OrderTimeline({ status, reachedAt = {} }: OrderTimelineProps) {
   );
 }
 
+// Icon colour inside a step's dot, by the step's state.
 function dotIcon({ colors }: Theme, state: State): string {
   return state === 'now' || state === 'todo' ? colors.status.info.mark : colors.onAccent;
 }
 
+// Theme-based styles for the timeline.
 function makeStyles({ colors, space, size, radius, borders, typography }: Theme) {
   const dot = size.iconMd;
   return StyleSheet.create({

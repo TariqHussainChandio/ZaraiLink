@@ -1,3 +1,4 @@
+// Inventory: the inventory system's own navigator (tabs and stacks).
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { ChartColumn, Ellipsis, LayoutDashboard, Package, Warehouse } from 'lucide-react-native';
@@ -36,15 +37,18 @@ import { SupplierListScreen } from './SupplierListScreen';
 import { SyncLogScreen } from './SyncLogScreen';
 import { RoleScopeProvider } from '../../theme';
 
+// The stack and tab navigators of the inventory system.
 const Stack = createNativeStackNavigator<InventoryStackParamList>();
 const Tab = createBottomTabNavigator<InventoryTabParamList>();
 
 // Every inner screen draws the stack's app bar in the inventory variant (the dealer band and the system's name), so a
 // dealer always knows they are in the separate system (SRDS §16). A tab's first screen draws the shell's own app bar.
 const STACK_OPTIONS = stackOptionsWithActions({}, 'inventory');
+// Each tab's first screen shows the inventory app bar.
 const renderShellHeader = () => <InventoryShellHeader />;
 const ROOT_OPTIONS: NativeStackNavigationOptions = { header: renderShellHeader };
 
+// The routes that are the first screen of a tab.
 type RootRoute =
   | typeof INVENTORY_ROUTES.Dashboard
   | typeof INVENTORY_ROUTES.Products
@@ -100,7 +104,9 @@ function sharedScreens() {
   );
 }
 
+// Builds a stack for one tab: its first screen plus the shared screens.
 function tabStack<R extends RootRoute>(root: R, component: React.ComponentType<InventoryScreenProps<R>>) {
+  // The stack component of this tab.
   function TabStack() {
     return (
       <Stack.Navigator screenOptions={STACK_OPTIONS} initialRouteName={root}>
@@ -112,12 +118,14 @@ function tabStack<R extends RootRoute>(root: R, component: React.ComponentType<I
   return TabStack;
 }
 
+// One stack per tab.
 const DashboardStack = tabStack(INVENTORY_ROUTES.Dashboard, DashboardScreen);
 const ProductsStack = tabStack(INVENTORY_ROUTES.Products, ProductListScreen);
 const StockStack = tabStack(INVENTORY_ROUTES.Stock, StockScreen);
 const ReportsStack = tabStack(INVENTORY_ROUTES.Reports, ReportsScreen);
 const MoreStack = tabStack(INVENTORY_ROUTES.More, MoreScreen);
 
+// Tab bar label and icon of each tab.
 const DASHBOARD_TAB = tabOptions('Dashboard', LayoutDashboard);
 const PRODUCTS_TAB = tabOptions('Products', Package);
 const STOCK_TAB = tabOptions('Stock', Warehouse);

@@ -1,3 +1,4 @@
+// Inventory: TypeScript types of the inventory API, taken from the generated client.
 import type {
   AdjustmentInput,
   AlertSettings,
@@ -98,6 +99,7 @@ export type MovementSource = Movement['source'];
 export type LocationKind = InventoryLocation['kind'];
 export type PurchaseStatus = Purchase['status'];
 
+// Display label of each location kind.
 export const LOCATION_KIND_LABELS: Record<LocationKind, string> = {
   shop: 'Shop',
   godown: 'Godown',
@@ -105,6 +107,7 @@ export const LOCATION_KIND_LABELS: Record<LocationKind, string> = {
   other: 'Other',
 };
 
+// Every movement source, in the order the filters list them.
 export const MOVEMENT_SOURCES: readonly MovementSource[] = [
   'ZARAILINK_ORDER',
   'LOCAL_SALE',

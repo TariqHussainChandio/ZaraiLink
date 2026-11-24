@@ -1,3 +1,4 @@
+// Inventory: form to add or edit a stock location.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -13,11 +14,13 @@ import { useLocations, useRemoveLocation, useSaveLocation } from '../hooks/inven
 import { LOCATION_KIND_LABELS, type LocationKind } from '../types/inventory';
 import type { INVENTORY_ROUTES, InventoryScreenProps } from '../types/navigation';
 
+// Location kind choices (shop, godown, shelf, other).
 const KIND_OPTIONS = (Object.keys(LOCATION_KIND_LABELS) as LocationKind[]).map(kind => ({
   id: kind,
   label: LOCATION_KIND_LABELS[kind],
 }));
 
+// Validation rules for the form.
 const schema = z.object({
   name: z
     .string()
@@ -63,6 +66,7 @@ export function LocationFormScreen({ route, navigation }: InventoryScreenProps<t
     reset({ name: location.name, kind: location.kind, address: location.address ?? '', isDefault: location.is_default });
   }, [location, reset]);
 
+  // Saves the location (create or update) and goes back.
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
     const input = {
@@ -82,6 +86,7 @@ export function LocationFormScreen({ route, navigation }: InventoryScreenProps<t
     }
   };
 
+  // Removes the location (or deactivates it if it has stock or history).
   const onRemove = async () => {
     if (!locationId) return;
     setFormError(null);

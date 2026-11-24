@@ -1,3 +1,4 @@
+// Dealer: analytics screen with monthly units sold from stock and the best sellers.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -11,9 +12,11 @@ import { useTheme, type Theme } from '../../theme';
 import { formatMonth } from '../../utils/dates';
 import { formatRs } from '../../utils/money';
 
+// Number format and chart title used on this screen.
 const UNITS = new Intl.NumberFormat('en-PK');
 const CHART_TITLE = 'Units sold from stock, by month';
 
+// Shows the dealer's sales analytics, refreshed each time the screen opens.
 export function DealerAnalyticsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -74,6 +77,7 @@ export function DealerAnalyticsScreen() {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     chartNote: { ...typography.caption, color: colors.ink2, marginBottom: space[2] },

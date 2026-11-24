@@ -44,6 +44,7 @@ class TokenVerificationError(RuntimeError):
     allowed — never added here)."""
 
 
+# The claims the app uses from a verified token: user id, email and sign-in time.
 @dataclass(frozen=True)
 class VerifiedClaims:
     sub: str
@@ -53,6 +54,7 @@ class VerifiedClaims:
     signed_in_at: int | None = None
 
 
+# Returns the latest sign-in time from the token's `amr` list, or None.
 def _signed_in_at(amr: object) -> int | None:
     if not isinstance(amr, list):
         return None
@@ -60,6 +62,7 @@ def _signed_in_at(amr: object) -> int | None:
     return max(stamps) if stamps else None
 
 
+# Returns the shared client that fetches Supabase's public signing keys (JWKS).
 def _get_jwk_client() -> PyJWKClient:
     global _jwk_client
     if _jwk_client is None:

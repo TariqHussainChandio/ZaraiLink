@@ -1,3 +1,4 @@
+// Small vibration feedback helpers (tap, success) that never throw.
 import * as Haptics from 'expo-haptics';
 
 // Haptics are cosmetic and best effort. A device without haptic hardware, or one that refuses the
@@ -17,6 +18,7 @@ export function hapticTap(): void {
   fire(Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Context_Click));
 }
 
+// Stronger "done" vibration for completed actions such as a placed order.
 export function hapticSuccess(): void {
   // The CONFIRM constant exists from Android 11. Older versions reject it, so fall back to the tap.
   Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Confirm).catch(hapticTap);

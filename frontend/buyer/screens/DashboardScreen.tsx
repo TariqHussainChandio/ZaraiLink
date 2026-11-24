@@ -1,3 +1,4 @@
+// Buyer dashboard: order figures, orders that need the buyer, and recent purchases.
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useMemo } from 'react';
@@ -53,6 +54,7 @@ export function BuyerDashboardScreen() {
   const needsYou = [...toPay, ...toConfirm];
   const open = orders?.filter(o => IN_PROGRESS.includes(o.status)).length;
 
+  // One row in "Recent purchases": seller, items, total and status; opens the order.
   const purchaseRow = (order: OrderWithItems) => (
     <ListRow
       key={order.id}
@@ -113,6 +115,7 @@ export function BuyerDashboardScreen() {
   );
 }
 
+// Builds the dashboard's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     // Two tiles across, as on every dashboard (StatTile): Saved takes the next line instead of running off the screen.

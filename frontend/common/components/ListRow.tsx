@@ -1,3 +1,4 @@
+// List rows and row groups: leading mark, title, details, status and trailing value.
 import { ChevronRight, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { type GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -57,6 +58,7 @@ function wordsOf(node: React.ReactNode): string[] {
 export function ListRow({ title, meta, leading, trailing, status, onPress, accessibilityLabel }: ListRowProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  // The row's inner layout, shared by the plain and the pressable row.
   const content = (
     <>
       {leading}
@@ -122,6 +124,7 @@ export function ListRowIcon({ icon: Icon }: { icon: LucideIcon }) {
   );
 }
 
+// Theme-based styles for list rows and groups.
 function makeStyles({ colors, space, borders, components, typography }: Theme) {
   const { row } = components;
   return StyleSheet.create({
@@ -151,6 +154,7 @@ function makeStyles({ colors, space, borders, components, typography }: Theme) {
   });
 }
 
+// Theme-based styles for the row's icon tile.
 function makeIconStyles({ size, radius }: Theme, accent: Accent) {
   return StyleSheet.create({
     tile: {

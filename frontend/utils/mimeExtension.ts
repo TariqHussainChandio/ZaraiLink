@@ -18,6 +18,7 @@ const EXTENSIONS: Record<string, string> = {
   'application/pdf': 'pdf',
 };
 
+// Returns the file extension for a MIME type (for example image/png -> png), or the fallback.
 export function extensionFromMimeType(mimeType: string | undefined, fallback = 'jpg'): string {
   if (!mimeType) return fallback;
   return EXTENSIONS[mimeType.toLowerCase().split(';')[0]?.trim() ?? ''] ?? fallback;

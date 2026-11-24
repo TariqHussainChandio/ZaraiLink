@@ -1,6 +1,8 @@
+// Block showing the AI's suggested disease and confidence, marked as advisory.
 import React from 'react';
 import { Banner } from '../../components';
 
+// What the AI suggested for a case: the disease and how confident it was.
 export interface AiSuggestion {
   /** The disease the model matched, as the scan reported it. */
   label: string;

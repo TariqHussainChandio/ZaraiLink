@@ -1,3 +1,4 @@
+// Admin: AI module activity: scans, failures, low-confidence results and referrals.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -39,6 +40,7 @@ export function AiActivityScreen() {
   );
 }
 
+// Shows the totals and the per-day counts once the data has loaded.
 function AiActivityBody({ data }: { data: AiActivity }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -85,6 +87,7 @@ function AiActivityBody({ data }: { data: AiActivity }) {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.surface },

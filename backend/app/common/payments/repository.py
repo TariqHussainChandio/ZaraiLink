@@ -1,8 +1,11 @@
+"""Payment database access: payments, their transactions and the order they pay."""
+
 from app.common.pagination import page_range
 from app.common.rows import as_rows, first_row
 from app.database.supabase_client import get_user_scoped_client
 
 
+# Reads the order fields needed to start a payment, or None.
 async def get_order_for_payment(access_token: str, order_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = (
@@ -12,6 +15,7 @@ async def get_order_for_payment(access_token: str, order_id: str) -> dict | None
     return rows[0] if rows else None
 
 
+# Inserts a payment row for an order.
 async def insert_payment(access_token: str, order_id: str, buyer_id: str, amount: float, method: str) -> dict:
     # N1 fix: insert() has no .select() on the pinned postgrest-py client — the write's own
     # returning=representation default already includes the full row.
@@ -33,6 +37,7 @@ async def insert_payment(access_token: str, order_id: str, buyer_id: str, amount
     return first_row(response)
 
 
+# Reads one payment, or None.
 async def fetch_payment_by_id(access_token: str, payment_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("payments").select("*").eq("id", payment_id).limit(1).execute()
@@ -40,6 +45,7 @@ async def fetch_payment_by_id(access_token: str, payment_id: str) -> dict | None
     return rows[0] if rows else None
 
 
+# Reads the latest payment of an order, or None.
 async def fetch_payment_by_order_id(access_token: str, order_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -49,6 +55,7 @@ async def fetch_payment_by_order_id(access_token: str, order_id: str) -> dict | 
     return rows[0] if rows else None
 
 
+# Lists the transaction events of a payment.
 async def fetch_payment_transactions(access_token: str, payment_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -62,6 +69,7 @@ async def fetch_payment_transactions(access_token: str, payment_id: str) -> list
     return as_rows(response)
 
 
+# Sets a payment's status.
 async def update_payment_status(access_token: str, payment_id: str, status: str) -> dict:
     client = await get_user_scoped_client(access_token)
     response = await client.table("payments").update({"status": status}).eq("id", payment_id).execute()

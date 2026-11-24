@@ -1,3 +1,4 @@
+// Add Farm screen: shows the farm form and creates the farm.
 import React from 'react';
 import { useSnackbar } from '../../common/components';
 import type { HomeScreenProps } from '../../navigation/stacks/HomeNavigator';
@@ -5,6 +6,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { FarmForm, farmInputFromValues, type FarmFormValues } from '../components/FarmForm';
 import { useCreateFarm } from '../hooks/farmer';
 
+// Creates a new farm from the form, then returns to the farm list.
 export function CreateFarmScreen({ navigation }: HomeScreenProps<'CreateFarm'>) {
   const createFarm = useCreateFarm();
   const snackbar = useSnackbar();

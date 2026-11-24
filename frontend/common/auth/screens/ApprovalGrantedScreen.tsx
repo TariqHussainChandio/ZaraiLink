@@ -1,3 +1,4 @@
+// Screen telling a dealer or expert they are approved and must sign in again.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, ScreenScaffold, StatusBadge } from '../../components';
@@ -21,6 +22,7 @@ export function ApprovalGrantedScreen() {
   const leaveNotice = useLoginNotice(state => state.leave);
   const roleName = role === 'expert' ? 'expert' : 'dealer';
 
+  // Leaves a welcome notice for the sign-in screen, then signs the user out.
   const signInAgain = () => {
     leaveNotice({
       tone: 'success',
@@ -47,6 +49,7 @@ export function ApprovalGrantedScreen() {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     heading: { gap: space[2] },
