@@ -1,3 +1,4 @@
+// Screen-wide message banner (info, success, warning, danger, offline, advisory).
 import { CircleAlert, CircleCheck, CircleX, Leaf, TriangleAlert, WifiOff, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -64,12 +65,14 @@ export function Banner({ tone = 'info', title, children, actionLabel, onAction }
   );
 }
 
+// Picks the text, background and icon colours for a banner tone.
 function toneColours({ colors }: Theme, tone: BannerTone) {
   if (tone === 'advisory') return { fg: colors.accent.ai.ink, bg: colors.accent.ai.soft, mark: colors.accent.ai.mark };
   const t = colors.status[tone === 'offline' ? 'neutral' : tone === 'danger' ? 'danger' : tone];
   return { fg: t.ink, bg: t.soft, mark: t.mark };
 }
 
+// Theme-based styles for the banner.
 function makeStyles({ space, components, typography }: Theme) {
   const { banner } = components;
   return StyleSheet.create({

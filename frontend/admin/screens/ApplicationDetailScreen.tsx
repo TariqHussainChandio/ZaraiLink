@@ -1,3 +1,4 @@
+// Admin: one dealer or expert application with its documents, to approve or reject.
 import React, { useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import {
@@ -146,6 +147,7 @@ export function ApplicationDetailScreen({ route }: AdminScreenProps<typeof ADMIN
   const imageDocuments = documents.filter(isImage).map(d => ({ id: d.id, label: requirement(d) }));
   const waitingDays = submittedAt ? daysSince(submittedAt) : 0;
 
+  // Sends the approve or reject decision (with a reason) to the API.
   const decide = async (decision: 'approved' | 'rejected', reason?: string) => {
     const result =
       role === 'dealer'
@@ -155,6 +157,7 @@ export function ApplicationDetailScreen({ route }: AdminScreenProps<typeof ADMIN
     await query.refetch();
   };
 
+  // Asks the admin to confirm approving the application.
   const askApprove = () => {
     setOutcome(null);
     setAction({
@@ -167,6 +170,7 @@ export function ApplicationDetailScreen({ route }: AdminScreenProps<typeof ADMIN
     });
   };
 
+  // Asks the admin for a reason before rejecting the application.
   const askReject = () => {
     setOutcome(null);
     setAction({
@@ -185,6 +189,7 @@ export function ApplicationDetailScreen({ route }: AdminScreenProps<typeof ADMIN
     });
   };
 
+  // Opens a document: photos in the viewer, other files by their signed link.
   const open = async (document: Document) => {
     setFailure(null);
     if (isImage(document)) {
@@ -324,6 +329,7 @@ export function ApplicationDetailScreen({ route }: AdminScreenProps<typeof ADMIN
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] },

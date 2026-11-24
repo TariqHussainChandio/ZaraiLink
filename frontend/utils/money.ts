@@ -8,6 +8,7 @@ export function formatAmount(amount: number): string {
   return RUPEES.format(amount);
 }
 
+// Formats an amount as rupees, like "Rs 12,450".
 export function formatRs(amount: number): string {
   return `Rs ${formatAmount(amount)}`;
 }

@@ -18,6 +18,7 @@ router = APIRouter()
 # --- service ----------------------------------------------------------------------------------------------------------
 
 
+# Lists the dealer's marketplace sync log, optionally by status.
 async def list_sync_log(user: AuthenticatedUser, status: str | None = None) -> list[dict]:
     return await repo.fetch_sync_log(user.access_token, status)
 
@@ -33,6 +34,7 @@ async def retry_pending(user: AuthenticatedUser) -> dict:
 # --- routes -----------------------------------------------------------------------------------------------------------
 
 
+# GET: the sync log.
 @router.get("/sync/log", response_model=list[SyncLogEntry])
 async def get_sync_log(
     status: SyncStatus | None = None, user: AuthenticatedUser = Depends(require_dealer), page: Page = Depends(paginate)
@@ -40,6 +42,7 @@ async def get_sync_log(
     return page.finish(await list_sync_log(user, status))
 
 
+# POST: retries the dealer's pending marketplace sync events.
 @router.post("/sync/retry", response_model=RetryResult)
 async def post_sync_retry(user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await retry_pending(user)

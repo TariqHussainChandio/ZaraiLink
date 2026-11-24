@@ -1,3 +1,4 @@
+// List card for one expert: name and specialisations.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Avatar, Card } from '../../components';
@@ -5,6 +6,7 @@ import { useTheme, type Theme } from '../../../theme';
 import type { ExpertWithProfile } from '../../../expert';
 import { SPECIALIZATION_LABELS } from '../../constants/labels';
 
+// Shows one expert's name and specialisations; tapping opens the profile.
 export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onPress: () => void }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -38,6 +40,7 @@ export function ExpertCard({ expert, onPress }: { expert: ExpertWithProfile; onP
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, size, typography }: Theme) {
   return StyleSheet.create({
     card: {

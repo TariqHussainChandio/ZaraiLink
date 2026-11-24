@@ -1,3 +1,4 @@
+// Screen to create a new listing with photos.
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { NavigationAction } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -52,6 +53,7 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
     [navigation, unsaved],
   );
 
+  // Picks photos from the camera or gallery and adds them.
   const pickImages = async () => {
     const assets = await pickPhotos({ selectionLimit: MAX_LISTING_PHOTOS - images.length });
     if (assets.length === 0) return;
@@ -60,6 +62,7 @@ export function CreateListingScreen({ navigation }: MarketplaceScreenProps<'Crea
     setPhotoError(undefined);
   };
 
+  // Checks there is a photo, then saves the new listing.
   const onSubmit = async (values: ListingFormValues) => {
     if (!userId) return;
     if (images.length === 0) {

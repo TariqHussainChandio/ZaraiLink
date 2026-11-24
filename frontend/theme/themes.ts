@@ -1,3 +1,4 @@
+// Builds the full light and dark Theme objects from the shared design tokens.
 import { borders } from './borders';
 import { darkColors, lightColors, type ThemeColors } from './colors';
 import { components } from './components';
@@ -15,5 +16,6 @@ export interface Theme extends Readonly<typeof shared> {
   colors: ThemeColors;
 }
 
+// The two complete themes; ThemeProvider picks one based on the dark-mode setting.
 export const lightTheme: Theme = { ...shared, dark: false, colors: lightColors };
 export const darkTheme: Theme = { ...shared, dark: true, colors: darkColors };

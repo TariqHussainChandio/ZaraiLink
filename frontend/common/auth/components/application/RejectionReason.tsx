@@ -1,3 +1,4 @@
+// Banner showing why an administrator rejected the dealer or expert application.
 import React from 'react';
 import { Banner } from '../../../components';
 import { useAuthStore } from '../../../../state/authStore';

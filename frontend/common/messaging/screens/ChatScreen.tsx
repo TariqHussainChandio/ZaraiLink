@@ -1,3 +1,4 @@
+// Chat screen: the messages of one conversation and the message box.
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
@@ -19,6 +20,7 @@ interface OpenPhotos {
   index: number;
 }
 
+// Shows the conversation, keeps it live, and sends new messages through the outbox.
 export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -42,6 +44,7 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   const speaker = otherUserName || 'the other person';
   // The list has no live region, so a message from the other person is announced as it arrives (A8, F6).
   useAnnounceIncomingMessages(messagesQuery.data, userId, speaker);
+  // Opens the photo viewer for a message's photos.
   const openPhotos = (paths: string[], index: number, own: boolean) => {
     const photos = paths.flatMap((path, i) => {
       const uri = attachmentUrls[path];
@@ -50,6 +53,7 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
     if (photos.length > 0) setViewer({ photos, index: Math.min(index, photos.length - 1) });
   };
 
+  // Draws one chat row: a day label or a message bubble.
   const renderItem = ({ item }: { item: ChatRow }) => {
     if (item.kind === 'day') return <DaySeparator label={item.label} />;
     const isOwn = item.message.sender_id === userId;
@@ -100,6 +104,7 @@ export function ChatScreen({ route }: MessagingScreenProps<'Chat'>) {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     fill: { flex: 1 },

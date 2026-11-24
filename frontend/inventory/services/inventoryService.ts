@@ -1,3 +1,4 @@
+// Inventory: API calls of the dealer inventory system (/api/v1/inventory).
 import { apiFetch } from '../../services/api/client';
 import type { RetryResult } from '../../services/api/generated';
 import type {
@@ -39,6 +40,7 @@ import type {
 // only (BR-03/04): the backend refuses anyone else and row-level security keeps each dealer to their own rows. Lists
 // return the first page (the API's cap of 100 rows).
 
+// Base path of the inventory API.
 const BASE = '/api/v1/inventory';
 
 /**
@@ -54,28 +56,34 @@ function postOnce<T>(path: string, body: object, key: string): Promise<T> {
 
 // ---- dashboard
 
+// GET the dashboard.
 export function fetchDashboard(): Promise<Dashboard> {
   return apiFetch(`${BASE}/dashboard`);
 }
 
 // ---- products
 
+// GET the products (inactive ones too when asked).
 export function fetchProducts(includeInactive = false): Promise<ProductView[]> {
   return apiFetch(`${BASE}/products`, { query: { include_inactive: includeInactive || undefined } });
 }
 
+// GET one product.
 export function fetchProduct(productId: string): Promise<ProductView> {
   return apiFetch(`${BASE}/products/${encodeURIComponent(productId)}`);
 }
 
+// POST a new product.
 export function createProduct(input: ProductInput): Promise<ProductView> {
   return apiFetch(`${BASE}/products`, { method: 'POST', body: input });
 }
 
+// PATCH a product.
 export function updateProduct(productId: string, input: ProductUpdateInput): Promise<ProductView> {
   return apiFetch(`${BASE}/products/${encodeURIComponent(productId)}`, { method: 'PATCH', body: input });
 }
 
+// DELETE a product.
 export function removeProduct(productId: string): Promise<void> {
   return apiFetch(`${BASE}/products/${encodeURIComponent(productId)}`, { method: 'DELETE' });
 }
@@ -88,6 +96,7 @@ export function linkListing(productId: string, listingId: string): Promise<Produ
   });
 }
 
+// DELETE the link between a product and a listing.
 export function unlinkListing(productId: string, listingId: string): Promise<void> {
   return apiFetch(
     `${BASE}/products/${encodeURIComponent(productId)}/listings/${encodeURIComponent(listingId)}`,
@@ -102,22 +111,27 @@ export function fetchListingOptions(): Promise<ListingOption[]> {
 
 // ---- stock and locations
 
+// GET stock levels, optionally by location or product.
 export function fetchStock(filters: { locationId?: string; productId?: string }): Promise<StockLevel[]> {
   return apiFetch(`${BASE}/stock`, { query: { location_id: filters.locationId, product_id: filters.productId } });
 }
 
+// POST a transfer between locations, with its Idempotency-Key.
 export function postTransfer(input: TransferInput, key: string): Promise<Movement[]> {
   return postOnce(`${BASE}/stock/transfer`, input, key);
 }
 
+// GET the locations.
 export function fetchLocations(): Promise<InventoryLocation[]> {
   return apiFetch(`${BASE}/locations`);
 }
 
+// POST a new location.
 export function createLocation(input: LocationInput): Promise<InventoryLocation> {
   return apiFetch(`${BASE}/locations`, { method: 'POST', body: input });
 }
 
+// PATCH a location.
 export function updateLocation(locationId: string, input: LocationUpdateInput): Promise<InventoryLocation> {
   return apiFetch(`${BASE}/locations/${encodeURIComponent(locationId)}`, { method: 'PATCH', body: input });
 }
@@ -129,6 +143,7 @@ export function removeLocation(locationId: string): Promise<void> {
 
 // ---- movements (the ledger)
 
+// GET the movement history with the given filters.
 export function fetchMovements(filters: MovementFilters = {}): Promise<Movement[]> {
   // `source` repeats once per value (FastAPI list query); apiFetch's query sets one value per name, so the repeated
   // part goes on the path and the rest through `query`.
@@ -144,44 +159,54 @@ export function fetchMovements(filters: MovementFilters = {}): Promise<Movement[
   });
 }
 
+// POST a Stock In, with its Idempotency-Key.
 export function postStockIn(input: StockInInput, key: string): Promise<Movement> {
   return postOnce(`${BASE}/movements/stock-in`, input, key);
 }
 
+// POST a Stock Out, with its Idempotency-Key.
 export function postStockOut(input: StockOutInput, key: string): Promise<Movement> {
   return postOnce(`${BASE}/movements/stock-out`, input, key);
 }
 
+// POST an adjustment, with its Idempotency-Key.
 export function postAdjustment(input: AdjustmentInput, key: string): Promise<Movement> {
   return postOnce(`${BASE}/movements/adjustment`, input, key);
 }
 
 // ---- suppliers and purchases
 
+// GET the suppliers.
 export function fetchSuppliers(): Promise<InventorySupplier[]> {
   return apiFetch(`${BASE}/suppliers`, { query: { include_inactive: true } });
 }
 
+// POST a new supplier.
 export function createSupplier(input: SupplierInput): Promise<InventorySupplier> {
   return apiFetch(`${BASE}/suppliers`, { method: 'POST', body: input });
 }
 
+// PATCH a supplier.
 export function updateSupplier(supplierId: string, input: SupplierUpdateInput): Promise<InventorySupplier> {
   return apiFetch(`${BASE}/suppliers/${encodeURIComponent(supplierId)}`, { method: 'PATCH', body: input });
 }
 
+// DELETE a supplier.
 export function removeSupplier(supplierId: string): Promise<void> {
   return apiFetch(`${BASE}/suppliers/${encodeURIComponent(supplierId)}`, { method: 'DELETE' });
 }
 
+// GET the purchases, optionally by status.
 export function fetchPurchases(status?: PurchaseStatus): Promise<Purchase[]> {
   return apiFetch(`${BASE}/purchases`, { query: { status } });
 }
 
+// GET one purchase.
 export function fetchPurchase(purchaseId: string): Promise<Purchase> {
   return apiFetch(`${BASE}/purchases/${encodeURIComponent(purchaseId)}`);
 }
 
+// POST a new draft purchase, with its Idempotency-Key.
 export function createPurchase(input: PurchaseInput, key: string): Promise<Purchase> {
   return postOnce(`${BASE}/purchases`, input, key);
 }
@@ -196,20 +221,24 @@ export function receivePurchase(purchaseId: string): Promise<Purchase> {
   return apiFetch(`${BASE}/purchases/${encodeURIComponent(purchaseId)}/receive`, { method: 'POST' });
 }
 
+// POST to cancel a draft purchase.
 export function cancelPurchase(purchaseId: string): Promise<Purchase> {
   return apiFetch(`${BASE}/purchases/${encodeURIComponent(purchaseId)}/cancel`, { method: 'POST' });
 }
 
 // ---- alerts and sync
 
+// GET the stock alerts.
 export function fetchAlerts(): Promise<StockAlert[]> {
   return apiFetch(`${BASE}/alerts`);
 }
 
+// GET the alert settings.
 export function fetchAlertSettings(): Promise<AlertSettings> {
   return apiFetch(`${BASE}/alerts/settings`);
 }
 
+// PUT the alert settings.
 export function saveAlertSettings(input: AlertSettingsInput): Promise<AlertSettings> {
   return apiFetch(`${BASE}/alerts/settings`, { method: 'PUT', body: input });
 }

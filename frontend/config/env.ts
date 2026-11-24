@@ -1,3 +1,4 @@
+// Reads and validates the app's public EXPO_PUBLIC_* settings (Supabase URL, key, API base URL).
 import { z } from 'zod';
 
 // Public configuration, baked into the JavaScript bundle at build time from .env (see
@@ -32,6 +33,7 @@ if (!parsed.success) {
   );
 }
 
+// The validated settings the rest of the app imports instead of reading process.env.
 export const ENV = {
   supabaseUrl: parsed.data.EXPO_PUBLIC_SUPABASE_URL,
   supabaseAnonKey: parsed.data.EXPO_PUBLIC_SUPABASE_ANON_KEY,

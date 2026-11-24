@@ -1,3 +1,4 @@
+// Reads the signed-in user's profile from Supabase and classifies any failure.
 import { supabase } from '../services/supabase/client';
 import type { Profile } from '../common/types/profile';
 
@@ -10,6 +11,7 @@ import type { Profile } from '../common/types/profile';
  */
 export type ProfileReadFailure = 'offline' | 'refused' | 'failed';
 
+// Error raised when the profile cannot be read, carrying the reason (offline, refused, failed).
 export class ProfileReadError extends Error {
   readonly reason: ProfileReadFailure;
 

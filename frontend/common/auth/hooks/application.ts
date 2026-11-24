@@ -1,3 +1,4 @@
+// React Query hooks for the dealer or expert application and its documents.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../../hooks/keys';
 import { MAX_DOCUMENT_BYTES, type PickedDocument } from '../../../utils/documentPicker';
@@ -17,14 +18,17 @@ import type { ApplicationRole, DealerApplicationInput } from '../types/applicati
  * change, and a refused change comes back as `application_locked` for the screen to show.
  */
 
+// Loads the documents the administrator requires for the user's role.
 export function useRequiredDocuments(enabled = true) {
   return useQuery({ queryKey: queryKeys.application.requiredDocuments(), queryFn: fetchRequiredDocuments, enabled });
 }
 
+// Loads the dealer's saved business details.
 export function useDealerApplication(enabled = true) {
   return useQuery({ queryKey: queryKeys.application.dealer(), queryFn: fetchDealerApplication, enabled });
 }
 
+// Loads the files already attached to the application.
 export function useApplicationDocuments(role: ApplicationRole, enabled = true) {
   return useQuery({
     queryKey: queryKeys.application.documents(role),
@@ -33,6 +37,7 @@ export function useApplicationDocuments(role: ApplicationRole, enabled = true) {
   });
 }
 
+// Saves the dealer's business details and updates the cached copy.
 export function useSaveDealerApplication() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -44,6 +49,7 @@ export function useSaveDealerApplication() {
 /** Thrown before any upload when a chosen file is over the buckets' 10 MB limit. */
 const TOO_LARGE_MESSAGE = 'This file is larger than 10 MB. Choose a smaller file or take a photo instead.';
 
+// Checks the file size, uploads the file and attaches it to the application.
 export function useAttachDocument(role: ApplicationRole, userId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -56,6 +62,7 @@ export function useAttachDocument(role: ApplicationRole, userId: string | undefi
   });
 }
 
+// Removes an attached document and refreshes the list.
 export function useRemoveDocument(role: ApplicationRole) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -64,6 +71,7 @@ export function useRemoveDocument(role: ApplicationRole) {
   });
 }
 
+// Sends the application for review and refreshes the application data.
 export function useSubmitApplication() {
   const queryClient = useQueryClient();
   return useMutation({

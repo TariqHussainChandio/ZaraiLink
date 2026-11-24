@@ -1,3 +1,4 @@
+// Inventory: product detail with stock per location, linked listings and recent history.
 import { Link2, Pencil, Unlink, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -33,6 +34,7 @@ import {
   type InventoryScreenProps,
 } from '../types/navigation';
 
+// How many recent movements the history shows.
 const HISTORY_ROWS = 20;
 
 /** One product: its stock at each location, its recent movements and the marketplace listings it feeds (D8). */
@@ -56,10 +58,12 @@ export function ProductDetailScreen({
   const unlink = useUnlinkListing(productId);
   const toast = useToast();
 
+  // Ids of the listings already linked to this product.
   const linkedIds = useMemo(
     () => new Set((product?.listings ?? []).map(listing => listing.id)),
     [product],
   );
+  // The listings the dealer can still link.
   const choices = useMemo(
     () =>
       (listingOptions.data ?? [])
@@ -76,9 +80,11 @@ export function ProductDetailScreen({
     );
   }
 
+  // Opens a stock operation form for this product.
   const operate = (operation: 'in' | 'out' | 'adjust' | 'transfer') =>
     navigation.navigate(INVENTORY_ROUTES.Operation, { operation, productId });
 
+  // Links the chosen listing to this product.
   const onLink = async () => {
     if (!listingId) return;
     setLinkError(null);
@@ -92,6 +98,7 @@ export function ProductDetailScreen({
     }
   };
 
+  // Unlinks the chosen listing from this product.
   const onUnlink = async () => {
     if (!unlinking) return;
     setLinkError(null);
@@ -104,6 +111,7 @@ export function ProductDetailScreen({
     setUnlinking(null);
   };
 
+  // The latest movements of this product.
   const history = (movements.data ?? []).slice(0, HISTORY_ROWS);
 
   return (

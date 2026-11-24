@@ -1,3 +1,4 @@
+// Older recent-activity list for dashboards (deprecated; use ListGroup and ListRow).
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { EmptyState } from '../EmptyState';
@@ -66,6 +67,7 @@ export function ActivityFeed({ title, items, emptyMessage }: ActivityFeedProps) 
   );
 }
 
+// Theme-based styles for the activity feed.
 function makeStyles({ colors, space, size, typography, fontWeight, borders }: Theme) {
   return StyleSheet.create({
     container: {

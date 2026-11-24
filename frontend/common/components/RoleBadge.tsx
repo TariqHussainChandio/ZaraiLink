@@ -1,3 +1,4 @@
+// Badge showing a user's role with its icon and role colour.
 import { ShieldCheck, ShoppingBag, Sprout, Stethoscope, Store, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -31,6 +32,7 @@ export function RoleBadge({ role }: RoleBadgeProps) {
   );
 }
 
+// Theme-based styles for the role badge.
 function makeStyles({ components, radius, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     badge: {

@@ -1,3 +1,4 @@
+// Analytics API calls: fetch each role's dashboard numbers.
 import { apiFetch } from '../../../services/api/client';
 import type {
   AdminAnalytics,
@@ -17,14 +18,17 @@ export async function fetchFarmerAnalytics(): Promise<FarmerAnalytics> {
   return apiFetch('/api/v1/analytics/farmer');
 }
 
+// Fetches the dealer dashboard numbers.
 export async function fetchDealerAnalytics(): Promise<DealerAnalytics> {
   return apiFetch('/api/v1/analytics/dealer');
 }
 
+// Fetches the expert dashboard numbers.
 export async function fetchExpertAnalytics(): Promise<ExpertAnalytics> {
   return apiFetch('/api/v1/analytics/expert');
 }
 
+// Fetches the admin dashboard numbers.
 export async function fetchAdminAnalytics(): Promise<AdminAnalytics> {
   return apiFetch('/api/v1/analytics/admin');
 }

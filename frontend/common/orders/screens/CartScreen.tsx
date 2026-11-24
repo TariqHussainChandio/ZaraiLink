@@ -1,3 +1,4 @@
+// Cart screen: items grouped by seller, today's prices and a checkout button.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { ShoppingCart } from 'lucide-react-native';
 import React, { useMemo } from 'react';
@@ -97,6 +98,7 @@ export function CartScreen({ navigation }: MarketplaceScreenProps<'Cart'>) {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     seller: { gap: space[1] },

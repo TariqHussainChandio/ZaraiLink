@@ -1,3 +1,4 @@
+// Shared hook that refreshes order, payment and dashboard data after a change.
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from './keys';
 

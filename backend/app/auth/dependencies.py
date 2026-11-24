@@ -1,3 +1,5 @@
+"""FastAPI dependencies that load the signed-in user from the bearer token and check role and status."""
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -20,6 +22,7 @@ AccountStatus = Literal["pending", "approved", "rejected"]
 APPROVAL_ROLES: frozenset[str] = frozenset({"dealer", "expert"})
 
 
+# The signed-in caller: id, email, role, account status and the access token.
 @dataclass(frozen=True)
 class AuthenticatedUser:
     id: str
@@ -29,6 +32,7 @@ class AuthenticatedUser:
     account_status: AccountStatus = "approved"
 
 
+# The role, suspension and approval status read from the caller's profile row.
 @dataclass(frozen=True)
 class _ProfileState:
     role: Role
@@ -52,6 +56,7 @@ def forget_profile(user_id: str) -> None:
     _profile_cache.pop(user_id, None)
 
 
+# Takes the token out of the "Authorization: Bearer ..." header, or returns 401.
 async def get_bearer_token(authorization: str | None = Header(default=None)) -> str:
     # `authorization` is Optional (default None) specifically so a missing header reaches this
     # function body and gets our own 401, rather than FastAPI's built-in request-validation 422
@@ -65,6 +70,7 @@ async def get_bearer_token(authorization: str | None = Header(default=None)) -> 
     return token
 
 
+# Reads the caller's role, suspension and account status from the profiles table.
 async def _fetch_profile_state(token: str, user_id: str) -> _ProfileState:
     supabase = await get_user_scoped_client(token)
     response = (
@@ -188,7 +194,9 @@ declared_any_status: set[Callable[..., Any]] = {get_current_user_any_status}
 declared_roles: dict[Callable[..., Any], tuple[Role, ...]] = {}
 
 
+# Builds a dependency that lets only the given roles (and approved accounts) through.
 def require_role(*roles: Role):
+    # Returns 403 when the caller's role is not one of the allowed roles.
     async def _dependency(user: AuthenticatedUser = Depends(get_current_user)) -> AuthenticatedUser:
         if user.role not in roles:
             raise AppHTTPException(403, "Insufficient role", "insufficient_role")
@@ -201,6 +209,7 @@ def require_role(*roles: Role):
 def require_role_any_status(*roles: Role):
     """`require_role` without the approval check, for the routes a pending dealer or expert needs to apply."""
 
+    # Returns 403 when the caller's role is not one of the allowed roles.
     async def _dependency(user: AuthenticatedUser = Depends(get_current_user_any_status)) -> AuthenticatedUser:
         if user.role not in roles:
             raise AppHTTPException(403, "Insufficient role", "insufficient_role")

@@ -1,3 +1,4 @@
+// Checkout: a delivery charge line per seller (BR-09), totals and the place order button.
 import { ShoppingCart } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -61,9 +62,11 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
   const [failure, setFailure] = useState<string | null>(null);
   const [placed, setPlaced] = useState<PlacedOrder[] | null>(null);
 
+  // The delivery charge typed for a seller, or 0.
   const deliveryOf = (sellerId: string) => parseWhole(deliveryText[sellerId] ?? '') ?? 0;
   const grandTotal = groups.reduce((sum, group) => sum + productsTotal(group.items, listings) + deliveryOf(group.sellerId), 0);
 
+  // Places one order per seller, then starts each payment with the chosen method.
   const onPlace = async () => {
     if (!userId) return;
     setFailure(null);
@@ -207,6 +210,7 @@ export function CheckoutScreen({ navigation }: MarketplaceScreenProps<'Checkout'
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     seller: { gap: space[4] },

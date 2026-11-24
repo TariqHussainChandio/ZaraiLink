@@ -1,3 +1,4 @@
+// Banner that lists every form error above the submit button.
 import type { FieldErrors, FieldValues } from 'react-hook-form';
 import React from 'react';
 import { Banner } from '../../components';
@@ -5,6 +6,7 @@ import { Banner } from '../../components';
 /** Every message in a form's errors, once each, in field order (nested objects such as an address included). */
 export function collectErrorMessages(errors: FieldErrors<FieldValues>): string[] {
   const messages: string[] = [];
+  // Walks the nested error object and collects every message string.
   const walk = (node: unknown) => {
     if (!node || typeof node !== 'object') return;
     const record = node as Record<string, unknown>;

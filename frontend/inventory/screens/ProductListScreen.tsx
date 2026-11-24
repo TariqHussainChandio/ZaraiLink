@@ -1,3 +1,4 @@
+// Inventory: searchable list of the dealer's products.
 import { FlashList } from '@shopify/flash-list';
 import { Package, Plus, Search } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
@@ -19,6 +20,7 @@ export function ProductListScreen({ navigation }: InventoryScreenProps<typeof IN
   const { data, refetch, isRefetching } = result;
   const [query, setQuery] = useState('');
 
+  // Products whose name or SKU matches the search text.
   const products = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const all = data ?? [];
@@ -95,6 +97,7 @@ export function ProductListScreen({ navigation }: InventoryScreenProps<typeof IN
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   const base = makeScreenStyles(theme);
   return {

@@ -1,3 +1,4 @@
+// Farm detail screen: one farm's facts and crops, with edit and delete modes.
 import { Pencil, Plus, Sprout } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -20,6 +21,7 @@ import { FarmForm, farmInputFromValues, farmToFormValues, type FarmFormValues } 
 import { cropMeta, formatArea } from '../constants/forms';
 import { useDeleteFarm, useFarm, useFarmCrops, useUpdateFarm } from '../hooks/farmer';
 
+// "1 crop" or "3 crops".
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** One farm (FA-21): where it is, how big, and the crops growing on it, with the next step ("Add crop") in reach. Editing
@@ -46,6 +48,7 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
   const addCrop = () => navigation.navigate(HOME_ROUTES.AddCrop, { farmId });
   const openCrop = (cropId: string) => navigation.navigate(HOME_ROUTES.AddCrop, { farmId, cropId });
 
+  // Saves the edited farm and leaves edit mode; shows the error on failure.
   const onSave = async (values: FarmFormValues) => {
     try {
       await updateFarm.mutateAsync(farmInputFromValues(values));
@@ -57,6 +60,7 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
     setEditing(false);
   };
 
+  // Deletes the farm after the farmer confirms, then goes back.
   const onDelete = async () => {
     await removeFarm.mutateAsync(farmId);
     snackbar.show('Farm deleted');
@@ -149,6 +153,7 @@ export function FarmDetailScreen({ route, navigation }: HomeScreenProps<'FarmDet
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     farmName: { ...typography.titleLg, color: colors.ink },

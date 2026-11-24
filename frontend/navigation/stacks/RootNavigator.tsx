@@ -1,3 +1,4 @@
+// Top-level router: picks splash, sign-in, approval, or the role's shell from the auth status.
 import React from 'react';
 import { ApprovalGrantedScreen } from '../../common/auth/screens/ApprovalGrantedScreen';
 import { ResetPasswordScreen } from '../../common/auth/screens/ResetPasswordScreen';
@@ -13,6 +14,7 @@ import { ApprovalNavigator } from './ApprovalNavigator';
 import { ExpertNavigator } from './ExpertNavigator';
 import { GuestNavigator } from './GuestNavigator';
 
+// Shows the screen or shell that matches the current auth status and role.
 export function RootNavigator() {
   const status = useAuthStore(state => state.status);
   const role = useAuthStore(state => state.role);

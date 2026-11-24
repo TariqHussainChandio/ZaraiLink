@@ -1,3 +1,4 @@
+// Scan Disease processing screen: uploads the photo, runs the model, then opens the result.
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Check, Circle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -10,6 +11,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { failureCause, useRunDiseaseAnalysis } from '../hooks/disease';
 import { navigateToConsultExpert } from './expertHandoff';
 
+// What the upload screen passes in: the photo and the chosen crop.
 interface RouteParams {
   imageUri: string;
   imageFileName: string | null;
@@ -23,6 +25,7 @@ interface RouteParams {
 
 // Only ever reached by Farmer — Disease Advisory is farmer-only (like Inventory is
 // dealer-only), gated at the farmer home's "Is a crop sick?" card.
+// Shows progress while the photo is checked, and clear options if it fails.
 export function DiseaseProcessingScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -35,6 +38,7 @@ export function DiseaseProcessingScreen() {
   // Without a signed-in user the analysis can never start; show the failure state instead of a spinner that never ends.
   const signedOut = !userId;
 
+  // Starts (or retries) the analysis and opens the result screen on success.
   const start = useCallback(() => {
     if (!userId) return;
     analyze(
@@ -149,6 +153,7 @@ export function DiseaseProcessingScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     actions: { gap: space[2] },

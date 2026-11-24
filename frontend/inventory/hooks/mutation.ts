@@ -1,3 +1,4 @@
+// Inventory: shared mutation hook that refuses writes while offline.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNetworkStore } from '../../state/networkStore';
 import { inventoryKeys } from './keys';

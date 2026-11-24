@@ -1,3 +1,4 @@
+// Public entry point: re-exports every shared component.
 export * from './Avatar';
 export * from './Badge';
 export * from './Banner';

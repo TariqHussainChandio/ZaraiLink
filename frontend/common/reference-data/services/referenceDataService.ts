@@ -1,10 +1,13 @@
+// API calls for reference data: read lists and admin create, update and delete.
 import { apiFetch } from '../../../services/api/client';
 import type { Currency, Unit } from '../../types/referenceData';
 
+// Loads the list of currencies.
 export async function fetchCurrencies(): Promise<Currency[]> {
   return apiFetch('/api/v1/reference-data/currencies');
 }
 
+// Loads the list of measurement units.
 export async function fetchUnits(): Promise<Unit[]> {
   return apiFetch('/api/v1/reference-data/units');
 }
@@ -31,6 +34,7 @@ export async function createRefDataRow(table: RefDataTable, row: Record<string, 
   await apiFetch(`/api/v1/reference-data/${table}/rows`, { method: 'POST', body: row });
 }
 
+// Updates one row of a reference table (admin only).
 export async function updateRefDataRow(
   table: RefDataTable,
   id: string,
@@ -39,6 +43,7 @@ export async function updateRefDataRow(
   await apiFetch(`/api/v1/reference-data/${table}/rows/${id}`, { method: 'PATCH', body: patch });
 }
 
+// Deletes one row of a reference table (admin only).
 export async function deleteRefDataRow(table: RefDataTable, id: string): Promise<void> {
   await apiFetch(`/api/v1/reference-data/${table}/rows/${id}`, { method: 'DELETE' });
 }

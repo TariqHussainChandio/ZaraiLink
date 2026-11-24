@@ -1,3 +1,4 @@
+// Dealer: home dashboard with the shop's sales figures, best sellers and quick links.
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChartColumn, Plus, Store, Tag, TrendingUp } from 'lucide-react-native';
@@ -17,6 +18,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { formatRs } from '../../utils/money';
 import { useNameTitle } from '../../hooks/useNameTitle';
 
+// A count with its word, such as "1 order" or "3 orders".
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString('en-PK')} ${n === 1 ? one : many}`;
 
 /**
@@ -47,6 +49,7 @@ export function DealerDashboardScreen() {
       refetchStats();
     }, [refetchSales, refetchStats]),
   );
+  // Reloads the sales and analytics figures (pull to refresh).
   const refresh = () => {
     refetchSales();
     refetchStats();
@@ -56,6 +59,7 @@ export function DealerDashboardScreen() {
   const figures = stats.data;
   const waiting = [sales, stats].some(q => q.isPending && q.fetchStatus === 'paused');
 
+  // Completed orders this calendar month: their count and total.
   const monthSales = useMemo(() => {
     if (!orders) return undefined;
     const now = new Date();
@@ -66,6 +70,7 @@ export function DealerDashboardScreen() {
     return { count: thisMonth.length, total: thisMonth.reduce((sum, o) => sum + o.total, 0) };
   }, [orders]);
 
+  // Open the full order history, or the analytics screen.
   const allOrders = () => navigateInTab(tabs, APP_TABS.Orders, ORDERS_ROUTES.OrderHistory);
   const analytics = () => navigation.navigate(HOME_ROUTES.Analytics);
   const bestSellers = figures?.bestSellers.slice(0, 3) ?? [];
@@ -156,6 +161,7 @@ export function DealerDashboardScreen() {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     section: { gap: space[3] },

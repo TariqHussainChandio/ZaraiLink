@@ -1,3 +1,4 @@
+// Tile for one attached document: type icon, name, size, and view or remove buttons.
 import { FileText, Image as ImageIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -20,6 +21,7 @@ export interface DocumentTileProps {
 const ONE_DECIMAL = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 const WHOLE = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
+// Formats a file size as "1.2 MB" or "340 KB".
 function formatFileSize(bytes: number): string {
   return bytes >= 1024 * 1024
     ? `${ONE_DECIMAL.format(bytes / (1024 * 1024))} MB`
@@ -53,6 +55,7 @@ export function DocumentTile({ fileName, mimeType, sizeBytes, onView, onRemove, 
   );
 }
 
+// Theme-based styles for the document tile.
 function makeStyles({ colors, space, size, radius, borders, typography }: Theme) {
   return StyleSheet.create({
     tile: {

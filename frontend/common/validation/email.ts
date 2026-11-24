@@ -1,3 +1,4 @@
+// Zod rule and message for email fields on the auth forms.
 import { z } from 'zod';
 
 /** Shown under an email field while what is typed is not yet a valid address. */

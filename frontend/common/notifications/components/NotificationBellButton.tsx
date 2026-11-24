@@ -1,3 +1,4 @@
+// App bar bell button with the unread notifications count.
 import { Bell } from 'lucide-react-native';
 import React from 'react';
 import { IconButton } from '../../components';

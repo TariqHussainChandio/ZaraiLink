@@ -1,3 +1,4 @@
+// Screen to rate and review an order.
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, Card, ScreenScaffold, StickyActionBar, TextField, useSnackbar } from '../../components';
@@ -24,6 +25,7 @@ export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'Writ
   const order = useOrderDetail(orderId).data?.order;
   const item = order?.order_items.find(candidate => candidate.listing_id === listingId) ?? order?.order_items[0];
 
+  // Saves the review and goes back.
   const onSubmit = async () => {
     if (!buyerId || rating === 0) return;
     setFailure(null);
@@ -76,6 +78,7 @@ export function WriteReviewScreen({ route, navigation }: OrdersScreenProps<'Writ
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     subject: { gap: space[1] },

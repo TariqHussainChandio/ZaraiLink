@@ -1,3 +1,5 @@
+"""Profile database access: update profile, account deletion steps and application submit."""
+
 from typing import Any
 
 from postgrest.exceptions import APIError
@@ -17,6 +19,7 @@ from app.database.supabase_client import get_reauth_client, get_service_role_cli
 _OWNER_PREFIXED_BUCKETS = ("avatars", "disease-images", "expert-documents", "dealer-documents", "inventory-exports")
 
 
+# Saves the given profile fields on the caller's own profile row.
 async def update_profile(access_token: str, user_id: str, patch: dict[str, Any]) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("profiles").update(patch).eq("id", user_id).execute()
@@ -95,6 +98,7 @@ async def log_self_deletion(user_id: str) -> None:
     )
 
 
+# Lists the active documents an admin requires for the given role.
 async def fetch_required_documents(access_token: str, role: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = (

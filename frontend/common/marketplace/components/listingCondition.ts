@@ -8,6 +8,7 @@ const LABELS: Record<string, string> = {
   refurbished: 'Refurbished',
 };
 
+// Returns the readable label of a condition, or null when it is empty.
 export function conditionLabel(condition: string | null | undefined): string | null {
   const text = condition?.trim();
   if (!text) return null;

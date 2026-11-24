@@ -1,3 +1,4 @@
+// Inventory: list of the dealer's stock locations.
 import { FlashList } from '@shopify/flash-list';
 import { MapPin, Plus } from 'lucide-react-native';
 import React, { useMemo } from 'react';
@@ -55,6 +56,7 @@ export function LocationListScreen({ navigation }: InventoryScreenProps<typeof I
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

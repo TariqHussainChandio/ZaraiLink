@@ -1,3 +1,4 @@
+// The signed-in shell for farmers, buyers and dealers: bottom tabs chosen by role.
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -54,6 +55,7 @@ const PLANT_DOCTOR_TAB = tabOptions('AI', Sprout);
 const Root = createNativeStackNavigator<MarketRootParamList>();
 type MarketRole = Extract<Role, 'farmer' | 'buyer' | 'dealer'>;
 
+// True for the roles that use the marketplace shell (farmer, buyer, dealer).
 function isMarketRole(role: Role | null): role is MarketRole {
   return role === 'farmer' || role === 'buyer' || role === 'dealer';
 }
@@ -90,6 +92,7 @@ function MarketTabs({ role }: { role: MarketRole }) {
   );
 }
 
+// Renders the bottom tabs for the signed-in farmer, buyer or dealer.
 export function AppNavigator() {
   const role = useAuthStore(state => state.role);
   // RootNavigator mounts this shell only for a marketplace role. There is no default role: a missing one once opened

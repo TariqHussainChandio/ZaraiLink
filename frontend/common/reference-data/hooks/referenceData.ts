@@ -1,3 +1,4 @@
+// React Query hooks for reference data (units, currencies) and the admin editor.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createRefDataRow,
@@ -14,6 +15,7 @@ export type { RefDataTable };
 /** Admin-curated reference data changes rarely, so a day-old copy is fine (an admin edit invalidates it at once). */
 const REFERENCE_STALE_TIME = 24 * 60 * 60 * 1000;
 
+// Loads the measurement units, cached for a day.
 export function useUnits() {
   return useQuery({ queryKey: queryKeys.referenceData.units(), queryFn: fetchUnits, staleTime: REFERENCE_STALE_TIME });
 }
@@ -29,6 +31,7 @@ function useInvalidateReferenceData() {
   return () => queryClient.invalidateQueries({ queryKey: queryKeys.referenceData.all });
 }
 
+// Creates a new row, or updates it when it has an id.
 export function useSaveRefDataRow(table: RefDataTable) {
   const invalidate = useInvalidateReferenceData();
   return useMutation({
@@ -38,6 +41,7 @@ export function useSaveRefDataRow(table: RefDataTable) {
   });
 }
 
+// Deletes a reference data row.
 export function useDeleteRefDataRow(table: RefDataTable) {
   const invalidate = useInvalidateReferenceData();
   return useMutation({ mutationFn: (id: string) => deleteRefDataRow(table, id), onSuccess: invalidate });

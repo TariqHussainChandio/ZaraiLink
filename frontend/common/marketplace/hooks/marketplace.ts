@@ -1,3 +1,4 @@
+// Marketplace hooks: queries and mutations for listings, categories and crops.
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createListing,
@@ -20,6 +21,7 @@ import { queryKeys } from '../../../hooks/keys';
 /** Categories and crops are admin-curated reference data: they change rarely, so a day-old copy is fine. */
 const REFERENCE_STALE_TIME = 24 * 60 * 60 * 1000;
 
+// Loads all categories.
 export function useCategories() {
   return useQuery({
     queryKey: queryKeys.marketplace.categories(),
@@ -37,6 +39,7 @@ export function useListingFilterOptions() {
   });
 }
 
+// Loads all crops.
 export function useCrops() {
   return useQuery({
     queryKey: queryKeys.marketplace.crops(),
@@ -60,6 +63,7 @@ export function useListings(filters: Omit<FetchListingsParams, 'page'>) {
   });
 }
 
+// Loads one listing by id.
 export function useListing(id: string) {
   return useQuery({
     queryKey: queryKeys.marketplace.listing(id),
@@ -95,6 +99,7 @@ export function useLinkableInventoryProducts(enabled: boolean) {
   });
 }
 
+// Loads the listings of one owner.
 export function useMyListings(ownerId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.marketplace.myListings(ownerId ?? ''),
@@ -123,12 +128,14 @@ function useInvalidateMarketplace() {
     ]);
 }
 
+// Inputs for creating a listing.
 interface CreateListingVariables {
   userId: string;
   images: PickedPhoto[];
   input: Omit<ListingInput, 'images'>;
 }
 
+// Uploads the photos, creates the listing, then refreshes the lists.
 export function useCreateListing() {
   const invalidate = useInvalidateMarketplace();
   return useMutation({
@@ -141,6 +148,7 @@ export function useCreateListing() {
   });
 }
 
+// Inputs for editing a listing.
 interface UpdateListingVariables {
   id: string;
   userId: string;
@@ -149,6 +157,7 @@ interface UpdateListingVariables {
   input: Omit<ListingInput, 'images'>;
 }
 
+// Uploads new photos, saves the changes, then refreshes the lists.
 export function useUpdateListing() {
   const invalidate = useInvalidateMarketplace();
   return useMutation({
@@ -172,6 +181,7 @@ export function useUpdateListing() {
   });
 }
 
+// Deletes a listing, then refreshes the lists.
 export function useDeleteListing() {
   const invalidate = useInvalidateMarketplace();
   return useMutation({

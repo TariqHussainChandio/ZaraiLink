@@ -1,3 +1,4 @@
+// Shared parts of the application steps: loading skeleton, load error, Back and Next buttons.
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { type Theme, useTheme } from '../../../../theme';
@@ -59,6 +60,7 @@ export function StepActions({ onBack, primaryLabel, onPrimary, loading, disabled
   );
 }
 
+// Builds these components' styles from the theme.
 function makeStyles({ space, size }: Theme) {
   return StyleSheet.create({
     skeleton: { gap: space[4] },

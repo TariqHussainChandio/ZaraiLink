@@ -83,6 +83,7 @@ _REJECTION_HTML = Template(
 )
 
 
+# A ready-to-send email: subject, plain text and HTML.
 @dataclass(frozen=True)
 class Email:
     subject: str

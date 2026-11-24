@@ -1,5 +1,7 @@
+// Inventory: context that lets any screen leave the inventory system ("Back to ZaraiLink").
 import React, { createContext, useContext } from 'react';
 
+// Holds the function that exits the inventory system.
 const InventoryExitContext = createContext<(() => void) | null>(null);
 
 /** Gives every screen of the inventory system the way back to the marketplace: the root screen's own goBack, so it

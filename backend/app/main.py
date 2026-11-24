@@ -1,3 +1,5 @@
+"""FastAPI entry point: creates the app, adds middleware, error handlers and routes."""
+
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -31,6 +33,7 @@ from app.middleware.rate_limit import RateLimitMiddleware, limiter
 logger = logging.getLogger(__name__)
 
 
+# Startup and shutdown: logging, Sentry, the AI model and shared Supabase clients.
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
@@ -100,6 +103,7 @@ def health() -> dict[str, str]:
     return liveness()
 
 
+# Readiness check: confirms the database answers.
 @app.get("/health/ready")
 async def readiness() -> dict[str, str]:
     # A cheap, always-populated, anon-readable table — proves PostgREST + the anon grant chain are
@@ -115,6 +119,7 @@ async def readiness() -> dict[str, str]:
     return {"status": "ok"}
 
 
+# Returns the AI model version and the environment name.
 @app.get("/version")
 def version() -> dict[str, str]:
     return {"version": settings.model_version, "environment": settings.environment}

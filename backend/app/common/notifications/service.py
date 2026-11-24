@@ -1,3 +1,5 @@
+"""Notification business logic and the application decision email."""
+
 import logging
 
 import httpx
@@ -14,14 +16,17 @@ from app.common.notifications.emails import application_decision
 logger = logging.getLogger(__name__)
 
 
+# Returns the caller's notifications.
 async def fetch_notifications(user: AuthenticatedUser) -> list[dict]:
     return await repo.fetch_notifications(user.access_token, user.id)
 
 
+# Returns the caller's unread count.
 async def fetch_unread_count(user: AuthenticatedUser) -> int:
     return await repo.fetch_unread_count(user.access_token, user.id)
 
 
+# Marks one notification read; 404 if it is not the caller's.
 async def mark_read(user: AuthenticatedUser, notification_id: str) -> None:
     notification = await repo.get_notification(user.access_token, notification_id)
     if notification is None:
@@ -29,6 +34,7 @@ async def mark_read(user: AuthenticatedUser, notification_id: str) -> None:
     await repo.mark_read(user.access_token, notification_id)
 
 
+# Marks all of the caller's notifications read.
 async def mark_all_read(user: AuthenticatedUser) -> None:
     await repo.mark_all_read(user.access_token, user.id)
 

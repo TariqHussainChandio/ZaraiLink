@@ -1,3 +1,4 @@
+// The admin shell: one stack per admin area, opened from the Overview menu (no bottom bar).
 import { type BottomTabNavigationProp, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
@@ -70,11 +71,14 @@ const Stack = createNativeStackNavigator<AdminStackParamList>();
 // every admin screen opens (there is no bottom bar). Every other area's first screen has only its name and Back to the
 // Overview. Inner screens have Back.
 const menuBar = () => <AdminMenuBar />;
+// App-bar button that returns to the admin Overview tab.
 function BackToOverview() {
   const tabs = useNavigation().getParent<BottomTabNavigationProp<AdminTabParamList>>();
   return <IconButton icon={ArrowLeft} label="Back to the Overview" onPress={() => tabs?.navigate(ADMIN_TABS.Home)} />;
 }
+// Render function for the Back to Overview button.
 const backToOverview = () => <BackToOverview />;
+// Header options for an admin area's first screen (Overview gets bell, profile and menu).
 function adminRootOptions(root: string, home = false) {
   return home
     ? stackOptionsWithActions({ [root]: notificationsAction }, 'marketplace', { [root]: profileAction }, { [root]: menuBar })
@@ -95,6 +99,7 @@ function AdminProfileNavigator() {
   return <ProfileNavigator screenOptions={ACCOUNT_STACK_OPTIONS} />;
 }
 
+// Stack for the Overview tab: dashboard, analytics, notifications and AI screens.
 function OverviewNavigator() {
   return (
     <Stack.Navigator screenOptions={OVERVIEW_STACK_OPTIONS}>

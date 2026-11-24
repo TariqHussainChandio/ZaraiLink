@@ -1,3 +1,4 @@
+// The Messages stack: conversation list and chat.
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
@@ -16,6 +17,7 @@ export type MessagingScreenProps<RouteName extends keyof MessagingStackParamList
 
 const Stack = createNativeStackNavigator<MessagingStackParamList>();
 
+// Renders the conversation list and chat screens.
 export function MessagingNavigator() {
   return (
     <Stack.Navigator screenOptions={stackScreenOptions}>

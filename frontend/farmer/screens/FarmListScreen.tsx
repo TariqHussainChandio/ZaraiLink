@@ -1,3 +1,4 @@
+// Farm list screen: the farmer's farms, with an "Add farm" button.
 import { useFocusEffect } from '@react-navigation/native';
 import { Plus, Tractor } from 'lucide-react-native';
 import React, { useCallback } from 'react';

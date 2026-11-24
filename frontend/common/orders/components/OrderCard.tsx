@@ -1,3 +1,4 @@
+// List card for one order: the other party, status and total.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { ListGroup, ListRow, StatusBadge } from '../../components';
@@ -6,6 +7,7 @@ import type { OrderWithItems } from '../types/orders';
 import { formatDay } from '../../../utils/dates';
 import { formatAmount, formatRs } from '../../../utils/money';
 
+// Props for OrderCard.
 export interface OrderCardProps {
   order: OrderWithItems;
   counterpartyName: string;
@@ -37,6 +39,7 @@ export function OrderCard({ order, counterpartyName, onPress }: OrderCardProps) 
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
     total: { ...typography.price, color: colors.ink },

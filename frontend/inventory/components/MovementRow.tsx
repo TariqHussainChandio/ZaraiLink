@@ -1,3 +1,4 @@
+// Inventory: one row of the stock ledger.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { StatusBadge } from '../../common/components';
@@ -49,6 +50,7 @@ export function MovementRow({ movement, productName, locationName }: MovementRow
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
     figures: { alignItems: 'flex-end' },

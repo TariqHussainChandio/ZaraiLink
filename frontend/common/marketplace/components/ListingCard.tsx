@@ -1,3 +1,4 @@
+// Grid card for one listing: photo, title, price, seller and stock.
 import { ImageOff } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +10,7 @@ import { conditionLabel } from './listingCondition';
 import { WishlistButton } from './WishlistButton';
 import type { ListingWithRelations } from '../types/marketplace';
 
+// Props for ListingCard.
 export interface ListingCardProps {
   listing: ListingWithRelations;
   onPress: () => void;
@@ -92,6 +94,7 @@ export function ListingCard({ listing, onPress }: ListingCardProps) {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography, borders, size, components }: Theme) {
   return StyleSheet.create({
     card: {

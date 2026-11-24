@@ -1,3 +1,5 @@
+"""Marketplace request and response shapes."""
+
 from typing import Literal
 
 from pydantic import BaseModel
@@ -10,18 +12,21 @@ ListingStatus = Literal["active", "inactive", "sold"]
 Availability = Literal["in_stock", "low_stock", "out_of_stock", "unknown"]
 
 
+# Body for creating a category.
 class CategoryInput(BaseModel):
     name: str
     slug: str
     icon: str | None = None
 
 
+# Body for editing a category; every field is optional.
 class CategoryUpdateInput(BaseModel):
     name: str | None = None
     slug: str | None = None
     icon: str | None = None
 
 
+# Body for creating a listing.
 class ListingInput(BaseModel):
     title: str
     description: str | None = None
@@ -41,6 +46,7 @@ class ListingInput(BaseModel):
     inventory_product_id: str | None = None
 
 
+# Body for editing a listing; every field is optional.
 class ListingUpdateInput(BaseModel):
     title: str | None = None
     description: str | None = None
@@ -60,10 +66,12 @@ class ListingUpdateInput(BaseModel):
     inventory_product_id: str | None = None
 
 
+# Body for changing a listing's status.
 class UpdateListingStatusRequest(BaseModel):
     status: ListingStatus
 
 
+# Body asking for the view counts of some listings.
 class ViewCountsRequest(BaseModel):
     listing_ids: list[str]
 
@@ -71,6 +79,7 @@ class ViewCountsRequest(BaseModel):
 # ---- response models (typed, so the published OpenAPI document matches the responses)
 
 
+# A category as returned by the API.
 class Category(BaseModel):
     id: str
     name: str
@@ -79,12 +88,14 @@ class Category(BaseModel):
     created_at: str
 
 
+# A short category reference shown with a listing.
 class CategoryRef(BaseModel):
     id: str
     name: str
     slug: str
 
 
+# A short owner (seller) reference shown with a listing.
 class OwnerRef(BaseModel):
     id: str
     full_name: str
@@ -100,6 +111,7 @@ class ListingFilterOptions(BaseModel):
     max_price: float | None = None
 
 
+# A crop as returned by the API.
 class Crop(BaseModel):
     id: str
     name: str
@@ -107,6 +119,7 @@ class Crop(BaseModel):
     created_at: str
 
 
+# A listing as returned by the API.
 class Listing(BaseModel):
     id: str
     owner_id: str

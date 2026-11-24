@@ -1,3 +1,4 @@
+// Live updates for new and read messages in a chat, via Supabase Realtime.
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId } from 'react';
 import { supabase } from '../../services/supabase/client';

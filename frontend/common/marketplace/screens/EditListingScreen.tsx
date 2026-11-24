@@ -1,3 +1,4 @@
+// Screen to edit an existing listing and its photos.
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { NavigationAction } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -85,6 +86,7 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
     [navigation, unsaved],
   );
 
+  // Picks photos from the camera or gallery and adds them.
   const pickImages = async () => {
     const assets = await pickPhotos({ selectionLimit: MAX_LISTING_PHOTOS - photoCount });
     if (assets.length === 0) return;
@@ -92,11 +94,13 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
     setPhotoError(undefined);
   };
 
+  // Removes a saved or a newly added photo.
   const removePhoto = (index: number) => {
     if (index < existingImages.length) setExistingImages(current => current.filter((_, i) => i !== index));
     else setNewImages(current => current.filter((_, i) => i !== index - existingImages.length));
   };
 
+  // Checks there is a photo, then saves the changes.
   const onSubmit = async (values: ListingFormValues) => {
     if (!userId) return;
     if (photoCount === 0) {
@@ -130,6 +134,7 @@ export function EditListingScreen({ route, navigation }: MarketplaceScreenProps<
     }
   };
 
+  // Submits the form, also flagging a missing photo.
   const submit = () =>
     handleSubmit(onSubmit, () => {
       if (photoCount === 0) setPhotoError(NO_PHOTO);

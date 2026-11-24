@@ -1,3 +1,4 @@
+// Hook that puts the signed-in person's name in a dashboard's app bar title.
 import { NavigationContext } from '@react-navigation/native';
 import { useContext, useLayoutEffect } from 'react';
 import { useAuthStore } from '../state/authStore';

@@ -1,3 +1,4 @@
+// Hook that returns the bottom-tab navigator from inside any stack screen.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import type { AppTabParamList } from './AppNavigator';

@@ -1,3 +1,4 @@
+// Row of shortcut buttons on a dashboard.
 import type { LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -62,6 +63,7 @@ export function QuickActions({ actions }: QuickActionsProps) {
   );
 }
 
+// Theme-based styles for the quick actions.
 function makeStyles({ colors, space, size, radius, borders, typography, components }: Theme, accent: Accent) {
   return StyleSheet.create({
     row: {

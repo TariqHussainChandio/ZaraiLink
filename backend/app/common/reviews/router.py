@@ -1,3 +1,5 @@
+"""Review routes: write, read and list reviews, and admin hide or restore."""
+
 from fastapi import APIRouter, Depends, Query
 
 from app.auth.dependencies import (
@@ -34,6 +36,7 @@ async def list_reviews_for_moderation(
     return page.finish(await service.fetch_reviews_for_moderation(user, include_hidden))
 
 
+# Returns one review.
 @router.get("/{review_id}", response_model=ReviewWithBuyer)
 async def get_review(review_id: str) -> dict:
     return await service.fetch_review_by_id(review_id)
@@ -48,6 +51,7 @@ async def get_review_by_order(
     return await service.fetch_review_by_order_id(order_id, user)
 
 
+# Returns the review of a consultation, or null.
 @router.get("/by-consultation/{consultation_id}", response_model=ReviewWithBuyer | None)
 async def get_review_by_consultation(
     consultation_id: str, user: AuthenticatedUser | None = Depends(get_optional_user)
@@ -55,16 +59,19 @@ async def get_review_by_consultation(
     return await service.fetch_review_by_consultation_id(consultation_id, user)
 
 
+# Lists the reviews of a listing.
 @router.get("/by-listing/{listing_id}", response_model=list[ReviewWithBuyer])
 async def list_reviews_for_listing(listing_id: str, page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_reviews_for_listing(listing_id))
 
 
+# Lists the reviews of a seller.
 @router.get("/by-seller/{seller_id}", response_model=list[ReviewWithBuyer])
 async def list_reviews_for_seller(seller_id: str, page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_reviews_for_seller(seller_id))
 
 
+# Lists the reviews of an expert.
 @router.get("/by-expert/{expert_id}", response_model=list[ReviewWithBuyer])
 async def list_reviews_for_expert(expert_id: str, page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_reviews_for_expert(expert_id))
@@ -74,6 +81,7 @@ async def list_reviews_for_expert(expert_id: str, page: Page = Depends(paginate)
 # derives seller_id/expert_id itself (see reviews_service's own docstring for why).
 
 
+# Writes a review of an order.
 @router.post("", response_model=Review)
 async def create_review(
     request: CreateReviewRequest,
@@ -82,6 +90,7 @@ async def create_review(
     return await service.create_review(user, request.order_id, request.listing_id, request.rating, request.comment)
 
 
+# Writes a review of the expert on a consultation.
 @router.post("/consultation", response_model=Review)
 async def create_consultation_review(
     request: CreateConsultationReviewRequest,
@@ -99,6 +108,7 @@ async def hide_review(
     return await service.hide_review(user, review_id, request.reason)
 
 
+# Admin: restores a hidden review.
 @router.patch("/{review_id}/restore", response_model=Review)
 async def restore_review(review_id: str, user: AuthenticatedUser = Depends(require_admin)) -> dict:
     return await service.restore_review(user, review_id)

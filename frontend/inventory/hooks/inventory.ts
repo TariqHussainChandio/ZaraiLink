@@ -1,3 +1,4 @@
+// Inventory: React Query hooks for every inventory API read and write.
 import { useQuery } from '@tanstack/react-query';
 import {
   cancelPurchase,
@@ -61,10 +62,12 @@ import { useInventoryMutation } from './mutation';
 
 // Reads: each under the 'inventory' root, so the last copy is kept on the device and shown offline.
 
+// Reads the inventory dashboard.
 export function useInventoryDashboard() {
   return useQuery({ queryKey: inventoryKeys.dashboard(), queryFn: fetchDashboard });
 }
 
+// Reads the dealer's products.
 export function useProducts() {
   return useQuery({ queryKey: inventoryKeys.products(), queryFn: () => fetchProducts(true) });
 }
@@ -78,10 +81,12 @@ export function useProduct(productId: string | undefined) {
   });
 }
 
+// Reads the dealer's own listings for the link picker, when enabled.
 export function useListingOptions(enabled: boolean) {
   return useQuery({ queryKey: inventoryKeys.listingOptions(), queryFn: fetchListingOptions, enabled });
 }
 
+// Reads the stock at one location.
 export function useStock(locationId: string | null) {
   return useQuery({
     queryKey: inventoryKeys.stock(locationId),
@@ -90,18 +95,22 @@ export function useStock(locationId: string | null) {
   });
 }
 
+// Reads the dealer's locations.
 export function useLocations() {
   return useQuery({ queryKey: inventoryKeys.locations(), queryFn: fetchLocations });
 }
 
+// Reads the movement history with the given filters.
 export function useMovements(filters: MovementFilters, enabled = true) {
   return useQuery({ queryKey: inventoryKeys.movements(filters), queryFn: () => fetchMovements(filters), enabled });
 }
 
+// Reads the dealer's suppliers.
 export function useSuppliers() {
   return useQuery({ queryKey: inventoryKeys.suppliers(), queryFn: fetchSuppliers });
 }
 
+// Reads the dealer's purchases, optionally by status.
 export function usePurchases(status: PurchaseStatus | null) {
   return useQuery({ queryKey: inventoryKeys.purchases(status), queryFn: () => fetchPurchases(status ?? undefined) });
 }
@@ -121,6 +130,7 @@ export function useStockAlerts(enabled = true) {
   return useQuery({ queryKey: inventoryKeys.alerts(), queryFn: fetchAlerts, enabled });
 }
 
+// Reads the dealer's alert settings.
 export function useAlertSettings() {
   return useQuery({ queryKey: inventoryKeys.alertSettings(), queryFn: fetchAlertSettings });
 }
@@ -135,10 +145,12 @@ export function useReport<R extends PeriodReportName>(report: R, range: ReportRa
   });
 }
 
+// Reads the reconciliation report.
 export function useReconciliationReport() {
   return useQuery({ queryKey: inventoryKeys.reconciliation(), queryFn: fetchReconciliationReport });
 }
 
+// Reads the marketplace sync log.
 export function useSyncLog() {
   return useQuery({ queryKey: inventoryKeys.syncLog(), queryFn: fetchSyncLog });
 }
@@ -147,20 +159,24 @@ export function useSyncLog() {
 
 type SaveProductVariables = { id?: undefined; input: ProductInput } | { id: string; input: ProductUpdateInput };
 
+// Creates a product, or updates one when an id is given.
 export function useSaveProduct() {
   return useInventoryMutation((variables: SaveProductVariables) =>
     variables.id === undefined ? createProduct(variables.input) : updateProduct(variables.id, variables.input),
   );
 }
 
+// Removes a product.
 export function useRemoveProduct() {
   return useInventoryMutation(removeProduct);
 }
 
+// Links a marketplace listing to this product.
 export function useLinkListing(productId: string) {
   return useInventoryMutation((listingId: string) => linkListing(productId, listingId));
 }
 
+// Unlinks a marketplace listing from this product.
 export function useUnlinkListing(productId: string) {
   return useInventoryMutation((listingId: string) => unlinkListing(productId, listingId));
 }
@@ -171,42 +187,50 @@ interface Keyed<T> {
   key: string;
 }
 
+// Records a Stock In.
 export function useStockIn() {
   return useInventoryMutation(({ input, key }: Keyed<StockInInput>) => postStockIn(input, key));
 }
 
+// Records a Stock Out.
 export function useStockOut() {
   return useInventoryMutation(({ input, key }: Keyed<StockOutInput>) => postStockOut(input, key));
 }
 
+// Records a manual adjustment.
 export function useAdjustment() {
   return useInventoryMutation(({ input, key }: Keyed<AdjustmentInput>) => postAdjustment(input, key));
 }
 
+// Moves stock between two locations.
 export function useTransfer() {
   return useInventoryMutation(({ input, key }: Keyed<TransferInput>) => postTransfer(input, key));
 }
 
 type SaveLocationVariables = { id?: undefined; input: LocationInput } | { id: string; input: LocationUpdateInput };
 
+// Creates a location, or updates one when an id is given.
 export function useSaveLocation() {
   return useInventoryMutation((variables: SaveLocationVariables) =>
     variables.id === undefined ? createLocation(variables.input) : updateLocation(variables.id, variables.input),
   );
 }
 
+// Removes (or deactivates) a location.
 export function useRemoveLocation() {
   return useInventoryMutation(removeLocation);
 }
 
 type SaveSupplierVariables = { id?: undefined; input: SupplierInput } | { id: string; input: SupplierUpdateInput };
 
+// Creates a supplier, or updates one when an id is given.
 export function useSaveSupplier() {
   return useInventoryMutation((variables: SaveSupplierVariables) =>
     variables.id === undefined ? createSupplier(variables.input) : updateSupplier(variables.id, variables.input),
   );
 }
 
+// Removes a supplier.
 export function useRemoveSupplier() {
   return useInventoryMutation(removeSupplier);
 }
@@ -224,18 +248,22 @@ export function useSavePurchase() {
   );
 }
 
+// Receives a purchase, adding its lines to stock.
 export function useReceivePurchase() {
   return useInventoryMutation(receivePurchase);
 }
 
+// Cancels a draft purchase.
 export function useCancelPurchase() {
   return useInventoryMutation(cancelPurchase);
 }
 
+// Saves the dealer's alert settings.
 export function useSaveAlertSettings() {
   return useInventoryMutation(saveAlertSettings);
 }
 
+// Retries the failed marketplace sync entries.
 export function useRetrySync() {
   return useInventoryMutation((_: void) => retrySync());
 }

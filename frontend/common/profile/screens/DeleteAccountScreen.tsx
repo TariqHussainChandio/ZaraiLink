@@ -1,3 +1,4 @@
+// Delete account screen: confirm with the password, then the account is removed.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -35,6 +36,7 @@ export function DeleteAccountScreen() {
     defaultValues: { password: '' },
   });
 
+  // Deletes the account with the entered password; the user is then signed out.
   const deleteNow = async () => {
     if (confirming === null) return;
     try {
@@ -104,6 +106,7 @@ export function DeleteAccountScreen() {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
     warning: { ...typography.body, color: colors.status.danger.ink },

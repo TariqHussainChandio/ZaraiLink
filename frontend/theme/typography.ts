@@ -1,3 +1,4 @@
+// The app's type scale: font families, sizes, line heights and weights for every text style.
 import type { TextStyle } from 'react-native';
 
 // The design system's type scale (D15, Rate Board). Two families, each with one job:
@@ -23,6 +24,7 @@ interface TypeStyle {
   fontVariant?: TextStyle['fontVariant'];
 }
 
+// Builds one text style from a font family, size, line height, weight and optional extras.
 function style(family: string, fontSize: number, lineHeight: number, fontWeight: TypeStyle['fontWeight'], extra: Partial<TypeStyle> = {}): TypeStyle {
   return { fontFamily: family, fontSize, lineHeight, fontWeight, ...extra };
 }
@@ -30,6 +32,7 @@ function style(family: string, fontSize: number, lineHeight: number, fontWeight:
 const { board, text } = fontFamily;
 const tabular: Pick<TypeStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };
 
+// Every named text style in the app (display, titles, body, labels, figures).
 export const typography = {
   /** The situation line at the top of a home screen ("3 orders to dispatch"). Once per screen. */
   display: style(board, 34, 38, '700', { letterSpacing: -0.2, ...tabular }),

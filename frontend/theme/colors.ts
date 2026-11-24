@@ -26,6 +26,7 @@ const darkSecondary: Accent = { mark: '#D2A27A', fill: '#DDB28E', ink: '#E3BE9E'
 const lightFarmer: Accent = { mark: '#2E7D32', fill: '#2E7D32', ink: '#1E6123', soft: '#E3F0E2' };
 const darkFarmer: Accent = { mark: '#6CBF70', fill: '#7CC97F', ink: '#93D395', soft: '#1B301C' };
 
+// The light-mode colour palette: backgrounds, text, lines, role accents and status tones.
 export const lightColors = {
   /** Screen background behind every list and form. */
   ground: '#EDF1E8',
@@ -111,6 +112,7 @@ export const lightColors = {
 
 export type ThemeColors = typeof lightColors;
 
+// The dark-mode colour palette, with the same keys as the light one.
 export const darkColors: ThemeColors = {
   ground: '#0A0E0B',
   surface: '#151B17',

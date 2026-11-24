@@ -1,11 +1,15 @@
+"""Analytics response shapes for each role's dashboard."""
+
 from pydantic import BaseModel
 
 
+# One point of a monthly chart: the month and its value.
 class MonthlyPoint(BaseModel):
     month: str
     value: float
 
 
+# A listing in the best-sellers list, with units sold.
 class PopularProduct(BaseModel):
     listingId: str
     title: str
@@ -13,6 +17,7 @@ class PopularProduct(BaseModel):
     revenue: float
 
 
+# The numbers on the farmer dashboard.
 class FarmerAnalytics(BaseModel):
     totalListingViews: int
     activeListings: int
@@ -27,6 +32,7 @@ class FarmerAnalytics(BaseModel):
     resolvedConsultations: int
 
 
+# The numbers on the dealer dashboard.
 class DealerAnalytics(BaseModel):
     totalSales: float
     totalOrders: int
@@ -40,6 +46,7 @@ class DealerAnalytics(BaseModel):
     supplierCount: int
 
 
+# The numbers on the expert dashboard.
 class ExpertAnalytics(BaseModel):
     totalConsultations: int
     completedConsultations: int
@@ -48,6 +55,7 @@ class ExpertAnalytics(BaseModel):
     consultationsByMonth: list[MonthlyPoint]
 
 
+# The numbers on the admin dashboard.
 class AdminAnalytics(BaseModel):
     userGrowth: list[MonthlyPoint]
     usersByRole: dict[str, int]

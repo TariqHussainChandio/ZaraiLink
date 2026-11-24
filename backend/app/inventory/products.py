@@ -29,17 +29,20 @@ def product_view(row: dict, default_location_id: str | None) -> dict:
     return view
 
 
+# The id of the dealer's default location, or None.
 async def _default_location_id(user: AuthenticatedUser) -> str | None:
     default = await repo.fetch_default_location(user.access_token)
     return default["id"] if default else None
 
 
+# Lists the dealer's products with their stock and linked listings.
 async def list_products(user: AuthenticatedUser, include_inactive: bool = False) -> list[dict]:
     rows = await repo.fetch_products(user.access_token, include_inactive)
     default_id = await _default_location_id(user)
     return [product_view(row, default_id) for row in rows]
 
 
+# Returns one product view, or 404.
 async def get_product(user: AuthenticatedUser, product_id: str) -> dict:
     row = await repo.fetch_product(user.access_token, product_id)
     if row is None:
@@ -47,6 +50,7 @@ async def get_product(user: AuthenticatedUser, product_id: str) -> dict:
     return product_view(row, await _default_location_id(user))
 
 
+# Creates a product; without its own threshold it takes the dealer's default.
 async def create_product(user: AuthenticatedUser, fields: dict, threshold_given: bool = True) -> dict:
     # A product created without its own reorder threshold takes the dealer's default (inventory_alert_settings).
     if not threshold_given:
@@ -57,6 +61,7 @@ async def create_product(user: AuthenticatedUser, fields: dict, threshold_given:
     return await get_product(user, created["id"])
 
 
+# Updates a product and returns its fresh view.
 async def update_product(user: AuthenticatedUser, product_id: str, fields: dict) -> dict:
     if fields:
         await repo.update_row(user.access_token, PRODUCTS, product_id, fields)
@@ -82,6 +87,7 @@ async def link_listing(user: AuthenticatedUser, product_id: str, listing_id: str
     return await get_product(user, product_id)
 
 
+# Unlinks one of the dealer's listings from this product.
 async def unlink_listing(user: AuthenticatedUser, product_id: str, listing_id: str) -> dict:
     listing = await repo.fetch_owned_listing(user.access_token, user.id, listing_id)
     if listing is None or listing.get("inventory_product_id") != product_id:
@@ -93,6 +99,7 @@ async def unlink_listing(user: AuthenticatedUser, product_id: str, listing_id: s
 # --- routes -----------------------------------------------------------------------------------------------------------
 
 
+# GET: the dealer's products.
 @router.get("/products", response_model=list[ProductView])
 async def get_products(
     include_inactive: bool = False, user: AuthenticatedUser = Depends(require_dealer), page: Page = Depends(paginate)
@@ -100,16 +107,19 @@ async def get_products(
     return page.finish(await list_products(user, include_inactive))
 
 
+# POST: creates a product.
 @router.post("/products", response_model=ProductView, status_code=201)
 async def post_product(request: ProductInput, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await create_product(user, request.model_dump(), "reorder_threshold" in request.model_fields_set)
 
 
+# GET: one product.
 @router.get("/products/{product_id}", response_model=ProductView)
 async def get_one_product(product_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await get_product(user, product_id)
 
 
+# PATCH: updates a product.
 @router.patch("/products/{product_id}", response_model=ProductView)
 async def patch_product(
     product_id: str, request: ProductUpdateInput, user: AuthenticatedUser = Depends(require_dealer)
@@ -117,11 +127,13 @@ async def patch_product(
     return await update_product(user, product_id, request.model_dump(exclude_unset=True))
 
 
+# DELETE: removes a product.
 @router.delete("/products/{product_id}", status_code=204)
 async def remove_product(product_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> None:
     await delete_product(user, product_id)
 
 
+# POST: links a marketplace listing to a product.
 @router.post("/products/{product_id}/listings", response_model=ProductView)
 async def post_product_listing(
     product_id: str, request: ListingLinkInput, user: AuthenticatedUser = Depends(require_dealer)
@@ -129,6 +141,7 @@ async def post_product_listing(
     return await link_listing(user, product_id, request.listing_id)
 
 
+# DELETE: unlinks a marketplace listing from a product.
 @router.delete("/products/{product_id}/listings/{listing_id}", response_model=ProductView)
 async def remove_product_listing(
     product_id: str, listing_id: str, user: AuthenticatedUser = Depends(require_dealer)

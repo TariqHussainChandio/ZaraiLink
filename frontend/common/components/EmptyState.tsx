@@ -1,3 +1,4 @@
+// Placeholder shown when a list is empty or failed, with an icon and an optional action.
 import { Inbox, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -38,6 +39,7 @@ export function EmptyState({ title, description, icon: Icon = Inbox, actionLabel
   );
 }
 
+// Theme-based styles for the empty state.
 function makeStyles({ colors, space, size, radius, typography }: Theme, accent: Accent) {
   return StyleSheet.create({
     container: { alignItems: 'center', justifyContent: 'center', paddingVertical: space[8], paddingHorizontal: space[4], gap: space[2] },

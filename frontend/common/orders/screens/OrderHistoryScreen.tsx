@@ -1,3 +1,4 @@
+// Order history: purchases or sales, split into open, completed and cancelled.
 import { useFocusEffect } from '@react-navigation/native';
 import { ClipboardList } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -14,6 +15,7 @@ import { useAppTabNavigation } from '../../../navigation/stacks/useAppTabNavigat
 import { useTheme, type Theme } from '../../../theme';
 import type { OrdersScreenProps } from '../../../navigation/stacks/OrdersNavigator';
 
+// Which side (purchases or sales) and which group of orders is shown.
 type Segment = 'buyer' | 'seller';
 type Bucket = 'open' | 'completed' | 'cancelled';
 
@@ -50,6 +52,7 @@ const EMPTY_TITLE: Record<Segment, Record<Bucket, string>> = {
   seller: { open: 'No open sales', completed: 'No completed sales yet', cancelled: 'No cancelled sales' },
 };
 
+// Lists the user's orders and opens one when tapped.
 export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHistory'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -63,6 +66,7 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
 
   const query = useOrders(segment, !!userId);
   const { refetch } = query;
+  // The orders in the chosen group.
   const orders = useMemo(() => (query.data ?? []).filter(order => BUCKET_OF[order.status] === bucket), [query.data, bucket]);
 
   useFocusEffect(
@@ -109,11 +113,13 @@ export function OrderHistoryScreen({ navigation }: OrdersScreenProps<'OrderHisto
   );
 }
 
+// Spacer between order cards.
 function Gap() {
   const { space } = useTheme();
   return <View style={{ height: space[3] }} />;
 }
 
+// Builds the styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     column: { gap: 0 },

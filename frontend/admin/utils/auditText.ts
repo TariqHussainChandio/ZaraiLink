@@ -1,3 +1,4 @@
+// Admin: turns raw audit-log rows into plain-English sentences for the audit screen.
 import { ROLE_LABELS, type Role } from '../../common/constants/roles';
 import { statusMeta, type StatusKind } from '../../common/constants/status';
 import type { AuditLogEntryWithActor } from '../types/audit';
@@ -74,6 +75,7 @@ const HIDDEN_FIELDS = new Set([
   'icon',
 ]);
 
+// Turns snake_case into a capitalised phrase: 'open_report' -> 'Open report'.
 const sentenceCase = (value: string) => {
   const words = value.replace(/_/g, ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
@@ -87,6 +89,7 @@ const STATUS_KIND_BY_ENTITY: Record<string, StatusKind> = {
   consultations: 'consultation',
 };
 
+// Shows one recorded field value in plain words (status labels, Yes/No, None).
 function formatValue(entity: string, key: string, value: unknown): string {
   if (key === 'hidden_at') return value ? 'Hidden' : 'Shown';
   if (value === null || value === undefined || value === '') return 'None';
@@ -104,6 +107,7 @@ function formatValue(entity: string, key: string, value: unknown): string {
   return String(value);
 }
 
+// Lists the fields that changed between the old and new state.
 function changesOf(entry: AuditLogEntryWithActor): AuditChange[] {
   const before = entry.previous_state ?? null;
   const after = entry.new_state ?? null;
@@ -124,6 +128,7 @@ function changesOf(entry: AuditLogEntryWithActor): AuditChange[] {
   return changes;
 }
 
+// Finds the admin's reason in the metadata or the new state, if any.
 function reasonOf(entry: AuditLogEntryWithActor): string | null {
   const meta = entry.metadata ?? {};
   for (const key of ['reason', 'notes']) {
@@ -146,6 +151,7 @@ function changeOf(entry: AuditLogEntryWithActor): string {
   return 'update';
 }
 
+// The verb part of the sentence, e.g. 'approved a dealer application'.
 function verbPhrase(entry: AuditLogEntryWithActor): string {
   const application = /^(dealer|expert)_application_(approved|rejected)$/.exec(entry.action);
   if (application) return `${application[2] === 'approved' ? 'approved' : 'rejected'} ${application[1] === 'expert' ? 'an' : 'a'} ${application[1]} application`;
@@ -203,6 +209,7 @@ function verbPhrase(entry: AuditLogEntryWithActor): string {
   }
 }
 
+// Builds the full plain-English description of one audit entry.
 export function describeAudit(entry: AuditLogEntryWithActor): AuditDescription {
   const who = entry.actor?.full_name || 'The system';
   return {

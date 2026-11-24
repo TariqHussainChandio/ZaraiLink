@@ -104,6 +104,7 @@ FORMULA_STARTS = ("=", "+", "-", "@")
 _INVISIBLE = ("Zs", "Zl", "Zp", "Cc", "Cf")
 
 
+# True when a cell starts with =, +, - or @, which a spreadsheet would run as a formula.
 def _runs_as_formula(text: str) -> bool:
     for char in text:
         if unicodedata.category(char) in _INVISIBLE:
@@ -144,6 +145,7 @@ def table_rows(report: str, data: dict) -> list[dict]:
     return list(data["rows"])
 
 
+# Writes the report's rows as CSV bytes.
 def to_csv(report: str, data: dict) -> bytes:
     buffer = io.StringIO()
     writer = csv.DictWriter(buffer, fieldnames=COLUMNS[report], extrasaction="ignore", restval="")
@@ -173,6 +175,7 @@ async def _remove_expired(folder: str, now: datetime) -> None:
         logger.warning("old inventory exports not removed: %s", type(exc).__name__)
 
 
+# Builds the report CSV, uploads it to the dealer's folder and returns a signed link.
 async def create_export(user: AuthenticatedUser, report: str, date_from: date | None, date_to: date | None) -> dict:
     start, to = report_period(date_from, date_to)
     content = to_csv(report, await REPORTS[report](user, start, to))

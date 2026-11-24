@@ -1,3 +1,4 @@
+// Email code screen for sign-up or password reset, with a resend timer.
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, CodeField } from '../../components';
@@ -16,6 +17,7 @@ import type { AuthScreenProps } from '../../../navigation/stacks/AuthNavigator';
 // supabase/config.toml: `otp_expiry = 900`. Said on the screen so a person who comes back late knows to ask for a new one.
 const CODE_LIFETIME = 'Check your spam folder. The code works for 15 minutes.';
 
+// Code entry screen with a resend button and a cooldown.
 export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOtp'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -34,6 +36,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
   // minute); a resend sooner would only be refused.
   const { remaining, restart } = useResendCooldown();
 
+  // Checks the code; success signs the user in or starts the password reset.
   const onVerify = async (token: string) => {
     if (submitting) return;
     setError(null);
@@ -54,6 +57,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
     }
   };
 
+  // Sends a new code and restarts the cooldown.
   const onResend = async () => {
     setError(null);
     setResendResult(null);
@@ -119,6 +123,7 @@ export function VerifyOtpScreen({ route, navigation }: AuthScreenProps<'VerifyOt
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     helper: { ...typography.caption, color: colors.ink3 },

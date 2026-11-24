@@ -1,3 +1,5 @@
+"""Notification routes: list, unread count and mark as read."""
+
 from fastapi import APIRouter, Depends
 
 from app.auth.dependencies import AuthenticatedUser, require_authenticated_user
@@ -8,6 +10,7 @@ from app.common.pagination import Page, paginate
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 
 
+# Lists the caller's notifications.
 @router.get("", response_model=list[Notification])
 async def list_notifications(
     user: AuthenticatedUser = Depends(require_authenticated_user), page: Page = Depends(paginate)
@@ -15,16 +18,19 @@ async def list_notifications(
     return page.finish(await service.fetch_notifications(user))
 
 
+# Returns how many notifications are unread, for the bell badge.
 @router.get("/unread-count", response_model=UnreadCountResponse)
 async def unread_count(user: AuthenticatedUser = Depends(require_authenticated_user)) -> UnreadCountResponse:
     return UnreadCountResponse(count=await service.fetch_unread_count(user))
 
 
+# Marks one notification read.
 @router.patch("/{notification_id}/read", status_code=204)
 async def mark_read(notification_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> None:
     await service.mark_read(user, notification_id)
 
 
+# Marks all of the caller's notifications read.
 @router.patch("/read-all", status_code=204)
 async def mark_all_read(user: AuthenticatedUser = Depends(require_authenticated_user)) -> None:
     await service.mark_all_read(user)

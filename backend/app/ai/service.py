@@ -1,3 +1,5 @@
+"""Disease advisory logic: create cases, run the model on the photo, and build the advisory report."""
+
 import asyncio
 import re
 
@@ -66,6 +68,7 @@ _CROP_DISPLAY_NAMES = {
 }
 
 
+# Turns a model class like "Corn_(maize)___Common_rust" into a crop key and display name.
 def _crop_of_class(raw_class: str) -> dict[str, str]:
     crop_part = raw_class.partition("___")[0]
     name = _CROP_DISPLAY_NAMES.get(crop_part) or crop_part.replace("_", " ").strip()
@@ -93,6 +96,7 @@ def _match_key(text: str) -> str:
     return "".join(ch for ch in text.lower() if ch.isalnum())
 
 
+# Indexes knowledge rows by their class label and by crop + disease, for lookup.
 def _index_knowledge(rows: list[dict]) -> dict[str, dict]:
     index: dict[str, dict] = {}
     for row in rows:
@@ -101,6 +105,7 @@ def _index_knowledge(rows: list[dict]) -> dict[str, dict]:
     return index
 
 
+# Splits a raw model label into crop and disease names.
 def _fallback_names(class_label: str) -> tuple[str, str]:
     # The raw model label is "<Crop>___<Disease>" (class_names.json); used only when no knowledge row exists.
     crop, _, disease = class_label.partition("___")
@@ -155,6 +160,7 @@ def build_report(prediction: dict, knowledge: dict | None, class_label: str | No
     }
 
 
+# Returns the case only if the caller owns it; otherwise a 404.
 def _assert_owner(user: AuthenticatedUser, case: dict | None) -> dict:
     # 404 (not 403) whether the case doesn't exist or just isn't the caller's — doesn't confirm
     # or deny that a guessed id belongs to someone else (rule: 404 = not found / intentionally hidden).
@@ -164,6 +170,7 @@ def _assert_owner(user: AuthenticatedUser, case: dict | None) -> dict:
     return case
 
 
+# Creates a case for a photo in the caller's own storage folder and returns it with a signed link.
 async def create_case(user: AuthenticatedUser, crop_id: str | None, storage_path: str) -> dict:
     # Server-side ownership check beyond the schema's regex (Field pattern in ai/schemas.py
     # can validate shape, not identity): the folder segment must be the caller's own id, so one
@@ -228,6 +235,7 @@ async def fetch_case_report(access_token: str, case_id: str) -> dict | None:
     return await _with_signed_url(case)
 
 
+# Gets a case and its report for the caller, or a 404.
 async def get_case_for_user(user: AuthenticatedUser, disease_case_id: str) -> dict:
     case = await fetch_case_report(user.access_token, disease_case_id)
     if case is None:
@@ -235,6 +243,7 @@ async def get_case_for_user(user: AuthenticatedUser, disease_case_id: str) -> di
     return case
 
 
+# Lists the disease knowledge rows the caller may read.
 async def list_knowledge(user: AuthenticatedUser) -> list[dict]:
     return await disease_repository.list_knowledge_as_user(user.access_token)
 

@@ -1,3 +1,5 @@
+"""Consultation service: rules for requests, status changes, messages and assessments."""
+
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -46,6 +48,7 @@ TRANSITION_ACTOR: dict[tuple[str, str], str] = {
 }
 
 
+# Creates a consultation request to a verified expert.
 async def create_request(user: AuthenticatedUser, fields: dict) -> dict:
     # Only a verified expert can be asked. The public read below shows `approved` experts only (row-level security),
     # so a pending, rejected or suspended expert, or an id that is not an expert at all, is refused here rather than
@@ -64,18 +67,22 @@ async def create_request(user: AuthenticatedUser, fields: dict) -> dict:
         raise
 
 
+# Saves the photo paths of a consultation.
 async def update_images(user: AuthenticatedUser, consultation_id: str, images: list[str]) -> None:
     await repo.update_images(user.access_token, consultation_id, images)
 
 
+# Lists the user's own consultation requests.
 async def fetch_for_user(user: AuthenticatedUser) -> list[dict]:
     return await repo.fetch_for_user(user.access_token, user.id)
 
 
+# Lists the consultations assigned to the expert.
 async def fetch_for_expert(user: AuthenticatedUser) -> list[dict]:
     return await repo.fetch_for_expert(user.access_token, user.id)
 
 
+# Returns one consultation, or 404 when it is missing or not visible.
 async def fetch_by_id(user: AuthenticatedUser, consultation_id: str) -> dict:
     consultation = await repo.get_by_id(user.access_token, consultation_id)
     if consultation is None:
@@ -114,6 +121,7 @@ async def _ai_case_summary(user: AuthenticatedUser, case_id: str) -> dict | None
         return None
 
 
+# Moves a consultation to a new status if the change is allowed.
 async def update_status(user: AuthenticatedUser, consultation_id: str, to: str) -> None:
     consultation = await repo.get_by_id(user.access_token, consultation_id)
     if consultation is None:
@@ -138,10 +146,12 @@ async def update_status(user: AuthenticatedUser, consultation_id: str, to: str) 
     await repo.update_status(user.access_token, consultation_id, to)
 
 
+# Lists the messages of a consultation.
 async def fetch_messages(user: AuthenticatedUser, consultation_id: str) -> list[dict]:
     return await repo.fetch_messages(user.access_token, consultation_id)
 
 
+# Sends a message in a consultation.
 async def send_message(
     user: AuthenticatedUser,
     consultation_id: str,
@@ -154,6 +164,7 @@ async def send_message(
     )
 
 
+# Adds the expert's assessment (append-only, kept apart from the AI report).
 async def create_assessment(user: AuthenticatedUser, consultation_id: str, fields: dict) -> dict:
     # The Expert Assessment (SRDS §36, BR-13) is its own append-only record, never an edit of the AI report, so the
     # farmer always sees which advice is the model's and which is the expert's. Row-level security decides who may
@@ -172,6 +183,7 @@ async def create_assessment(user: AuthenticatedUser, consultation_id: str, field
         raise
 
 
+# Lists the expert assessments of a consultation.
 async def fetch_assessments(user: AuthenticatedUser, consultation_id: str) -> list[dict]:
     return await repo.fetch_assessments(user.access_token, consultation_id)
 
@@ -183,6 +195,7 @@ async def fetch_assessments(user: AuthenticatedUser, consultation_id: str) -> li
 MODERATION_STATUS: dict[str, str] = {"close": "closed", "cancel": "cancelled"}
 
 
+# Lists consultations for the admin, by status and age in days.
 async def fetch_for_admin(user: AuthenticatedUser, status: str | None, older_than_days: int | None) -> list[dict]:
     # "Older than N days" finds the consultations left waiting, the ones an admin most often has to close.
     created_before = (
@@ -191,6 +204,7 @@ async def fetch_for_admin(user: AuthenticatedUser, status: str | None, older_tha
     return await repo.fetch_for_admin(user.access_token, status, created_before)
 
 
+# Applies an admin moderation action (close or cancel) with its reason.
 async def moderate(user: AuthenticatedUser, consultation_id: str, action: str, reason: str) -> dict:
     previous = await repo.get_by_id(user.access_token, consultation_id)
     if previous is None:

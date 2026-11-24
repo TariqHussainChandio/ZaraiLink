@@ -1,3 +1,5 @@
+"""Marketplace service: listing and category rules on top of the repository."""
+
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
 
@@ -39,12 +41,14 @@ def _foreign_product(exc: APIError, fields: dict) -> bool:
     )
 
 
+# Builds the location object, or None when no part of it is given.
 def _location(country: str | None, province: str | None, city: str | None) -> dict | None:
     if not country and not province and not city:
         return None
     return {"country": country, "province": province, "city": city}
 
 
+# Lists listings for browsing with the given filters.
 async def fetch_listings(
     category_id: str | None = None,
     search: str | None = None,
@@ -78,6 +82,7 @@ async def fetch_listings(
     return _for_viewer(listings, user)
 
 
+# Returns one listing, or 404 when it is not visible to this viewer.
 async def fetch_listing_by_id(listing_id: str, user: AuthenticatedUser | None = None) -> dict:
     # Signed in, the owner also reaches their own hidden or sold listing; others still see only listings for sale.
     listing = await repo.fetch_listing_by_id(listing_id, user.access_token if user else None)
@@ -104,31 +109,37 @@ async def fetch_filter_options() -> dict:
     }
 
 
+# Lists all categories.
 async def fetch_categories() -> list[dict]:
     return await repo.fetch_categories()
 
 
+# Creates a category (admin).
 async def create_category(user: AuthenticatedUser, fields: dict) -> dict:
     created = await repo.create_category(user.access_token, fields)
     # The audit row is written atomically by the database (20261023080000).
     return created
 
 
+# Updates a category (admin).
 async def update_category(user: AuthenticatedUser, category_id: str, fields: dict) -> dict:
     updated = await repo.update_category(user.access_token, category_id, fields)
     # The audit row is written atomically by the database (20261023080000).
     return updated
 
 
+# Deletes a category (admin).
 async def delete_category(user: AuthenticatedUser, category_id: str) -> None:
     await repo.delete_category(user.access_token, category_id)
     # The audit row is written atomically by the database (20261023080000).
 
 
+# Lists all crops.
 async def fetch_crops() -> list[dict]:
     return await repo.fetch_crops()
 
 
+# Creates a listing for the signed-in seller.
 async def create_listing(user: AuthenticatedUser, input) -> dict:
     fields = {
         "category_id": input.category_id,
@@ -152,6 +163,7 @@ async def create_listing(user: AuthenticatedUser, input) -> dict:
         raise
 
 
+# Updates only the listing fields the seller sent.
 async def update_listing(user: AuthenticatedUser, listing_id: str, input) -> dict:
     provided = input.model_dump(exclude_unset=True)
     location_touched = any(k in provided for k in ("country", "province", "city"))
@@ -166,23 +178,28 @@ async def update_listing(user: AuthenticatedUser, listing_id: str, input) -> dic
         raise
 
 
+# Deletes the seller's own listing.
 async def delete_listing(user: AuthenticatedUser, listing_id: str) -> None:
     await repo.delete_listing(user.access_token, listing_id, user.id)
 
 
+# Changes a listing's status as an admin moderation.
 async def update_listing_status(user: AuthenticatedUser, listing_id: str, status: str) -> None:
     await repo.update_listing_status(user.access_token, listing_id, status)
     # SRDS §51 "product moderated" (BR-15).
     # The audit row is written atomically by the database (20261023080000).
 
 
+# Lists all listings for admin moderation.
 async def fetch_all_listings_for_moderation(user: AuthenticatedUser) -> list[dict]:
     return _for_viewer(await repo.fetch_all_listings_for_moderation(user.access_token), user)
 
 
+# Records a listing view.
 async def record_listing_view(user: AuthenticatedUser, listing_id: str) -> None:
     await repo.record_listing_view(user.access_token, listing_id, user.id)
 
 
+# Returns the view counts of the given listings.
 async def fetch_listing_view_counts(user: AuthenticatedUser, listing_ids: list[str]) -> dict[str, int]:
     return await repo.fetch_listing_view_counts(user.access_token, listing_ids)

@@ -1,3 +1,4 @@
+// Inventory: hook for the business name shown in the inventory app bar.
 import { useDealerApplication } from '../../common/auth';
 import { useAuthStore } from '../../state/authStore';
 

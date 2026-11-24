@@ -1,3 +1,4 @@
+// Types for reference data: currencies, units and the location shape stored with records.
 export interface Currency {
   id: string;
   code: string;

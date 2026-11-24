@@ -1,3 +1,4 @@
+// Phone number input that checks and formats Pakistani (or international) numbers.
 import { parsePhoneNumberFromString, validatePhoneNumberLength } from 'libphonenumber-js';
 import React, { useState } from 'react';
 import { TextField } from './TextField';
@@ -19,6 +20,7 @@ const PHONE_CHARACTERS = /^[+\d\s()-]*$/;
 /** E.164 allows 15 digits; with a + and grouping, no real number needs more characters than this. */
 const PHONE_MAX_CHARACTERS = 20;
 
+// Helpers: count the digits typed, and check the number is valid.
 const digitCount = (text: string) => text.replace(/\D/g, '').length;
 const isValidNumber = (text: string) => parsePhoneNumberFromString(text, DEFAULT_COUNTRY)?.isValid() === true;
 

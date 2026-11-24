@@ -1,3 +1,5 @@
+"""Consultation request and response shapes."""
+
 from typing import Literal
 
 from pydantic import BaseModel
@@ -10,17 +12,20 @@ ConsultationStatus = Literal[
 ]
 
 
+# A short profile (id, name, avatar) shown with a consultation.
 class ConsultationProfileRef(BaseModel):
     id: str
     full_name: str
     avatar_url: str | None = None
 
 
+# A short crop reference (id and name).
 class CropRef(BaseModel):
     id: str
     name: str
 
 
+# A short listing reference that an expert can recommend.
 class ConsultationListingRef(BaseModel):
     id: str
     title: str
@@ -28,6 +33,7 @@ class ConsultationListingRef(BaseModel):
     unit: str
 
 
+# One consultation row as stored.
 class Consultation(BaseModel):
     id: str
     user_id: str
@@ -48,6 +54,7 @@ class Consultation(BaseModel):
     updated_at: str
 
 
+# A consultation with its requester, expert and crop attached.
 class ConsultationWithRelations(Consultation):
     user: ConsultationProfileRef | None = None
     expert: ConsultationProfileRef | None = None
@@ -63,12 +70,14 @@ class AiCaseSummary(BaseModel):
     report: DiseaseReport
 
 
+# A single consultation with its AI case report attached.
 class ConsultationDetail(ConsultationWithRelations):
     # Only the single-consultation read carries the report: it costs a signed URL and a second query, too much for
     # every row of a list. None when no case is attached or the AI side could not be read (SRDS §53.39).
     ai_report: AiCaseSummary | None = None
 
 
+# Body for asking an expert for a consultation.
 class CreateConsultationRequest(BaseModel):
     expert_id: str
     subject: str
@@ -81,14 +90,17 @@ class CreateConsultationRequest(BaseModel):
     disease_case_id: str | None = None
 
 
+# Body for replacing a consultation's photo list.
 class UpdateImagesRequest(BaseModel):
     images: list[str]
 
 
+# Body for moving a consultation to a new status.
 class UpdateStatusRequest(BaseModel):
     to: ConsultationStatus
 
 
+# One message in a consultation thread.
 class ConsultationMessage(BaseModel):
     id: str
     consultation_id: str
@@ -99,10 +111,12 @@ class ConsultationMessage(BaseModel):
     created_at: str
 
 
+# A message with its recommended listing attached.
 class ConsultationMessageWithListing(ConsultationMessage):
     recommended_listing: ConsultationListingRef | None = None
 
 
+# Body for sending a consultation message.
 class SendConsultationMessageRequest(BaseModel):
     body: str
     attachments: list[str] = []
@@ -127,6 +141,7 @@ class ConsultationAssessment(BaseModel):
     created_at: str
 
 
+# Body for an expert's assessment of the case.
 class ConsultationAssessmentInput(BaseModel):
     verdict: AssessmentVerdict
     # Required by the database for "correct" and "additional_diagnosis" (check constraint, answered as a 422).
@@ -139,6 +154,7 @@ class ConsultationAssessmentInput(BaseModel):
 ModerationAction = Literal["close", "cancel"]
 
 
+# Body for an admin moderation action (close or cancel) with a reason.
 class ModerateConsultationRequest(BaseModel):
     action: ModerationAction
     reason: str

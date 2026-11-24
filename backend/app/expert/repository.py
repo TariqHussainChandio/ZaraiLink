@@ -1,3 +1,5 @@
+"""Database reads and writes for experts: profiles, specialisations, directory and admin review."""
+
 from typing import Any
 
 from postgrest.exceptions import APIError
@@ -19,6 +21,7 @@ EXPERT_ADMIN_SELECT = (
 )
 
 
+# Replaces an expert's specialisations: deletes the old ones, inserts the new list.
 async def _replace_specializations(access_token: str, expert_id: str, specializations: list[str]) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("expert_specializations").delete().eq("expert_id", expert_id).execute()
@@ -61,6 +64,7 @@ async def update_profile(
     return first_row(response)
 
 
+# Gets one expert through the public client (only approved experts are visible).
 async def fetch_expert_profile(expert_id: str) -> dict | None:
     response = await get_public_client().table("experts").select(EXPERT_SELECT).eq("id", expert_id).limit(1).execute()
     rows = as_rows(response)
@@ -80,10 +84,12 @@ async def fetch_own_expert_profile(access_token: str, expert_id: str) -> dict | 
     return rows[0] if rows else None
 
 
+# Gets one public expert profile by id.
 async def fetch_expert_by_id(expert_id: str) -> dict | None:
     return await fetch_expert_profile(expert_id)
 
 
+# Returns the ids of experts with the given specialisation.
 async def fetch_specialization_matches(specialization: str) -> list[str]:
     response = await (
         get_public_client()
@@ -95,6 +101,7 @@ async def fetch_specialization_matches(specialization: str) -> list[str]:
     return [row["expert_id"] for row in as_rows(response)]
 
 
+# Lists approved experts, optionally only the given ids, newest first.
 async def fetch_experts(expert_ids: list[str] | None) -> list[dict]:
     query = get_public_client().table("experts").select(EXPERT_SELECT).eq("verification_status", "approved")
     if expert_ids is not None:
@@ -103,6 +110,7 @@ async def fetch_experts(expert_ids: list[str] | None) -> list[dict]:
     return as_rows(response)
 
 
+# Lists experts with account, history and documents for the admin, by status.
 async def fetch_experts_for_admin(access_token: str, status: str | None) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table("experts").select(EXPERT_ADMIN_SELECT)
@@ -115,6 +123,7 @@ async def fetch_experts_for_admin(access_token: str, status: str | None) -> list
     return as_rows(response)
 
 
+# Gets one expert with the admin details, or None.
 async def fetch_expert_for_admin_by_id(access_token: str, expert_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("experts").select(EXPERT_ADMIN_SELECT).eq("id", expert_id).limit(1).execute()
@@ -122,6 +131,7 @@ async def fetch_expert_for_admin_by_id(access_token: str, expert_id: str) -> dic
     return rows[0] if rows else None
 
 
+# Returns the role of a profile (expert, dealer, ...), or None if not found.
 async def fetch_profile_role(access_token: str, profile_id: str) -> str | None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("profiles").select("role").eq("id", profile_id).limit(1).execute()

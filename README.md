@@ -121,6 +121,7 @@ Found a vulnerability? Please report it privately through the **Security** tab, 
 
 | | |
 |---|---|
+| [`docs/CODE-MAP.md`](docs/CODE-MAP.md) | Where each feature lives: screen, backend route, tables, business rules |
 | [`docs/srds.md`](docs/srds.md) | Requirements baseline: roles, approval, inventory boundary, AI |
 | [`docs/plan.md`](docs/plan.md) | The phased plan and every design decision |
 | [`docs/status/`](docs/status/) | What works today, and how it was verified |

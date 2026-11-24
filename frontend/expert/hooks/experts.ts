@@ -1,3 +1,4 @@
+// React Query hooks for experts: the directory, one profile, and the expert's own profile.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchExpertById,

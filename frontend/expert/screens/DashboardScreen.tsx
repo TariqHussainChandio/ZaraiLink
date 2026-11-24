@@ -1,3 +1,4 @@
+// Expert home (Requests tab): new consultation requests with Accept and Decline, plus figures.
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -36,6 +37,7 @@ export function ExpertDashboardScreen() {
 
   const { refetch: refetchProfile } = profileQuery;
   const { refetch: refetchConsultations, data: consultations } = consultationsQuery;
+  // Reloads both the expert profile and the consultations.
   const load = useCallback(() => {
     refetchProfile();
     refetchConsultations();
@@ -56,6 +58,7 @@ export function ExpertDashboardScreen() {
   const active = (consultations ?? []).filter(c => c.status === 'accepted' || c.status === 'in_progress').length;
   const resolved = (consultations ?? []).filter(c => c.status === 'resolved' || c.status === 'closed').length;
 
+  // Opens one consultation in the Cases tab.
   const openCase = (consultationId: string) =>
     navigateInTab(tabs, EXPERT_TABS.Consultations, CONSULTATIONS_ROUTES.ConsultationDetail, { consultationId });
   // Each figure opens the Cases list on the half it counts (D20): new requests and active cases under Active, the
@@ -63,6 +66,7 @@ export function ExpertDashboardScreen() {
   const openCases = (show: 'active' | 'resolved') =>
     navigateInTab(tabs, EXPERT_TABS.Consultations, CONSULTATIONS_ROUTES.ConsultationList, { show });
 
+  // Accepts a request and offers to open it; shows the error on failure.
   const accept = async (request: ConsultationWithRelations) => {
     setAccepting(request.id);
     try {
@@ -178,6 +182,7 @@ export function ExpertDashboardScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },

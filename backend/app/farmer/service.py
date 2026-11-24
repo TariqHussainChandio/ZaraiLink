@@ -1,3 +1,5 @@
+"""Business logic for farms, farm crops and the farmer profile."""
+
 from fastapi import HTTPException
 
 from app.auth.dependencies import AuthenticatedUser
@@ -5,16 +7,19 @@ from app.farmer import repository as repo
 from app.farmer.schemas import FarmInput, FarmUpdateInput
 
 
+# Builds the location object, or None when no part of it is given.
 def _location(country: str | None, province: str | None, city: str | None) -> dict | None:
     if not country and not province and not city:
         return None
     return {"country": country, "province": province, "city": city}
 
 
+# Lists the caller's own farms.
 async def fetch_farms(user: AuthenticatedUser) -> list[dict]:
     return await repo.fetch_farms(user.access_token, user.id)
 
 
+# Gets one farm, or a 404 if not found.
 async def fetch_farm_by_id(user: AuthenticatedUser, farm_id: str) -> dict:
     farm = await repo.fetch_farm_by_id(user.access_token, farm_id)
     if farm is None:
@@ -22,6 +27,7 @@ async def fetch_farm_by_id(user: AuthenticatedUser, farm_id: str) -> dict:
     return farm
 
 
+# Creates a farm for the caller from the request body.
 async def create_farm(user: AuthenticatedUser, input: FarmInput) -> dict:
     fields = {
         "name": input.name,
@@ -33,6 +39,7 @@ async def create_farm(user: AuthenticatedUser, input: FarmInput) -> dict:
     return await repo.create_farm(user.access_token, user.id, fields)
 
 
+# Updates only the fields sent; country, province and city become one location.
 async def update_farm(user: AuthenticatedUser, farm_id: str, input: FarmUpdateInput) -> dict:
     provided = input.model_dump(exclude_unset=True)
     location_touched = any(k in provided for k in ("country", "province", "city"))
@@ -42,14 +49,17 @@ async def update_farm(user: AuthenticatedUser, farm_id: str, input: FarmUpdateIn
     return await repo.update_farm(user.access_token, farm_id, fields)
 
 
+# Deletes a farm.
 async def delete_farm(user: AuthenticatedUser, farm_id: str) -> None:
     await repo.delete_farm(user.access_token, farm_id)
 
 
+# Lists the crops on a farm.
 async def fetch_farm_crops(user: AuthenticatedUser, farm_id: str) -> list[dict]:
     return await repo.fetch_farm_crops(user.access_token, farm_id)
 
 
+# Gets one farm crop, or a 404 if not found.
 async def fetch_farm_crop_by_id(user: AuthenticatedUser, farm_crop_id: str) -> dict:
     crop = await repo.fetch_farm_crop_by_id(user.access_token, farm_crop_id)
     if crop is None:
@@ -57,22 +67,27 @@ async def fetch_farm_crop_by_id(user: AuthenticatedUser, farm_crop_id: str) -> d
     return crop
 
 
+# Adds a crop to a farm.
 async def create_farm_crop(user: AuthenticatedUser, farm_id: str, fields: dict) -> dict:
     return await repo.create_farm_crop(user.access_token, farm_id, fields)
 
 
+# Updates a farm crop with the given changes.
 async def update_farm_crop(user: AuthenticatedUser, farm_crop_id: str, patch: dict) -> dict:
     return await repo.update_farm_crop(user.access_token, farm_crop_id, patch)
 
 
+# Deletes a farm crop.
 async def delete_farm_crop(user: AuthenticatedUser, farm_crop_id: str) -> None:
     await repo.delete_farm_crop(user.access_token, farm_crop_id)
 
 
+# Gets the caller's farmer profile.
 async def fetch_farmer_profile(user: AuthenticatedUser) -> dict | None:
     return await repo.fetch_farmer_profile(user.access_token, user.id)
 
 
+# Saves the caller's farmer profile.
 async def upsert_farmer_profile(user: AuthenticatedUser, experience: str | None, agricultural_info: str | None) -> None:
     await repo.upsert_farmer_profile(
         user.access_token, user.id, {"experience": experience, "agricultural_info": agricultural_info}

@@ -1,3 +1,4 @@
+// The five user roles and their display labels.
 export const ROLES = ['farmer', 'buyer', 'dealer', 'expert', 'admin'] as const;
 
 export type Role = (typeof ROLES)[number];
@@ -5,6 +6,7 @@ export type Role = (typeof ROLES)[number];
 /** The roles a person can sign up as (SRDS §4); admin is never public (§50). */
 export type RegistrableRole = Exclude<Role, 'admin'>;
 
+// The name shown on screen for each role.
 export const ROLE_LABELS: Record<Role, string> = {
   farmer: 'Farmer',
   buyer: 'Buyer',

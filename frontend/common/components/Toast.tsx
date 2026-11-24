@@ -1,3 +1,4 @@
+// Short pop-up messages (success, info, error) shown over any screen.
 import {
   CircleAlert,
   CircleCheck,
@@ -100,8 +101,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     nextId.current += 1;
     setCurrent({ id: nextId.current, tone, message });
   }, []);
+  // Hides the current toast.
   const dismiss = useCallback(() => setCurrent(null), []);
 
+  // The toast functions screens call: success, info, error.
   const api = useMemo<ToastApi>(
     () => ({
       success: message => show('success', message),
@@ -211,6 +214,7 @@ function Toast({ tone, message, onDismiss }: ToastProps) {
   );
 }
 
+// Theme-based styles for the toast.
 function makeStyles({
   space,
   size,

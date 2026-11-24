@@ -1,3 +1,4 @@
+// Scan Disease upload screen: choose the crop, take or pick a leaf photo, then check it.
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Focus, Leaf, Sun } from 'lucide-react-native';
@@ -21,6 +22,7 @@ function sentenceList(names: string[]): string {
 // Registered in the shared `HomeNavigator` (Buyer/Farmer/Dealer's Home stack), but farmer-only
 // in practice — reached from the farmer's home and the Advisory tab's scan action. The app bar
 // already says "Check a sick plant", so the body does not repeat it (FA-08).
+// Lets the farmer pick a supported crop and a photo, then starts the check.
 export function DiseaseUploadScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -37,6 +39,7 @@ export function DiseaseUploadScreen() {
   // The shared crops table has a row for a few of the model's crops (tomato, potato, maize); the case links to it when it does.
   const matchedCropId = chosen ? (crops.find(crop => crop.name.toLowerCase() === chosen.name.toLowerCase())?.id ?? null) : null;
 
+  // Opens the camera; if nothing comes back, checks whether the camera was refused.
   const onTakePhoto = async () => {
     try {
       const photos = await takePhoto();
@@ -53,6 +56,7 @@ export function DiseaseUploadScreen() {
     }
   };
 
+  // Lets the farmer pick one photo from the gallery.
   const onChooseFromGallery = async () => {
     try {
       const photos = await pickFromLibrary({ selectionLimit: 1 });
@@ -62,8 +66,10 @@ export function DiseaseUploadScreen() {
     }
   };
 
+  // Sends the photo to an expert instead (for crops the model does not know).
   const askExpert = () => navigateToConsultExpert(tabs, { cropId: null, imageUrl: image?.uri ?? null });
 
+  // Opens the processing screen with the photo and the chosen crop.
   const check = () => {
     if (!image?.uri || !chosen) return;
     navigation.navigate('DiseaseProcessing', {
@@ -148,6 +154,7 @@ export function DiseaseUploadScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, radius, typography, size }: Theme) {
   return StyleSheet.create({
     actions: { gap: space[2] },

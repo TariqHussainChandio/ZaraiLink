@@ -28,6 +28,7 @@ class RequestIDMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
+    # Adds the request id to the log context and to the response headers.
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
@@ -36,6 +37,7 @@ class RequestIDMiddleware:
         request_id_var.set(request_id)
         sentry_sdk.set_tag("request_id", request_id)  # lets an event be matched to the JSON logs; no-op when off
 
+        # Writes the X-Request-ID header onto the response.
         async def send_with_id(message: Message) -> None:
             if message["type"] == "http.response.start":
                 MutableHeaders(scope=message)["X-Request-ID"] = request_id
@@ -51,12 +53,14 @@ class SecurityHeadersMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
+    # Adds the security headers to every HTTP response.
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
         https = scope.get("scheme") == "https"
 
+        # Sets nosniff and the other security headers on the response.
         async def send_with_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
@@ -85,9 +89,11 @@ class MaxBodySizeMiddleware:
         self.app = app
         self._max_bytes = max_bytes
 
+    # The 413 error returned when a body is too large.
     def _too_large(self) -> StarletteHTTPException:
         return StarletteHTTPException(status_code=413, detail=f"Body exceeds the {self._max_bytes} byte limit.")
 
+    # Rejects a request whose declared or streamed body is over the limit.
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
@@ -105,6 +111,7 @@ class MaxBodySizeMiddleware:
 
         received = 0
 
+        # Counts bytes as they arrive and stops once the limit is passed.
         async def counted_receive() -> Message:
             nonlocal received
             message = await receive()

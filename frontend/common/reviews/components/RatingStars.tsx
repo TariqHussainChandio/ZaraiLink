@@ -1,8 +1,10 @@
+// Star rating: a read-only display or a tappable 1 to 5 picker.
 import { Star } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View, type AccessibilityActionEvent } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
 
+// Props for RatingStars.
 export interface RatingStarsProps {
   /** 0 means not rated yet. */
   value: number;
@@ -53,6 +55,7 @@ export function RatingStars({ value, size, onChange }: RatingStarsProps) {
     );
   }
 
+  // Lets a screen reader raise or lower the rating.
   const adjust = (event: AccessibilityActionEvent) => {
     if (event.nativeEvent.actionName === 'increment') onChange(Math.min(5, rounded + 1));
     if (event.nativeEvent.actionName === 'decrement') onChange(Math.max(1, rounded - 1));
@@ -73,6 +76,7 @@ export function RatingStars({ value, size, onChange }: RatingStarsProps) {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     row: { flexDirection: 'row', gap: space[1] },

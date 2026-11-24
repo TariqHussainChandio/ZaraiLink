@@ -1,3 +1,4 @@
+// Admin: types for abuse reports and their statuses.
 export type ReportTargetType = 'product' | 'user' | 'review' | 'message' | 'expert' | 'listing';
 export type ReportStatus = 'open' | 'investigating' | 'resolved' | 'dismissed';
 

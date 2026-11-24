@@ -1,3 +1,4 @@
+// Photo strip for a listing form: add, show and remove photos.
 import { CircleAlert, Plus, X } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,6 +7,7 @@ import { useTheme, type Theme } from '../../../theme';
 /** The most photos a listing can carry. */
 export const MAX_LISTING_PHOTOS = 5;
 
+// Props for ListingPhotos.
 export interface ListingPhotosProps {
   /** The photos in order; the first is the cover. */
   uris: string[];
@@ -77,6 +79,7 @@ export function ListingPhotos({ uris, onAdd, onRemove, error, disabled }: Listin
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, radius, size, borders, typography }: Theme) {
   return StyleSheet.create({
     container: { gap: space[2] },

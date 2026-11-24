@@ -1,8 +1,10 @@
+// Farmer form field: a label with a row of choice chips (unit of area, growth stage).
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ChipRow, type ChipOption } from '../../common/components';
 import { type Theme, useTheme } from '../../theme';
 
+// Props for ChoiceField: the label, the chips, the chosen value and an optional error.
 interface ChoiceFieldProps {
   label: string;
   options: ChipOption<string>[];
@@ -38,6 +40,7 @@ export function ChoiceField({ label, options, value, onChange, optional, helper,
   );
 }
 
+// Builds the field's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     container: { gap: space[2] },

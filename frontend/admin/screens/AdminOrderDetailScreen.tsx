@@ -1,3 +1,4 @@
+// Admin: one order's details, with actions to settle a dispute or cancel the order.
 import { Ban, Gavel } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -121,6 +122,7 @@ export function AdminOrderDetailScreen({
     DISPUTE_OUTCOMES.find(option => option.value === outcome) ??
     DISPUTE_OUTCOMES[0];
 
+  // Settles the dispute with the chosen outcome and reason (audited, BR-15).
   const confirmResolve = async () => {
     const trimmed = settleReason.trim();
     if (!trimmed) {
@@ -141,6 +143,7 @@ export function AdminOrderDetailScreen({
     }
   };
 
+  // Cancels the order with the admin's reason (audited, BR-15).
   const confirmCancel = async () => {
     const trimmed = reason.trim();
     if (!trimmed) {
@@ -339,6 +342,7 @@ export function AdminOrderDetailScreen({
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography, fontWeight }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.ground },

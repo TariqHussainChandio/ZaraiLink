@@ -1,10 +1,13 @@
+// Order wording: what each status means to the buyer or the seller.
 import type { OrderStatus } from '../types/orders';
 
 // An installed build meets statuses the API added after it shipped; the order still opens, with a plain line.
 const UNKNOWN = 'This order is at a stage this version of the app does not know yet.';
 
+// Who is looking at the order.
 export type OrderViewer = 'buyer' | 'seller' | 'other';
 
+// The names of both sides, used in the sentences.
 interface Names {
   /** The other side as this viewer sees them: the seller for a buyer, the buyer for a seller. */
   buyer: string;

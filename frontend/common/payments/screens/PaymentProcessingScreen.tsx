@@ -1,3 +1,4 @@
+// Screen shown while a payment waits for confirmation.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -46,6 +47,7 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
     }, [refetch]),
   );
 
+  // Goes back to the order detail.
   const backToOrder = () => {
     if (!payment) return;
     navigation.reset({
@@ -85,6 +87,7 @@ export function PaymentProcessingScreen({ route, navigation }: OrdersScreenProps
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: { gap: space[3] },

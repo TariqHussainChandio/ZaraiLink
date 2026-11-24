@@ -1,3 +1,4 @@
+// Zustand store with one flag: whether the app is offline (drives the offline banner).
 import { create } from 'zustand';
 
 // P4 (4B.2): apiFetch flips this on a network-level failure (no response at all — offline, DNS,
@@ -9,6 +10,7 @@ interface NetworkState {
   setOffline: (isOffline: boolean) => void;
 }
 
+// The offline flag and its setter.
 export const useNetworkStore = create<NetworkState>(set => ({
   isOffline: false,
   setOffline: isOffline => set({ isOffline }),

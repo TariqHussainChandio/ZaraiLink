@@ -1,3 +1,4 @@
+// Stack for a dealer or expert still waiting for approval: status, application, delete account.
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { ApplicationStatusScreen } from '../../common/auth/screens/ApplicationStatusScreen';

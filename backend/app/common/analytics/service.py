@@ -1,3 +1,5 @@
+"""Analytics service: gathers and computes each role's dashboard numbers."""
+
 import asyncio
 from collections import defaultdict
 
@@ -11,6 +13,7 @@ from app.farmer import service as farmer_service
 from app.inventory import service as inventory_service
 
 
+# Turns an ISO date into its year-month key.
 def _month_key(iso: str) -> str:
     return iso[:7]  # "YYYY-MM"
 
@@ -44,10 +47,12 @@ def _accumulate_product_stats(orders: list[dict], acc: dict[str, dict]) -> None:
             entry["revenue"] += item["quantity"] * item["unit_price"]
 
 
+# Returns the best-selling products, most units first.
 def _top_products(acc: dict[str, dict], limit: int = 5) -> list[dict]:
     return sorted(acc.values(), key=lambda p: p["unitsSold"], reverse=True)[:limit]
 
 
+# Counts the listings that are active.
 def _count_active(listings: list[dict]) -> int:
     return sum(1 for row in listings if row["status"] == "active")
 
@@ -62,6 +67,7 @@ def _count_ready(orders: list[dict]) -> int:
     return sum(1 for order in orders if order["status"] == "ready")
 
 
+# Builds the farmer dashboard: listing views, listings, orders and sales.
 async def fetch_farmer_analytics(user: AuthenticatedUser) -> dict:
     # Each read below is independent of the others (none depends on another's result), so they
     # run concurrently rather than as four sequential round trips.
@@ -101,6 +107,7 @@ async def fetch_farmer_analytics(user: AuthenticatedUser) -> dict:
     }
 
 
+# Builds the dealer dashboard: sales, orders, listings and stock figures.
 async def fetch_dealer_analytics(user: AuthenticatedUser) -> dict:
     # Stock figures come from the IMS through its public service, never from the inventory tables (contract "Inventory
     # entry", BR-03/04: dealer inventory is dealer-only and the IMS owns it). The stores and suppliers counts use the
@@ -138,6 +145,7 @@ async def fetch_dealer_analytics(user: AuthenticatedUser) -> dict:
     }
 
 
+# Builds the expert dashboard from their consultations and reviews.
 async def fetch_expert_analytics(user: AuthenticatedUser) -> dict:
     consultations, reviews = await asyncio.gather(
         consultations_service.fetch_for_expert(user),
@@ -156,6 +164,7 @@ async def fetch_expert_analytics(user: AuthenticatedUser) -> dict:
     }
 
 
+# Builds the admin dashboard: users, listings, orders, payments, reports and experts.
 async def fetch_admin_analytics(user: AuthenticatedUser) -> dict:
     profiles, listings, orders, payments, reports, experts, consultations = await asyncio.gather(
         repo.fetch_all_profiles_summary(user.access_token),
@@ -188,7 +197,7 @@ async def fetch_admin_analytics(user: AuthenticatedUser) -> dict:
         "userGrowth": _group_by_month([p["created_at"] for p in profiles]),
         "usersByRole": dict(users_by_role),
         "totalListings": len(listings),
-        "activeListings": sum(1 for l in listings if l["status"] == "active"),
+        "activeListings": sum(1 for listing in listings if listing["status"] == "active"),
         "orderVolume": _group_by_month([o["created_at"] for o in orders]),
         "totalOrders": len(orders),
         "paymentsByStatus": dict(payments_by_status),

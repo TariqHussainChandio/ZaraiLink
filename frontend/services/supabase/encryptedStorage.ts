@@ -1,3 +1,4 @@
+// Encrypted storage for the Supabase session: AES key in SecureStore, data in AsyncStorage.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as aesjs from 'aes-js';
 import * as Crypto from 'expo-crypto';
@@ -14,6 +15,7 @@ import * as SecureStore from 'expo-secure-store';
 const KEY_STORAGE_KEY = 'zarailink_session_encryption_key';
 const KEY_BYTE_LENGTH = 32; // AES-256
 
+// Reads the AES key from SecureStore, or creates and saves a new one.
 async function getOrCreateEncryptionKey(): Promise<Uint8Array> {
   const existing = await SecureStore.getItemAsync(KEY_STORAGE_KEY);
   if (existing) {
@@ -30,7 +32,9 @@ async function getOrCreateEncryptionKey(): Promise<Uint8Array> {
 // is) — read back on decrypt to reconstruct the same keystream.
 const COUNTER_BYTE_LENGTH = 16;
 
+// Storage adapter supabase-js uses to save the session encrypted.
 export const EncryptedStorage = {
+  // Reads and decrypts a stored value; null when missing.
   async getItem(key: string): Promise<string | null> {
     const stored = await AsyncStorage.getItem(key);
     if (!stored) return null;
@@ -46,6 +50,7 @@ export const EncryptedStorage = {
     return aesjs.utils.utf8.fromBytes(decryptedBytes);
   },
 
+  // Encrypts a value with a fresh counter and stores it.
   async setItem(key: string, value: string): Promise<void> {
     const encryptionKey = await getOrCreateEncryptionKey();
     const counterBytes = await Crypto.getRandomBytesAsync(COUNTER_BYTE_LENGTH);
@@ -57,6 +62,7 @@ export const EncryptedStorage = {
     await AsyncStorage.setItem(key, payload);
   },
 
+  // Deletes a stored value.
   async removeItem(key: string): Promise<void> {
     await AsyncStorage.removeItem(key);
   },

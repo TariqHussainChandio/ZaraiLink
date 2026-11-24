@@ -1,3 +1,4 @@
+// The expert's shell: Requests, Cases, Messages and Account tabs.
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NavigatorScreenParams } from '@react-navigation/native';

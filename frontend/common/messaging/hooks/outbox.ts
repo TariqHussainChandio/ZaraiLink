@@ -1,3 +1,4 @@
+// Outbox for chat: shows messages while they send, and lets a failed one be retried.
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 import { fetchMessages, uploadMessageAttachments } from '../services/messagingService';
@@ -21,10 +22,12 @@ export function useChatOutbox(conversationId: string, userId: string | undefined
   const [outgoing, setOutgoing] = useState<OutgoingMessage[]>([]);
   const counter = useRef(0);
 
+  // Updates one waiting message in the outbox.
   const patch = useCallback((localId: string, changes: Partial<OutgoingMessage>) => {
     setOutgoing(list => list.map(item => (item.localId === localId ? { ...item, ...changes } : item)));
   }, []);
 
+  // Uploads the photos, posts the message, and on a retry first checks it was not already sent.
   const deliver = useCallback(
     async (item: OutgoingMessage) => {
       if (!userId) return;
@@ -55,6 +58,7 @@ export function useChatOutbox(conversationId: string, userId: string | undefined
     [conversationId, key, patch, post, queryClient, userId],
   );
 
+  // Adds a new message to the outbox and starts sending it.
   const send = useCallback(
     (body: string, images: PickedPhoto[]) => {
       counter.current += 1;
@@ -74,6 +78,7 @@ export function useChatOutbox(conversationId: string, userId: string | undefined
     [deliver],
   );
 
+  // Sends a failed message again.
   const retry = useCallback(
     (localId: string) => {
       const item = outgoing.find(entry => entry.localId === localId);

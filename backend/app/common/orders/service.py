@@ -1,3 +1,5 @@
+"""Order service: checkout, order status rules and expiry of stale pending orders."""
+
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
@@ -175,6 +177,7 @@ async def checkout(
     return created_orders
 
 
+# Lists the user's orders after expiring stale pending ones.
 async def fetch_orders_for_user(user: AuthenticatedUser, as_: str) -> list[dict]:
     await _expire_stale_pending_orders(user)
     return await repo.fetch_orders_for_user(user.access_token, user.id, as_)
@@ -192,6 +195,7 @@ async def fetch_all_orders(user: AuthenticatedUser, status: str | None = None) -
     return await repo.fetch_all_orders(user.access_token, status)
 
 
+# Returns one order, or 404.
 async def fetch_order_by_id(user: AuthenticatedUser, order_id: str) -> dict:
     await _expire_stale_pending_orders(user)
     order = await repo.fetch_order_by_id(user.access_token, order_id)
@@ -200,6 +204,7 @@ async def fetch_order_by_id(user: AuthenticatedUser, order_id: str) -> dict:
     return order
 
 
+# Returns an order's status history.
 async def fetch_order_status_history(user: AuthenticatedUser, order_id: str) -> list[dict]:
     return await repo.fetch_order_status_history(user.access_token, order_id)
 

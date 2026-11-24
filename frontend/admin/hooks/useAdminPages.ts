@@ -1,3 +1,4 @@
+// Admin: shared hook that reads an admin list page by page (infinite query).
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import type { AdminPage } from '../services/adminService';

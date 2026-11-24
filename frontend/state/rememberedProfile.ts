@@ -1,3 +1,4 @@
+// Saves the role and status of the last profile on the device so an offline start opens the right shell.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Profile } from '../common/types/profile';
 import { logger } from '../utils/logger';
@@ -15,6 +16,7 @@ export type RememberedProfile = Pick<Profile, 'id' | 'role' | 'account_status' |
 
 const REMEMBERED_PROFILE_KEY = 'zl-remembered-profile';
 
+// Checks that a value read from storage has the remembered-profile shape.
 function isRemembered(value: unknown): value is RememberedProfile {
   if (typeof value !== 'object' || value === null) return false;
   const record = value as Record<string, unknown>;

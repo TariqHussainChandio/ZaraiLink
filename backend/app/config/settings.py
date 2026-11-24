@@ -1,3 +1,5 @@
+"""Backend settings read from environment variables and .env, validated at startup."""
+
 import json
 import logging
 from functools import lru_cache
@@ -37,6 +39,7 @@ def _load_model_metadata() -> dict:
 _metadata = _load_model_metadata()
 
 
+# All backend settings: Supabase keys, CORS, email, rate limits, AI model paths and more.
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -81,6 +84,7 @@ class Settings(BaseSettings):
     # STARTTLS before signing in, as Gmail on port 587 requires.
     smtp_starttls: bool = True
 
+    # Fails at startup if a Supabase setting is empty.
     @field_validator("supabase_url", "supabase_anon_key", "supabase_service_role_key")
     @classmethod
     def _not_empty(cls, value: str, info) -> str:
@@ -92,6 +96,7 @@ class Settings(BaseSettings):
             raise ValueError(f"{info.field_name} must not be empty — check your .env file")
         return value
 
+    # Fails at startup if the Supabase URL does not start with http:// or https://.
     @field_validator("supabase_url")
     @classmethod
     def _url_has_scheme(cls, value: str) -> str:
@@ -106,6 +111,7 @@ class Settings(BaseSettings):
     # dev (Metro, a local web preview) — production deployments must override this explicitly.
     allowed_origins: str = "http://localhost:3000,http://localhost:8081,http://127.0.0.1:3000,http://127.0.0.1:8081"
 
+    # The allowed CORS origins as a list.
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]

@@ -1,3 +1,4 @@
+// Zustand store for the signed-in session, profile, role and which app shell to show.
 import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import type { Role } from '../common/constants/roles';
@@ -154,6 +155,7 @@ export function selectAccount(state: Pick<AuthState, 'profile' | 'deviceAccount'
   return state.profile ?? state.deviceAccount;
 }
 
+// The auth store: session, user, profile, role and status, plus the actions below.
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   user: null,
@@ -163,9 +165,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   unavailableReason: null,
   deviceAccount: null,
 
+  // Restores the saved session and listens for sign-in, sign-out and reconnect events.
   initialize: () => {
     let cancelled = false;
 
+    // Loads the profile for a session and decides which shell (state) the app shows.
     const applySession = async (session: Session | null) => {
       if (!session) {
         if (!cancelled) set(SIGNED_OUT);
@@ -231,6 +235,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     };
   },
 
+  // Signs out of Supabase, clears the store and forgets the profile saved on the device.
   signOut: async () => {
     try {
       await supabase.auth.signOut();
@@ -242,6 +247,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // Reads the profile again and updates the shell, e.g. after an approval or a suspension.
   refreshProfile: async () => {
     const userId = get().user?.id;
     if (!userId) return;

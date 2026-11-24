@@ -1,3 +1,4 @@
+// Admin: every order on the platform, filterable by status.
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import { ChipRow, QueryState, ScreenScaffold, TextField, type ChipOption } from '../../common/components';

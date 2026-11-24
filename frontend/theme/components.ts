@@ -1,3 +1,4 @@
+// Fixed sizes and spacing for each shared component (button, input, chip, card, and so on).
 import { size } from './dimensions';
 import { radius, space } from './spacing';
 

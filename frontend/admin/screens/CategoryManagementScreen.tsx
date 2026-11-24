@@ -1,3 +1,4 @@
+// Admin: add, rename and delete marketplace categories.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import { Banner, Button, ListGroup, ListRow, QueryState, ScreenScaffold, Sheet, StickyActionBar, TextField } from '../../common/components';
@@ -36,6 +37,7 @@ export function CategoryManagementScreen() {
     }, [refetch]),
   );
 
+  // Opens the editor for a new category or an existing one.
   const openEditor = (category: Category | 'new') => {
     setSelected(null);
     setName(category === 'new' ? '' : category.name);
@@ -44,6 +46,7 @@ export function CategoryManagementScreen() {
     setEditing(category);
   };
 
+  // Validates and saves the category being edited.
   const save = async () => {
     const trimmed = name.trim();
     if (trimmed.length < 2) {
@@ -72,6 +75,7 @@ export function CategoryManagementScreen() {
     }
   };
 
+  // Asks the admin to confirm deleting a category.
   const askDelete = (category: Category) => {
     setSelected(null);
     setAction({

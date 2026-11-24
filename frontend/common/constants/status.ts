@@ -1,3 +1,4 @@
+// Status vocabulary: the tone, icon and label shown for every status in the app.
 import {
   BadgeCheck,
   ArrowLeftRight,
@@ -47,6 +48,7 @@ interface StatusMeta {
   label: string;
 }
 
+// Short helper that builds one status entry from a tone, icon and label.
 const meta = (tone: ToneKey, icon: LucideIcon, label: string): StatusMeta => ({ tone, icon, label });
 
 const order: Record<OrderStatus, StatusMeta> = {
@@ -175,6 +177,7 @@ const reconciliation = {
   unbalanced: meta('danger', TriangleAlert, 'Does not add up'),
 };
 
+// All status tables, keyed by kind (order, payment, application...).
 export const STATUS = {
   order,
   payment,
@@ -206,6 +209,7 @@ export function statusMeta<K extends StatusKind>(kind: K, status: StatusOf<K> | 
   return known ?? meta('neutral', CircleDashed, sentenceCase(key));
 }
 
+// Turns "in_transit" into "In transit" for a status the app does not know yet.
 function sentenceCase(value: string): string {
   const words = value.replace(/_/g, ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);

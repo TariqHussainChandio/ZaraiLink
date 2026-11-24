@@ -1,3 +1,4 @@
+// The app's single safe logger: writes only error kinds and request ids, never data.
 import { isApiError } from '../services/api/errors';
 
 /** What is safe to write to a log about a failure: the kind of error and its request id, never the request or response body. */
@@ -14,6 +15,7 @@ function describe(error: unknown): string {
  * controlled in one spot (the reality gate fails any other `console` call in production code).
  */
 export const logger = {
+  // Writes a warning with its context and a safe description of the error.
   warn(context: string, error?: unknown): void {
     console.warn(`[${context}]`, error === undefined ? '' : describe(error));
   },

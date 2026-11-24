@@ -1,3 +1,4 @@
+// Farm and crop form helpers: area and date checks, growth stages and display formatting.
 import type { FarmCropWithCrop } from '../types/farmer';
 
 // What the farm and crop forms accept (FA-22). Shared by both forms and by the lists that show the saved values.
@@ -10,6 +11,7 @@ const GROWTH_STAGES = ['Planned', 'Sown', 'Growing', 'Flowering', 'Ready to harv
  * differently in different places, and the old form saved neither (audit FA-22). */
 const AREA_PATTERN = /^\d+(\.\d+)?$/;
 
+// True when the area box is empty or holds a positive number like "2.5".
 export function isValidArea(text: string): boolean {
   const trimmed = text.trim();
   return trimmed === '' || (AREA_PATTERN.test(trimmed) && Number(trimmed) > 0);

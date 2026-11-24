@@ -1,3 +1,4 @@
+// Admin: abuse reports, to act on the reported item or dismiss the report.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -122,6 +123,7 @@ export function ReportsScreen() {
     }, [refetch]),
   );
 
+  // Prepares the confirm sheet for the action that fixes the reported item.
   const askRemedy = (report: ReportWithReporter) => {
     const remedy = REMEDY[report.target_type];
     const name = target.data && !target.data.unavailable ? target.data.heading : 'this item';
@@ -137,6 +139,7 @@ export function ReportsScreen() {
     });
   };
 
+  // Prepares the confirm sheet to dismiss the report.
   const askDismiss = (report: ReportWithReporter) => {
     setSelected(null);
     setAction({
@@ -221,6 +224,7 @@ export function ReportsScreen() {
   );
 }
 
+// Shows a short summary of the reported item inside the report sheet.
 function TargetSummary({ query, styles }: { query: ReturnType<typeof useReportTarget>; styles: ReturnType<typeof makeStyles> }) {
   if (query.isPending) return <Spinner />;
   if (query.isError || !query.data) return <Banner tone="danger" title="Couldn't load the reported item" actionLabel="Try again" onAction={() => query.refetch()} />;
@@ -240,6 +244,7 @@ function TargetSummary({ query, styles }: { query: ReturnType<typeof useReportTa
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space[1] },

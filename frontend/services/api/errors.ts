@@ -1,3 +1,4 @@
+// The ApiError type and helpers that turn failed responses into typed errors.
 import type { ProblemDetail } from './generated';
 
 /** Codes the backend sends (documented in backend/openapi.json), plus the ones only the client can produce. */
@@ -44,6 +45,7 @@ export class ApiError extends Error {
   readonly fields: FieldError[];
   readonly retryAfterSeconds?: number;
 
+  // Copies the status, code, kind and details into the error.
   constructor(init: ApiErrorInit) {
     super(init.message);
     this.name = 'ApiError';
@@ -56,10 +58,12 @@ export class ApiError extends Error {
   }
 }
 
+// True when the value is an ApiError.
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+// Maps an HTTP status to the error kind screens act on (auth, forbidden, not found...).
 function kindForStatus(status: number): ApiErrorKind {
   if (status === 401) return 'auth';
   if (status === 403) return 'forbidden';
@@ -71,6 +75,7 @@ function kindForStatus(status: number): ApiErrorKind {
   return 'unknown';
 }
 
+// Picks a default error code from the HTTP status when the body has none.
 function codeForStatus(status: number): ErrorCode {
   const byStatus: Record<number, ErrorCode> = {
     400: 'bad_request',
@@ -105,6 +110,7 @@ export async function apiErrorFromResponse(response: Response, requestId?: strin
   });
 }
 
+// Builds the error for a request that got no response (offline or timed out).
 export function apiErrorFromNetwork(timedOut: boolean, requestId?: string): ApiError {
   return new ApiError({
     status: 0,

@@ -1,3 +1,5 @@
+"""Loads the MobileNetV2 crop disease model and runs it on an uploaded leaf image."""
+
 import io
 import logging
 from typing import Any
@@ -7,11 +9,13 @@ from app.config.settings import settings
 logger = logging.getLogger(__name__)
 
 
+# Error used when the disease model cannot be used.
 class ModelUnavailableError(RuntimeError):
     """Raised when `model.pth` is still the placeholder, otherwise fails to load, or torch/
     torchvision aren't installed in this deployment — all three degrade the same way."""
 
 
+# Wraps the trained model: loads it once, then predicts a disease class from photo bytes.
 class DiseaseClassifier:
     """
     torch/torchvision/PIL are imported lazily inside `_load()`, not at module scope — so this
@@ -26,6 +30,7 @@ class DiseaseClassifier:
         self._load_error: Exception | None = None
         self._load()
 
+    # Builds MobileNetV2 with our class count and loads the saved weights; logs and keeps the error on failure.
     def _load(self) -> None:
         try:
             import torch
@@ -50,10 +55,12 @@ class DiseaseClassifier:
             logger.warning("Disease model unavailable: %s", exc)
             self._load_error = exc
 
+    # True when the model loaded and can predict.
     @property
     def available(self) -> bool:
         return self._model is not None
 
+    # Resizes and normalises the photo, runs the model, and returns (class label, confidence).
     def predict(self, image_bytes: bytes) -> tuple[str, float]:
         if self._model is None:
             raise ModelUnavailableError(str(self._load_error) if self._load_error else "model not loaded")
@@ -99,6 +106,7 @@ class DiseaseClassifier:
 _classifier: DiseaseClassifier | None = None
 
 
+# Creates the classifier on first use and reuses it after that.
 def load_classifier() -> DiseaseClassifier:
     global _classifier
     if _classifier is None:
@@ -110,5 +118,6 @@ def load_classifier() -> DiseaseClassifier:
     return _classifier
 
 
+# Returns the shared classifier (loading it if needed).
 def get_classifier() -> DiseaseClassifier:
     return load_classifier()

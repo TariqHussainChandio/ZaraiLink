@@ -15,7 +15,6 @@ from app.inventory.schemas import (
     AlertSettingsInput,
     LocationInput,
     LocationUpdateInput,
-    MovementInput,
     ProductInput,
     ProductUpdateInput,
     PurchaseInput,
@@ -36,7 +35,6 @@ QUANTITY_MODELS = [
     (AdjustmentInput, {**IDS, "direction": "in", "reason": "Count"}),
     (TransferInput, {"product_id": "p", "from_location_id": "a", "to_location_id": "b"}),
     (PurchaseItemInput, IDS),
-    (MovementInput, {**IDS, "direction": "out", "source": "LOCAL_SALE"}),
 ]
 
 
@@ -108,12 +106,6 @@ def test_an_adjustment_needs_a_reason_with_something_in_it():
             AdjustmentInput(**IDS, direction="in", quantity=1, reason=reason)
 
 
-def test_a_manual_movement_cannot_claim_a_source_with_its_own_flow():
-    for source in ("ZARAILINK_ORDER", "PURCHASE", "TRANSFER"):
-        with pytest.raises(ValidationError):
-            MovementInput(**IDS, direction="in", source=source, quantity=1)
-
-
 DEALER = AuthenticatedUser(id="dealer-1", email="d@x.com", role="dealer", access_token="tok")
 
 
@@ -174,7 +166,6 @@ TEXT_FIELDS = [
     (StockOutInput, {**IDS, "quantity": 1, "source": "LOCAL_SALE"}, ["reason"]),
     (AdjustmentInput, {**IDS, "quantity": 1, "direction": "in", "reason": "Count"}, ["reason"]),
     (TransferInput, {"product_id": "p", "from_location_id": "a", "to_location_id": "b", "quantity": 1}, ["reason"]),
-    (MovementInput, {**IDS, "quantity": 1, "direction": "in", "source": "RESTOCK"}, ["reason"]),
 ]
 
 

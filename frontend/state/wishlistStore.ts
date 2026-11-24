@@ -1,3 +1,4 @@
+// Zustand store for each account's wishlist, saved on the device.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -20,11 +21,13 @@ interface WishlistState {
   remove: (userId: string, listingId: string) => void;
 }
 
+// The wishlist store: saved listings per user, with toggle and remove.
 export const useWishlistStore = create<WishlistState>()(
   persist(
     (set, get) => ({
       byUser: {},
 
+      // Saves a listing, or removes it if it is already saved.
       toggle: (userId, item) => {
         const items = get().byUser[userId] ?? [];
         const saved = items.some(i => i.listingId === item.listingId);
@@ -33,6 +36,7 @@ export const useWishlistStore = create<WishlistState>()(
         set({ byUser: { ...get().byUser, [userId]: next } });
       },
 
+      // Removes one listing from a user's wishlist.
       remove: (userId, listingId) => {
         const items = get().byUser[userId] ?? [];
         set({ byUser: { ...get().byUser, [userId]: items.filter(i => i.listingId !== listingId) } });

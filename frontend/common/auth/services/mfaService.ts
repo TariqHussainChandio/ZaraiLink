@@ -1,3 +1,4 @@
+// Supabase MFA calls: add, confirm, remove and check an authenticator app.
 import { supabase } from '../../../services/supabase/client';
 
 // P4 (4A.4/4B): admin MFA enrolment goes straight through the Supabase Auth SDK, the same way
@@ -23,17 +24,20 @@ export async function getVerifiedTotpFactorId(): Promise<string | null> {
   return data.totp.find(factor => factor.status === 'verified')?.id ?? null;
 }
 
+// Starts adding an authenticator; returns its QR code and secret.
 export async function enrollTotp(): Promise<TotpEnrollment> {
   const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
   if (error) throw error;
   return { factorId: data.id, qrCodeSvg: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri };
 }
 
+// Confirms the new authenticator with the first code from the app.
 export async function verifyTotpEnrollment(factorId: string, code: string): Promise<void> {
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
   if (error) throw error;
 }
 
+// Removes the authenticator from the account.
 export async function unenrollTotp(factorId: string): Promise<void> {
   const { error } = await supabase.auth.mfa.unenroll({ factorId });
   if (error) throw error;

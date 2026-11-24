@@ -1,3 +1,4 @@
+// Zustand store for the marketplace filters (category, search, price, city, crop).
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
 
@@ -29,6 +30,7 @@ const defaultFilters: MarketplaceFilters = {
   cropName: null,
 };
 
+// The filters store with setFilters (merge) and resetFilters.
 export const useMarketplaceStore = create<MarketplaceState>(set => ({
   filters: defaultFilters,
 

@@ -10,7 +10,9 @@ import logging
 from app.middleware.request_context import request_id_var
 
 
+# Formats each log record as one JSON line, with the request id.
 class JSONFormatter(logging.Formatter):
+    # Turns a log record into a JSON string.
     def format(self, record: logging.LogRecord) -> str:
         payload = {
             "timestamp": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"),
@@ -38,6 +40,7 @@ class JSONFormatter(logging.Formatter):
 _NOISY_LOGGERS = ("httpx", "httpcore", "hpack")
 
 
+# Sends all logs to stdout as JSON at the given level.
 def configure_logging(level: int = logging.INFO) -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(JSONFormatter())

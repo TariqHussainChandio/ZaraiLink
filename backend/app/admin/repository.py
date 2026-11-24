@@ -1,3 +1,5 @@
+"""Admin data access: Supabase queries run with the admin's own token (RLS applies)."""
+
 from datetime import UTC, datetime
 
 from postgrest.exceptions import APIError
@@ -12,24 +14,28 @@ REPORT_SELECT = "*, reporter:profiles!reports_reporter_id_fkey(id,full_name)"
 AUDIT_LOG_SELECT = "*, actor:profiles!audit_logs_actor_id_fkey(id,full_name)"
 
 
+# Reads every profile's role, for the per-role user counts.
 async def fetch_role_counts(access_token: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await client.table("profiles").select("role").execute()
     return as_rows(response)
 
 
+# Counts all listings.
 async def count_listings(access_token: str) -> int:
     client = await get_user_scoped_client(access_token)
     response = await client.table("listings").select("*", count=CountMethod.exact, head=True).execute()
     return response.count or 0
 
 
+# Counts all orders.
 async def count_orders(access_token: str) -> int:
     client = await get_user_scoped_client(access_token)
     response = await client.table("orders").select("*", count=CountMethod.exact, head=True).execute()
     return response.count or 0
 
 
+# Lists profiles, optionally filtered by role and account status.
 async def fetch_all_profiles(
     access_token: str, role: str | None = None, account_status: str | None = None
 ) -> list[dict]:
@@ -45,6 +51,7 @@ async def fetch_all_profiles(
     return as_rows(response)
 
 
+# Returns one profile's role, or None if it does not exist.
 async def fetch_profile_role(access_token: str, profile_id: str) -> str | None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("profiles").select("role").eq("id", profile_id).limit(1).execute()
@@ -52,16 +59,19 @@ async def fetch_profile_role(access_token: str, profile_id: str) -> str | None:
     return rows[0]["role"] if rows else None
 
 
+# Sets or clears a profile's suspension.
 async def set_profile_suspended(access_token: str, profile_id: str, is_suspended: bool) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("profiles").update({"is_suspended": is_suspended}).eq("id", profile_id).execute()
 
 
+# Changes a profile's role.
 async def update_profile_role(access_token: str, profile_id: str, new_role: str) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("profiles").update({"role": new_role}).eq("id", profile_id).execute()
 
 
+# Lists abuse reports with their reporter, optionally by status.
 async def fetch_reports(access_token: str, status: str | None) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table("reports").select(REPORT_SELECT).order("created_at", desc=True)
@@ -71,6 +81,7 @@ async def fetch_reports(access_token: str, status: str | None) -> list[dict]:
     return as_rows(response)
 
 
+# Marks a report resolved or dismissed, with who did it and their notes.
 async def resolve_report(access_token: str, report_id: str, status: str, resolved_by: str, notes: str | None) -> None:
     client = await get_user_scoped_client(access_token)
     await (
@@ -88,6 +99,7 @@ async def resolve_report(access_token: str, report_id: str, status: str, resolve
     )
 
 
+# Lists audit-log rows with their actor, newest first, with optional filters.
 async def fetch_audit_logs(
     access_token: str, target_entity: str | None, actor_id: str | None, action: str | None = None
 ) -> list[dict]:
@@ -104,6 +116,7 @@ async def fetch_audit_logs(
     return as_rows(response)
 
 
+# Reads the SRDS section 51 audit event names and labels.
 async def fetch_audit_event_names(access_token: str) -> list[dict]:
     # The SRDS §51 vocabulary; its select policy is admin-only (audit_event_names_select_admin). A few dozen rows, so
     # no paging.
@@ -112,6 +125,7 @@ async def fetch_audit_event_names(access_token: str) -> list[dict]:
     return as_rows(response)
 
 
+# Reads the admin's queue counts from one database function.
 async def fetch_queue_counts(access_token: str) -> dict:
     # admin_queue_counts() returns a table of exactly one row; it raises 42501 for anyone but an admin.
     client = await get_user_scoped_client(access_token)
@@ -126,12 +140,14 @@ async def fetch_queue_counts(access_token: str) -> dict:
 # write through the Data API is audited exactly like one through here; this code writes no audit row of its own.
 
 
+# Lists every required-document entry.
 async def fetch_required_documents(access_token: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await client.table("required_documents").select("*").order("role").order("sort_order").execute()
     return as_rows(response)
 
 
+# Creates a required-document entry.
 async def create_required_document(access_token: str, fields: dict) -> dict:
     client = await get_user_scoped_client(access_token)
     try:
@@ -143,6 +159,7 @@ async def create_required_document(access_token: str, fields: dict) -> dict:
     return first_row(response)
 
 
+# Updates a required-document entry.
 async def update_required_document(access_token: str, document_id: str, fields: dict) -> dict:
     client = await get_user_scoped_client(access_token)
     response = await client.table("required_documents").update(fields).eq("id", document_id).execute()
@@ -161,6 +178,7 @@ _ACTIVITY_PAGE = 1000
 AI_CASE_SELECT = "id, created_at, status, disease_predictions(confidence_score)"
 
 
+# Reads all rows of a table created since a time, page by page.
 async def _fetch_all_since(
     access_token: str, table: str, select: str, since: str, extra_not_null: str | None = None
 ) -> list[dict]:
@@ -179,21 +197,25 @@ async def _fetch_all_since(
         start += _ACTIVITY_PAGE
 
 
+# Reads the disease scans since a time, with their confidence scores.
 async def fetch_disease_cases_since(access_token: str, since: str) -> list[dict]:
     return await _fetch_all_since(access_token, "disease_cases", AI_CASE_SELECT, since)
 
 
+# Reads consultations referred from an AI result since a time.
 async def fetch_ai_referrals_since(access_token: str, since: str) -> list[dict]:
     # A consultation that carries a disease_case_id is a referral from an AI result to an expert (BR-13).
     return await _fetch_all_since(access_token, "consultations", "id, created_at", since, "disease_case_id")
 
 
+# Lists every disease knowledge entry.
 async def fetch_disease_knowledge(access_token: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await client.table("disease_knowledge").select("*").order("crop").order("class_label").execute()
     return as_rows(response)
 
 
+# Reads one disease knowledge entry, or None.
 async def fetch_disease_knowledge_entry(access_token: str, class_label: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = await client.table("disease_knowledge").select("*").eq("class_label", class_label).limit(1).execute()
@@ -201,6 +223,7 @@ async def fetch_disease_knowledge_entry(access_token: str, class_label: str) -> 
     return rows[0] if rows else None
 
 
+# Updates one disease knowledge entry and returns it.
 async def update_disease_knowledge(access_token: str, class_label: str, fields: dict) -> dict:
     # The update policy admits only the admin: any other token matches no row, which first_row() turns into a 404
     # rather than a silent success.

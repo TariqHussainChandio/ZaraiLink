@@ -1,3 +1,5 @@
+"""Payment service: start, confirm and fail payments (no escrow or wallet, BR-11)."""
+
 import logging
 
 from fastapi import HTTPException
@@ -26,6 +28,7 @@ def _assert_seller(user: AuthenticatedUser, order: dict | None) -> dict:
     return order
 
 
+# Refuses a change when the payment or its order is already settled.
 def _assert_payment_open(payment: dict, order: dict) -> None:
     if payment["status"] not in OPEN_PAYMENT_STATUSES:
         raise HTTPException(status_code=409, detail=f"This payment is already {payment['status']}")
@@ -51,6 +54,7 @@ async def initiate_payment(user: AuthenticatedUser, order_id: str, method: str) 
     return await repo.insert_payment(user.access_token, order_id, user.id, order["total"], method)
 
 
+# Returns one payment, or 404.
 async def fetch_payment_by_id(user: AuthenticatedUser, payment_id: str) -> dict:
     payment = await repo.fetch_payment_by_id(user.access_token, payment_id)
     if payment is None:
@@ -58,14 +62,17 @@ async def fetch_payment_by_id(user: AuthenticatedUser, payment_id: str) -> dict:
     return payment
 
 
+# Returns the payment of an order, or None.
 async def fetch_payment_by_order_id(user: AuthenticatedUser, order_id: str) -> dict | None:
     return await repo.fetch_payment_by_order_id(user.access_token, order_id)
 
 
+# Lists the transaction events of a payment.
 async def fetch_payment_transactions(user: AuthenticatedUser, payment_id: str) -> list[dict]:
     return await repo.fetch_payment_transactions(user.access_token, payment_id)
 
 
+# Marks a payment as received after checking it is still open.
 async def mark_payment_received(user: AuthenticatedUser, payment_id: str) -> dict:
     payment = await repo.fetch_payment_by_id(user.access_token, payment_id)
     if payment is None:

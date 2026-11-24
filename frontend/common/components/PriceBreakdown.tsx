@@ -1,3 +1,4 @@
+// Price summary: products, delivery charge and total, each on its own line.
 import { Wallet } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -40,6 +41,7 @@ export function PriceBreakdown({ subtotal, delivery, total, itemsLabel = 'Produc
   );
 }
 
+// One labelled amount line, read by TalkBack as one item.
 function Line({ label, amount, styles }: { label: string; amount: number; styles: ReturnType<typeof makeStyles> }) {
   return (
     // accessible: one TalkBack stop per line; a layout-only view is flattened away on Android with its label.
@@ -50,6 +52,7 @@ function Line({ label, amount, styles }: { label: string; amount: number; styles
   );
 }
 
+// Theme-based styles for the breakdown.
 function makeStyles({ colors, space, borders, typography }: Theme) {
   return StyleSheet.create({
     box: { gap: space[2] },

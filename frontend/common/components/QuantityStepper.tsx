@@ -1,3 +1,4 @@
+// Minus / number / plus control for choosing a quantity, with typing and a stock limit.
 import { CircleAlert, Minus, Plus } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -30,16 +31,19 @@ export function QuantityStepper({ value, onChange, min = 1, max, unit, unitPlura
 
   const noun = (count: number) => (count === 1 ? unit : unitPlural);
   const overStock = max !== undefined && (capped || value > max);
+  // Keeps a number between min and max.
   const clamp = (n: number) => {
     const atLeastMin = Math.max(min, n);
     return max === undefined ? atLeastMin : Math.min(max, atLeastMin);
   };
 
+  // Changes the quantity by a step (+1 or -1).
   const step = (delta: number) => {
     setCapped(false);
     onChange(clamp(value + delta));
   };
 
+  // Applies the number the user typed, limited to the allowed range.
   const commit = () => {
     setTyping(false);
     // Digits only: "1,500" is 1500, never 0, and a pasted "12 bags" is 12.
@@ -113,6 +117,7 @@ export function QuantityStepper({ value, onChange, min = 1, max, unit, unitPlura
   );
 }
 
+// Theme-based styles for the stepper.
 function makeStyles({ colors, space, size, borders, radius, typography }: Theme) {
   return StyleSheet.create({
     container: { gap: space[1], alignSelf: 'flex-start' },

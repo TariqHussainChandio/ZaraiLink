@@ -1,3 +1,4 @@
+// Card showing the AI's advisory report on a disease case (BR-13).
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { Banner, Card, StatusBadge } from '../../components';
@@ -11,6 +12,7 @@ const BAND_LABEL = {
   low: 'Low confidence',
 } as const;
 
+// Props for AiAssessmentCard.
 interface AiAssessmentCardProps {
   summary: AiCaseSummary;
 }
@@ -77,6 +79,7 @@ export function AiAssessmentCard({ summary }: AiAssessmentCardProps) {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, radius, typography, fontWeight, size }: Theme) {
   return StyleSheet.create({
     card: {

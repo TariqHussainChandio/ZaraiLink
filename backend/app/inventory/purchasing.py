@@ -29,10 +29,12 @@ router = APIRouter()
 # --- service: suppliers -----------------------------------------------------------------------------------------------
 
 
+# Lists the dealer's suppliers, inactive ones too unless asked not to.
 async def list_suppliers(user: AuthenticatedUser, include_inactive: bool = True) -> list[dict]:
     return await repo.list_active_or_all(user.access_token, SUPPLIERS, include_inactive)
 
 
+# Returns one supplier, or 404.
 async def get_supplier(user: AuthenticatedUser, supplier_id: str) -> dict:
     supplier = await repo.fetch_row(user.access_token, SUPPLIERS, supplier_id)
     if supplier is None:
@@ -40,16 +42,19 @@ async def get_supplier(user: AuthenticatedUser, supplier_id: str) -> dict:
     return supplier
 
 
+# Creates a supplier.
 async def create_supplier(user: AuthenticatedUser, fields: dict) -> dict:
     return await repo.create_row(user.access_token, SUPPLIERS, user.id, fields)
 
 
+# Updates a supplier and returns it.
 async def update_supplier(user: AuthenticatedUser, supplier_id: str, fields: dict) -> dict:
     if not fields:
         return await get_supplier(user, supplier_id)
     return await repo.update_row(user.access_token, SUPPLIERS, supplier_id, fields)
 
 
+# Deletes a supplier; its purchases keep their record.
 async def delete_supplier(user: AuthenticatedUser, supplier_id: str) -> None:
     # A purchase keeps its record when its supplier goes (supplier_id is `on delete set null`).
     await get_supplier(user, supplier_id)
@@ -59,10 +64,12 @@ async def delete_supplier(user: AuthenticatedUser, supplier_id: str) -> None:
 # --- service: purchases -----------------------------------------------------------------------------------------------
 
 
+# Lists the dealer's purchases, optionally by status.
 async def list_purchases(user: AuthenticatedUser, status: str | None = None) -> list[dict]:
     return await repo.fetch_purchases(user.access_token, status)
 
 
+# Returns one purchase with its lines, or 404.
 async def get_purchase(user: AuthenticatedUser, purchase_id: str) -> dict:
     purchase = await repo.fetch_purchase(user.access_token, purchase_id)
     if purchase is None:
@@ -70,6 +77,7 @@ async def get_purchase(user: AuthenticatedUser, purchase_id: str) -> dict:
     return purchase
 
 
+# Returns the purchase only while it is a draft; refuses otherwise.
 async def _get_draft(user: AuthenticatedUser, purchase_id: str) -> dict:
     purchase = await get_purchase(user, purchase_id)
     if purchase["status"] != "draft":
@@ -91,6 +99,7 @@ async def _refused_as_transition(user: AuthenticatedUser, purchase_id: str, exc:
         await _get_draft(user, purchase_id)
 
 
+# The purchase header fields to store (no items, no null purchase date).
 def _purchase_fields(fields: dict) -> dict:
     # purchased_on left out takes the table's default (today); sent as null it would break the not-null column.
     return {k: v for k, v in fields.items() if k != "items" and not (k == "purchased_on" and v is None)}
@@ -137,6 +146,7 @@ async def receive_purchase(user: AuthenticatedUser, purchase_id: str) -> dict:
     return await get_purchase(user, purchase_id)
 
 
+# Cancels a draft purchase.
 async def cancel_purchase(user: AuthenticatedUser, purchase_id: str) -> dict:
     # Only a draft can be cancelled: a received purchase already moved stock, which only a movement can undo.
     await _get_draft(user, purchase_id)
@@ -147,6 +157,7 @@ async def cancel_purchase(user: AuthenticatedUser, purchase_id: str) -> dict:
 # --- routes: suppliers ------------------------------------------------------------------------------------------------
 
 
+# GET: the dealer's suppliers.
 @router.get("/suppliers", response_model=list[Supplier])
 async def get_suppliers(
     include_inactive: bool = True, user: AuthenticatedUser = Depends(require_dealer), page: Page = Depends(paginate)
@@ -154,16 +165,19 @@ async def get_suppliers(
     return page.finish(await list_suppliers(user, include_inactive))
 
 
+# POST: creates a supplier.
 @router.post("/suppliers", response_model=Supplier, status_code=201)
 async def post_supplier(request: SupplierInput, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await create_supplier(user, request.model_dump())
 
 
+# GET: one supplier.
 @router.get("/suppliers/{supplier_id}", response_model=Supplier)
 async def get_one_supplier(supplier_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await get_supplier(user, supplier_id)
 
 
+# PATCH: updates a supplier.
 @router.patch("/suppliers/{supplier_id}", response_model=Supplier)
 async def patch_supplier(
     supplier_id: str, request: SupplierUpdateInput, user: AuthenticatedUser = Depends(require_dealer)
@@ -171,6 +185,7 @@ async def patch_supplier(
     return await update_supplier(user, supplier_id, request.model_dump(exclude_unset=True))
 
 
+# DELETE: removes a supplier.
 @router.delete("/suppliers/{supplier_id}", status_code=204)
 async def remove_supplier(supplier_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> None:
     await delete_supplier(user, supplier_id)
@@ -179,6 +194,7 @@ async def remove_supplier(supplier_id: str, user: AuthenticatedUser = Depends(re
 # --- routes: purchases ------------------------------------------------------------------------------------------------
 
 
+# GET: the dealer's purchases, optionally by status.
 @router.get("/purchases", response_model=list[Purchase])
 async def get_purchases(
     status: PurchaseStatus | None = None,
@@ -188,6 +204,7 @@ async def get_purchases(
     return page.finish(await list_purchases(user, status))
 
 
+# POST: creates a draft purchase (once per Idempotency-Key).
 @router.post("/purchases", response_model=Purchase, status_code=201)
 async def post_purchase(
     request: PurchaseInput,
@@ -206,11 +223,13 @@ async def post_purchase(
     )
 
 
+# GET: one purchase.
 @router.get("/purchases/{purchase_id}", response_model=Purchase)
 async def get_one_purchase(purchase_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await get_purchase(user, purchase_id)
 
 
+# PATCH: edits a draft purchase.
 @router.patch("/purchases/{purchase_id}", response_model=Purchase)
 async def patch_purchase(
     purchase_id: str, request: PurchaseUpdateInput, user: AuthenticatedUser = Depends(require_dealer)
@@ -218,11 +237,13 @@ async def patch_purchase(
     return await update_purchase(user, purchase_id, request.model_dump(mode="json", exclude_unset=True))
 
 
+# POST: receives a purchase, moving its stock in.
 @router.post("/purchases/{purchase_id}/receive", response_model=Purchase)
 async def post_receive_purchase(purchase_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await receive_purchase(user, purchase_id)
 
 
+# POST: cancels a draft purchase.
 @router.post("/purchases/{purchase_id}/cancel", response_model=Purchase)
 async def post_cancel_purchase(purchase_id: str, user: AuthenticatedUser = Depends(require_dealer)) -> dict:
     return await cancel_purchase(user, purchase_id)

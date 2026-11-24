@@ -1,3 +1,4 @@
+// Inbox screen: the list of the user's conversations.
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MessageCircle } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
@@ -33,6 +34,7 @@ const EMPTY_DEFAULT: EmptyCopy = {
   tab: APP_TABS.Marketplace,
 };
 
+// Lists conversations, refreshes on return, and opens a chat on tap.
 export function ConversationListScreen({ navigation }: MessagingScreenProps<'ConversationList'>) {
   const userId = useAuthStore(state => state.user?.id);
   const role = useAuthStore(state => state.role);
@@ -42,6 +44,7 @@ export function ConversationListScreen({ navigation }: MessagingScreenProps<'Con
   const { data: conversations = [], refetch } = query;
   // Only a pull shows the spinner; the refetch on every return to the inbox is quiet.
   const [pulling, setPulling] = useState(false);
+  // Reloads the inbox on pull-to-refresh.
   const pull = async () => {
     setPulling(true);
     try {

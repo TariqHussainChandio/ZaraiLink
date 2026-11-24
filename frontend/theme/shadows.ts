@@ -1,9 +1,11 @@
+// Elevation tokens: the shadows for things that float above content (bars, sheets, menus).
 import type { ViewStyle } from 'react-native';
 
 // Elevation (D15, Rate Board). Surfaces are separated by the ground colour and a 1px line, not shadows; elevation marks only
 // what floats over content. Android draws `elevation`; the shadow* keys are its iOS/web equivalent.
 type Shadow = Pick<ViewStyle, 'shadowColor' | 'shadowOffset' | 'shadowOpacity' | 'shadowRadius' | 'elevation'>;
 
+// Builds one shadow level with matching Android elevation and iOS/web shadow values.
 function elevation(level: number, offsetY: number, radius: number, opacity: number): Shadow {
   return {
     shadowColor: '#0D110C',
@@ -14,6 +16,7 @@ function elevation(level: number, offsetY: number, radius: number, opacity: numb
   };
 }
 
+// The elevation levels components use, from none up to floating sheets.
 export const shadows = {
   none: {} as Shadow,
   /** Sticky bottom action bar; an app bar with content scrolled under it. */

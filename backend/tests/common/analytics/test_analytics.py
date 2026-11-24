@@ -19,15 +19,17 @@ async def test_farmer_analytics_counts_only_completed_orders_as_sales():
         {"status": "completed", "total": 100, "order_items": []},
         {"status": "pending", "total": 999, "order_items": []},  # must NOT count toward sales
     ]
-    with patch("app.farmer.service.repo.fetch_farms", return_value=[]):
-        with patch("app.common.orders.service.repo.fetch_orders_for_user", return_value=orders):
-            with patch("app.common.consultations.service.repo.fetch_for_user", return_value=[]):
-                with patch("app.common.analytics.service.repo.fetch_own_listings", return_value=[]):
-                    with patch(
-                        "app.common.marketplace.service.repo.fetch_listing_view_counts",
-                        return_value={},
-                    ):
-                        result = await service.fetch_farmer_analytics(FARMER)
+    with (
+        patch("app.farmer.service.repo.fetch_farms", return_value=[]),
+        patch("app.common.orders.service.repo.fetch_orders_for_user", return_value=orders),
+        patch("app.common.consultations.service.repo.fetch_for_user", return_value=[]),
+        patch("app.common.analytics.service.repo.fetch_own_listings", return_value=[]),
+        patch(
+            "app.common.marketplace.service.repo.fetch_listing_view_counts",
+            return_value={},
+        ),
+    ):
+        result = await service.fetch_farmer_analytics(FARMER)
 
     assert result["totalSales"] == 100
     assert result["totalOrders"] == 2

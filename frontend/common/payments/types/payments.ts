@@ -1,3 +1,5 @@
+// Payment types: status, method, payment and transaction.
+// The states a payment can be in.
 export type PaymentStatus = 'pending' | 'processing' | 'successful' | 'failed' | 'cancelled' | 'refunded';
 
 // No real gateway sandbox is wired up yet (Module 10 built against manual confirmation) — both
@@ -5,6 +7,7 @@ export type PaymentStatus = 'pending' | 'processing' | 'successful' | 'failed' |
 // seller confirms receipt either way. `provider` stays 'manual' until a real gateway lands.
 export type PaymentMethod = 'cod' | 'bank_transfer';
 
+// One payment for an order.
 export interface Payment {
   id: string;
   order_id: string;
@@ -19,6 +22,7 @@ export interface Payment {
   updated_at: string;
 }
 
+// One event in a payment's history.
 export interface PaymentTransaction {
   id: string;
   payment_id: string;

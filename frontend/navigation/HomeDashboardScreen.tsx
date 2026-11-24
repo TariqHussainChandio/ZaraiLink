@@ -1,3 +1,4 @@
+// Picks the right home dashboard (farmer, buyer or dealer) for the signed-in role.
 import React from 'react';
 import { useAuthStore } from '../state/authStore';
 import { BuyerDashboardScreen } from '../buyer/screens/DashboardScreen';

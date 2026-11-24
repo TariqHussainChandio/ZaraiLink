@@ -21,17 +21,21 @@ ORDER = {"id": "order-1", "buyer_id": BUYER.id, "seller_id": SELLER.id, "status"
 async def test_initiate_payment_uses_order_total_never_a_client_supplied_amount():
     # InitiatePaymentRequest (common/payments/schemas.py) has no `amount` field at all — this test
     # additionally confirms the service call actually receives the order's own total.
-    with patch("app.common.payments.service.repo.get_order_for_payment", return_value=ORDER):
-        with patch("app.common.payments.service.repo.insert_payment", return_value={"id": "p-1"}) as mock_insert:
-            await service.initiate_payment(BUYER, "order-1", "cod")
+    with (
+        patch("app.common.payments.service.repo.get_order_for_payment", return_value=ORDER),
+        patch("app.common.payments.service.repo.insert_payment", return_value={"id": "p-1"}) as mock_insert,
+    ):
+        await service.initiate_payment(BUYER, "order-1", "cod")
     mock_insert.assert_called_once_with(BUYER.access_token, "order-1", BUYER.id, 999.99, "cod")
 
 
 @pytest.mark.asyncio
 async def test_initiate_payment_rejects_a_non_buyer_of_the_order():
-    with patch("app.common.payments.service.repo.get_order_for_payment", return_value=ORDER):
-        with pytest.raises(HTTPException) as exc_info:
-            await service.initiate_payment(STRANGER, "order-1", "cod")
+    with (
+        patch("app.common.payments.service.repo.get_order_for_payment", return_value=ORDER),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await service.initiate_payment(STRANGER, "order-1", "cod")
     assert exc_info.value.status_code == 404
 
 
@@ -44,21 +48,25 @@ def test_initiate_payment_request_schema_has_no_amount_field():
 @pytest.mark.asyncio
 async def test_mark_received_rejects_non_seller():
     payment = {"id": "p-1", "order_id": "order-1", "method": "cod", "status": "pending"}
-    with patch("app.common.payments.service.repo.fetch_payment_by_id", return_value=payment):
-        with patch("app.common.payments.service.repo.get_order_for_payment", return_value=ORDER):
-            with pytest.raises(HTTPException) as exc_info:
-                await service.mark_payment_received(BUYER, "p-1")  # buyer is not the seller
+    with (
+        patch("app.common.payments.service.repo.fetch_payment_by_id", return_value=payment),
+        patch("app.common.payments.service.repo.get_order_for_payment", return_value=ORDER),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await service.mark_payment_received(BUYER, "p-1")  # buyer is not the seller
     assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_mark_failed_auto_transitions_pending_order_to_payment_failed():
     payment = {"id": "p-1", "order_id": "order-1", "method": "cod", "status": "pending"}
-    with patch("app.common.payments.service.repo.fetch_payment_by_id", return_value=payment):
-        with patch("app.common.payments.service.repo.get_order_for_payment", return_value=ORDER):
-            with patch("app.common.payments.service.repo.update_payment_status", return_value={"id": "p-1"}):
-                with patch("app.common.payments.service.orders_service.update_order_status") as mock_transition:
-                    await service.mark_payment_failed(SELLER, "p-1", "buyer refused COD")
+    with (
+        patch("app.common.payments.service.repo.fetch_payment_by_id", return_value=payment),
+        patch("app.common.payments.service.repo.get_order_for_payment", return_value=ORDER),
+        patch("app.common.payments.service.repo.update_payment_status", return_value={"id": "p-1"}),
+        patch("app.common.payments.service.orders_service.update_order_status") as mock_transition,
+    ):
+        await service.mark_payment_failed(SELLER, "p-1", "buyer refused COD")
     mock_transition.assert_called_once_with(SELLER, "order-1", "payment_failed")
 
 
@@ -66,11 +74,13 @@ async def test_mark_failed_auto_transitions_pending_order_to_payment_failed():
 async def test_mark_failed_does_not_auto_transition_an_order_already_processing():
     processing_order = {**ORDER, "status": "processing"}
     payment = {"id": "p-1", "order_id": "order-1", "method": "cod", "status": "pending"}
-    with patch("app.common.payments.service.repo.fetch_payment_by_id", return_value=payment):
-        with patch("app.common.payments.service.repo.get_order_for_payment", return_value=processing_order):
-            with patch("app.common.payments.service.repo.update_payment_status", return_value={"id": "p-1"}):
-                with patch("app.common.payments.service.orders_service.update_order_status") as mock_transition:
-                    await service.mark_payment_failed(SELLER, "p-1", None)
+    with (
+        patch("app.common.payments.service.repo.fetch_payment_by_id", return_value=payment),
+        patch("app.common.payments.service.repo.get_order_for_payment", return_value=processing_order),
+        patch("app.common.payments.service.repo.update_payment_status", return_value={"id": "p-1"}),
+        patch("app.common.payments.service.orders_service.update_order_status") as mock_transition,
+    ):
+        await service.mark_payment_failed(SELLER, "p-1", None)
     mock_transition.assert_not_called()
 
 

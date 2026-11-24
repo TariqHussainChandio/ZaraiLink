@@ -1,7 +1,9 @@
+// Inventory: hook for today's UTC date that updates at midnight.
 import { useEffect, useState } from 'react';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Today's date in UTC as YYYY-MM-DD.
 function utcToday(): string {
   return new Date().toISOString().slice(0, 10);
 }

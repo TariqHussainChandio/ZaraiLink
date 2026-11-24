@@ -1,3 +1,4 @@
+// Shows loading, error, offline, empty or content for a React Query result.
 import { WifiOff, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -44,6 +45,7 @@ export function QueryState({ query, isEmpty = false, empty, skeleton = 'list', f
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const hasData = query.data !== undefined;
+  // Fetches the query again.
   const retry = () => {
     query.refetch();
   };
@@ -96,6 +98,7 @@ export function QueryState({ query, isEmpty = false, empty, skeleton = 'list', f
   );
 }
 
+// Theme-based styles for the skeleton grid.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap' },

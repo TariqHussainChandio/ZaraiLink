@@ -1,3 +1,4 @@
+// Admin: queue of dealer and expert applications waiting for approval.
 import { useFocusEffect } from '@react-navigation/native';
 import { FileCheck } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';

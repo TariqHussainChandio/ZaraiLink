@@ -1,3 +1,4 @@
+// Screen showing whether a payment went through or failed.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { Button, Card, PriceBreakdown, QueryState, ScreenScaffold, StatusBadge } from '../../components';
@@ -21,6 +22,7 @@ const RESULT_COPY: Record<PaymentStatus, { title: string; description: string }>
   processing: { title: 'Waiting for the seller', description: 'The seller has not recorded this payment yet.' },
 };
 
+// Shows the payment result and a way back to the order.
 export function PaymentResultScreen({ route, navigation }: OrdersScreenProps<'PaymentResult'>) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -69,6 +71,7 @@ export function PaymentResultScreen({ route, navigation }: OrdersScreenProps<'Pa
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: { gap: space[3] },

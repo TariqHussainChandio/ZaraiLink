@@ -1,3 +1,4 @@
+// Payment hooks: load payments and start one.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   fetchPaymentById,
@@ -18,6 +19,7 @@ export function usePayment(paymentId: string) {
   });
 }
 
+// Starts a payment for an order, then refreshes the orders.
 export function useInitiatePayment() {
   const invalidate = useInvalidateOrders();
   return useMutation({

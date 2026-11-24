@@ -1,3 +1,4 @@
+// Admin: manage reference lists (currencies and units).
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Banner, Button, ChipRow, ListGroup, ListRow, QueryState, ScreenScaffold, Sheet, StickyActionBar, TextField } from '../../common/components';
@@ -76,6 +77,7 @@ export function ReferenceDataScreen() {
     }, [refetch]),
   );
 
+  // Opens the editor for a new row or an existing one.
   const openEditor = (row: Row | 'new') => {
     const initial: Record<string, string> = {};
     for (const field of config.fields) initial[field.key] = row === 'new' ? '' : String(row[field.key] ?? '');
@@ -86,6 +88,7 @@ export function ReferenceDataScreen() {
     setEditing(row);
   };
 
+  // Saves the row being edited.
   const save = async () => {
     const missing: Record<string, string> = {};
     for (const field of config.fields) {
@@ -106,6 +109,7 @@ export function ReferenceDataScreen() {
     }
   };
 
+  // Asks the admin to confirm deleting a row.
   const askDelete = (row: Row) => {
     const label = config.renderLabel(row);
     setSelected(null);

@@ -1,3 +1,4 @@
+// Pulsing grey placeholders shown while content loads (blocks, cards, rows).
 import React, { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, Animated, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import { type Theme, useTheme } from '../../theme';
@@ -28,6 +29,7 @@ export function Skeleton({ style, silent = false }: { style?: StyleProp<ViewStyl
     AccessibilityInfo.isReduceMotionEnabled()
       .then(reduce => {
         if (reduce || cancelled) return;
+        // One fade step of the pulse animation.
         const step = (toValue: number) =>
           Animated.timing(opacity, { toValue, duration: theme.motion.duration.slow * 2, easing: theme.motion.easing.standard, useNativeDriver: true });
         pulse = Animated.loop(Animated.sequence([step(PULSE_MIN_OPACITY), step(PULSE_MAX_OPACITY)]));
@@ -86,6 +88,7 @@ export function SkeletonList({ count = 6 }: { count?: number }) {
   );
 }
 
+// Theme-based styles for the skeleton shapes.
 function makeStyles({ colors, space, size, radius, borders, components, typography }: Theme) {
   // A text line is as tall as a caption's letters, not its line box.
   const line = typography.caption.fontSize;

@@ -1,3 +1,4 @@
+// Step-by-step application wizard: details, documents, then review.
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, findNodeHandle, StyleSheet, Text, View } from 'react-native';
@@ -58,12 +59,14 @@ export function ApplicationWizardScreen() {
     if (handle) AccessibilityInfo.setAccessibilityFocus(handle);
   }, [step]);
 
+  // After submit, reloads the profile and closes the wizard.
   const onSubmitted = async () => {
     await refreshProfile().catch(() => undefined);
     leaving.current = true;
     navigation.goBack();
   };
 
+  // Goes back one step, never before the first.
   const back = () => setStep(current => Math.max(DETAILS, current - 1));
 
   return (
@@ -95,6 +98,7 @@ export function ApplicationWizardScreen() {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     stepTitle: { ...typography.title, color: colors.ink },

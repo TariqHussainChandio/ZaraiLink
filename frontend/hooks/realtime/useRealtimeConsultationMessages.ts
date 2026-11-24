@@ -1,3 +1,4 @@
+// Live updates for new messages in a consultation, via Supabase Realtime.
 import { useEffect, useId } from 'react';
 import { supabase } from '../../services/supabase/client';
 import type { ConsultationMessage } from '../../expert';

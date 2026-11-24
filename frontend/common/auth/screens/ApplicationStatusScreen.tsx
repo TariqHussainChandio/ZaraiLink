@@ -1,3 +1,4 @@
+// Application status screen for dealers and experts: pending, rejected or approved.
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -50,6 +51,7 @@ export function ApplicationStatusScreen() {
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<{ at: Date; failure: string | null } | null>(null);
 
+  // Reloads the profile on request and records when the check ran and if it failed.
   const refresh = useCallback(async () => {
     setChecking(true);
     try {
@@ -151,6 +153,7 @@ export function ApplicationStatusScreen() {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     heading: { gap: space[2] },

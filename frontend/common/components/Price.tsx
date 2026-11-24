@@ -1,3 +1,4 @@
+// Shows a price in rupees with its unit, in the brand's price colour.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { type Theme, useTheme } from '../../theme';
@@ -32,6 +33,7 @@ export function Price({ amount, unit, size = 'lg' }: PriceProps) {
   );
 }
 
+// Theme-based styles for the price.
 function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
     price: { alignSelf: 'flex-start', maxWidth: '100%' },

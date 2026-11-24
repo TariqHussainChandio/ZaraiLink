@@ -1,13 +1,16 @@
+// Average rating and number of reviews.
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { RatingStars } from './RatingStars';
 import { useTheme, type Theme } from '../../../theme';
 import type { Review } from '../types/reviews';
 
+// Props for RatingSummary.
 export interface RatingSummaryProps {
   reviews: Review[];
 }
 
+// Shows the average star rating and the review count.
 export function RatingSummary({ reviews }: RatingSummaryProps) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -32,6 +35,7 @@ export function RatingSummary({ reviews }: RatingSummaryProps) {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     row: {

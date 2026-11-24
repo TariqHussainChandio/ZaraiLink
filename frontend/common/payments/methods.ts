@@ -1,3 +1,4 @@
+// Readable names of the payment methods.
 import { PAYMENT_METHOD_LABELS } from '../constants/labels';
 import type { PaymentMethod } from './types/payments';
 
@@ -6,6 +7,7 @@ import type { PaymentMethod } from './types/payments';
  * this changes nothing. */
 const sentenceCase = (label: string) => label.charAt(0) + label.slice(1).toLowerCase();
 
+// Each payment method's display name.
 export const PAYMENT_METHOD_NAMES: Record<PaymentMethod, string> = {
   cod: sentenceCase(PAYMENT_METHOD_LABELS.cod),
   bank_transfer: sentenceCase(PAYMENT_METHOD_LABELS.bank_transfer),

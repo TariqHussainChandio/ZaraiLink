@@ -1,3 +1,5 @@
+// Review types: a review and a review with its reviewer.
+// One review of an order or a consultation.
 export interface Review {
   id: string;
   /** Exactly one of `order_id`/`consultation_id` is ever set (Module 14 `reviews_exactly_one_subject`). */
@@ -18,6 +20,7 @@ export interface Review {
   hidden_reason?: string | null;
 }
 
+// A review with its reviewer attached.
 export interface ReviewWithBuyer extends Review {
   buyer: { id: string; full_name: string; avatar_url: string | null } | null;
 }

@@ -1,3 +1,4 @@
+// Admin: platform analytics shown as monthly bar charts.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -24,6 +25,7 @@ function monthly(title: string, months: Month[]) {
   return { data, summary: `${title}: ${data.map(d => `${d.label} ${d.value}`).join(', ')}` };
 }
 
+// Shows the analytics charts, refreshed when the screen gains focus.
 export function AdminAnalyticsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -107,6 +109,7 @@ export function AdminAnalyticsScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },

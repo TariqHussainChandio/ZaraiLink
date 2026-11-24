@@ -1,3 +1,4 @@
+// Guest welcome screen with Sign up and Log in buttons.
 import { CircleUserRound } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -31,6 +32,7 @@ export function WelcomeScreen({ navigation }: AuthScreenProps<'Welcome'>) {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, size, radius }: Theme) {
   return StyleSheet.create({
     // The profile mark on a soft olive disc, the picture of "your account".

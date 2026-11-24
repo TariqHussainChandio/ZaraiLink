@@ -1,3 +1,5 @@
+"""Request and response models for the disease advisory API, including the AI report."""
+
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -6,6 +8,7 @@ from pydantic import BaseModel, Field
 # route (BR-13). 0.60 is the plan's band edge, not a calibrated figure; recalibrate it when the model is retrained.
 LOW_CONFIDENCE_THRESHOLD = 0.60
 
+# Allowed values for the knowledge review state and the case processing state.
 ReviewStatus = Literal["pending_review", "reviewed"]
 CaseStatus = Literal["pending", "predicted", "failed"]
 
@@ -50,15 +53,18 @@ class DiseaseReport(BaseModel):
     created_at: str
 
 
+# A crop the model can check: a key for the app and a display name.
 class SupportedCrop(BaseModel):
     key: str
     name: str
 
 
+# The list of supported crops.
 class SupportedCropsResponse(BaseModel):
     crops: list[SupportedCrop]
 
 
+# Body for running the model on a case.
 class PredictRequest(BaseModel):
     disease_case_id: str
     # A key from GET /api/v1/disease/crops. Optional: without it the response says nothing about a crop match.
@@ -82,6 +88,7 @@ class PredictionRecord(BaseModel):
     crop_matches: bool | None = None
 
 
+# The stored prediction plus the full AI report.
 class PredictResponse(PredictionRecord):
     # The flat fields above stay for the app's current result screen until the frontend ai lane moves to `report`.
     report: DiseaseReport
@@ -99,11 +106,13 @@ class CreateCaseRequest(BaseModel):
     storage_path: str = Field(pattern=r"^[A-Za-z0-9-]+/[A-Za-z0-9][A-Za-z0-9._-]*$", max_length=255)
 
 
+# A crop's id and name, embedded in a case.
 class CropRef(BaseModel):
     id: str
     name: str
 
 
+# A disease case as the API returns it, with a signed photo link.
 class DiseaseCaseResponse(BaseModel):
     id: str
     user_id: str
@@ -115,6 +124,7 @@ class DiseaseCaseResponse(BaseModel):
     created_at: str
 
 
+# A case with its crop, latest prediction, status and AI report.
 class DiseaseCaseWithPredictionResponse(DiseaseCaseResponse):
     crop: CropRef | None = None
     prediction: PredictionRecord | None = None

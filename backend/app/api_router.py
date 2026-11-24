@@ -1,3 +1,5 @@
+"""Combines every module's router into the one v1 API router."""
+
 from fastapi import APIRouter
 
 from app.admin.router import router as admin_router

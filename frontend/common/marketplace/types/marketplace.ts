@@ -1,5 +1,7 @@
+// Marketplace types: categories, crops and listings.
 import type { GeoLocation } from '../../types/referenceData';
 
+// A product category.
 export interface Category {
   id: string;
   name: string;
@@ -8,14 +10,17 @@ export interface Category {
   created_at: string;
 }
 
+// The states a listing can be in.
 export type ListingStatus = 'active' | 'inactive' | 'sold';
 
+// A crop.
 export interface Crop {
   id: string;
   name: string;
   category: string | null;
 }
 
+// A listing as stored.
 export interface Listing {
   id: string;
   owner_id: string;

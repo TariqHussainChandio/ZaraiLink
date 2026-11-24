@@ -1,3 +1,4 @@
+// Builds the chat screen rows: day separators, sent messages and messages still sending.
 import { formatDay } from '../../../utils/dates';
 import type { Message, OutgoingMessage } from '../types/messaging';
 
@@ -23,6 +24,7 @@ export type ChatRow =
       localId?: string;
     };
 
+// True when two lists hold the same values in the same order.
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((value, i) => value === b[i]);
 
 /** True once a message of ours that was not there when the send was first tried has the same words and photos: the send

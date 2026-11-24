@@ -1,3 +1,4 @@
+// Account tab: the user's profile details plus the account settings.
 import { Building2, Home, Mail, MapPin, Phone, UserX } from 'lucide-react-native';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import React, { useMemo, useState } from 'react';
@@ -49,7 +50,9 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
   const place = [profile.village, profile.city, profile.province, profile.country].filter(Boolean).join(', ') || profile.location;
   // Stored as +923001234567, read as 0300 1234567: the way the person writes it.
   const phone = profile.phone ? (parsePhoneNumberFromString(profile.phone)?.formatNational() ?? profile.phone) : null;
+  // Opens the edit profile form.
   const edit = () => navigation.navigate(PROFILE_ROUTES.EditProfile);
+  // Draws a row icon in the theme's colour and size.
   const icon = (Icon: typeof Mail) => <Icon color={theme.colors.ink2} size={theme.size.iconMd} strokeWidth={theme.size.iconStroke} />;
 
   // D19: the admin's details are set by the system, so their Account shows who they are, read-only, and the password;
@@ -91,6 +94,7 @@ export function ViewProfileScreen({ navigation }: ProfileScreenProps<'ViewProfil
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'flex-end' },

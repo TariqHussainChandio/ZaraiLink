@@ -1,3 +1,5 @@
+"""Disease advisory API routes: supported crops, create a case, run the model, read a case and knowledge."""
+
 from fastapi import APIRouter, Depends, Request
 
 from app.ai import service as disease_service
@@ -46,6 +48,7 @@ async def get_case(
     return DiseaseCaseWithPredictionResponse(**case)
 
 
+# POST /predict: runs the model on a case photo (farmers only, 10 per minute).
 @router.post("/predict", response_model=PredictResponse)
 @limiter.limit("10/minute")
 async def predict_disease(

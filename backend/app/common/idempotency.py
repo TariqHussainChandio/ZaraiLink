@@ -30,6 +30,7 @@ from app.database.supabase_client import get_user_scoped_client
 _TTL = timedelta(hours=24)
 
 
+# One claimed idempotency key for a request, with any saved reply to replay.
 @dataclass
 class Claim:
     user: AuthenticatedUser
@@ -37,6 +38,7 @@ class Claim:
     endpoint: str
     replay: Any = None
 
+    # Saves the response so a repeat with the same key gets the same answer.
     async def complete(self, status: int, body: Any) -> None:
         client = await get_user_scoped_client(self.user.access_token)
         await (
@@ -48,6 +50,7 @@ class Claim:
             .execute()
         )
 
+    # Releases the key after a failure so the request can be retried.
     async def abandon(self) -> None:
         client = await get_user_scoped_client(self.user.access_token)
         await (

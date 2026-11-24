@@ -1,3 +1,4 @@
+// Dark brand panel with the ZaraiLink wordmark, used on the splash screen.
 import { Wheat } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -34,6 +35,7 @@ export function BrandPanel({ line, fill = false }: BrandPanelProps) {
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     panel: {

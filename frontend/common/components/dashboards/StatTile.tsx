@@ -1,3 +1,4 @@
+// Dashboard tile showing one key number with its label, unit and note.
 import type { LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -33,6 +34,7 @@ export function StatTile({ label, value, unit, note, icon: Icon, accent, tone, o
   // The dash is read as words: "Orders to dispatch: not available".
   const spoken = `${label}: ${known ? `${shown}${unit ? ` ${unit}` : ''}` : 'not available'}${note ? `, ${note}` : ''}`;
 
+  // The tile's content, shared by the plain and pressable tile.
   const body = (
     <>
       <View style={styles.head}>
@@ -74,6 +76,7 @@ export function StatTile({ label, value, unit, note, icon: Icon, accent, tone, o
   );
 }
 
+// Theme-based styles for the stat tile.
 function makeStyles({ colors, space, size, radius, borders, components, typography }: Theme) {
   return StyleSheet.create({
     // Two across: a tile grows from a basis over a third of the row, so a third or fourth tile in a wrapping row moves to

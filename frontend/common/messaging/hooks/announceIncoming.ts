@@ -1,3 +1,4 @@
+// Reads new incoming chat messages aloud for screen reader users.
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo } from 'react-native';
 

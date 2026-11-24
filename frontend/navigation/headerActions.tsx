@@ -1,3 +1,4 @@
+// App-bar buttons (bell, profile, cart, messages, inventory) that stacks place in their headers.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useNavigation, type ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -55,6 +56,7 @@ function ProfileAction() {
   const guest = useAuthStore(state => state.status !== 'authenticated');
   const profile = useAuthStore(state => state.profile);
   const tabs = useAppTabNavigation();
+  // Opens the Account tab, or for a guest the welcome page with Sign up and Log in.
   const open = () => {
     if (!guest) {
       tabs?.navigate(APP_TABS.Profile);
@@ -153,6 +155,7 @@ function BrowseActions() {
   );
 }
 
+// Render functions for the actions above, passed to stackOptionsWithActions.
 export const notificationsAction = () => <NotificationsAction />;
 export const profileAction = () => <ProfileAction />;
 
@@ -162,12 +165,14 @@ function GuestProfileAction() {
   const guest = useAuthStore(state => state.status !== 'authenticated');
   return guest ? <ProfileAction /> : null;
 }
+// More render functions: guest profile, home, consultations, cart and browse actions.
 export const guestProfileAction = () => <GuestProfileAction />;
 export const homeActions = () => <HomeActions />;
 export const consultationsActions = () => <ConsultationsActions />;
 export const cartAction = () => <CartAction />;
 export const browseActions = () => <BrowseActions />;
 
+// Theme-based styles for the header actions.
 function makeStyles({ size }: Theme) {
   return StyleSheet.create({
     // The photo is drawn small (avatarSm) inside the 48 dp target every app-bar button has.

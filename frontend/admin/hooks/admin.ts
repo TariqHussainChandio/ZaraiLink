@@ -1,3 +1,4 @@
+// Admin: React Query hooks that read and change admin data through adminService.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createRequiredDocument,
@@ -83,10 +84,12 @@ const moderationKeys = {
   reviews: () => [...queryKeys.admin.all, 'reviews'] as const,
 };
 
+// Reads the admin analytics (monthly charts).
 export function useAdminAnalytics() {
   return useQuery({ queryKey: queryKeys.admin.analytics(), queryFn: fetchAdminAnalytics });
 }
 
+// Reads the platform totals: users by role, listings and orders.
 export function usePlatformStats() {
   return useQuery({ queryKey: queryKeys.admin.stats(), queryFn: fetchPlatformStats });
 }
@@ -122,6 +125,7 @@ export function useOrderPages(status: 'disputed' | undefined, loadAll: boolean) 
   );
 }
 
+// Returns a function that refreshes every cached admin query.
 function useInvalidateAdmin() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.all });
@@ -144,6 +148,7 @@ export function useProfilePages(filter: ProfileFilter, loadAll: boolean) {
   );
 }
 
+// Suspends or reactivates a user account, then refreshes admin data.
 export function useSetProfileSuspended() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
@@ -152,6 +157,7 @@ export function useSetProfileSuspended() {
   });
 }
 
+// Approves or rejects a dealer application, then refreshes admin data.
 export function useDecideDealerApplication() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
@@ -161,6 +167,7 @@ export function useDecideDealerApplication() {
   });
 }
 
+// Changes a user's role, then refreshes admin data.
 export function useUpdateUserRole() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
@@ -171,6 +178,7 @@ export function useUpdateUserRole() {
 
 // ---- listings
 
+// Every listing for moderation, a page at a time.
 export function useModerationListingPages(loadAll: boolean) {
   return useAdminPages([...queryKeys.admin.moderationListings(), 'pages'], fetchModerationListingsPage, { loadAll });
 }
@@ -188,11 +196,13 @@ export function useSetListingStatus() {
 
 // ---- categories (reads use `useCategories` in marketplace.ts)
 
+// Returns a function that refreshes the cached category list.
 function useInvalidateCategories() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.categories() });
 }
 
+// Creates a category, or updates it when an id is given.
 export function useSaveCategory() {
   const invalidate = useInvalidateCategories();
   return useMutation({
@@ -202,6 +212,7 @@ export function useSaveCategory() {
   });
 }
 
+// Deletes a category.
 export function useDeleteCategory() {
   const invalidate = useInvalidateCategories();
   return useMutation({ mutationFn: (id: string) => deleteCategory(id), onSuccess: invalidate });
@@ -209,6 +220,7 @@ export function useDeleteCategory() {
 
 // ---- expert verification
 
+// Lists expert verification requests, optionally by status.
 export function useExpertVerifications(status: VerificationStatus | undefined) {
   return useQuery({
     queryKey: queryKeys.admin.verifications(status),
@@ -217,6 +229,7 @@ export function useExpertVerifications(status: VerificationStatus | undefined) {
   });
 }
 
+// Approves or rejects an expert's verification with notes.
 export function useReviewVerification() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -238,6 +251,7 @@ export function useReviewVerification() {
   });
 }
 
+// Reads one expert's application for the detail screen.
 export function useExpertApplication(expertId: string) {
   return useQuery({
     queryKey: queryKeys.admin.expertApplication(expertId),
@@ -250,6 +264,7 @@ export function useExpertApplication(expertId: string) {
 
 // ---- dealer applications (A3b)
 
+// Lists dealer applications with the given account status.
 export function useDealerApplications(status: DealerApplicationForAdmin['account_status']) {
   return useQuery({
     queryKey: queryKeys.admin.dealerApplications(status),
@@ -258,6 +273,7 @@ export function useDealerApplications(status: DealerApplicationForAdmin['account
   });
 }
 
+// Reads one dealer's application for the detail screen.
 export function useDealerApplication(dealerId: string) {
   return useQuery({
     queryKey: queryKeys.admin.dealerApplication(dealerId),
@@ -316,10 +332,12 @@ export function useApplicationDocumentLinks(
 
 // ---- required documents (A3b)
 
+// Reads every required-document entry, including retired ones.
 export function useAllRequiredDocuments() {
   return useQuery({ queryKey: queryKeys.admin.requiredDocuments(), queryFn: fetchAllRequiredDocuments, staleTime: 0 });
 }
 
+// Creates a required-document entry, or updates it when an id is given.
 export function useSaveRequiredDocument() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -336,6 +354,7 @@ export function useSaveRequiredDocument() {
 
 // ---- reports
 
+// The abuse reports, a page at a time, optionally by status.
 export function useReportPages(status: ReportStatus | undefined, loadAll: boolean) {
   return useAdminPages([...queryKeys.admin.reports(status), 'pages'], offset => fetchReportsPage(status, offset), { loadAll });
 }
@@ -443,6 +462,7 @@ export function useModerateReport() {
   });
 }
 
+// Dismisses a report with the admin's notes.
 export function useDismissReport() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
@@ -460,14 +480,17 @@ const aiKeys = {
   knowledgeEntry: (classLabel: string) => [...queryKeys.admin.all, 'disease-knowledge', classLabel] as const,
 };
 
+// Reads the AI activity counts for the recent window.
 export function useAiActivity() {
   return useQuery({ queryKey: aiKeys.activity(), queryFn: fetchAiActivity, staleTime: 0 });
 }
 
+// Reads every disease knowledge entry.
 export function useDiseaseKnowledge() {
   return useQuery({ queryKey: aiKeys.knowledge(), queryFn: fetchDiseaseKnowledge, staleTime: 0 });
 }
 
+// Reads one disease knowledge entry by its model class label.
 export function useDiseaseKnowledgeEntry(classLabel: string) {
   return useQuery({
     queryKey: aiKeys.knowledgeEntry(classLabel),
@@ -489,6 +512,7 @@ function useStoreKnowledgeEntry() {
   };
 }
 
+// Saves an admin's edit of a disease knowledge entry.
 export function useUpdateDiseaseKnowledge() {
   const store = useStoreKnowledgeEntry();
   return useMutation({
@@ -498,6 +522,7 @@ export function useUpdateDiseaseKnowledge() {
   });
 }
 
+// Marks a disease knowledge entry as reviewed.
 export function useReviewDiseaseKnowledge() {
   const store = useStoreKnowledgeEntry();
   return useMutation({ mutationFn: (classLabel: string) => reviewDiseaseKnowledge(classLabel), onSuccess: store });
@@ -505,6 +530,7 @@ export function useReviewDiseaseKnowledge() {
 
 // ---- orders (SRDS §14)
 
+// Reads one order with its history and payment for the admin.
 export function useAdminOrder(orderId: string) {
   return useQuery({ queryKey: moderationKeys.order(orderId), queryFn: () => fetchOrderForAdmin(orderId), staleTime: 0 });
 }
@@ -538,6 +564,7 @@ export function useResolveDispute() {
 
 // ---- consultations (SRDS §14)
 
+// Lists consultations, optionally by status and minimum age in days.
 export function useAdminConsultations(status: ConsultationStatus | undefined, olderThanDays: number | undefined) {
   return useQuery({
     queryKey: moderationKeys.consultations(status, olderThanDays),
@@ -546,6 +573,7 @@ export function useAdminConsultations(status: ConsultationStatus | undefined, ol
   });
 }
 
+// Reads one consultation for the admin's detail screen.
 export function useAdminConsultation(consultationId: string) {
   return useQuery({
     queryKey: moderationKeys.consultation(consultationId),
@@ -570,6 +598,7 @@ export function useModerateConsultation() {
 
 // ---- reviews (SRDS §14)
 
+// Reads the reviews for moderation.
 export function useModerationReviews() {
   return useQuery({ queryKey: moderationKeys.reviews(), queryFn: fetchReviewsForModeration, staleTime: 0 });
 }

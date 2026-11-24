@@ -1,3 +1,4 @@
+// Expert application step: qualifications, experience, institution and specializations form.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -98,6 +99,7 @@ export function ExpertProfessionalStep({
     });
   }, [profile, reset]);
 
+  // Adds or removes one specialization from the selection.
   const toggle = (specialization: ExpertSpecialization) => {
     setSpecializationError(false);
     setSpecializations(current =>
@@ -105,6 +107,7 @@ export function ExpertProfessionalStep({
     );
   };
 
+  // Checks a specialization is chosen, then saves the expert profile through the API.
   const onSubmit = async (values: Values) => {
     if (specializations.length === 0) {
       setSpecializationError(true);
@@ -130,6 +133,7 @@ export function ExpertProfessionalStep({
   if (saved.isPending) return <FormSkeleton />;
   if (saved.isError) return <StepLoadFailure error={saved.error} onRetry={() => saved.refetch()} />;
 
+  // Draws one text field wired to the form, so each field below is one short call.
   const field = (name: keyof Values, label: string, extra: Partial<React.ComponentProps<typeof TextField>> = {}) => (
     <Controller
       control={control}
@@ -185,6 +189,7 @@ export function ExpertProfessionalStep({
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     form: { gap: space[4] },

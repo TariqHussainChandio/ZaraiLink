@@ -24,6 +24,7 @@ MAX_LIMIT = 100
 _UNPAGED_END = 999
 
 
+# The limit and offset of the current request, with the request and response.
 @dataclass
 class Page:
     limit: int
@@ -43,6 +44,7 @@ class Page:
 _current: ContextVar[Page | None] = ContextVar("current_page", default=None)
 
 
+# The row range (start, end) for the current page, used in database queries.
 def page_range() -> tuple[int, int]:
     page = _current.get()
     if page is None:
@@ -55,6 +57,7 @@ def pagination(default_limit: int = MAX_LIMIT):
     existing callers that never send `limit` are not silently truncated; the marketplace feed keeps its
     historical 20."""
 
+    # Reads limit and offset from the query string and stores them for this request.
     async def dependency(
         request: Request,
         response: Response,

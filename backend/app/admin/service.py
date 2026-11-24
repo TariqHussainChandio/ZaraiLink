@@ -1,3 +1,5 @@
+"""Admin business logic: stats, users, reports, audit log, AI activity and disease knowledge."""
+
 import asyncio
 from datetime import UTC, datetime, time, timedelta
 
@@ -10,6 +12,7 @@ from app.common.orders import service as orders_service
 from app.dealer import service as dealer_service
 
 
+# Counts users by role, listings and orders for the dashboard.
 async def fetch_platform_stats(user: AuthenticatedUser) -> dict:
     roles, total_listings, total_orders = await asyncio.gather(
         repo.fetch_role_counts(user.access_token),
@@ -28,12 +31,14 @@ async def fetch_platform_stats(user: AuthenticatedUser) -> dict:
     }
 
 
+# Lists user profiles, optionally filtered.
 async def fetch_all_profiles(
     user: AuthenticatedUser, role: str | None = None, account_status: str | None = None
 ) -> list[dict]:
     return await repo.fetch_all_profiles(user.access_token, role, account_status)
 
 
+# Suspends or reactivates a user; the admin cannot suspend themselves.
 async def set_profile_suspended(user: AuthenticatedUser, profile_id: str, is_suspended: bool) -> None:
     # D19: nobody suspends the one admin; the admin suspending themselves would lock the platform.
     if profile_id == user.id:
@@ -43,6 +48,7 @@ async def set_profile_suspended(user: AuthenticatedUser, profile_id: str, is_sus
     # The audit row is written atomically by the database (20261023080000).
 
 
+# Changes a user's role; the admin's own role cannot change.
 async def update_user_role(user: AuthenticatedUser, profile_id: str, new_role: str) -> None:
     # D19: the admin's own role is fixed (the schema already keeps "admin" out of new_role); guard_profiles_role refuses
     # both again in the database.
@@ -73,20 +79,24 @@ async def decide_dealer_application(
     return result
 
 
+# Lists abuse reports.
 async def fetch_reports(user: AuthenticatedUser, status: str | None) -> list[dict]:
     return await repo.fetch_reports(user.access_token, status)
 
 
+# Marks a report resolved by this admin.
 async def resolve_report(user: AuthenticatedUser, report_id: str, notes: str | None) -> None:
     await repo.resolve_report(user.access_token, report_id, "resolved", user.id, notes)
     # The audit row is written atomically by the database (20261023080000).
 
 
+# Marks a report dismissed by this admin.
 async def dismiss_report(user: AuthenticatedUser, report_id: str, notes: str | None) -> None:
     await repo.resolve_report(user.access_token, report_id, "dismissed", user.id, notes)
     # The audit row is written atomically by the database (20261023080000).
 
 
+# Lists audit-log rows with a readable label for each action.
 async def fetch_audit_logs(
     user: AuthenticatedUser, target_entity: str | None, actor_id: str | None, action: str | None
 ) -> list[dict]:
@@ -101,6 +111,7 @@ async def fetch_audit_logs(
     return [{**log, "action_label": labels.get(log["action"], log["action"])} for log in logs]
 
 
+# Returns the audit event names and labels.
 async def fetch_audit_event_names(user: AuthenticatedUser) -> list[dict]:
     return await repo.fetch_audit_event_names(user.access_token)
 
@@ -111,6 +122,7 @@ async def fetch_queue_counts(user: AuthenticatedUser) -> dict:
     return await repo.fetch_queue_counts(user.access_token)
 
 
+# Lists every order, through the orders module.
 async def fetch_all_orders(user: AuthenticatedUser, status: str | None = None) -> list[dict]:
     return await orders_service.fetch_all_orders(user, status)
 
@@ -119,14 +131,17 @@ async def fetch_all_orders(user: AuthenticatedUser, status: str | None = None) -
 # service; the decision stays on decide_dealer_application() above.
 
 
+# Lists dealer applications, through the dealer module.
 async def fetch_dealer_applications(user: AuthenticatedUser, status: str) -> list[dict]:
     return await dealer_service.fetch_applications_for_admin(user, status)
 
 
+# Returns one dealer application, through the dealer module.
 async def fetch_dealer_application(user: AuthenticatedUser, dealer_id: str) -> dict:
     return await dealer_service.fetch_application_for_admin(user, dealer_id)
 
 
+# Returns a short-lived signed link to one dealer document.
 async def dealer_document_url(user: AuthenticatedUser, dealer_id: str, document_id: str) -> str:
     return await dealer_service.document_url_for_admin(user, dealer_id, document_id)
 
@@ -134,14 +149,17 @@ async def dealer_document_url(user: AuthenticatedUser, dealer_id: str, document_
 # --- required documents (A3b; SRDS §7)
 
 
+# Lists every required-document entry.
 async def fetch_required_documents(user: AuthenticatedUser) -> list[dict]:
     return await repo.fetch_required_documents(user.access_token)
 
 
+# Creates a required-document entry.
 async def create_required_document(user: AuthenticatedUser, fields: dict) -> dict:
     return await repo.create_required_document(user.access_token, fields)
 
 
+# Updates a required-document entry; an empty change is refused.
 async def update_required_document(user: AuthenticatedUser, document_id: str, fields: dict) -> dict:
     if not fields:
         raise AppHTTPException(422, "Nothing to change", "validation_failed")
@@ -156,11 +174,13 @@ AI_ACTIVITY_WINDOW_DAYS = 30
 LOW_CONFIDENCE_THRESHOLD = 0.60
 
 
+# The highest confidence score of a scan, or None if it has none.
 def _best_confidence(case: dict) -> float | None:
     scores = [float(p["confidence_score"]) for p in case.get("disease_predictions") or []]
     return max(scores) if scores else None
 
 
+# Counts scans, failures, low-confidence results and referrals per day.
 async def fetch_ai_activity(user: AuthenticatedUser) -> dict:
     today = datetime.now(UTC).date()
     first_day = today - timedelta(days=AI_ACTIVITY_WINDOW_DAYS - 1)
@@ -211,6 +231,7 @@ async def fetch_ai_activity(user: AuthenticatedUser) -> dict:
     }
 
 
+# The UTC date (YYYY-MM-DD) of a timestamp.
 def _utc_day(timestamp: str) -> str:
     return datetime.fromisoformat(timestamp).astimezone(UTC).date().isoformat()
 
@@ -220,10 +241,12 @@ def _utc_day(timestamp: str) -> str:
 # audited as "AI Configuration Changed" (SRDS §51, BR-15) by the table's trigger, not here (see below).
 
 
+# Lists every disease knowledge entry.
 async def fetch_disease_knowledge(user: AuthenticatedUser) -> list[dict]:
     return await repo.fetch_disease_knowledge(user.access_token)
 
 
+# Returns one disease knowledge entry, or a 404.
 async def fetch_disease_knowledge_entry(user: AuthenticatedUser, class_label: str) -> dict:
     entry = await repo.fetch_disease_knowledge_entry(user.access_token, class_label)
     if entry is None:
@@ -231,6 +254,7 @@ async def fetch_disease_knowledge_entry(user: AuthenticatedUser, class_label: st
     return entry
 
 
+# Saves an edit; reviewed text that changes goes back to pending review.
 async def update_disease_knowledge(user: AuthenticatedUser, class_label: str, fields: dict) -> dict:
     if not fields:
         raise AppHTTPException(422, "Nothing to change", "validation_failed")
@@ -244,6 +268,7 @@ async def update_disease_knowledge(user: AuthenticatedUser, class_label: str, fi
     return await repo.update_disease_knowledge(user.access_token, class_label, changes)
 
 
+# Marks an entry as reviewed by this admin, with the time.
 async def review_disease_knowledge(user: AuthenticatedUser, class_label: str) -> dict:
     await fetch_disease_knowledge_entry(user, class_label)  # a missing class is a 404 before any write
     # The audit row is written atomically by the database trigger audit_disease_knowledge (20261022080000).

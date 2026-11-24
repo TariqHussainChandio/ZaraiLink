@@ -1,3 +1,4 @@
+// Dealer: screen where an approved dealer views and edits their business details.
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { DealerBusinessStep } from '../../common/auth';

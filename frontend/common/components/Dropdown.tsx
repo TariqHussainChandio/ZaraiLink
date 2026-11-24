@@ -1,3 +1,4 @@
+// Floating dropdown panel anchored to a control, kept inside the screen and above the keyboard.
 import React, { useEffect, useMemo, useState } from 'react';
 import { type GestureResponderEvent, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useInsets } from '../../hooks/useInsets';
@@ -176,6 +177,7 @@ function useKeyboardHeight(): number {
   return height;
 }
 
+// Theme-based styles for the dropdown panel.
 function makeStyles({ colors, components, shadows, borders, size, space, typography, radius }: Theme) {
   const { dropdown } = components;
   return StyleSheet.create({

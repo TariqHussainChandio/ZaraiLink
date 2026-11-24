@@ -1,3 +1,4 @@
+// Admin: the shared confirm sheet every admin action goes through, with an optional Undo.
 import React, { useState } from 'react';
 import { ConfirmSheet, type ConfirmSheetProps, useSnackbar } from '../../common/components';
 import { errorMessage } from '../../utils/errorMessage';
@@ -40,6 +41,7 @@ export function AdminActionSheet({ action, onClose }: Props) {
 
   if (!shown) return null;
 
+  // Runs the action with the typed reason, then shows a snackbar (with Undo when possible).
   const confirm = async (reason: string) => {
     await shown.run(reason);
     const undo = shown.undo;

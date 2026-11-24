@@ -1,3 +1,4 @@
+// One cart line: photo, title, price, quantity stepper and remove button.
 import { Trash2 } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
@@ -6,6 +7,7 @@ import { useTheme, type Theme } from '../../../theme';
 import type { CartItem } from '../../../state/cartStore';
 import { formatRs } from '../../../utils/money';
 
+// Props for CartItemRow.
 export interface CartItemRowProps {
   item: CartItem;
   /** Today's price per unit. It can differ from `item.price`, which is the price when the item was added; the server
@@ -52,6 +54,7 @@ export function CartItemRow({ item, price, onQuantityChange, onRemove }: CartIte
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, radius, size, typography }: Theme) {
   return StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'flex-start', gap: space[3], paddingVertical: space[3] },

@@ -1,3 +1,4 @@
+// Hook counting conversations with unread messages, for the Messages badge.
 import { useMemo } from 'react';
 import { isUnread, useConversations } from '../common/messaging';
 import { useAuthStore } from '../state/authStore';

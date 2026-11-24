@@ -1,3 +1,4 @@
+// Collapsible card summarising a consultation: subject, crop, people and photos.
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +10,7 @@ import { AiSuggestionBlock, type AiSuggestion } from './AiSuggestionBlock';
 import { PriorityBadge } from './PriorityBadge';
 import { isActiveStatus } from '../utils/requests';
 
+// Props for CaseSummaryCard.
 export interface CaseSummaryCardProps {
   consultation: ConsultationWithRelations;
   /** The other person in the case, from the viewer's side. */
@@ -87,6 +89,7 @@ export function CaseSummaryCard({ consultation, counterpartyName, photoUrls, onO
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, radius, typography, fontWeight, size }: Theme) {
   return StyleSheet.create({
     card: { gap: space[3] },

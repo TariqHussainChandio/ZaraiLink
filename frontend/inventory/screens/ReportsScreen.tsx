@@ -1,3 +1,4 @@
+// Inventory: Reports tab with period reports, charts, exports and movement history.
 import { FlashList } from '@shopify/flash-list';
 import { Scale } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
@@ -27,6 +28,7 @@ import { useUtcDay } from '../hooks/utcDay';
 import type { PeriodReportName } from '../types/inventory';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
 
+// The report choices: every period report plus the movement history.
 type Choice = PeriodReportName | 'movements';
 
 const CHOICES: { id: Choice; label: string }[] = [...REPORT_OPTIONS, { id: 'movements', label: 'Movement history' }];
@@ -47,6 +49,7 @@ export function ReportsScreen({ navigation }: InventoryScreenProps<typeof INVENT
   const [choice, setChoice] = useState<Choice>('stock-summary');
   const [preset, setPreset] = useState<RangePreset>('30');
 
+  // The report picker shown above every report.
   const header = (
     <View style={styles.header}>
       <ListGroup>
@@ -85,6 +88,7 @@ interface PeriodReportProps {
   header: React.ReactElement;
 }
 
+// Shows one period report: period picker, charts, totals and rows.
 function PeriodReport({ report, preset, onPreset, header }: PeriodReportProps) {
   const theme = useTheme();
   const accent = useRoleAccent();
@@ -92,9 +96,11 @@ function PeriodReport({ report, preset, onPreset, header }: PeriodReportProps) {
   // Recomputed with the preset and the UTC day: the query key (and the cached copy) stays the same through the day, and a
   // screen left open past UTC midnight moves "to" on to the new day (B5 verification).
   const today = useUtcDay();
+  // The dates the chosen preset covers.
   const range = useMemo(() => rangeFor(preset, new Date(`${today}T12:00:00Z`)), [preset, today]);
   const result = useReport(report, range);
   const { data, refetch, isRefetching, isPlaceholderData } = result;
+  // The report data turned into what the screen draws.
   const view = useMemo(() => (data ? buildReportView(report, data) : null), [report, data]);
 
   const items = useMemo<Item[]>(
@@ -114,6 +120,7 @@ function PeriodReport({ report, preset, onPreset, header }: PeriodReportProps) {
     warning: theme.colors.status.warning.mark,
   };
 
+  // Draws one report chart.
   const renderChart = (chart: ReportChart) => {
     const format = chart.money ? formatMoney : (value: number) => formatQuantity(value);
     const summary = summarizeBars(chart.data, format);
@@ -131,6 +138,7 @@ function PeriodReport({ report, preset, onPreset, header }: PeriodReportProps) {
     );
   };
 
+  // Draws one line of the report table.
   const renderItem = ({ item }: { item: Item }) => {
     if (item.type === 'heading') {
       return (
@@ -208,6 +216,7 @@ function PeriodReport({ report, preset, onPreset, header }: PeriodReportProps) {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

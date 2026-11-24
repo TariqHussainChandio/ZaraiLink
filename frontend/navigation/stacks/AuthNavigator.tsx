@@ -1,3 +1,4 @@
+// Sign-in stack: welcome, log in, create account, register, forgot password, code entry.
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
@@ -25,6 +26,7 @@ export type AuthScreenProps<RouteName extends keyof AuthStackParamList> =
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
+// Renders the sign-in and registration screens without the app bar.
 export function AuthNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>

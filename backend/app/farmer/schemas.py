@@ -1,8 +1,11 @@
+"""Request and response models for the farmer API."""
+
 from pydantic import BaseModel
 
 from app.common.schemas import Location
 
 
+# Body for creating a farm.
 class FarmInput(BaseModel):
     name: str
     area: float | None = None
@@ -13,6 +16,7 @@ class FarmInput(BaseModel):
     city: str | None = None
 
 
+# Body for editing a farm; every field is optional.
 class FarmUpdateInput(BaseModel):
     name: str | None = None
     area: float | None = None
@@ -23,6 +27,7 @@ class FarmUpdateInput(BaseModel):
     city: str | None = None
 
 
+# Body for adding or editing a crop on a farm.
 class FarmCropInput(BaseModel):
     crop_id: str | None = None
     variety: str | None = None
@@ -33,6 +38,7 @@ class FarmCropInput(BaseModel):
     notes: str | None = None
 
 
+# Body for saving the farmer profile.
 class FarmerProfileInput(BaseModel):
     experience: str | None = None
     agricultural_info: str | None = None
@@ -41,6 +47,7 @@ class FarmerProfileInput(BaseModel):
 # ---- response models (P7 7A)
 
 
+# A farm as the API returns it.
 class Farm(BaseModel):
     id: str
     owner_id: str
@@ -53,11 +60,13 @@ class Farm(BaseModel):
     updated_at: str
 
 
+# A crop's id and name, embedded in a farm crop.
 class CropRef(BaseModel):
     id: str
     name: str
 
 
+# A crop recorded on a farm.
 class FarmCrop(BaseModel):
     id: str
     farm_id: str
@@ -78,6 +87,7 @@ class FarmCropWithCrop(FarmCrop):
     crop: CropRef | None = None
 
 
+# The farmer's profile details.
 class FarmerProfile(BaseModel):
     id: str
     experience: str | None = None

@@ -1,3 +1,4 @@
+// Admin: full-screen, zoomable viewer for an applicant's photographed documents.
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Banner, Button, PhotoViewer, Sheet, Spinner } from '../../common/components';
@@ -56,6 +57,7 @@ export function DocumentViewer({ visible, onClose, role, applicantId, documents,
   );
 }
 
+// Builds the viewer's styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     body: { gap: space[4], alignItems: 'stretch' },

@@ -1,3 +1,4 @@
+// Account settings sections: password, two-step verification, theme and delete account.
 import { KeyRound, ShieldCheck } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -34,6 +35,7 @@ export function AccountSections({ navigate }: { navigate: Navigate }) {
   const signOut = useAuthStore(state => state.signOut);
   const themeMode = useThemeStore(state => state.mode);
   const setThemeMode = useThemeStore(state => state.setMode);
+  // Draws a settings icon in the theme's colour and size.
   const icon = (Icon: typeof KeyRound) => <Icon color={theme.colors.ink2} size={theme.size.iconMd} strokeWidth={theme.size.iconStroke} />;
 
   return (
@@ -61,6 +63,7 @@ export function AccountSections({ navigate }: { navigate: Navigate }) {
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, typography, borders, components }: Theme) {
   return StyleSheet.create({
     appearance: {

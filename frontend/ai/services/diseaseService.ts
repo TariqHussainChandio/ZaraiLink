@@ -1,3 +1,4 @@
+// API and storage calls for Scan Disease: upload the photo, record the case, run the model, read the result.
 import type { PickedPhoto } from '../../utils/photoPicker';
 import { extensionFromMimeType } from '../../utils/mimeExtension';
 import { supabase } from '../../services/supabase/client';
@@ -27,6 +28,7 @@ export async function uploadDiseaseImage(userId: string, image: PickedPhoto): Pr
   return path;
 }
 
+// Records a disease case for the uploaded photo and the chosen crop.
 export async function createDiseaseCase(cropId: string | null, storagePath: string): Promise<DiseaseCase> {
   return apiFetch('/api/v1/disease/cases', {
     method: 'POST',
@@ -56,6 +58,7 @@ export async function predictDisease(diseaseCaseId: string, chosenCrop: string |
   });
 }
 
+// Gets one case with its prediction and advisory report.
 export async function fetchDiseaseCaseWithPrediction(diseaseCaseId: string): Promise<DiseaseCaseWithPrediction> {
   return apiFetch(`/api/v1/disease/cases/${diseaseCaseId}`);
 }

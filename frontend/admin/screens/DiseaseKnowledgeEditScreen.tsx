@@ -1,3 +1,4 @@
+// Admin: edit one disease knowledge entry and mark it reviewed.
 import { CircleCheck, Save } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -34,6 +35,7 @@ const toLines = (text: string) =>
     .map(line => line.trim())
     .filter(Boolean);
 
+// Turns a stored entry into the editable form values.
 const draftOf = (entry: DiseaseKnowledgeEntry): Draft => ({
   crop: entry.crop,
   disease: entry.disease,
@@ -43,6 +45,7 @@ const draftOf = (entry: DiseaseKnowledgeEntry): Draft => ({
   precautions: entry.precautions.join('\n'),
 });
 
+// Checks the form and returns an error message per invalid field.
 function validate(draft: Draft): Errors {
   const errors: Errors = {};
   if (!draft.crop.trim()) errors.crop = 'Name the crop';
@@ -120,11 +123,13 @@ export function DiseaseKnowledgeEditScreen({ route }: AdminScreenProps<typeof AD
 
   const changes = changesOf(entry, draft);
   const dirty = Object.keys(changes).length > 0;
+  // Returns a change handler for one form field.
   const set = (name: keyof Draft) => (value: string) => {
     setDraft(current => (current ? { ...current, [name]: value } : current));
     setErrors(current => ({ ...current, [name]: undefined }));
   };
 
+  // Validates and saves only the changed fields.
   const save = async () => {
     const found = validate(draft);
     setErrors(found);
@@ -139,6 +144,7 @@ export function DiseaseKnowledgeEditScreen({ route }: AdminScreenProps<typeof AD
     }
   };
 
+  // Marks the entry as reviewed by this admin.
   const markReviewed = async () => {
     setConfirming(false);
     setFailure(null);
@@ -213,6 +219,7 @@ export function DiseaseKnowledgeEditScreen({ route }: AdminScreenProps<typeof AD
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.ground },

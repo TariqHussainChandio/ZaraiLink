@@ -1,3 +1,4 @@
+// The guest shell: browse the market without an account, with sign-in as a tab.
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import React from 'react';

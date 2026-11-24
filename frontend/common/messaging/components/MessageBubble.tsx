@@ -1,3 +1,4 @@
+// One chat message bubble: text, photos, time and delivery ticks.
 import { Check, CheckCheck } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -114,6 +115,7 @@ export function MessageBubble({ message, isOwn, senderName, attachmentUrls, deli
   );
 }
 
+// Builds this component's styles from the theme and the role colour.
 function makeStyles({ colors, space, radius, typography, size, borders }: Theme, accent: Accent) {
   return StyleSheet.create({
     row: {

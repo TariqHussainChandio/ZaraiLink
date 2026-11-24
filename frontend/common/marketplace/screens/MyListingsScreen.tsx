@@ -1,3 +1,4 @@
+// The seller's own listings, with a button to add one.
 import { Package } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
@@ -20,6 +21,7 @@ export function MyListingsScreen() {
   const tabs = useAppTabNavigation();
   const query = useMyListings(userId);
   const listings = query.data ?? [];
+  // Opens the create listing form in the marketplace tab.
   const newListing = () => navigateInTab(tabs, APP_TABS.Marketplace, MARKETPLACE_ROUTES.CreateListing);
 
   return (
@@ -63,6 +65,7 @@ export function MyListingsScreen() {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, radius, size }: Theme) {
   return StyleSheet.create({
     add: { alignItems: 'flex-start' },

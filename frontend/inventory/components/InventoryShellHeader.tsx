@@ -1,3 +1,4 @@
+// Inventory: app bar of the inventory system (business name, location switcher, exit).
 import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { Check, ChevronDown, LogOut, MapPin, TriangleAlert } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
@@ -85,6 +86,7 @@ export function InventoryShellHeader() {
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ colors, space, size, borders, typography }: Theme, accent: Accent) {
   return StyleSheet.create({
     switcher: {

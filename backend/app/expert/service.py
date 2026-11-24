@@ -1,3 +1,5 @@
+"""Business logic for experts: application, profile, directory, admin decisions and documents."""
+
 from fastapi import HTTPException
 
 from app.auth.dependencies import AuthenticatedUser
@@ -8,12 +10,14 @@ from app.common.notifications import service as notifications
 from app.expert import repository as repo
 
 
+# Builds the location object, or None when no part of it is given.
 def _to_location(country: str | None, province: str | None, city: str | None) -> dict | None:
     if not country and not province and not city:
         return None
     return {"country": country, "province": province, "city": city}
 
 
+# Turns the profile request into the database columns for the experts table.
 def _to_fields(profile) -> dict:
     fields = {
         "qualifications": profile.qualifications or None,
@@ -31,6 +35,7 @@ def _to_fields(profile) -> dict:
     return fields
 
 
+# Starts the caller's application; 403 if it is locked under review.
 async def create_application(user: AuthenticatedUser, profile) -> dict:
     created = await repo.create_application(user.access_token, user.id, _to_fields(profile), profile.specializations)
     if created is None:
@@ -38,6 +43,7 @@ async def create_application(user: AuthenticatedUser, profile) -> dict:
     return created
 
 
+# Updates the caller's profile; 404 if none yet, 403 if locked under review.
 async def update_profile(user: AuthenticatedUser, profile) -> dict:
     updated = await repo.update_profile(user.access_token, user.id, _to_fields(profile), profile.specializations)
     if updated is None:
@@ -48,6 +54,7 @@ async def update_profile(user: AuthenticatedUser, profile) -> dict:
     return updated
 
 
+# Gets the caller's own expert profile.
 async def fetch_my_profile(user: AuthenticatedUser) -> dict | None:
     return await repo.fetch_own_expert_profile(user.access_token, user.id)
 
@@ -57,6 +64,7 @@ async def find_expert(expert_id: str) -> dict | None:
     return await repo.fetch_expert_by_id(expert_id)
 
 
+# Gets a public expert profile, or a 404.
 async def fetch_expert_by_id(expert_id: str) -> dict:
     expert = await repo.fetch_expert_by_id(expert_id)
     if expert is None:
@@ -64,6 +72,7 @@ async def fetch_expert_by_id(expert_id: str) -> dict:
     return expert
 
 
+# Lists approved experts, narrowed to one specialisation when given.
 async def fetch_experts(specialization: str | None) -> list[dict]:
     expert_ids = None
     if specialization:
@@ -73,17 +82,20 @@ async def fetch_experts(specialization: str | None) -> list[dict]:
     return await repo.fetch_experts(expert_ids)
 
 
+# Sorts an expert's review records newest first.
 def _sorted_verifications(expert: dict) -> dict:
     verifications = expert.get("expert_verifications") or []
     expert["expert_verifications"] = sorted(verifications, key=lambda v: v["created_at"], reverse=True)
     return expert
 
 
+# Lists experts for the admin with their review history sorted.
 async def fetch_experts_for_admin(user: AuthenticatedUser, status: str | None) -> list[dict]:
     experts = await repo.fetch_experts_for_admin(user.access_token, status)
     return [_sorted_verifications(e) for e in experts]
 
 
+# Gets one expert for the admin, or a 404.
 async def fetch_expert_for_admin_by_id(user: AuthenticatedUser, expert_id: str) -> dict:
     expert = await repo.fetch_expert_for_admin_by_id(user.access_token, expert_id)
     if expert is None:
@@ -91,6 +103,7 @@ async def fetch_expert_for_admin_by_id(user: AuthenticatedUser, expert_id: str) 
     return _sorted_verifications(expert)
 
 
+# Records an admin's approve or reject decision and emails the expert.
 async def review_verification(
     user: AuthenticatedUser, expert_id: str, decision: account_status.Decision, notes: str | None
 ) -> dict:
@@ -109,10 +122,12 @@ async def review_verification(
     return result
 
 
+# Lists the caller's application documents.
 async def fetch_my_documents(user: AuthenticatedUser) -> list[dict]:
     return await documents.list_documents(user.access_token, documents.EXPERT, user.id)
 
 
+# Registers an uploaded document on the caller's application.
 async def add_my_document(
     user: AuthenticatedUser, storage_path: str, file_name: str, required_document_id: str | None
 ) -> dict:
@@ -124,6 +139,7 @@ async def add_my_document(
     )
 
 
+# Removes one of the caller's application documents.
 async def remove_my_document(user: AuthenticatedUser, document_id: str) -> None:
     await documents.remove(user.access_token, documents.EXPERT, user.id, document_id)
 

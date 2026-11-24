@@ -1,3 +1,4 @@
+// Admin: the moderation hub linking to each moderation queue with its count.
 import { Flag, List, Receipt, Star, Stethoscope, Store, Tags, Users } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -69,6 +70,7 @@ export function ModerationScreen({ navigation }: AdminScreenProps<'ModerationHub
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, typography }: Theme) {
   return StyleSheet.create({
     figure: { ...typography.figure, color: colors.ink },

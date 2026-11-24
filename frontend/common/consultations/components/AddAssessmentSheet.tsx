@@ -1,3 +1,4 @@
+// Sheet where the expert adds an assessment (verdict, diagnosis, advice) to a case.
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Banner, Button, Chip, Sheet, TextField, useToast } from '../../components';
@@ -9,6 +10,7 @@ import { VERDICTS_NEEDING_DIAGNOSIS, type AssessmentVerdict } from '../types/con
 
 const VERDICTS: AssessmentVerdict[] = ['agree', 'correct', 'additional_diagnosis', 'request_information'];
 
+// Props for AddAssessmentSheet.
 interface AddAssessmentSheetProps {
   consultationId: string;
   visible: boolean;
@@ -31,6 +33,7 @@ export function AddAssessmentSheet({ consultationId, visible, onClose }: AddAsse
 
   const needsDiagnosis = verdict !== null && VERDICTS_NEEDING_DIAGNOSIS.includes(verdict);
 
+  // Clears the form fields and errors.
   const reset = () => {
     setVerdict(null);
     setDiagnosis('');
@@ -40,11 +43,13 @@ export function AddAssessmentSheet({ consultationId, visible, onClose }: AddAsse
     setSubmitError(null);
   };
 
+  // Clears the form and closes the sheet.
   const close = () => {
     reset();
     onClose();
   };
 
+  // Validates and saves the assessment, then closes the sheet.
   const onSubmit = async () => {
     setSubmitError(null);
     if (!verdict) {
@@ -127,6 +132,7 @@ export function AddAssessmentSheet({ consultationId, visible, onClose }: AddAsse
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     label: {

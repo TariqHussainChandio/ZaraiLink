@@ -1,3 +1,4 @@
+// Consultation detail: case summary, AI report, assessments, chat thread and actions.
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Check, ClipboardList, ShoppingBag } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -48,6 +49,7 @@ import { formatWhen } from '../../../utils/dates';
 import { errorMessage } from '../../../utils/errorMessage';
 import type { PickedPhoto } from '../../../utils/photoPicker';
 
+// One row of the chat list: a day separator or a message.
 type ThreadItem =
   { kind: 'day'; id: string; label: string } | { kind: 'message'; id: string; message: ConsultationMessageWithListing };
 
@@ -77,6 +79,7 @@ const CLOSED_REASON: Partial<Record<ConsultationStatus, string>> = {
   expired: 'This request expired without an answer. Nothing more can be sent.',
 };
 
+// Which photos the full-screen viewer shows, and which one is open.
 interface ViewerState {
   photos: { uri: string; label: string }[];
   index: number;
@@ -106,6 +109,7 @@ export function ConsultationDetailScreen() {
   const messages = useMemo(() => messagesQuery.data ?? [], [messagesQuery.data]);
   const review = reviewQuery.data ?? null;
   const items = useMemo(() => withDaySeparators(messages), [messages]);
+  // Every photo path in the case and its messages, to be signed for display.
   const attachmentPaths = useMemo(
     () => [...(consultation?.images ?? []), ...messages.flatMap(m => m.attachments)],
     [consultation, messages],
@@ -156,6 +160,7 @@ export function ConsultationDetailScreen() {
   const isExpert = !!consultation && consultation.expert_id === userId;
   const counterpartyName = (isRequester ? consultation?.expert?.full_name : consultation?.user?.full_name) || 'Unknown';
 
+  // Moves the case to a new status and shows the result.
   const advance = async (to: ConsultationStatus) => {
     setPending(to);
     try {
@@ -167,6 +172,7 @@ export function ConsultationDetailScreen() {
     }
   };
 
+  // Sends a text message with optional photos.
   const onSend = async (body: string, images: PickedPhoto[]) => {
     if (!userId) return;
     try {
@@ -176,6 +182,7 @@ export function ConsultationDetailScreen() {
     }
   };
 
+  // Sends the chosen listing as the expert's recommendation.
   const onSendRecommendation = async () => {
     const listing = listingsQuery.data?.find(l => l.id === selectedListingId);
     if (!userId || !listing) return;
@@ -193,6 +200,7 @@ export function ConsultationDetailScreen() {
     }
   };
 
+  // Saves the requester's review of the expert.
   const onSubmitReview = async () => {
     if (!userId || !consultation?.expert_id || reviewRating === 0) return;
     setReviewFailure(null);
@@ -241,6 +249,7 @@ export function ConsultationDetailScreen() {
   // The pinned actions, by who is looking and what the status allows. Only what this person can do now is shown.
   let actionBar: React.ReactNode = null;
   if (consultation && status) {
+    // Loading and disabled state for one status button.
     const busy = (to: ConsultationStatus) => ({
       loading: pending === to,
       disabled: pending !== null && pending !== to,
@@ -578,6 +587,7 @@ export function ConsultationDetailScreen() {
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     flex: { flex: 1 },

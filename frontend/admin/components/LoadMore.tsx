@@ -1,3 +1,4 @@
+// Admin: the 'Load more' button at the end of a paged admin list.
 import React from 'react';
 import { Button } from '../../common/components';
 

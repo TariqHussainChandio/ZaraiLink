@@ -1,3 +1,4 @@
+// The app's HTTP client for the FastAPI backend: auth token, timeouts, retries and errors.
 import * as Crypto from 'expo-crypto';
 import { client as generatedClient } from './generated/client.gen';
 import { ENV } from '../../config/env';
@@ -40,6 +41,7 @@ const MAX_RETRY_AFTER_MS = 5_000;
 // other code (the wrong password on a re-authentication prompt) is an ordinary error, not a dead session.
 const SESSION_CODES = new Set(['unauthenticated', 'token_invalid']);
 
+// Builds the full API URL from a path and optional query parameters.
 function buildUrl(path: string, query?: ApiFetchOptions['query']): string {
   const url = new URL(`${ENV.apiBaseUrl}${path}`);
   if (query) {
@@ -50,6 +52,7 @@ function buildUrl(path: string, query?: ApiFetchOptions['query']): string {
   return url.toString();
 }
 
+// Waits the given number of milliseconds.
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -112,6 +115,7 @@ async function performRequest(request: PreparedRequest): Promise<Response> {
   let refreshed = false;
   let attempt = 0;
 
+  // Records a breadcrumb for this request once it finishes.
   const finish = (status: number, errorCode?: string) =>
     addApiBreadcrumb({ method: request.method, path, status, requestId, durationMs: Date.now() - started, errorCode });
 
@@ -204,6 +208,7 @@ async function performRequest(request: PreparedRequest): Promise<Response> {
   }
 }
 
+// Turns a path and options into a ready request (URL, method, headers, body, timeout).
 function prepare(path: string, options: ApiFetchOptions): PreparedRequest {
   const hasBody = options.body !== undefined;
   return {
@@ -242,6 +247,7 @@ export async function apiFetchPage<T>(path: string, options: ApiFetchOptions = {
   return { data: (await response.json()) as T, next: parseNextLink(response.headers.get('Link')) };
 }
 
+// Reads the "next page" cursor from a Link response header; null on the last page.
 export function parseNextLink(link: string | null): Page<unknown>['next'] {
   const match = link?.match(/<([^>]+)>\s*;\s*rel="next"/);
   if (!match) return null;

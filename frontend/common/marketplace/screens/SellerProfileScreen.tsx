@@ -1,3 +1,4 @@
+// Seller profile: details, listings and reviews.
 import { MessageSquare, Store } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -39,6 +40,7 @@ export function SellerProfileScreen({ route, navigation }: MarketplaceScreenProp
   const reviews = reviewsQuery.data ?? [];
   const visibleReviews = showAllReviews ? reviews : reviews.slice(0, REVIEWS_PREVIEW);
 
+  // Reloads the seller's listings and reviews.
   const refresh = () => {
     listingsQuery.refetch();
     reviewsQuery.refetch();
@@ -119,6 +121,7 @@ export function SellerProfileScreen({ route, navigation }: MarketplaceScreenProp
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     head: { flexDirection: 'row', alignItems: 'center', gap: space[4] },

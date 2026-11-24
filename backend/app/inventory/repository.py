@@ -18,12 +18,14 @@ from app.database.supabase_client import get_service_role_client, get_user_scope
 EDITABLE_TABLES = ("inventory_locations", "inventory_suppliers", "inventory_products")
 
 
+# Refuses a table that is not written directly through these helpers.
 def _editable(table: str) -> None:
     # A plain check, not `assert`, which `python -O` strips.
     if table not in EDITABLE_TABLES:
         raise ValueError(f"{table} is not edited directly")
 
 
+# Rounds a computed quantity to two decimals before it reaches the database.
 def _two_decimals(quantity: float) -> float:
     # The database refuses more than two decimals (B1: no silent rounding), and so do the request schemas
     # (schemas.Quantity), so a figure the dealer typed never reaches here with a third decimal. A quantity the API
@@ -35,6 +37,7 @@ def _two_decimals(quantity: float) -> float:
 _LINE_COLUMNS = ("product_id", "location_id", "quantity", "unit_cost")
 
 
+# Builds one purchase line with only the keys the database functions accept.
 def _purchase_line(item: dict[str, Any]) -> dict[str, Any]:
     # A purchase line exactly as create_purchase and replace_purchase_items take it: these four keys and no other (the
     # functions refuse any other key), figures cleared of float noise like the stock functions' quantities.
@@ -51,6 +54,7 @@ async def list_rows(access_token: str, table: str, order: str = "created_at") ->
     suppliers this way, and a count from one capped read would stop at 1000."""
     client = await get_user_scoped_client(access_token)
 
+    # The query for one page.
     def build() -> Any:
         return client.table(table).select("*").order(order).order("id")
 
@@ -60,6 +64,7 @@ async def list_rows(access_token: str, table: str, order: str = "created_at") ->
     return as_rows(await build().range(start, end).execute())
 
 
+# Lists a table's rows by name, only active ones unless asked for all.
 async def list_active_or_all(access_token: str, table: str, include_inactive: bool, order: str = "name") -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table(table).select("*")
@@ -68,24 +73,28 @@ async def list_active_or_all(access_token: str, table: str, include_inactive: bo
     return as_rows(await query.order(order).order("id").range(*page_range()).execute())
 
 
+# Reads one row by id, or None.
 async def fetch_row(access_token: str, table: str, row_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     rows = as_rows(await client.table(table).select("*").eq("id", row_id).limit(1).execute())
     return rows[0] if rows else None
 
 
+# Inserts a row for the dealer into an editable table and returns it.
 async def create_row(access_token: str, table: str, dealer_id: str, fields: dict[str, Any]) -> dict:
     _editable(table)
     client = await get_user_scoped_client(access_token)
     return first_row(await client.table(table).insert({**fields, "dealer_id": dealer_id}).execute())
 
 
+# Updates a row in an editable table and returns it.
 async def update_row(access_token: str, table: str, row_id: str, fields: dict[str, Any]) -> dict:
     _editable(table)
     client = await get_user_scoped_client(access_token)
     return first_row(await client.table(table).update(fields).eq("id", row_id).execute())
 
 
+# Deletes one row from an editable table.
 async def delete_row(access_token: str, table: str, row_id: str) -> None:
     # A product or location with ledger history cannot be deleted (on delete restrict); deactivate it instead.
     _editable(table)
@@ -109,6 +118,7 @@ async def delete_or_deactivate(access_token: str, table: str, row_id: str) -> No
 # --- stock and the ledger (read only) -------------------------------------------------------------------------------
 
 
+# Reads stock levels, optionally for one product or one location.
 async def fetch_stock(access_token: str, product_id: str | None = None, location_id: str | None = None) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table("inventory_stock").select("*")
@@ -151,6 +161,7 @@ async def fetch_movements(
     return as_rows(await query.execute())
 
 
+# Reads both movements (out and in) of one transfer.
 async def fetch_transfer_movements(access_token: str, transfer_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -159,6 +170,7 @@ async def fetch_transfer_movements(access_token: str, transfer_id: str) -> list[
     return as_rows(response)
 
 
+# Records one stock movement through the database's record_movement function.
 async def record_movement(
     access_token: str,
     product_id: str,
@@ -183,6 +195,7 @@ async def record_movement(
     return str(response.data)
 
 
+# Moves stock between two locations through the database's transfer function.
 async def transfer_stock(
     access_token: str, product_id: str, from_location_id: str, to_location_id: str, quantity: float, reason: str | None
 ) -> str:
@@ -212,6 +225,7 @@ async def fetch_products(access_token: str, include_inactive: bool = False, page
     dashboard and the dealer analytics weigh every product; a single read would stop at PostgREST's 1000 rows)."""
     client = await get_user_scoped_client(access_token)
 
+    # The products query for one page.
     def build() -> Any:
         query = client.table("inventory_products").select(PRODUCT_SELECT)
         if not include_inactive:
@@ -223,6 +237,7 @@ async def fetch_products(access_token: str, include_inactive: bool = False, page
     return as_rows(await build().range(*page_range()).execute())
 
 
+# Reads one product with its stock and linked listings, or None.
 async def fetch_product(access_token: str, product_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     rows = as_rows(
@@ -234,6 +249,7 @@ async def fetch_product(access_token: str, product_id: str) -> dict | None:
 # --- the dealer's own listings (only the link column is written here) -------------------------------------------------
 
 
+# Reads one of the dealer's own listings, or None.
 async def fetch_owned_listing(access_token: str, owner_id: str, listing_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     rows = as_rows(
@@ -297,6 +313,7 @@ async def unlink_product_listings(
 # --- locations --------------------------------------------------------------------------------------------------------
 
 
+# Reads the dealer's default location, or None.
 async def fetch_default_location(access_token: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     rows = as_rows(await client.table("inventory_locations").select("*").eq("is_default", True).limit(1).execute())
@@ -332,6 +349,7 @@ async def set_default_location(access_token: str, location_id: str) -> None:
 PURCHASE_SELECT = "*, items:inventory_purchase_items(*)"
 
 
+# Lists the dealer's purchases, optionally by status and up to a limit.
 async def fetch_purchases(access_token: str, status: str | None = None, limit: int | None = None) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table("inventory_purchases").select(PURCHASE_SELECT)
@@ -342,6 +360,7 @@ async def fetch_purchases(access_token: str, status: str | None = None, limit: i
     return as_rows(await query.execute())
 
 
+# Reads one purchase with its lines, or None.
 async def fetch_purchase(access_token: str, purchase_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     rows = as_rows(
@@ -368,6 +387,7 @@ async def create_purchase(access_token: str, fields: dict[str, Any], items: list
     return str(response.data)
 
 
+# Updates a purchase header and returns it.
 async def update_purchase(access_token: str, purchase_id: str, fields: dict[str, Any]) -> dict:
     # A header-only edit, and cancel. The update policy matches only a draft, so a received or cancelled purchase
     # updates nothing (404 from first_row). One statement, so it queues on the row lock replace_purchase_items and
@@ -390,6 +410,7 @@ async def replace_purchase_items(
     ).execute()
 
 
+# Receives a purchase through the database function, moving its stock in.
 async def receive_purchase(access_token: str, purchase_id: str) -> None:
     client = await get_user_scoped_client(access_token)
     await client.rpc("receive_purchase", {"p_purchase_id": purchase_id}).execute()
@@ -398,12 +419,14 @@ async def receive_purchase(access_token: str, purchase_id: str) -> None:
 # --- alerts and settings ----------------------------------------------------------------------------------------------
 
 
+# Reads the dealer's alert settings, or None.
 async def fetch_alert_settings(access_token: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     rows = as_rows(await client.table("inventory_alert_settings").select("*").limit(1).execute())
     return rows[0] if rows else None
 
 
+# Creates or updates the dealer's alert settings.
 async def upsert_alert_settings(access_token: str, dealer_id: str, fields: dict[str, Any]) -> dict:
     client = await get_user_scoped_client(access_token)
     response = await client.table("inventory_alert_settings").upsert({**fields, "dealer_id": dealer_id}).execute()
@@ -413,6 +436,7 @@ async def upsert_alert_settings(access_token: str, dealer_id: str, fields: dict[
 # --- marketplace sync (B3) --------------------------------------------------------------------------------------------
 
 
+# Lists the dealer's marketplace sync log, optionally by status.
 async def fetch_sync_log(access_token: str, status: str | None = None) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table("inventory_sync_log").select("*")
@@ -421,6 +445,7 @@ async def fetch_sync_log(access_token: str, status: str | None = None) -> list[d
     return as_rows(await query.order("processed_at", desc=True).range(*page_range()).execute())
 
 
+# Counts the dealer's failed sync entries.
 async def count_sync_failures(access_token: str) -> int:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -480,6 +505,7 @@ async def fetch_all_movements(
     first, optionally of some sources only."""
     client = await get_user_scoped_client(access_token)
 
+    # The movements query for one page.
     def build() -> Any:
         query = client.table("inventory_movements").select(columns)
         if sources:
@@ -543,15 +569,18 @@ async def list_exports(folder: str) -> list[dict]:
     return await bucket.list(folder, {"limit": 1000, "sortBy": {"column": "created_at", "order": "asc"}})
 
 
+# Deletes export files from storage.
 async def remove_exports(paths: list[str]) -> None:
     await get_service_role_client().storage.from_(EXPORTS_BUCKET).remove(paths)
 
 
+# Uploads one CSV export to storage.
 async def upload_export(path: str, content: bytes) -> None:
     # Bytes, not str: storage3 reads a str argument as a local file path to open.
     await get_service_role_client().storage.from_(EXPORTS_BUCKET).upload(path, content, {"content-type": "text/csv"})
 
 
+# Makes a short-lived signed download link for an export, or None.
 async def sign_export(path: str, expires_in: int) -> str | None:
     response = await get_service_role_client().storage.from_(EXPORTS_BUCKET).create_signed_url(path, expires_in)
     # storage3 has returned the link under both spellings across versions.

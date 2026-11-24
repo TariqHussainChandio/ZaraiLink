@@ -1,3 +1,5 @@
+"""Dealer data access: own listings for the picker, business details, and the admin dealer queue."""
+
 from typing import Any
 
 from postgrest.exceptions import APIError
@@ -10,6 +12,7 @@ from app.database.supabase_client import get_user_scoped_client
 # --- the listing picker (the legacy inventory screens; the inventory itself is read through the IMS service) ---------
 
 
+# Reads the dealer's own marketplace listings for the listing picker.
 async def fetch_dealer_listings(access_token: str, dealer_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = (
@@ -33,6 +36,7 @@ APPLICATION_FOR_ADMIN_SELECT = (
 )
 
 
+# Reads the dealer's business details row, or None if not saved yet.
 async def fetch_dealer_profile(access_token: str, dealer_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     rows = as_rows(await client.table("dealer_profiles").select("*").eq("id", dealer_id).limit(1).execute())
@@ -53,6 +57,7 @@ async def save_dealer_profile(access_token: str, dealer_id: str, fields: dict[st
     return rows[0] if rows else None
 
 
+# Lists dealer applications with the given status for the admin queue.
 async def fetch_applications_for_admin(access_token: str, status: str) -> list[dict]:
     # The queue lists submitted applications in the order they came in; a draft is not in it (SRDS §12).
     client = await get_user_scoped_client(access_token)
@@ -65,6 +70,7 @@ async def fetch_applications_for_admin(access_token: str, status: str) -> list[d
     return as_rows(response)
 
 
+# Reads one dealer's application (account plus business details) for an admin.
 async def fetch_application_for_admin(access_token: str, dealer_id: str) -> dict:
     client = await get_user_scoped_client(access_token)
     rows = as_rows(

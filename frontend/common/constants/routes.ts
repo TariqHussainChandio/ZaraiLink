@@ -1,3 +1,4 @@
+// Every navigation route name in the app, grouped by navigator, so names are never typed twice.
 export const AUTH_ROUTES = {
   // D20: a guest's profile button opens this first: the profile mark with Sign up and Log in.
   Welcome: 'Welcome',
@@ -17,6 +18,7 @@ export const APPROVAL_ROUTES = {
   DeleteAccount: 'ApprovalDeleteAccount',
 } as const;
 
+// The bottom tabs of the signed-in app.
 export const APP_TABS = {
   Home: 'Home',
   Marketplace: 'Marketplace',
@@ -63,6 +65,7 @@ export const ADMIN_TABS = {
   Profile: 'Profile',
 } as const;
 
+// Screens in the marketplace stack (browse, listing detail, create and edit listing...).
 export const MARKETPLACE_ROUTES = {
   Browse: 'Browse',
   ListingDetail: 'ListingDetail',
@@ -89,6 +92,7 @@ export const ORDERS_ROUTES = {
   WriteReview: 'WriteReview',
 } as const;
 
+// Screens in the messaging stack.
 export const MESSAGING_ROUTES = {
   ConversationList: 'ConversationList',
   Chat: 'Chat',
@@ -157,6 +161,7 @@ export const CONSULTATIONS_ROUTES = {
   ConsultationDetail: 'ConsultationDetail',
 } as const;
 
+// Screens in the profile stack.
 export const PROFILE_ROUTES = {
   ViewProfile: 'ViewProfile',
   EditProfile: 'EditProfile',

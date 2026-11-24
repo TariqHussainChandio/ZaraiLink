@@ -1,3 +1,4 @@
+// API calls for the dealer or expert application and its documents.
 import { apiFetch } from '../../../services/api/client';
 import { supabase } from '../../../services/supabase/client';
 import { extensionFromMimeType } from '../../../utils/mimeExtension';
@@ -29,14 +30,17 @@ export async function submitApplication(): Promise<void> {
   await apiFetch('/api/v1/profile/application/submit', { method: 'POST' });
 }
 
+// Loads the dealer's saved business details, or null if none yet.
 export async function fetchDealerApplication(): Promise<DealerProfile | null> {
   return apiFetch('/api/v1/dealer/application');
 }
 
+// Saves the dealer's business details.
 export async function saveDealerApplication(input: DealerApplicationInput): Promise<DealerProfile> {
   return apiFetch('/api/v1/dealer/application', { method: 'PUT', body: input });
 }
 
+// Lists the files attached to the application.
 export async function fetchApplicationDocuments(role: ApplicationRole): Promise<ApplicationDocument[]> {
   return apiFetch(`/api/v1/${role}/application/documents`);
 }

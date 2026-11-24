@@ -1,3 +1,4 @@
+// Role accent context: each role shell sets its accent colour and components read it here.
 import React, { createContext, useContext } from 'react';
 import type { Accent, AccentKey } from './colors';
 import { useTheme } from './ThemeContext';
@@ -6,6 +7,7 @@ import { useTheme } from './ThemeContext';
 // instead of choosing a colour themselves. Outside any shell (sign-in, splash) the scope is the brand green.
 const RoleScopeContext = createContext<AccentKey>('brand');
 
+// Sets the accent colour (role scope) for everything rendered inside it.
 export function RoleScopeProvider({ scope, children }: { scope: AccentKey; children: React.ReactNode }) {
   return <RoleScopeContext.Provider value={scope}>{children}</RoleScopeContext.Provider>;
 }

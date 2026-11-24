@@ -1,3 +1,4 @@
+// Lets a user pick an application document from the camera, gallery or files.
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert } from 'react-native';
 import { pickFromLibrary, takePhoto } from './photoPicker';
@@ -14,8 +15,10 @@ export interface PickedDocument {
 // The buckets accept these and nothing else, up to 10 MB (20261012080000_applications.sql); the app checks first only to
 // answer sooner, Storage still decides.
 const DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+// Largest document the app accepts (10 MB), the same limit as the Storage bucket.
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
+// Opens the file picker for a PDF or image; null when the user cancels.
 async function chooseFile(): Promise<PickedDocument | null> {
   // Copied to the app's cache, so the upload reads a file the app owns, not a provider's temporary grant.
   const result = await DocumentPicker.getDocumentAsync({ type: DOCUMENT_TYPES, copyToCacheDirectory: true, multiple: false });
@@ -24,6 +27,7 @@ async function chooseFile(): Promise<PickedDocument | null> {
   return { uri: asset.uri, mimeType: asset.mimeType ?? 'application/pdf', fileName: asset.name, sizeBytes: asset.size };
 }
 
+// Turns the first photo from the camera or gallery into a picked document; null if none.
 async function fromPhotos(photos: Promise<{ uri: string; mimeType?: string; fileName?: string }[]>): Promise<PickedDocument | null> {
   const photo = (await photos)[0];
   if (!photo) return null;

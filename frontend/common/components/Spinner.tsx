@@ -1,3 +1,4 @@
+// Loading spinner in the role's accent, inline or full screen.
 import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { type Theme, useRoleAccent, useTheme } from '../../theme';
@@ -18,6 +19,7 @@ export function Spinner({ fullscreen = false, size = 'large' }: SpinnerProps) {
   return <View style={styles.fullscreen}>{indicator}</View>;
 }
 
+// Theme-based styles for the full-screen spinner.
 function makeStyles({ colors }: Theme) {
   return StyleSheet.create({
     fullscreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ground },

@@ -1,3 +1,4 @@
+// Inventory: button that exports a report as a CSV file and opens it.
 import { Download } from 'lucide-react-native';
 import React from 'react';
 import { Linking } from 'react-native';
@@ -7,6 +8,7 @@ import { useCreateExport } from '../hooks/inventory';
 import { isOfflineWrite } from '../hooks/mutation';
 import type { ReportName, ReportRange } from '../types/inventory';
 
+// Messages shown when the export cannot run or the file cannot open.
 const OFFLINE = "You're offline. Connect to the internet to export this report.";
 const NOT_OPENED = "The file was made but this phone couldn't open it. Export it again to get a new link.";
 
@@ -21,6 +23,7 @@ export function ExportButton({ report, range }: ExportButtonProps) {
   const toast = useToast();
   const create = useCreateExport();
 
+  // Asks the API for the CSV export and opens its download link.
   const onExport = async () => {
     let url: string;
     try {

@@ -1,3 +1,4 @@
+// Cart helpers: group items by seller and add up totals.
 import type { ListingWithRelations } from '../../marketplace';
 import type { CartItem } from '../../../state/cartStore';
 
@@ -27,6 +28,7 @@ export function currentPrice(item: CartItem, listings: CartListings): number {
   return listings.get(item.listingId)?.price ?? item.price;
 }
 
+// Adds up the products' cost at today's prices (delivery not included).
 export function productsTotal(items: CartItem[], listings: CartListings): number {
   return items.reduce((sum, item) => sum + currentPrice(item, listings) * item.quantity, 0);
 }

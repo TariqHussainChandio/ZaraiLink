@@ -1,3 +1,4 @@
+// Fills gaps in monthly analytics so the chart shows every month, including empty ones.
 /** One month of the analytics API: `month` is "YYYY-MM". */
 interface MonthlyPoint {
   month: string;
@@ -6,8 +7,10 @@ interface MonthlyPoint {
 
 /** "2026-03" as a number of months, so a range of months is a range of integers. */
 const toIndex = (key: string) => Number(key.slice(0, 4)) * 12 + (Number(key.slice(5, 7)) - 1);
+// A month number back to "YYYY-MM".
 const toKey = (index: number) => `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
 
+// How many months the chart shows.
 const MAX_MONTHS = 6;
 
 /** The analytics API sends only the months that had a consultation. A chart that skips them draws March beside May as

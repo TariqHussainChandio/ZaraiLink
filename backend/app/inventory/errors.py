@@ -40,6 +40,7 @@ DEFAULT_LOCATION_RULES = frozenset(
 )
 
 
+# Turns database errors from the stock functions into clear API errors with a status code.
 @contextmanager
 def stock_errors() -> Iterator[None]:
     try:

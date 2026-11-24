@@ -1,3 +1,4 @@
+// Surface card that groups content; pressable when given onPress.
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View, type ViewProps } from 'react-native';
 import { type Accent, type Theme, useRoleAccent, useTheme } from '../../theme';
@@ -43,6 +44,7 @@ export function Card({ style, children, onPress, pad = 'md', selected = false, .
   );
 }
 
+// Theme-based styles for the card, its padding sizes and the selected state.
 function makeStyles({ colors, borders, components }: Theme, accent: Accent) {
   return StyleSheet.create({
     card: {

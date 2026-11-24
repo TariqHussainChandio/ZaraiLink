@@ -1,3 +1,4 @@
+// List card for one consultation, with accept and decline buttons for the expert.
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, StatusBadge } from '../../components';
@@ -7,6 +8,7 @@ import { formatAgo } from '../../../utils/dates';
 import { PriorityBadge, priorityLabel } from './PriorityBadge';
 import { isActiveStatus } from '../utils/requests';
 
+// The accept and decline actions shown on a new request.
 interface ConsultationCardActions {
   onAccept: () => void;
   onDecline: () => void;
@@ -14,6 +16,7 @@ interface ConsultationCardActions {
   pending?: 'accept' | 'decline' | null;
 }
 
+// Props for ConsultationCard.
 export interface ConsultationCardProps {
   consultation: ConsultationWithRelations;
   counterpartyName: string;
@@ -22,6 +25,7 @@ export interface ConsultationCardProps {
   actions?: ConsultationCardActions;
 }
 
+// Joins a count with the singular or plural word, e.g. "1 photo", "3 photos".
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** One consultation: what it is about, who with, how urgent, how long ago, and how many photos came with it. */
@@ -96,6 +100,7 @@ export function ConsultationCard({ consultation, counterpartyName, onPress, acti
   );
 }
 
+// Builds the styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     card: { overflow: 'hidden' },

@@ -1,3 +1,4 @@
+// Inventory: More tab with purchases, suppliers, locations, alerts, sync and the exit.
 import { Bell, ClipboardList, History, LogOut, MapPin, RefreshCw, Scale, Truck } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { ScrollView } from 'react-native';

@@ -1,3 +1,4 @@
+// Full-screen brand panel shown while the saved session loads.
 import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTheme, type Theme } from '../../../theme';
@@ -19,6 +20,7 @@ export function SplashScreen() {
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space }: Theme) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.board },

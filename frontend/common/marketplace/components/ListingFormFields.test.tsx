@@ -32,6 +32,9 @@ jest.mock('../services/inventoryProductsService', () => ({
 
 const mockFetchProducts = fetchLinkableInventoryProducts as jest.Mock;
 
+// A dropdown's options appear after its sheet opens; a busy CI runner needs longer than the 1 s default to show them.
+const SHEET_TIMEOUT = 5000;
+
 beforeEach(() => {
   mockFetchProducts.mockReset().mockResolvedValue([
     { id: 'product-1', sku: 'UREA-1', name: 'Urea', unit: 'bag', is_active: true },
@@ -101,8 +104,8 @@ describe('ListingFormFields', () => {
 
   it('offers units from the reference list, without area units, instead of free text', async () => {
     await renderSettled(<Harness />, () => expect(fetchUnits).toHaveBeenCalled());
-    await fireEvent.press(await screen.findByRole('button', { name: /Sold by/ }));
-    expect(await screen.findByText('Kilogram (kg)', {}, { timeout: 3000 })).toBeTruthy();
+    await fireEvent.press(await screen.findByRole('button', { name: /Sold by/ }, { timeout: SHEET_TIMEOUT }));
+    expect(await screen.findByText('Kilogram (kg)', {}, { timeout: SHEET_TIMEOUT })).toBeTruthy();
     expect(screen.getByText('Bag (bag)')).toBeTruthy();
     expect(screen.queryByText('Acre (acre)')).toBeNull();
   });
@@ -137,11 +140,15 @@ describe('ListingFormFields', () => {
     expect(screen.getByText('Optional. Stock for this listing then comes from your inventory.')).toBeTruthy();
     await fireEvent.press(field);
     expect(screen.queryByText('Old stock · OLD-1', { includeHiddenElements: true })).toBeNull();
-    await fireEvent.press(await screen.findByRole('button', { name: 'Urea · UREA-1', includeHiddenElements: true }));
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Urea · UREA-1', includeHiddenElements: true }, { timeout: SHEET_TIMEOUT }),
+    );
     expect(screen.getByTestId('linked-value').props.children).toBe('product-1');
 
     await fireEvent.press(screen.getByRole('button', { name: 'Linked inventory product, Urea · UREA-1' }));
-    await fireEvent.press(await screen.findByRole('button', { name: 'None', includeHiddenElements: true }));
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'None', includeHiddenElements: true }, { timeout: SHEET_TIMEOUT }),
+    );
     expect(screen.getByTestId('linked-value').props.children).toBe('null');
   });
 

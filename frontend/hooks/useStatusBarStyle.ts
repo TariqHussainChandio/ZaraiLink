@@ -1,3 +1,4 @@
+// Hook that sets light or dark status bar icons when a screen gains focus.
 import { NavigationContext } from '@react-navigation/native';
 import { useContext, useEffect } from 'react';
 import { StatusBar, type StatusBarStyle } from 'react-native';
@@ -12,6 +13,7 @@ import { StatusBar, type StatusBarStyle } from 'react-native';
 export function useStatusBarStyle(style: StatusBarStyle): void {
   const navigation = useContext(NavigationContext);
   useEffect(() => {
+    // Applies the requested status bar style.
     const apply = () => StatusBar.setBarStyle(style, true);
     if (!navigation) {
       apply();

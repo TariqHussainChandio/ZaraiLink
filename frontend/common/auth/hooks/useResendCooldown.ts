@@ -1,3 +1,4 @@
+// Countdown hook that stops "Resend code" from being pressed too soon.
 import { useCallback, useEffect, useState } from 'react';
 
 /** Supabase sends at most one email per 60 seconds (supabase/config.toml, `max_frequency`), so a resend sooner than that is
@@ -17,6 +18,7 @@ export function useResendCooldown(seconds: number = RESEND_COOLDOWN_SECONDS) {
   const [endsAt, setEndsAt] = useState(() => Date.now() + seconds * 1000);
   const [remaining, setRemaining] = useState(seconds);
 
+  // Updates the seconds left once a second until the countdown ends.
   useEffect(() => {
     const tick = () => setRemaining(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
     tick();
@@ -24,6 +26,7 @@ export function useResendCooldown(seconds: number = RESEND_COOLDOWN_SECONDS) {
     return () => clearInterval(timer);
   }, [endsAt]);
 
+  // Starts the countdown again after a code is resent.
   const restart = useCallback(() => setEndsAt(Date.now() + seconds * 1000), [seconds]);
   return { remaining, restart };
 }

@@ -1,3 +1,4 @@
+// Messaging calls: conversations, messages, photo uploads and admin moderation.
 import type { PickedPhoto } from '../../../utils/photoPicker';
 import { extensionFromMimeType } from '../../../utils/mimeExtension';
 import { apiFetch } from '../../../services/api/client';
@@ -12,6 +13,7 @@ export async function fetchConversations(): Promise<ConversationWithPreview[]> {
   return apiFetch('/api/v1/messaging/conversations');
 }
 
+// Loads the messages of one conversation.
 export async function fetchMessages(conversationId: string): Promise<Message[]> {
   return apiFetch(`/api/v1/messaging/conversations/${conversationId}/messages`);
 }

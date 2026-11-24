@@ -1,3 +1,4 @@
+// The app bar at the top of screens, and its icon buttons with badges.
 import { ArrowLeft, Warehouse, type LucideIcon } from 'lucide-react-native';
 import React, { createContext, useContext, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -37,6 +38,7 @@ export interface TopAppBarProps {
   centered?: boolean;
 }
 
+// Spoken text for an unread count.
 const unread = (count: number) => `${count} unread`;
 
 /** The colour of icon buttons drawn on a coloured bar. The app bar is olive (D20), so the actions the navigators hand it
@@ -77,6 +79,7 @@ export function TopAppBar({ title, subtitle, onBack, actions = [], right, left, 
   const insets = useInsets();
   const large = variant === 'large' && !centered;
   const inventory = variant === 'inventory';
+  // Icon and ripple colours for buttons on this bar.
   const tint = useMemo(
     () => ({ icon: inventory ? theme.colors.onAccent : theme.colors.onAppBar, ripple: theme.colors.rippleOnFill }),
     [theme, inventory],
@@ -132,6 +135,7 @@ export function TopAppBar({ title, subtitle, onBack, actions = [], right, left, 
   );
 }
 
+// Theme-based styles for the app bar.
 function makeStyles({ colors, space, size, radius, borders, typography }: Theme) {
   return StyleSheet.create({
     bar: { backgroundColor: colors.appBar },

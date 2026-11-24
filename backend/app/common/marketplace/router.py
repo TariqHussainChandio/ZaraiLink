@@ -1,3 +1,5 @@
+"""Marketplace routes: listings, categories, crops and listing views."""
+
 from fastapi import APIRouter, Depends
 
 from app.auth.dependencies import (
@@ -28,6 +30,7 @@ router = APIRouter(prefix="/api/v1/marketplace", tags=["marketplace"])
 # marketplace has never required being signed in.
 
 
+# Lists listings for browsing, with filters and paging.
 @router.get("/listings", response_model=list[ListingWithRelations])
 async def list_listings(
     category_id: str | None = None,
@@ -49,6 +52,7 @@ async def list_listings(
     )
 
 
+# Admin: lists all listings for moderation.
 @router.get("/listings/moderation", response_model=list[ListingWithRelations])
 async def list_listings_for_moderation(
     user: AuthenticatedUser = Depends(require_admin), page: Page = Depends(paginate)
@@ -62,16 +66,19 @@ async def get_listing_filter_options() -> dict:
     return await service.fetch_filter_options()
 
 
+# Returns one listing; others than the owner see it only while it is for sale.
 @router.get("/listings/{listing_id}", response_model=ListingWithRelations)
 async def get_listing(listing_id: str, user: AuthenticatedUser | None = Depends(get_optional_user)) -> dict:
     return await service.fetch_listing_by_id(listing_id, user)
 
 
+# Creates a listing for the signed-in seller.
 @router.post("/listings", response_model=Listing)
 async def create_listing(request: ListingInput, user: AuthenticatedUser = Depends(require_authenticated_user)) -> dict:
     return await service.create_listing(user, request)
 
 
+# Updates the seller's own listing.
 @router.patch("/listings/{listing_id}", response_model=Listing)
 async def update_listing(
     listing_id: str, request: ListingUpdateInput, user: AuthenticatedUser = Depends(require_authenticated_user)
@@ -79,6 +86,7 @@ async def update_listing(
     return await service.update_listing(user, listing_id, request)
 
 
+# Deletes the seller's own listing.
 @router.delete("/listings/{listing_id}", status_code=204)
 async def delete_listing(listing_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> None:
     await service.delete_listing(user, listing_id)
@@ -93,6 +101,7 @@ async def update_listing_status(
     await service.update_listing_status(user, listing_id, request.status)
 
 
+# Lists all categories (public).
 @router.get("/categories", response_model=list[Category])
 async def list_categories(page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_categories())
@@ -104,6 +113,7 @@ async def create_category(request: CategoryInput, user: AuthenticatedUser = Depe
     return await service.create_category(user, request.model_dump())
 
 
+# Admin: updates a category.
 @router.patch("/categories/{category_id}", response_model=Category)
 async def update_category(
     category_id: str, request: CategoryUpdateInput, user: AuthenticatedUser = Depends(require_admin)
@@ -111,21 +121,25 @@ async def update_category(
     return await service.update_category(user, category_id, request.model_dump(exclude_unset=True))
 
 
+# Admin: deletes a category.
 @router.delete("/categories/{category_id}", status_code=204)
 async def delete_category(category_id: str, user: AuthenticatedUser = Depends(require_admin)) -> None:
     await service.delete_category(user, category_id)
 
 
+# Lists all crops (public).
 @router.get("/crops", response_model=list[Crop])
 async def list_crops(page: Page = Depends(paginate)) -> list[dict]:
     return page.finish(await service.fetch_crops())
 
 
+# Records a view of a listing by the signed-in user.
 @router.post("/listings/{listing_id}/views", status_code=204)
 async def record_listing_view(listing_id: str, user: AuthenticatedUser = Depends(require_authenticated_user)) -> None:
     await service.record_listing_view(user, listing_id)
 
 
+# Returns the view counts of a set of listings.
 @router.post("/listings/view-counts", response_model=dict[str, int])
 async def get_listing_view_counts(
     request: ViewCountsRequest, user: AuthenticatedUser = Depends(require_authenticated_user)

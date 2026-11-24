@@ -1,3 +1,4 @@
+// Inventory: purchase detail with its lines and receive or cancel actions.
 import { CircleX, PackageCheck, Pencil } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -14,6 +15,7 @@ import { useCancelPurchase, usePurchase, useReceivePurchase, useSuppliers } from
 import { useLookups } from '../hooks/lookups';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
 
+// Which confirm sheet is open, if any.
 type Confirming = 'receive' | 'cancel' | null;
 
 /** One purchase: its lines, and for a draft, editing it, receiving it into stock (once) or cancelling it. A received or
@@ -45,6 +47,7 @@ export function PurchaseDetailScreen({ route, navigation }: InventoryScreenProps
   const total = items.reduce((sum, item) => sum + (item.unit_cost ?? 0) * item.quantity, 0);
   const costed = items.some(item => item.unit_cost != null);
 
+  // Receives the purchase, adding its lines to stock.
   const onReceive = async () => {
     setActionError(null);
     try {
@@ -59,6 +62,7 @@ export function PurchaseDetailScreen({ route, navigation }: InventoryScreenProps
     setConfirming(null);
   };
 
+  // Cancels the draft purchase.
   const onCancel = async () => {
     setActionError(null);
     try {

@@ -1,3 +1,4 @@
+// Inventory: form to add or edit a supplier.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -12,6 +13,7 @@ import { inventoryErrorMessage } from '../hooks/errors';
 import { useRemoveSupplier, useSaveSupplier, useSuppliers } from '../hooks/inventory';
 import type { INVENTORY_ROUTES, InventoryScreenProps } from '../types/navigation';
 
+// Validation rules for the form.
 const schema = z.object({
   name: z
     .string()
@@ -26,6 +28,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+// Active or inactive choices.
 const STATUS_OPTIONS = [
   { id: 'active', label: 'Active' },
   { id: 'inactive', label: 'Inactive' },
@@ -67,6 +70,7 @@ export function SupplierFormScreen({ route, navigation }: InventoryScreenProps<t
     });
   }, [supplier, reset]);
 
+  // Saves the supplier (create or update) and goes back.
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
     const input = {
@@ -86,6 +90,7 @@ export function SupplierFormScreen({ route, navigation }: InventoryScreenProps<t
     }
   };
 
+  // Removes the supplier after the dealer confirms.
   const onRemove = async () => {
     if (!supplierId) return;
     setFormError(null);

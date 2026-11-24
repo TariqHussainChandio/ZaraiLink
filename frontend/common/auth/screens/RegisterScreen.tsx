@@ -1,3 +1,4 @@
+// Registration form for the chosen role: name, phone, location, email and password.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -26,6 +27,7 @@ const TITLES: Record<RegistrableRole, string> = {
   expert: 'Create an expert account',
 };
 
+// Builds the form rules for the role; farmers and buyers must give a location.
 function makeRegisterSchema(role: RegistrableRole) {
   const located = role === 'farmer' || role === 'buyer';
   const place = (message: string) => (located ? z.string().trim().min(2, message) : z.string().trim());
@@ -46,6 +48,7 @@ function makeRegisterSchema(role: RegistrableRole) {
 
 type RegisterFormValues = z.infer<ReturnType<typeof makeRegisterSchema>>;
 
+// Sign-up screen for one role; on success opens the email code screen.
 export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'>) {
   const { role } = route.params;
   const located = role === 'farmer' || role === 'buyer';
@@ -71,6 +74,7 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
 
   const reviewed = role === 'dealer' || role === 'expert';
 
+  // Creates the account, then opens the email code screen if a code is needed.
   const onSubmit = async (values: RegisterFormValues) => {
     setSubmitError(null);
     try {
@@ -246,6 +250,7 @@ export function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     change: { alignSelf: 'flex-start', marginTop: -space[4] },

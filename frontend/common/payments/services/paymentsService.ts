@@ -1,3 +1,4 @@
+// Payment API calls: start, read and settle payments.
 import { apiFetch } from '../../../services/api/client';
 import { idempotencyKeyFor, releaseIdempotencyKey } from '../../../services/api/idempotency';
 import type { Payment, PaymentMethod, PaymentTransaction } from '../types/payments';
@@ -19,14 +20,17 @@ export async function initiatePayment(orderId: string, method: PaymentMethod): P
   return payment;
 }
 
+// Fetches one payment.
 export async function fetchPaymentById(paymentId: string): Promise<Payment> {
   return apiFetch(`/api/v1/payments/${paymentId}`);
 }
 
+// Fetches the payment of an order, or null.
 export async function fetchPaymentByOrderId(orderId: string): Promise<Payment | null> {
   return apiFetch(`/api/v1/payments/by-order/${orderId}`);
 }
 
+// Fetches the transaction events of a payment.
 export async function fetchPaymentTransactions(paymentId: string): Promise<PaymentTransaction[]> {
   return apiFetch(`/api/v1/payments/${paymentId}/transactions`);
 }

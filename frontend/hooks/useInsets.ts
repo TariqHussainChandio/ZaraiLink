@@ -1,3 +1,4 @@
+// Hook for safe-area insets that also works without a provider (tests).
 import { useContext } from 'react';
 import { type EdgeInsets, SafeAreaInsetsContext } from 'react-native-safe-area-context';
 

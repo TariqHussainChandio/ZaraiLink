@@ -1,3 +1,4 @@
+// Dealer application step: business name, type, registration number and address form.
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -83,6 +84,7 @@ export function DealerBusinessStep({
     });
   }, [application, reset]);
 
+  // Saves the business details through the API, then moves to the next step.
   const onSubmit = async (values: Values) => {
     // A refusal (application_locked, say) is shown from the mutation's own error; the step stays open.
     const input = {
@@ -181,6 +183,7 @@ export function DealerBusinessStep({
   );
 }
 
+// Builds this component's styles from the theme.
 function makeStyles({ space }: Theme) {
   return StyleSheet.create({
     form: { gap: space[4] },

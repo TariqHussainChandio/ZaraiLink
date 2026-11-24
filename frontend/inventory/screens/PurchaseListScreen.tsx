@@ -1,3 +1,4 @@
+// Inventory: list of purchases, filterable by status.
 import { FlashList } from '@shopify/flash-list';
 import { ClipboardList, Plus } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
@@ -12,6 +13,7 @@ import { usePurchases, useSuppliers } from '../hooks/inventory';
 import type { PurchaseStatus } from '../types/inventory';
 import { INVENTORY_ROUTES, type InventoryScreenProps } from '../types/navigation';
 
+// Status filter choices.
 type Filter = PurchaseStatus | 'all';
 
 const FILTERS: { value: Filter; label: string }[] = [
@@ -29,6 +31,7 @@ export function PurchaseListScreen({ navigation }: InventoryScreenProps<typeof I
   const result = usePurchases(filter === 'all' ? null : filter);
   const { data, refetch, isRefetching } = result;
   const suppliers = useSuppliers();
+  // Supplier names by id.
   const supplierName = useMemo(
     () => new Map((suppliers.data ?? []).map(supplier => [supplier.id, supplier.name])),
     [suppliers.data],
@@ -81,6 +84,7 @@ export function PurchaseListScreen({ navigation }: InventoryScreenProps<typeof I
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

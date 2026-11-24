@@ -53,14 +53,17 @@ def operation_id(route: APIRoute) -> str:
     return f"{str(tag).replace('-', '_')}_{route.name}"
 
 
+# True when an operation takes limit and offset query parameters.
 def _is_paginated(operation: dict[str, Any]) -> bool:
     names = {p.get("name") for p in operation.get("parameters", []) if p.get("in") == "query"}
     return {"limit", "offset"} <= names
 
 
+# Replaces app.openapi with a version that adds auth, error and paging details.
 def customize(app: FastAPI) -> None:
     original = app.openapi
 
+    # Builds the customised OpenAPI document once.
     def build() -> dict[str, Any]:
         schema = original()
         components = schema.setdefault("components", {})

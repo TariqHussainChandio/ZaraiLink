@@ -1,3 +1,5 @@
+"""Consultation database access: requests, messages, assessments and moderation."""
+
 from typing import Any
 
 from app.common.pagination import page_range
@@ -36,6 +38,7 @@ def _flatten_expert(row: dict) -> dict:
     return row
 
 
+# Inserts a new consultation request for the user.
 async def create_request(access_token: str, user_id: str, fields: dict[str, Any]) -> dict:
     # No embed needed here — the create endpoint's response_model is the plain `Consultation`,
     # not `ConsultationWithRelations` (see common/consultations/router.py), so the write-then-
@@ -45,11 +48,13 @@ async def create_request(access_token: str, user_id: str, fields: dict[str, Any]
     return first_row(response)
 
 
+# Saves the list of photo paths on a consultation.
 async def update_images(access_token: str, consultation_id: str, images: list[str]) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("consultations").update({"images": images}).eq("id", consultation_id).execute()
 
 
+# Lists the consultations the user asked for.
 async def fetch_for_user(access_token: str, user_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -64,6 +69,7 @@ async def fetch_for_user(access_token: str, user_id: str) -> list[dict]:
     return [_flatten_expert(row) for row in rows]
 
 
+# Lists the consultations assigned to an expert.
 async def fetch_for_expert(access_token: str, expert_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -78,6 +84,7 @@ async def fetch_for_expert(access_token: str, expert_id: str) -> list[dict]:
     return [_flatten_expert(row) for row in rows]
 
 
+# Reads one consultation with its related rows, or None.
 async def get_by_id(access_token: str, consultation_id: str) -> dict | None:
     client = await get_user_scoped_client(access_token)
     response = (
@@ -87,11 +94,13 @@ async def get_by_id(access_token: str, consultation_id: str) -> dict | None:
     return _flatten_expert(rows[0]) if rows else None
 
 
+# Sets a consultation's status.
 async def update_status(access_token: str, consultation_id: str, status: str) -> None:
     client = await get_user_scoped_client(access_token)
     await client.table("consultations").update({"status": status}).eq("id", consultation_id).execute()
 
 
+# Lists the messages of a consultation.
 async def fetch_messages(access_token: str, consultation_id: str) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     response = await (
@@ -105,6 +114,7 @@ async def fetch_messages(access_token: str, consultation_id: str) -> list[dict]:
     return as_rows(response)
 
 
+# Inserts a message (text, photos or a recommended listing) into a consultation.
 async def send_message(
     access_token: str,
     consultation_id: str,
@@ -138,6 +148,7 @@ async def send_message(
     return first_row(response)
 
 
+# Inserts an expert assessment for a consultation.
 async def create_assessment(access_token: str, consultation_id: str, expert_id: str, fields: dict[str, Any]) -> dict:
     # User-scoped on purpose: `consultation_assessments_insert_expert` is the authority on who may assess (the assigned,
     # approved expert while the consultation is accepted or in progress, SRDS §36). The insert returns the full row.
@@ -150,6 +161,7 @@ async def create_assessment(access_token: str, consultation_id: str, expert_id: 
     return first_row(response)
 
 
+# Lists the expert assessments of a consultation.
 async def fetch_assessments(access_token: str, consultation_id: str) -> list[dict]:
     # Row-level security limits the read to the requester, the assigned expert and an admin; anyone else gets no rows.
     client = await get_user_scoped_client(access_token)
@@ -168,6 +180,7 @@ async def fetch_assessments(access_token: str, consultation_id: str) -> list[dic
 # service-role client is needed to see or moderate a row.
 
 
+# Lists consultations for the admin, optionally by status and age.
 async def fetch_for_admin(access_token: str, status: str | None, created_before: str | None) -> list[dict]:
     client = await get_user_scoped_client(access_token)
     query = client.table("consultations").select(CONSULTATION_SELECT)
@@ -179,6 +192,7 @@ async def fetch_for_admin(access_token: str, status: str | None, created_before:
     return [_flatten_expert(row) for row in as_rows(response)]
 
 
+# Changes a consultation's status as an admin moderation, with its reason.
 async def moderate(access_token: str, consultation_id: str, status: str, reason: str) -> dict:
     # Status and reason in one update: the trigger accepts a moderation reason only together with the status change it
     # explains, and refuses an admin close or cancel without one.

@@ -1,3 +1,4 @@
+// Works out which screen a notification opens when tapped.
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NavigationProp } from '@react-navigation/native';
 import { APP_TABS, CONSULTATIONS_ROUTES, MARKETPLACE_ROUTES, MESSAGING_ROUTES, ORDERS_ROUTES, PROFILE_ROUTES } from '../../constants/routes';
@@ -7,6 +8,7 @@ import type { Notification } from '../types/notifications';
 
 export type NotificationTabs = BottomTabNavigationProp<AppTabParamList> | null | undefined;
 
+// Returns the value if it is a non-empty string, otherwise null.
 const text = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 
 /**

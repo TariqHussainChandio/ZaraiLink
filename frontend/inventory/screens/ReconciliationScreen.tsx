@@ -1,3 +1,4 @@
+// Inventory: reconciliation screen checking the ledger adds up to the stock on hand.
 import { FlashList } from '@shopify/flash-list';
 import { Scale } from 'lucide-react-native';
 import React, { useMemo } from 'react';
@@ -37,6 +38,7 @@ export function ReconciliationScreen({ navigation }: InventoryScreenProps<typeof
   const { productById } = useLookups();
   const rows = data?.rows ?? [];
 
+  // One product's reconciliation card.
   const renderRow = ({ item: row }: { item: ReconciliationReportRow }) => {
     const unit = productById.get(row.product_id)?.unit;
     const status = row.balanced ? 'balanced' : 'unbalanced';
@@ -130,6 +132,7 @@ export function ReconciliationScreen({ navigation }: InventoryScreenProps<typeof
   );
 }
 
+// Builds this screen's styles from the theme.
 function makeStyles(theme: Theme) {
   return {
     ...makeScreenStyles(theme),

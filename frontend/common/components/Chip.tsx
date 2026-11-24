@@ -1,3 +1,4 @@
+// Selectable chips for filters, and a horizontal row of single-choice chips.
 import { Check, type LucideIcon } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -70,6 +71,7 @@ export function ChipRow<T extends string>({ options, value, onChange, wrap = fal
   );
 }
 
+// Theme-based styles for one chip.
 function makeStyles({ colors, borders, components, typography }: Theme, accent: Accent) {
   const { chip } = components;
   return StyleSheet.create({
@@ -99,6 +101,7 @@ function makeStyles({ colors, borders, components, typography }: Theme, accent: 
   });
 }
 
+// Theme-based styles for the scrolling chip row.
 function makeRowStyles({ space }: Theme) {
   return StyleSheet.create({
     row: { flexGrow: 0, marginBottom: space[3] },

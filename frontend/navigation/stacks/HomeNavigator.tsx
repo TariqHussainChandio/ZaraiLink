@@ -1,3 +1,4 @@
+// The Home tab stack for farmers, buyers and dealers: dashboard and the screens it opens.
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
@@ -84,6 +85,7 @@ const HOME_STACK_OPTIONS = stackOptionsWithActions({ [HOME_ROUTES.Dashboard]: ho
   [HOME_ROUTES.Dashboard]: profileAction,
 });
 
+// Renders the Home tab's screens with their app-bar actions.
 export function HomeNavigator() {
   return (
     <Stack.Navigator screenOptions={HOME_STACK_OPTIONS}>

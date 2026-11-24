@@ -1,3 +1,4 @@
+// Admin: the audit log of every admin action (BR-15), grouped by day and filterable.
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -153,6 +154,7 @@ export function AuditLogScreen() {
   );
 }
 
+// Builds the screen's styles from the theme.
 function makeStyles({ colors, space, typography }: Theme) {
   return StyleSheet.create({
     day: { marginBottom: space[4] },

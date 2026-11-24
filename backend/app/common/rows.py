@@ -12,6 +12,7 @@ from fastapi import HTTPException
 Row = dict[str, Any]
 
 
+# Any Supabase response object that has a `data` field.
 class _HasData(Protocol):
     data: Any
 

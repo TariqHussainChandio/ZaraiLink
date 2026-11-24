@@ -1,3 +1,4 @@
+// Review API calls: read and write reviews.
 import { apiFetch } from '../../../services/api/client';
 import type { Review, ReviewWithBuyer } from '../types/reviews';
 
@@ -30,10 +31,12 @@ export async function fetchReviewByOrderId(orderId: string): Promise<ReviewWithB
   return apiFetch(`/api/v1/reviews/by-order/${orderId}`);
 }
 
+// Fetches the reviews of a listing.
 export async function fetchReviewsForListing(listingId: string): Promise<ReviewWithBuyer[]> {
   return apiFetch(`/api/v1/reviews/by-listing/${listingId}`);
 }
 
+// Fetches the reviews of a seller.
 export async function fetchReviewsForSeller(sellerId: string): Promise<ReviewWithBuyer[]> {
   return apiFetch(`/api/v1/reviews/by-seller/${sellerId}`);
 }
@@ -43,6 +46,7 @@ export async function fetchReviewsForExpert(expertId: string): Promise<ReviewWit
   return apiFetch(`/api/v1/reviews/by-expert/${expertId}`);
 }
 
+// Fetches the review of a consultation, or null.
 export async function fetchReviewByConsultationId(consultationId: string): Promise<ReviewWithBuyer | null> {
   return apiFetch(`/api/v1/reviews/by-consultation/${consultationId}`);
 }
